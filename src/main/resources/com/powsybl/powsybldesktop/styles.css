@@ -1,0 +1,233 @@
+/**
+ * Copyright (c) 2026, Artelys (https://www.artelys.com)
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
+/* Apply to all cells inside the TableView body */
+.table-view .table-cell {
+    -fx-font-family: "Consolas";   /* "Consolas" or "Monospaced", "Courier New", "Menlo" */
+    -fx-font-size: 13px;
+}
+
+/* The JavaFX default table-cell alignment is TOP-LEFT (not modena's old CENTER-LEFT), which left a
+   single-line cell's text/link pinned to the top of a row a multi-value sibling column (e.g. a two- or
+   three-sided column) has made taller. Single-class specificity so .centered-column/.right-aligned-column
+   below still win their horizontal override via declaration order. */
+.table-cell {
+    -fx-alignment: CENTER-LEFT;
+}
+
+/* Optional: ensure rows inherit properly */
+.table-view .table-row-cell {
+    -fx-font-family: "Consolas";
+}
+
+.table-row-cell.row-warn .table-cell {
+    -fx-text-fill: darkorange;
+    -fx-font-weight: bold;
+}
+
+.table-row-cell.row-error .table-cell {
+    -fx-text-fill: red;
+    -fx-font-weight: bold;
+}
+
+/* Visual affordance for cells the user can edit (TextField/ChoiceBox-backed columns), which
+   otherwise render as plain text indistinguishable from read-only cells: an inset outline
+   rather than a filled background, so it doesn't paint the whole column. Not scoped to
+   .table-cell: a multi-sided editable double column (e.g. Transformers' RatedU/RatedS) applies
+   this class to a per-side Label nested inside the cell rather than to the cell itself. */
+.table-view .editable-cell {
+    -fx-border-color: derive(-fx-accent, 20%);
+    -fx-border-width: 1px;
+    -fx-border-insets: 3px;
+    -fx-border-radius: 2px;
+}
+
+.table-view .table-cell.editable-cell:empty {
+    -fx-border-width: 0;
+}
+
+/* Brief flash applied after an edit, removed automatically after TableColumnSupport's
+   EDIT_FLASH_DURATION: red when the edit was rejected (e.g. an IIDM validation exception), green when applied. */
+.table-view .edit-error {
+    -fx-background-color: derive(red, 60%);
+}
+
+.table-view .edit-success {
+    -fx-background-color: derive(green, 60%);
+}
+
+.centered-column {
+    -fx-alignment: CENTER;
+}
+
+.right-aligned-column {
+    -fx-alignment: CENTER-RIGHT;
+}
+
+/* Button meant to show only its icon graphic (e.g. a pencil edit affordance in a table cell),
+   without the default raised background/border a plain Button gets outside a ToolBar. */
+.icon-button {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+    -fx-padding: 2px;
+    -fx-cursor: hand;
+}
+
+.icon-button:hover {
+    -fx-background-color: derive(-fx-base, -10%);
+    -fx-background-radius: 3px;
+}
+
+/* IntStepperField's increment/decrement pair (TableColumnSupport): stacked to about half the height of the
+   sibling Label each, so together they don't grow the row taller than a plain editable Label cell (e.g.
+   RatedU/RatedS) would. */
+.stepper-button {
+    -fx-padding: 0;
+    -fx-min-width: 12px;
+    -fx-max-width: 12px;
+    -fx-min-height: 9px;
+    -fx-max-height: 9px;
+    -fx-pref-height: 9px;
+    -fx-background-radius: 0;
+}
+
+.container-link {
+    -fx-text-fill: #0000EE;
+    -fx-underline: true;
+    -fx-padding: 0;
+    -fx-border-width: 0;
+}
+
+.no-header-table .column-header-background {
+    -fx-max-height: 0;
+    -fx-pref-height: 0;
+    -fx-min-height: 0;
+    visibility: hidden;
+}
+
+.severity-marker {
+    -fx-min-width: 10px;
+    -fx-max-width: 10px;
+    -fx-min-height: 10px;
+    -fx-max-height: 10px;
+    -fx-background-radius: 5px;
+}
+
+.severity-marker.severity-trace {
+    -fx-background-color: gray;
+}
+
+.severity-marker.severity-debug {
+    -fx-background-color: slategray;
+}
+
+.severity-marker.severity-info {
+    -fx-background-color: steelblue;
+}
+
+.severity-marker.severity-detail {
+    -fx-background-color: dimgray;
+}
+
+.severity-marker.severity-warn {
+    -fx-background-color: darkorange;
+}
+
+.severity-marker.severity-error {
+    -fx-background-color: red;
+}
+
+.alert-label {
+    -fx-text-fill: darkorange;
+}
+
+.alert-icon {
+    -fx-icon-color: darkorange;
+}
+
+.text-field:no-match {
+    -fx-border-color: red;
+    -fx-focus-color: red;
+}
+
+.notification-timestamp {
+    -fx-text-fill: gray;
+    -fx-font-size: 11px;
+}
+
+.notification-close {
+    -fx-text-fill: gray;
+    -fx-cursor: hand;
+}
+
+.notification-close:hover {
+    -fx-text-fill: -fx-text-base-color;
+}
+
+.notification-status {
+    -fx-min-width: 10px;
+    -fx-max-width: 10px;
+    -fx-min-height: 10px;
+    -fx-max-height: 10px;
+    -fx-background-radius: 5px;
+}
+
+.notification-status-arc {
+    -fx-fill: transparent;
+    -fx-stroke: gray;
+    -fx-stroke-width: 2px;
+    -fx-stroke-line-cap: round;
+}
+
+.notification-status-success {
+    -fx-background-color: green;
+}
+
+.notification-status-error {
+    -fx-background-color: red;
+}
+
+.notification-status-cancelled {
+    -fx-background-color: #f0ad4e;
+}
+
+.component-status {
+    -fx-min-width: 10px;
+    -fx-max-width: 10px;
+    -fx-min-height: 10px;
+    -fx-max-height: 10px;
+    -fx-background-radius: 5px;
+}
+
+.component-status-converged {
+    -fx-background-color: green;
+}
+
+.component-status-no-calculation {
+    -fx-background-color: gray;
+}
+
+.component-status-other {
+    -fx-background-color: red;
+}
+
+.substations-tree-group-placeholder {
+    -fx-text-fill: gray;
+}
+
+.notification-overlay {
+    -fx-background-color: derive(-fx-base, 20%);
+    -fx-border-color: derive(-fx-base, -20%);
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 8, 0, 0, 2);
+}
+
+.memory-usage-bar .bar {
+    -fx-background-color: green;
+}

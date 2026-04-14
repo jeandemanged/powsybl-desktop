@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.network.tables.SwitchesController">
+   <children>
+      <TableView fx:id="switchesTableView" editable="true" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">
+         <columns>
+            <TableColumn fx:id="nameColumn" text="%common.column.name" editable="false"/>
+            <TableColumn fx:id="kindColumn" text="%switches.column.kind" editable="false"/>
+            <TableColumn fx:id="openColumn" styleClass="centered-column" text="%switches.column.open"/>
+            <TableColumn fx:id="retainedColumn" styleClass="centered-column" text="%switches.column.retained"/>
+         </columns>
+      </TableView>
+   </children>
+</VBox>

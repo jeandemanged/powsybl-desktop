@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.network.tables.TransformersController">
+   <children>
+      <fx:include fx:id="columnVisibilityToolbar" source="column-visibility-toolbar.fxml"/>
+      <fx:include fx:id="searchBox" source="../search/search-box.fxml"/>
+      <TableView fx:id="transformersTableView" editable="true" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">
+         <columns>
+            <TableColumn fx:id="substationColumn" text="%common.column.substation" editable="false"/>
+            <TableColumn fx:id="nameColumn" text="%common.column.name" editable="false"/>
+            <TableColumn fx:id="voltageLevelColumn" text="%common.column.voltageLevel" editable="false" sortable="false"/>
+            <TableColumn fx:id="ratedUColumn" styleClass="right-aligned-column" text="%transformers.column.ratedU" sortable="false"/>
+            <TableColumn fx:id="ratedSColumn" styleClass="right-aligned-column" text="%transformers.column.ratedS" sortable="false"/>
+            <TableColumn fx:id="connectedColumn" styleClass="centered-column" text="%common.column.connected" editable="false" sortable="false"/>
+            <TableColumn fx:id="connectedComponentColumn" styleClass="centered-column" text="%common.column.connectedComponent" editable="false" sortable="false"/>
+            <TableColumn fx:id="synchronousComponentColumn" styleClass="centered-column" text="%common.column.synchronousComponent" editable="false" sortable="false"/>
+            <TableColumn fx:id="rColumn" styleClass="right-aligned-column" text="%common.column.r" sortable="false"/>
+            <TableColumn fx:id="xColumn" styleClass="right-aligned-column" text="%common.column.x" sortable="false"/>
+            <TableColumn fx:id="gColumn" styleClass="right-aligned-column" text="%common.column.g" sortable="false"/>
+            <TableColumn fx:id="bColumn" styleClass="right-aligned-column" text="%common.column.b" sortable="false"/>
+            <TableColumn fx:id="ratioTapChangerColumn" styleClass="centered-column" text="%transformers.column.ratioTapChanger" editable="false" sortable="false"/>
+            <TableColumn fx:id="ratioTapChangerRegulatingColumn" styleClass="centered-column" text="%transformers.column.ratioTapChangerRegulating" sortable="false"/>
+            <TableColumn fx:id="ratioTapChangerRegulationModeColumn" styleClass="centered-column" text="%transformers.column.ratioTapChangerRegulationMode" sortable="false"/>
+            <TableColumn fx:id="ratioTapChangerRegulationValueColumn" styleClass="right-aligned-column" text="%transformers.column.ratioTapChangerRegulationValue" sortable="false"/>
+            <TableColumn fx:id="ratioTapChangerTargetDeadbandColumn" styleClass="right-aligned-column" text="%transformers.column.ratioTapChangerTargetDeadband" sortable="false"/>
+            <TableColumn fx:id="ratioTapChangerSolvedTapColumn" styleClass="right-aligned-column" text="%transformers.column.ratioTapChangerSolvedTap" editable="false" sortable="false"/>
+            <TableColumn fx:id="phaseTapChangerColumn" styleClass="centered-column" text="%transformers.column.phaseTapChanger" editable="false" sortable="false"/>
+            <TableColumn fx:id="phaseTapChangerRegulatingColumn" styleClass="centered-column" text="%transformers.column.phaseTapChangerRegulating" sortable="false"/>
+            <TableColumn fx:id="phaseTapChangerRegulationModeColumn" styleClass="centered-column" text="%transformers.column.phaseTapChangerRegulationMode" sortable="false"/>
+            <TableColumn fx:id="phaseTapChangerRegulationValueColumn" styleClass="right-aligned-column" text="%transformers.column.phaseTapChangerRegulationValue" sortable="false"/>
+            <TableColumn fx:id="phaseTapChangerTargetDeadbandColumn" styleClass="right-aligned-column" text="%transformers.column.phaseTapChangerTargetDeadband" sortable="false"/>
+            <TableColumn fx:id="phaseTapChangerSolvedTapColumn" styleClass="right-aligned-column" text="%transformers.column.phaseTapChangerSolvedTap" editable="false" sortable="false"/>
+            <TableColumn fx:id="pColumn" styleClass="right-aligned-column" text="%common.column.p" editable="false" sortable="false"/>
+            <TableColumn fx:id="qColumn" styleClass="right-aligned-column" text="%common.column.q" editable="false" sortable="false"/>
+            <TableColumn fx:id="iColumn" styleClass="right-aligned-column" text="%common.column.i" editable="false" sortable="false"/>
+            <TableColumn fx:id="patlIViolationColumn" text="%common.column.patlIViolation" editable="false"/>
+         </columns>
+      </TableView>
+   </children>
+</VBox>

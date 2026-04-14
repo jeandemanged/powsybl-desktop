@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.network.tables.BoundaryLinesController">
+   <children>
+      <fx:include fx:id="columnVisibilityToolbar" source="column-visibility-toolbar.fxml"/>
+      <fx:include fx:id="searchBox" source="../search/search-box.fxml"/>
+      <TableView fx:id="boundaryLinesTableView" editable="true" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">
+         <columns>
+            <TableColumn fx:id="substationColumn" text="%common.column.substation" editable="false"/>
+            <TableColumn fx:id="voltageLevelColumn" text="%common.column.voltageLevel" editable="false"/>
+            <TableColumn fx:id="nameColumn" text="%common.column.name" editable="false"/>
+            <TableColumn fx:id="pairingKeyColumn" text="%boundaryLines.column.pairingKey" editable="false"/>
+            <TableColumn fx:id="tieLineColumn" text="%boundaryLines.column.tieLine" editable="false"/>
+            <TableColumn fx:id="connectedColumn" styleClass="centered-column" text="%common.column.connected" editable="false"/>
+            <TableColumn fx:id="connectedComponentColumn" styleClass="centered-column" text="%common.column.connectedComponent" editable="false"/>
+            <TableColumn fx:id="synchronousComponentColumn" styleClass="centered-column" text="%common.column.synchronousComponent" editable="false"/>
+            <TableColumn fx:id="rColumn" styleClass="right-aligned-column" text="%common.column.r"/>
+            <TableColumn fx:id="xColumn" styleClass="right-aligned-column" text="%common.column.x"/>
+            <TableColumn fx:id="gColumn" styleClass="right-aligned-column" text="%common.column.g"/>
+            <TableColumn fx:id="bColumn" styleClass="right-aligned-column" text="%common.column.b"/>
+            <TableColumn fx:id="p0Column" styleClass="right-aligned-column" text="%boundaryLines.column.p0"/>
+            <TableColumn fx:id="q0Column" styleClass="right-aligned-column" text="%boundaryLines.column.q0"/>
+            <TableColumn fx:id="minPColumn" styleClass="right-aligned-column" text="%common.column.minP"/>
+            <TableColumn fx:id="maxPColumn" styleClass="right-aligned-column" text="%common.column.maxP"/>
+            <TableColumn fx:id="voltageRegulatorOnColumn" styleClass="centered-column" text="%boundaryLines.column.voltageRegulatorOn"/>
+            <TableColumn fx:id="targetVColumn" styleClass="right-aligned-column" text="%common.column.targetV"/>
+            <TableColumn fx:id="targetQColumn" styleClass="right-aligned-column" text="%common.column.targetQ"/>
+            <TableColumn fx:id="pNetColumn" styleClass="right-aligned-column" text="%boundaryLines.column.pNet" editable="false"/>
+            <TableColumn fx:id="qNetColumn" styleClass="right-aligned-column" text="%boundaryLines.column.qNet" editable="false"/>
+            <TableColumn fx:id="iNetColumn" styleClass="right-aligned-column" text="%boundaryLines.column.iNet" editable="false"/>
+            <TableColumn fx:id="pBoundaryColumn" styleClass="right-aligned-column" text="%boundaryLines.column.pBoundary" editable="false"/>
+            <TableColumn fx:id="qBoundaryColumn" styleClass="right-aligned-column" text="%boundaryLines.column.qBoundary" editable="false"/>
+            <TableColumn fx:id="iBoundaryColumn" styleClass="right-aligned-column" text="%boundaryLines.column.iBoundary" editable="false"/>
+            <TableColumn fx:id="vBoundaryColumn" styleClass="right-aligned-column" text="%boundaryLines.column.vBoundary" editable="false"/>
+            <TableColumn fx:id="angleBoundaryColumn" styleClass="right-aligned-column" text="%boundaryLines.column.angleBoundary" editable="false"/>
+            <TableColumn fx:id="patlIViolationColumn" text="%common.column.patlIViolation" editable="false"/>
+         </columns>
+      </TableView>
+   </children>
+</VBox>

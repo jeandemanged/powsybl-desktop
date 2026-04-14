@@ -1,0 +1,30 @@
+/**
+ * Copyright (c) 2026, Artelys (https://www.artelys.com)
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
+module com.powsybl.powsybldesktop {
+    requires javafx.controls;
+    requires javafx.fxml;
+
+    requires org.controlsfx.controls;
+    requires com.powsybl.iidm.api;
+    requires com.powsybl.iidm.test;
+    requires org.slf4j;
+    requires com.powsybl.tools;
+    requires com.powsybl.ieeecdf.converter;
+    requires javafx.web;
+    requires powsybl.single.line.diagram.core;
+    requires com.powsybl.loadflow.api;
+    requires com.powsybl.commons;
+    requires com.google.auto.service;
+
+    opens com.powsybl.powsybldesktop to javafx.fxml;
+    exports com.powsybl.powsybldesktop;
+    exports com.powsybl.powsybldesktop.reports;
+    exports com.powsybl.powsybldesktop.loadflow;
+    opens com.powsybl.powsybldesktop.reports to javafx.fxml;
+}

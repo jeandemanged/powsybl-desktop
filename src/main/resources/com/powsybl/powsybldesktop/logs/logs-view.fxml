@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.BorderPane?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<BorderPane prefHeight="400.0" prefWidth="600.0" stylesheets="@../styles.css" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.logs.LogsViewController">
+    <top>
+        <ToolBar BorderPane.alignment="CENTER">
+            <items>
+                <Button mnemonicParsing="false" onAction="#onClearAll">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2t-trash-can" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%logs.clearAll"/>
+                    </tooltip>
+                </Button>
+            </items>
+        </ToolBar>
+    </top>
+    <center>
+        <TableView fx:id="tableView" BorderPane.alignment="CENTER">
+            <columns>
+                <TableColumn fx:id="timeColumn" editable="false" maxWidth="200.0" minWidth="200.0" prefWidth="200.0" resizable="false" sortable="false" text="%logs.column.time" />
+                <TableColumn fx:id="levelColumn" styleClass="centered-column" editable="false" maxWidth="750.0" minWidth="75.0" prefWidth="75.0" resizable="false" sortable="false" text="%logs.column.severity" />
+                <TableColumn fx:id="messageColumn" editable="false" minWidth="300.0" prefWidth="300.0" sortable="false" text="%logs.column.message" />
+            </columns>
+            <columnResizePolicy>
+                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+            </columnResizePolicy>
+        </TableView>
+    </center>
+</BorderPane>
