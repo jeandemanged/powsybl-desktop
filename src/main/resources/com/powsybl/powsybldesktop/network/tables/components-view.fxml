@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.network.tables.ComponentsController">
+   <children>
+      <TableView fx:id="componentsTableView" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">
+         <columns>
+            <TableColumn fx:id="connectedComponentColumn" styleClass="centered-column" text="%common.column.connectedComponent"/>
+            <TableColumn fx:id="synchronousComponentColumn" styleClass="centered-column" text="%common.column.synchronousComponent"/>
+            <TableColumn fx:id="busCountColumn" styleClass="centered-column" text="%components.column.busCount"/>
+            <TableColumn fx:id="statusColumn" text="%components.column.status" prefWidth="160"/>
+            <TableColumn fx:id="statusTextColumn" text="%components.column.statusText" prefWidth="250"/>
+            <TableColumn fx:id="iterationCountColumn" styleClass="centered-column" text="%components.column.iterationCount"/>
+            <TableColumn fx:id="referenceBusIdColumn" text="%components.column.referenceBusId" prefWidth="150"/>
+            <TableColumn fx:id="slackBusesColumn" text="%components.column.slackBuses" prefWidth="200"/>
+            <TableColumn fx:id="distributedActivePowerColumn" styleClass="right-aligned-column" text="%components.column.distributedActivePower"/>
+         </columns>
+      </TableView>
+   </children>
+</VBox>

@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.control.TreeView?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<SplitPane dividerPositions="0.35" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/17.0.12"
+           xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.network.SubstationsController">
+    <items>
+        <VBox minHeight="0.0" minWidth="0.0" prefHeight="160.0" prefWidth="100.0">
+            <children>
+                <ToolBar>
+                    <items>
+                        <MenuButton fx:id="groupingMenuButton" mnemonicParsing="false">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2f-file-tree" iconSize="16"/>
+                            </graphic>
+                            <items>
+                                <MenuItem onAction="#onGroupByCountry" text="%substations.grouping.country"/>
+                                <MenuItem onAction="#onGroupBySubnetwork" text="%substations.grouping.subnetwork"/>
+                                <Menu fx:id="groupByAreaMenu" text="%substations.grouping.area"/>
+                            </items>
+                        </MenuButton>
+                        <Separator orientation="VERTICAL"/>
+                        <Button fx:id="expandAllButton" mnemonicParsing="false" onAction="#onExpandAll">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2u-unfold-more-horizontal" iconSize="16"/>
+                            </graphic>
+                            <tooltip>
+                                <Tooltip text="%substations.tree.expandAll"/>
+                            </tooltip>
+                        </Button>
+                        <Button fx:id="collapseAllButton" mnemonicParsing="false" onAction="#onCollapseAll">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2u-unfold-less-horizontal" iconSize="16"/>
+                            </graphic>
+                            <tooltip>
+                                <Tooltip text="%substations.tree.collapseAll"/>
+                            </tooltip>
+                        </Button>
+                    </items>
+                </ToolBar>
+                <fx:include fx:id="searchBox" source="search/search-box.fxml"/>
+                <TreeView fx:id="substationsTreeView" showRoot="false" VBox.vgrow="ALWAYS"/>
+            </children>
+        </VBox>
+        <AnchorPane>
+            <children>
+                <TabPane fx:id="diagramTabPane" tabClosingPolicy="UNAVAILABLE" AnchorPane.bottomAnchor="0.0"
+                         AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                    <tabs>
+                        <Tab fx:id="singleLineDiagramTab" text="%substations.tab.singleLineDiagram">
+                            <content>
+                                <fx:include fx:id="sldPane" source="../diagram/diagram-pane.fxml"/>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="areaDiagramTab" text="%substations.tab.areaDiagram">
+                            <content>
+                                <fx:include fx:id="nadPane" source="../diagram/diagram-pane.fxml"/>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="switchesTab" text="%substations.tab.switches">
+                            <content>
+                                <fx:include fx:id="switchesEmbedded" source="tables/switches-view.fxml"/>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="generatorsTab" text="%main.toolbar.generators">
+                            <content>
+                                <fx:include fx:id="generatorsEmbedded" source="tables/generators-view.fxml"/>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="shuntCompensatorsTab" text="%main.toolbar.shuntCompensators">
+                            <content>
+                                <fx:include fx:id="shuntCompensatorsEmbedded" source="tables/shunt-compensators-view.fxml"/>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="staticVarCompensatorsTab" text="%main.toolbar.staticVarCompensators">
+                            <content>
+                                <fx:include fx:id="staticVarCompensatorsEmbedded" source="tables/static-var-compensators-view.fxml"/>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="loadsTab" text="%main.toolbar.loads">
+                            <content>
+                                <fx:include fx:id="loadsEmbedded" source="tables/loads-view.fxml"/>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="linesTab" text="%main.toolbar.lines">
+                            <content>
+                                <fx:include fx:id="linesEmbedded" source="tables/lines-view.fxml"/>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="transformersTab" text="%main.toolbar.transformers">
+                            <content>
+                                <fx:include fx:id="transformersEmbedded" source="tables/transformers-view.fxml"/>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="tieLinesTab" text="%main.toolbar.tieLines">
+                            <content>
+                                <fx:include fx:id="tieLinesEmbedded" source="tables/tie-lines-view.fxml"/>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="boundaryLinesTab" text="%main.toolbar.boundaryLines">
+                            <content>
+                                <fx:include fx:id="boundaryLinesEmbedded" source="tables/boundary-lines-view.fxml"/>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="busbarSectionsTab" text="%main.toolbar.busbarSectionsTable">
+                            <content>
+                                <fx:include fx:id="busbarSectionsEmbedded" source="tables/busbar-sections-view.fxml"/>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="busesBusViewTab" text="%main.toolbar.busesBusView">
+                            <content>
+                                <fx:include fx:id="busesBusViewEmbedded" source="tables/buses-bus-view.fxml"/>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="busesBusBreakerViewTab" text="%main.toolbar.busesBusBreakerView">
+                            <content>
+                                <fx:include fx:id="busesBusBreakerViewEmbedded" source="tables/buses-bus-breaker-view.fxml"/>
+                            </content>
+                        </Tab>
+                    </tabs>
+                </TabPane>
+            </children>
+        </AnchorPane>
+    </items>
+</SplitPane>
