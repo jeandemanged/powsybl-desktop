@@ -41,7 +41,9 @@ exclusion.
   - Linux: `linux-x64` or `linux-aarch64`
   - macOS: `macos-x64` (Intel) or `macos-aarch64` (Apple Silicon)
 
-  Extract the zip; you'll pass the path to its `jmods` folder to the packaging script below.
+  Extract the zip; it unpacks straight into a `javafx-jmods-27/` folder containing the `.jmod`
+  files themselves (no nested `jmods` subfolder) — pass that extracted folder's path to the
+  packaging script below.
 - `jpackage` builds an app-image for the OS it runs on — there is no cross-compilation. Build the
   Windows app-image on Windows, the Linux one on Linux, the macOS one on macOS.
 
@@ -52,17 +54,17 @@ One script per OS under `packaging/`, each running the same pipeline
 
 **Windows (PowerShell):**
 ```powershell
-./packaging/package-windows.ps1 -JavafxJmods C:\path\to\javafx-jmods-27\jmods
+./packaging/package-windows.ps1 -JavafxJmods C:\path\to\javafx-jmods-27
 ```
 
 **Linux:**
 ```bash
-./packaging/package-linux.sh /path/to/javafx-jmods-27/jmods
+./packaging/package-linux.sh /path/to/javafx-jmods-27
 ```
 
 **macOS:**
 ```bash
-./packaging/package-macos.sh /path/to/javafx-jmods-27/jmods
+./packaging/package-macos.sh /path/to/javafx-jmods-27
 ```
 
 All three also read the jmods path from a `JAVAFX_JMODS` environment variable, and accept
