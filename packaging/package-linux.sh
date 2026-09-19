@@ -44,7 +44,7 @@ DIST_DIR="target/dist"
 
 if [ "$SKIP_BUILD" -eq 0 ]; then
     echo "==> mvn clean package"
-    mvn -o clean package -DskipTests
+    mvn clean package -DskipTests
 fi
 
 MAIN_JAR="$(ls "$APP_LIBS"/powsybl-desktop-*.jar | head -n1)"

@@ -45,7 +45,7 @@ $distDir = "target\dist"
 
 if (-not $SkipBuild) {
     Write-Host "==> mvn clean package"
-    mvn -o clean package -DskipTests
+    mvn clean package -DskipTests
     if ($LASTEXITCODE -ne 0) { throw "Maven build failed" }
 }
 

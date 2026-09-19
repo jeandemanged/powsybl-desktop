@@ -36,12 +36,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MainModelTest {
 
     // MainModel starts a LogsModel Timeline, which needs the JavaFX toolkit up (headless, no display needed here).
+    // Must NOT set testfx.headless: that's a global JVM system property that would make TestFX's
+    // ApplicationLauncherImpl (used by every AbstractHeadlessApplicationTest subclass sharing this
+    // forked JVM) try to load the openjfx-monocle classes this project no longer depends on.
     @BeforeAll
     static void initJavaFxToolkit() {
-        System.setProperty("testfx.headless", "true");
         System.setProperty("prism.order", "sw");
-        System.setProperty("glass.platform", "Monocle");
-        System.setProperty("monocle.platform", "Headless");
+        System.setProperty("java.awt.headless", "true");
+        System.setProperty("glass.platform", "Headless");
         try {
             Platform.startup(() -> { });
         } catch (IllegalStateException alreadyStarted) {
