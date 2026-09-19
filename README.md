@@ -39,7 +39,7 @@ exclusion.
   (`27` in `pom.xml`) and your platform:
   - Windows: `windows-x64`
   - Linux: `linux-x64` or `linux-aarch64`
-  - macOS: `macos-x64` (Intel) or `macos-aarch64` (Apple Silicon)
+  - macOS: `macos-aarch64` (Apple Silicon only; Intel Macs aren't supported)
 
   Extract the zip; it unpacks straight into a `javafx-jmods-27/` folder containing the `.jmod`
   files themselves (no nested `jmods` subfolder) — pass that extracted folder's path to the

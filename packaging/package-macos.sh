@@ -12,8 +12,8 @@
 #   JAVAFX_JMODS=/opt/javafx-jmods-27/jmods ./packaging/package-macos.sh
 #
 # JavaFX jmods (distinct from the jars on Maven Central) must be downloaded separately from
-# https://gluonhq.com/products/javafx/ or https://jdk.java.net/javafx27/ - pick the mac or
-# mac-aarch64 build matching this Mac's CPU (Intel vs Apple Silicon).
+# https://gluonhq.com/products/javafx/ or https://jdk.java.net/javafx27/ - pick the mac-aarch64
+# build (Apple Silicon only; Intel Macs aren't supported).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -55,6 +55,8 @@ if [ -z "$MAIN_JAR" ]; then
 fi
 
 VERSION="$(basename "$MAIN_JAR" .jar | sed -E 's/^powsybl-desktop-//; s/-SNAPSHOT$//')"
+# quick fix: jpackage's macOS bundler rejects a leading version component of 0
+VERSION="$(echo "$VERSION" | sed -E 's/^0(\.|$)/1\1/')"
 echo "==> App version for jpackage: $VERSION"
 
 JAVA_HOME_RESOLVED="$(java -XshowSettings:properties -version 2>&1 | grep 'java.home' | sed -E 's/.*= *//')"
