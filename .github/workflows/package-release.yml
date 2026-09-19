@@ -120,11 +120,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="pre-release-${{ needs.prep.outputs.version }}-${{ needs.prep.outputs.sha }}"
+          # Named/tagged as a pre-release, but deliberately not flagged as one in GitHub (no
+          # --prerelease) so it shows up as a normal release; --latest marks it as the release
+          # GitHub highlights, since without it that's decided by date/version heuristics we don't
+          # control (our tags aren't semver).
           gh release create "$tag" dist/* \
             --repo "${{ github.repository }}" \
             --title "PowSyBl Desktop pre-release ${{ needs.prep.outputs.version }} (${{ needs.prep.outputs.sha }})" \
             --notes "Automated pre-release build from commit ${{ github.sha }} on branch init." \
-            --prerelease \
+            --latest \
             --target "${{ github.sha }}"
 
       - name: Purge old pre-releases (keep newest 5)
@@ -132,8 +136,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release list --repo "${{ github.repository }}" --limit 200 \
-            --json tagName,isPrerelease,createdAt \
-            --jq '[.[] | select(.isPrerelease)] | sort_by(.createdAt) | reverse | .[5:][].tagName' \
+            --json tagName,name,createdAt \
+            --jq '[.[] | select(.name | startswith("PowSyBl Desktop pre-release"))] | sort_by(.createdAt) | reverse | .[5:][].tagName' \
           | while read -r old_tag; do
               echo "Deleting old pre-release: $old_tag"
               gh release delete "$old_tag" --repo "${{ github.repository }}" --yes --cleanup-tag
