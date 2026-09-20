@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ChoiceBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox spacing="6" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.powsybl.powsybldesktop.contingency.CriterionListFormController">
+    <children>
+        <HBox alignment="CENTER_LEFT" spacing="8">
+            <children>
+                <Label text="%contingencies.name"/>
+                <TextField fx:id="nameField" HBox.hgrow="ALWAYS"/>
+            </children>
+        </HBox>
+        <VBox fx:id="criteriaContainer" spacing="8"/>
+        <HBox fx:id="identifiableTypeBox" alignment="CENTER_LEFT" spacing="8">
+            <children>
+                <Label text="%contingencies.criterion.identifiableType"/>
+                <ChoiceBox fx:id="identifiableTypeChoiceBox"/>
+            </children>
+        </HBox>
+        <Label text="%contingencies.criterion.propertyCriteria"/>
+        <HBox spacing="4">
+            <children>
+                <Button mnemonicParsing="false" onAction="#onAddPropertyCriterion" text="%contingencies.criterion.propertyCriteria.add">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2p-plus" iconSize="14"/>
+                    </graphic>
+                </Button>
+                <Button fx:id="removePropertyCriterionButton" mnemonicParsing="false" onAction="#onRemovePropertyCriterion">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2m-minus" iconSize="14"/>
+                    </graphic>
+                </Button>
+            </children>
+        </HBox>
+        <TableView fx:id="propertyCriteriaTableView" editable="true" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="propertyKeyColumn" editable="true" text="%contingencies.criterion.propertyCriteria.column.key"/>
+                <TableColumn fx:id="propertyValuesColumn" editable="true" text="%contingencies.criterion.propertyCriteria.column.values"/>
+                <TableColumn fx:id="equipmentToCheckColumn" editable="true" text="%contingencies.criterion.propertyCriteria.column.equipmentToCheck"/>
+                <TableColumn fx:id="sideToCheckColumn" editable="true" text="%contingencies.criterion.propertyCriteria.column.sideToCheck"/>
+            </columns>
+        </TableView>
+        <HBox alignment="CENTER_LEFT" spacing="8">
+            <children>
+                <Label text="%contingencies.criterion.regex"/>
+                <TextField fx:id="regexField" HBox.hgrow="ALWAYS"/>
+            </children>
+        </HBox>
+    </children>
+</VBox>

@@ -13,6 +13,7 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.loadflow.LoadFlow;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.loadflow.LoadFlowRunParameters;
+import com.powsybl.powsybldesktop.contingency.ContingenciesController;
 import com.powsybl.powsybldesktop.loadflow.LoadFlowResultAndReport;
 import com.powsybl.powsybldesktop.logs.LogsViewController;
 import com.powsybl.powsybldesktop.memory.MemoryController;
@@ -519,6 +520,8 @@ public class MainController extends AbstractDisposableController {
             } else if (newValue.state() == null) {
                 controller.navigateTo(null);
             }
+        } else if (newValue.navigationType() == NavigationType.CONTINGENCIES) {
+            ensureController(ContingenciesController.class, "contingency/contingencies-view.fxml", c -> c.setMainModel(mainModel));
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SUBSTATIONS) {
             SubstationsTableController controller = ensureController(SubstationsTableController.class,
                     "network/tables/substations-view.fxml", c -> c.setMainModel(mainModel));
@@ -661,6 +664,10 @@ public class MainController extends AbstractDisposableController {
 
     public void onSubstations() {
         mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.createNoContainer(mainModel.getNetwork())));
+    }
+
+    public void onContingencies() {
+        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.CONTINGENCIES, NetworkNavigationState.create(mainModel.getNetwork())));
     }
 
     public void onParameters() {

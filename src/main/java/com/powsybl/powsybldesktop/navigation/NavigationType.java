@@ -13,6 +13,7 @@ package com.powsybl.powsybldesktop.navigation;
 public enum NavigationType {
     NETWORKS,
     SUBSTATIONS,
+    CONTINGENCIES,
     LOGS,
     PARAMETERS,
     NETWORK_TABLE_SUBSTATIONS,

@@ -8,6 +8,7 @@
 package com.powsybl.powsybldesktop;
 
 import com.powsybl.commons.report.ReportNode;
+import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.loadflow.LoadFlowParameters;
@@ -72,6 +73,7 @@ public class MainModel {
     private final ObjectProperty<NadParameters> nadParameters = new SimpleObjectProperty<>();
     private final Map<Network, LoadFlowResult> loadFlowResults = new HashMap<>();
     private final Map<Network, NetworkSearchIndex> searchIndexes = new HashMap<>();
+    private final Map<Network, ObservableList<ContingencyList>> contingencyLists = new HashMap<>();
     private final ObjectProperty<NetworkSearchIndex.State> searchIndexState = new SimpleObjectProperty<>(NetworkSearchIndex.State.NOT_BUILT);
     private final ObjectProperty<NavigationEvent> navigationEvent = new SimpleObjectProperty<>();
     private final LogsModel logsModel = new LogsModel();
@@ -142,6 +144,7 @@ public class MainModel {
         navigationPast.removeIf(event -> isRelatedToNetwork(event, network));
         navigationFuture.removeIf(event -> isRelatedToNetwork(event, network));
         loadFlowResults.remove(network);
+        contingencyLists.remove(network);
         NetworkSearchIndex index = searchIndexes.remove(network);
         if (index != null) {
             index.close();
@@ -202,6 +205,10 @@ public class MainModel {
 
     public LoadFlowResult getLoadFlowResult(Network network) {
         return loadFlowResults.get(network.getNetwork());
+    }
+
+    public ObservableList<ContingencyList> getContingencyLists(Network network) {
+        return contingencyLists.computeIfAbsent(network, n -> FXCollections.observableArrayList());
     }
 
     public void setLoadFlowParameters(LoadFlowParameters loadFlowParameters) {

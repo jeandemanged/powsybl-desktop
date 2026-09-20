@@ -26,6 +26,7 @@ public record NavigationEvent(NavigationType navigationType, NavigationState sta
         String screen = switch (navigationType) {
             case NETWORKS -> Messages.get("main.toolbar.networks");
             case SUBSTATIONS -> Messages.get("main.toolbar.substations");
+            case CONTINGENCIES -> Messages.get("main.toolbar.contingencies");
             case LOGS -> Messages.get("main.toolbar.logs");
             case PARAMETERS -> Messages.get("main.toolbar.parameters");
             case NETWORK_TABLE_SUBSTATIONS -> Messages.get("main.toolbar.substationsTable");
