@@ -93,6 +93,7 @@
                                 <MenuItem mnemonicParsing="false" onAction="#onShuntCompensators" text="%main.toolbar.shuntCompensators" />
                                 <MenuItem mnemonicParsing="false" onAction="#onStaticVarCompensators" text="%main.toolbar.staticVarCompensators" />
                                 <MenuItem mnemonicParsing="false" onAction="#onComponents" text="%main.toolbar.components" />
+                                <MenuItem mnemonicParsing="false" onAction="#onSecurityAnalysisResults" text="%main.toolbar.securityAnalysisResults" />
                             </items>
                         </MenuButton>
                         <Separator orientation="VERTICAL" />

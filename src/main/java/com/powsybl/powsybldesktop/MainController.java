@@ -32,6 +32,7 @@ import com.powsybl.powsybldesktop.network.tables.ComponentsController;
 import com.powsybl.powsybldesktop.network.tables.GeneratorsController;
 import com.powsybl.powsybldesktop.network.tables.LinesController;
 import com.powsybl.powsybldesktop.network.tables.LoadsController;
+import com.powsybl.powsybldesktop.network.tables.SecurityAnalysisResultsController;
 import com.powsybl.powsybldesktop.network.tables.ShuntCompensatorsController;
 import com.powsybl.powsybldesktop.network.tables.StaticVarCompensatorsController;
 import com.powsybl.powsybldesktop.network.tables.SubstationsTableController;
@@ -363,6 +364,7 @@ public class MainController extends AbstractDisposableController {
             securityAnalysisServices.remove(network);
             SecurityAnalysisResultAndReport securityAnalysisResultAndReport = (SecurityAnalysisResultAndReport) event.getSource().getValue();
             mainModel.setSecurityAnalysisResult(network, securityAnalysisResultAndReport.securityAnalysisResult());
+            mainModel.setUpdate();
             mainModel.addReport(securityAnalysisResultAndReport.reportNode());
 
             NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", e ->
@@ -710,6 +712,9 @@ public class MainController extends AbstractDisposableController {
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_COMPONENTS) {
             ensureController(ComponentsController.class, "network/tables/components-view.fxml", c -> c.setMainModel(mainModel));
+        } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS) {
+            ensureController(SecurityAnalysisResultsController.class,
+                    "network/tables/security-analysis-results-view.fxml", c -> c.setMainModel(mainModel));
         } else if (newValue.navigationType() == NavigationType.REPORTS) {
             ReportsController controller = ensureController(ReportsController.class, "report/reports-view.fxml", c -> c.setMainModel(mainModel));
             if (newValue.state() instanceof ReportNavigationState state) {
@@ -820,6 +825,10 @@ public class MainController extends AbstractDisposableController {
 
     public void onComponents() {
         mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_COMPONENTS));
+    }
+
+    public void onSecurityAnalysisResults() {
+        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS));
     }
 
     public void onReports() {
