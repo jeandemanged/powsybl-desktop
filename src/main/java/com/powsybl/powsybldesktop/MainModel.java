@@ -21,6 +21,7 @@ import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.network.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.security.SecurityAnalysisParameters;
+import com.powsybl.security.SecurityAnalysisResult;
 import com.powsybl.sld.SldParameters;
 import com.powsybl.sld.layout.LayoutParameters;
 import com.powsybl.sld.svg.SvgParameters;
@@ -72,6 +73,7 @@ public class MainModel {
     private final ObjectProperty<SldParameters> sldParameters = new SimpleObjectProperty<>();
     private final ObjectProperty<NadParameters> nadParameters = new SimpleObjectProperty<>();
     private final Map<Network, LoadFlowResult> loadFlowResults = new HashMap<>();
+    private final Map<Network, SecurityAnalysisResult> securityAnalysisResults = new HashMap<>();
     private final Map<Network, NetworkSearchIndex> searchIndexes = new HashMap<>();
     private final Map<Network, ObservableList<ContingencyList>> contingencyLists = new HashMap<>();
     private final ObjectProperty<NetworkSearchIndex.State> searchIndexState = new SimpleObjectProperty<>(NetworkSearchIndex.State.NOT_BUILT);
@@ -144,6 +146,7 @@ public class MainModel {
         navigationPast.removeIf(event -> isRelatedToNetwork(event, network));
         navigationFuture.removeIf(event -> isRelatedToNetwork(event, network));
         loadFlowResults.remove(network);
+        securityAnalysisResults.remove(network);
         contingencyLists.remove(network);
         NetworkSearchIndex index = searchIndexes.remove(network);
         if (index != null) {
@@ -205,6 +208,18 @@ public class MainModel {
 
     public LoadFlowResult getLoadFlowResult(Network network) {
         return loadFlowResults.get(network.getNetwork());
+    }
+
+    // Keyed by root network only, for the same reason as setLoadFlowResult - security analysis always runs on
+    // the root network too (see MainController.onSecurityAnalysis).
+    public void setSecurityAnalysisResult(Network network, SecurityAnalysisResult securityAnalysisResult) {
+        Objects.requireNonNull(network);
+        Objects.requireNonNull(securityAnalysisResult);
+        securityAnalysisResults.put(network.getNetwork(), securityAnalysisResult);
+    }
+
+    public SecurityAnalysisResult getSecurityAnalysisResult(Network network) {
+        return securityAnalysisResults.get(network.getNetwork());
     }
 
     public ObservableList<ContingencyList> getContingencyLists(Network network) {

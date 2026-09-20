@@ -8,6 +8,9 @@
 package com.powsybl.powsybldesktop;
 
 import com.powsybl.commons.report.ReportNode;
+import com.powsybl.contingency.Contingency;
+import com.powsybl.contingency.list.ContingencyList;
+import com.powsybl.contingency.list.ListOfContingencyLists;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.loadflow.LoadFlow;
@@ -42,10 +45,14 @@ import com.powsybl.powsybldesktop.notification.NotificationStatus;
 import com.powsybl.powsybldesktop.notification.NotificationsController;
 import com.powsybl.powsybldesktop.parameters.ParametersController;
 import com.powsybl.powsybldesktop.report.ReportsController;
+import com.powsybl.powsybldesktop.security.SecurityAnalysisResultAndReport;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.DisposableController;
 import com.powsybl.powsybldesktop.utils.LanguagePreferences;
 import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.security.SecurityAnalysis;
+import com.powsybl.security.SecurityAnalysisReport;
+import com.powsybl.security.SecurityAnalysisRunParameters;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.collections.ListChangeListener;
@@ -76,6 +83,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -109,6 +117,8 @@ public class MainController extends AbstractDisposableController {
     private final MainModel mainModel;
 
     private final Map<Network, Service<LoadFlowResultAndReport>> loadFlowServices = new HashMap<>();
+
+    private final Map<Network, Service<SecurityAnalysisResultAndReport>> securityAnalysisServices = new HashMap<>();
 
     private final Map<Network, Service<NetworkSearchIndex>> searchIndexServices = new HashMap<>();
 
@@ -306,6 +316,81 @@ public class MainController extends AbstractDisposableController {
         });
         loadFlowServices.put(network, loadFlowService);
         loadFlowService.start();
+    }
+
+    @FXML
+    protected void onSecurityAnalysis() {
+        Network selectedNetwork = mainModel.getNetwork();
+        if (selectedNetwork == null) {
+            return;
+        }
+        // same rationale as onLoadFlow: never run on a subnetwork, only on its root
+        Network network = selectedNetwork.getNetwork();
+
+        if (securityAnalysisServices.containsKey(network)) {
+            return;
+        }
+        // contingency lists are looked up against whichever network they were defined on (possibly a
+        // subnetwork), but resolved/run against the root - equipment ids are unique across the whole tree
+        ContingencyList contingencyList = new ListOfContingencyLists(network.getNameOrId(), mainModel.getContingencyLists(selectedNetwork));
+
+        Service<SecurityAnalysisResultAndReport> securityAnalysisService = new Service<>() {
+            @Override
+            protected Task<SecurityAnalysisResultAndReport> createTask() {
+                return new Task<>() {
+                    @Override
+                    protected SecurityAnalysisResultAndReport call() {
+                        ReportNode reportNode = ReportNode.newRootReportNode()
+                                .withAllResourceBundlesFromClasspath()
+                                .withMessageTemplate("powsybl.desktop.securityanalysis")
+                                .withTimestamp()
+                                .build();
+
+                        List<Contingency> contingencies = contingencyList.getContingencies(network);
+                        SecurityAnalysisRunParameters runParameters = SecurityAnalysisRunParameters.getDefault()
+                                .setSecurityAnalysisParameters(mainModel.securityAnalysisParametersProperty().getValue())
+                                .setReportNode(reportNode);
+                        SecurityAnalysisReport securityAnalysisReport = SecurityAnalysis.run(network, contingencies, runParameters);
+                        return new SecurityAnalysisResultAndReport(securityAnalysisReport.getResult(), reportNode);
+                    }
+                };
+            }
+        };
+        Notification runningNotification = Notification.createRunning("main.securityAnalysis.running", securityAnalysisService::cancel);
+        mainModel.addNotification(runningNotification);
+
+        securityAnalysisService.setOnSucceeded(event -> {
+            securityAnalysisServices.remove(network);
+            SecurityAnalysisResultAndReport securityAnalysisResultAndReport = (SecurityAnalysisResultAndReport) event.getSource().getValue();
+            mainModel.setSecurityAnalysisResult(network, securityAnalysisResultAndReport.securityAnalysisResult());
+            mainModel.addReport(securityAnalysisResultAndReport.reportNode());
+
+            NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", e ->
+                    mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.REPORTS,
+                            ReportNavigationState.create(securityAnalysisResultAndReport.reportNode()))));
+
+            mainModel.replaceNotification(runningNotification,
+                    Notification.createSuccess(runningNotification.startTimestamp(), "main.securityAnalysis.completed", viewReportAction));
+        });
+
+        securityAnalysisService.setOnFailed(event -> {
+            securityAnalysisServices.remove(network);
+            Throwable exception = event.getSource().getException();
+            LOGGER.error(exception.toString(), exception);
+
+            NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", e ->
+                    mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.LOGS)));
+
+            mainModel.replaceNotification(runningNotification,
+                    Notification.createError(runningNotification.startTimestamp(), "main.securityAnalysis.failed", viewLogsAction));
+        });
+        securityAnalysisService.setOnCancelled(event -> {
+            securityAnalysisServices.remove(network);
+            mainModel.replaceNotification(runningNotification,
+                    Notification.createCancelled(runningNotification.startTimestamp(), "main.securityAnalysis.cancelled"));
+        });
+        securityAnalysisServices.put(network, securityAnalysisService);
+        securityAnalysisService.start();
     }
 
     // Builds the search index for a newly-selected network once, in the background - a network already cached

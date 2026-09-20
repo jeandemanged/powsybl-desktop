@@ -102,6 +102,7 @@
                             </graphic>
                             <items>
                                 <MenuItem mnemonicParsing="false" onAction="#onLoadFlow" text="%main.toolbar.run.loadFlow" />
+                                <MenuItem mnemonicParsing="false" onAction="#onSecurityAnalysis" text="%main.toolbar.run.securityAnalysis" />
                             </items>
                         </MenuButton>
                         <Button mnemonicParsing="false" onAction="#onParameters" text="%main.toolbar.parameters">
