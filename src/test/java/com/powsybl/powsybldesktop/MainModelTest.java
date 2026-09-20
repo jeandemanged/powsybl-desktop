@@ -11,12 +11,15 @@ import com.powsybl.commons.report.ReportNode;
 import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.NetworkFactory;
+import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.loadflow.LoadFlowResultImpl;
+import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.NetworkNavigationState;
 import com.powsybl.powsybldesktop.notification.Notification;
+import com.powsybl.security.SecurityAnalysisParameters;
 import javafx.application.Platform;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -26,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -202,6 +206,31 @@ class MainModelTest {
 
         assertSame(result, model.getLoadFlowResult(merged));
         assertSame(result, model.getLoadFlowResult(subnetwork1));
+    }
+
+    @Test
+    void securityAnalysisParametersStartsWiredToTheSameLoadFlowParametersInstance() {
+        assertNotNull(model.securityAnalysisParametersProperty().get().getExtension(OpenSecurityAnalysisParameters.class));
+        assertSame(model.loadFlowParametersProperty().get(), model.securityAnalysisParametersProperty().get().getLoadFlowParameters());
+    }
+
+    @Test
+    void replacingLoadFlowParametersRewiresSecurityAnalysisParameters() {
+        LoadFlowParameters replacement = new LoadFlowParameters();
+
+        model.loadFlowParametersProperty().setValue(replacement);
+
+        assertSame(replacement, model.securityAnalysisParametersProperty().get().getLoadFlowParameters());
+    }
+
+    @Test
+    void replacingSecurityAnalysisParametersDiscardsItsOwnEmbeddedLoadFlowParameters() {
+        SecurityAnalysisParameters imported = new SecurityAnalysisParameters();
+        imported.setLoadFlowParameters(new LoadFlowParameters().setDc(true)); // stale, from e.g. an imported JSON file
+
+        model.securityAnalysisParametersProperty().setValue(imported);
+
+        assertSame(model.loadFlowParametersProperty().get(), imported.getLoadFlowParameters());
     }
 
     @Test

@@ -14,10 +14,12 @@ import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.nad.NadParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
+import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
 import com.powsybl.powsybldesktop.logs.LogsModel;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.network.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.notification.Notification;
+import com.powsybl.security.SecurityAnalysisParameters;
 import com.powsybl.sld.SldParameters;
 import com.powsybl.sld.layout.LayoutParameters;
 import com.powsybl.sld.svg.SvgParameters;
@@ -65,6 +67,7 @@ public class MainModel {
     // to scope its search index refresh instead of re-indexing every bus in the network
     private VoltageLevel updatedVoltageLevel;
     private final ObjectProperty<LoadFlowParameters> loadFlowParameters = new SimpleObjectProperty<>();
+    private final ObjectProperty<SecurityAnalysisParameters> securityAnalysisParameters = new SimpleObjectProperty<>();
     private final ObjectProperty<SldParameters> sldParameters = new SimpleObjectProperty<>();
     private final ObjectProperty<NadParameters> nadParameters = new SimpleObjectProperty<>();
     private final Map<Network, LoadFlowResult> loadFlowResults = new HashMap<>();
@@ -80,9 +83,22 @@ public class MainModel {
     public MainModel() {
         loadFlowParameters.setValue(new LoadFlowParameters());
         OpenLoadFlowParameters.create(loadFlowParameters.getValue());
+        securityAnalysisParameters.setValue(new SecurityAnalysisParameters());
+        securityAnalysisParameters.getValue().addExtension(OpenSecurityAnalysisParameters.class, new OpenSecurityAnalysisParameters());
+        syncSecurityAnalysisLoadFlowParameters();
+        // SecurityAnalysisParameters embeds a LoadFlowParameters, but this app has a single authoritative
+        // LoadFlowParameters instance (loadFlowParameters above); keep it wired into whichever
+        // SecurityAnalysisParameters is current rather than letting the two diverge (e.g. after importing a
+        // security analysis JSON that carries its own, stale load flow section).
+        loadFlowParameters.addListener((observable, oldValue, newValue) -> syncSecurityAnalysisLoadFlowParameters());
+        securityAnalysisParameters.addListener((observable, oldValue, newValue) -> syncSecurityAnalysisLoadFlowParameters());
         sldParameters.setValue(defaultSldParameters());
         nadParameters.setValue(new NadParameters());
         update.setValue(Instant.now());
+    }
+
+    private void syncSecurityAnalysisLoadFlowParameters() {
+        securityAnalysisParameters.getValue().setLoadFlowParameters(loadFlowParameters.getValue());
     }
 
     // Diagram appearance defaults previously hardcoded in SubstationDiagramRenderer; svgWidthAndHeightAdded
@@ -195,6 +211,10 @@ public class MainModel {
 
     public ObjectProperty<LoadFlowParameters> loadFlowParametersProperty() {
         return loadFlowParameters;
+    }
+
+    public ObjectProperty<SecurityAnalysisParameters> securityAnalysisParametersProperty() {
+        return securityAnalysisParameters;
     }
 
     public ObjectProperty<SldParameters> sldParametersProperty() {

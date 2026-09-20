@@ -14,7 +14,6 @@ import com.powsybl.loadflow.LoadFlow;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.loadflow.LoadFlowRunParameters;
 import com.powsybl.powsybldesktop.loadflow.LoadFlowResultAndReport;
-import com.powsybl.powsybldesktop.loadflow.parameters.LoadFlowParametersController;
 import com.powsybl.powsybldesktop.logs.LogsViewController;
 import com.powsybl.powsybldesktop.memory.MemoryController;
 import com.powsybl.powsybldesktop.navigation.*;
@@ -40,6 +39,7 @@ import com.powsybl.powsybldesktop.notification.NotificationAction;
 import com.powsybl.powsybldesktop.notification.NotificationOverlay;
 import com.powsybl.powsybldesktop.notification.NotificationStatus;
 import com.powsybl.powsybldesktop.notification.NotificationsController;
+import com.powsybl.powsybldesktop.parameters.ParametersController;
 import com.powsybl.powsybldesktop.report.ReportsController;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.DisposableController;
@@ -503,9 +503,8 @@ public class MainController extends AbstractDisposableController {
         }
         if (newValue.navigationType() == NavigationType.LOGS) {
             ensureController(LogsViewController.class, "logs/logs-view.fxml", c -> c.setLogsModel(mainModel.getLogsModel()));
-        } else if (newValue.navigationType() == NavigationType.LOADFLOW_PARAMETERS) {
-            ensureController(LoadFlowParametersController.class, "loadflow/lf-parameters.fxml",
-                    c -> c.setLoadFlowParametersProperty(mainModel.loadFlowParametersProperty()));
+        } else if (newValue.navigationType() == NavigationType.PARAMETERS) {
+            ensureController(ParametersController.class, "parameters/parameters-view.fxml", c -> c.setMainModel(mainModel));
         } else if (newValue.navigationType() == NavigationType.NETWORKS) {
             NetworksController controller = ensureController(NetworksController.class, "network/networks-view.fxml", c -> c.setMainModel(mainModel));
             if (newValue.state() instanceof NetworkNavigationState state) {
@@ -665,7 +664,7 @@ public class MainController extends AbstractDisposableController {
     }
 
     public void onParameters() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.LOADFLOW_PARAMETERS));
+        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.PARAMETERS));
     }
 
     public void onLogs() {

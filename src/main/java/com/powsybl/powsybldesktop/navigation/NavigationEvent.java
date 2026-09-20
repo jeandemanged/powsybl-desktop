@@ -27,7 +27,7 @@ public record NavigationEvent(NavigationType navigationType, NavigationState sta
             case NETWORKS -> Messages.get("main.toolbar.networks");
             case SUBSTATIONS -> Messages.get("main.toolbar.substations");
             case LOGS -> Messages.get("main.toolbar.logs");
-            case LOADFLOW_PARAMETERS -> Messages.get("main.navigation.loadFlowParameters");
+            case PARAMETERS -> Messages.get("main.toolbar.parameters");
             case NETWORK_TABLE_SUBSTATIONS -> Messages.get("main.toolbar.substationsTable");
             case NETWORK_TABLE_VOLTAGE_LEVELS -> Messages.get("main.toolbar.voltageLevelsTable");
             case NETWORK_TABLE_BUSBAR_SECTIONS -> Messages.get("main.toolbar.busbarSectionsTable");
