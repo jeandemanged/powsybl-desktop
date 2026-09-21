@@ -20,6 +20,7 @@ import javafx.beans.property.StringProperty;
 import javafx.concurrent.Worker;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXML;
+import javafx.scene.Cursor;
 import javafx.scene.SnapshotParameters;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -29,6 +30,8 @@ import javafx.scene.control.ToolBar;
 import javafx.scene.image.Image;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.web.WebView;
 import javafx.stage.FileChooser;
@@ -115,9 +118,13 @@ public class DiagramPaneController {
     private boolean programmaticZoomChange;
     private Runnable onEngineLoaded;
     private Supplier<String> fileNameSupplier = () -> null;
+    private boolean panning;
+    private double lastPanScreenX;
+    private double lastPanScreenY;
 
     @FXML
     private void initialize() {
+        webView.setContextMenuEnabled(false);
         webView.getEngine().loadContent(DEFAULT_HTML_SHELL);
         webView.getEngine().getLoadWorker().stateProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue == Worker.State.SUCCEEDED) {
@@ -150,6 +157,9 @@ public class DiagramPaneController {
             }
         });
         webView.addEventFilter(ScrollEvent.SCROLL, this::onScroll);
+        webView.addEventFilter(MouseEvent.MOUSE_PRESSED, this::onMousePressed);
+        webView.addEventFilter(MouseEvent.MOUSE_DRAGGED, this::onMouseDragged);
+        webView.addEventFilter(MouseEvent.MOUSE_RELEASED, this::onMouseReleased);
 
         svg.addListener((observable, oldValue, newValue) -> {
             if (!newValue.isEmpty()) {
@@ -302,15 +312,42 @@ public class DiagramPaneController {
     }
 
     private void onScroll(ScrollEvent e) {
-        if (e.isControlDown()) {
-            double deltaY = e.getDeltaY();
-            double zoomValue = webView.getZoom();
-            if (deltaY < 0) {
-                zoomValue /= ZOOM_STEP_FACTOR;
-            } else if (deltaY > 0) {
-                zoomValue *= ZOOM_STEP_FACTOR;
-            }
-            setZoom(zoomValue, true);
+        double deltaY = e.getDeltaY();
+        double zoomValue = webView.getZoom();
+        if (deltaY < 0) {
+            zoomValue /= ZOOM_STEP_FACTOR;
+        } else if (deltaY > 0) {
+            zoomValue *= ZOOM_STEP_FACTOR;
+        }
+        setZoom(zoomValue, true);
+        e.consume();
+    }
+
+    private void onMousePressed(MouseEvent e) {
+        if (e.getButton() == MouseButton.MIDDLE) {
+            panning = true;
+            lastPanScreenX = e.getScreenX();
+            lastPanScreenY = e.getScreenY();
+            webView.setCursor(Cursor.MOVE);
+            e.consume();
+        }
+    }
+
+    private void onMouseDragged(MouseEvent e) {
+        if (panning) {
+            double deltaX = e.getScreenX() - lastPanScreenX;
+            double deltaY = e.getScreenY() - lastPanScreenY;
+            lastPanScreenX = e.getScreenX();
+            lastPanScreenY = e.getScreenY();
+            webView.getEngine().executeScript("window.scrollBy(" + (-deltaX) + ", " + (-deltaY) + ")");
+            e.consume();
+        }
+    }
+
+    private void onMouseReleased(MouseEvent e) {
+        if (e.getButton() == MouseButton.MIDDLE) {
+            panning = false;
+            webView.setCursor(Cursor.DEFAULT);
             e.consume();
         }
     }
