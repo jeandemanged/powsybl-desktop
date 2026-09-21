@@ -19,6 +19,7 @@ import com.powsybl.loadflow.LoadFlowRunParameters;
 import com.powsybl.powsybldesktop.contingency.ContingenciesController;
 import com.powsybl.powsybldesktop.loadflow.LoadFlowResultAndReport;
 import com.powsybl.powsybldesktop.logs.LogsViewController;
+import com.powsybl.powsybldesktop.map.MapController;
 import com.powsybl.powsybldesktop.memory.MemoryController;
 import com.powsybl.powsybldesktop.navigation.*;
 import com.powsybl.powsybldesktop.network.NetworksController;
@@ -108,6 +109,8 @@ public class MainController extends AbstractDisposableController {
     public Button backwardButton;
     @FXML
     public Button forwardButton;
+    @FXML
+    public Button mapButton;
     @FXML
     public RadioMenuItem languageEnglishItem;
     @FXML
@@ -498,7 +501,11 @@ public class MainController extends AbstractDisposableController {
                 onNavigationEvent(newValue);
             }
         });
-        listenerManager.listen(mainModel.networkProperty(), (observable, oldValue, newValue) -> ensureSearchIndex(newValue));
+        listenerManager.listen(mainModel.networkProperty(), (observable, oldValue, newValue) -> {
+            ensureSearchIndex(newValue);
+            updateMapButtonVisibility();
+        });
+        updateMapButtonVisibility();
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refreshSearchIndexBuses());
 
         FXMLLoader notificationsLoader = new FXMLLoader(getClass().getResource("notification/notifications-view.fxml"), Messages.bundle());
@@ -607,6 +614,8 @@ public class MainController extends AbstractDisposableController {
             } else if (newValue.state() == null) {
                 controller.navigateTo(null);
             }
+        } else if (newValue.navigationType() == NavigationType.MAP) {
+            ensureController(MapController.class, "map/map-view.fxml", c -> c.setMainModel(mainModel));
         } else if (newValue.navigationType() == NavigationType.CONTINGENCIES) {
             ensureController(ContingenciesController.class, "contingency/contingencies-view.fxml", c -> c.setMainModel(mainModel));
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SUBSTATIONS) {
@@ -742,6 +751,13 @@ public class MainController extends AbstractDisposableController {
         return notificationOverlay;
     }
 
+    // managed too, so the hidden button doesn't leave a gap in the toolbar
+    private void updateMapButtonVisibility() {
+        boolean hasPositions = MapController.hasPositions(mainModel.getNetwork());
+        mapButton.setVisible(hasPositions);
+        mapButton.setManaged(hasPositions);
+    }
+
     private void disposeCurrentController() {
         if (Objects.nonNull(currentController)) {
             currentController.dispose();
@@ -754,6 +770,10 @@ public class MainController extends AbstractDisposableController {
 
     public void onSubstations() {
         mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.createNoContainer(mainModel.getNetwork())));
+    }
+
+    public void onMap() {
+        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.MAP, NetworkNavigationState.create(mainModel.getNetwork())));
     }
 
     public void onContingencies() {

@@ -69,6 +69,11 @@
                                 <FontIcon iconLiteral="mdi2h-hubspot" iconSize="16" />
                             </graphic>
                         </Button>
+                        <Button fx:id="mapButton" mnemonicParsing="false" onAction="#onMap" text="%main.toolbar.map">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2e-earth" iconSize="16" />
+                            </graphic>
+                        </Button>
                         <Button mnemonicParsing="false" onAction="#onContingencies" text="%main.toolbar.contingencies">
                             <graphic>
                                 <FontIcon iconLiteral="mdi2f-flash-off" iconSize="16" />

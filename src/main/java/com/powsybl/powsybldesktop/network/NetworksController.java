@@ -13,6 +13,7 @@ import com.powsybl.cgmes.conformity.CgmesConformity1NetworkCatalog;
 import com.powsybl.cgmes.conformity.CgmesConformity2Catalog;
 import com.powsybl.cgmes.conformity.CgmesConformity3Catalog;
 import com.powsybl.cgmes.conformity.ReliCapGridCatalog;
+import com.powsybl.cgmes.conversion.CgmesImport;
 import com.powsybl.cgmes.model.GridModelReference;
 import com.powsybl.commons.datasource.DataSource;
 import com.powsybl.commons.datasource.ReadOnlyDataSource;
@@ -84,6 +85,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -535,40 +537,40 @@ public class NetworksController extends AbstractDisposableController {
                 new Pair<>("createWithGrounds", TwoVoltageLevelNetworkFactory::createWithGrounds)));
 
         addFactoryMenu(sampleNetworksMenu, "Cgmes3Catalog", List.of(
-                new Pair<>("microGrid", cgmes(Cgmes3Catalog::microGrid)),
-                new Pair<>("microGridWithoutTpSv", cgmes(Cgmes3Catalog::microGridWithoutTpSv)),
+                new Pair<>(withGl("microGrid"), cgmes(Cgmes3Catalog::microGrid)),
+                new Pair<>(withGl("microGridWithoutTpSv"), cgmes(Cgmes3Catalog::microGridWithoutTpSv)),
                 new Pair<>("miniGrid", cgmes(Cgmes3Catalog::miniGrid)),
                 new Pair<>("miniGridWithoutTpSv", cgmes(Cgmes3Catalog::miniGridWithoutTpSv)),
-                new Pair<>("smallGrid", cgmes(Cgmes3Catalog::smallGrid)),
-                new Pair<>("smallGridWithoutTpSv", cgmes(Cgmes3Catalog::smallGridWithoutTpSv)),
+                new Pair<>(withGl("smallGrid"), cgmes(Cgmes3Catalog::smallGrid)),
+                new Pair<>(withGl("smallGridWithoutTpSv"), cgmes(Cgmes3Catalog::smallGridWithoutTpSv)),
                 new Pair<>("svedala", cgmes(Cgmes3Catalog::svedala)),
                 new Pair<>("svedalaWithoutTpSv", cgmes(Cgmes3Catalog::svedalaWithoutTpSv))));
         addFactoryMenu(sampleNetworksMenu, "CgmesConformity1Catalog", List.of(
-                new Pair<>("microGridBaseCaseBE", cgmes(CgmesConformity1Catalog::microGridBaseCaseBE)),
-                new Pair<>("microGridType4BE", cgmes(CgmesConformity1Catalog::microGridType4BE)),
+                new Pair<>(withGl("microGridBaseCaseBE"), cgmes(CgmesConformity1Catalog::microGridBaseCaseBE)),
+                new Pair<>(withGl("microGridType4BE"), cgmes(CgmesConformity1Catalog::microGridType4BE)),
                 new Pair<>("microGridType4BEOnlyEqTpSsh", cgmes(CgmesConformity1Catalog::microGridType4BEOnlyEqTpSsh)),
-                new Pair<>("microGridBaseCaseNL", cgmes(CgmesConformity1Catalog::microGridBaseCaseNL)),
-                new Pair<>("microGridBaseCaseAssembled", cgmes(CgmesConformity1Catalog::microGridBaseCaseAssembled)),
+                new Pair<>(withGl("microGridBaseCaseNL"), cgmes(CgmesConformity1Catalog::microGridBaseCaseNL)),
+                new Pair<>(withGl("microGridBaseCaseAssembled"), cgmes(CgmesConformity1Catalog::microGridBaseCaseAssembled)),
                 new Pair<>("miniBusBranch", cgmes(CgmesConformity1Catalog::miniBusBranch)),
                 new Pair<>("miniNodeBreaker", cgmes(CgmesConformity1Catalog::miniNodeBreaker)),
                 new Pair<>("miniNodeBreakerOnlyEQ", cgmes(CgmesConformity1Catalog::miniNodeBreakerOnlyEQ)),
-                new Pair<>("smallBusBranch", cgmes(CgmesConformity1Catalog::smallBusBranch)),
+                new Pair<>(withGl("smallBusBranch"), cgmes(CgmesConformity1Catalog::smallBusBranch)),
                 new Pair<>("smallBusBranchEqTp", cgmes(CgmesConformity1Catalog::smallBusBranchEqTp)),
-                new Pair<>("smallNodeBreaker", cgmes(CgmesConformity1Catalog::smallNodeBreaker)),
+                new Pair<>(withGl("smallNodeBreaker"), cgmes(CgmesConformity1Catalog::smallNodeBreaker)),
                 new Pair<>("smallNodeBreakerEqTp", cgmes(CgmesConformity1Catalog::smallNodeBreakerEqTp)),
                 new Pair<>("smallNodeBreakerEqTpSsh", cgmes(CgmesConformity1Catalog::smallNodeBreakerEqTpSsh)),
                 new Pair<>("smallNodeBreakerHvdcEqTp", cgmes(CgmesConformity1Catalog::smallNodeBreakerHvdcEqTp)),
-                new Pair<>("smallNodeBreakerHvdc", cgmes(CgmesConformity1Catalog::smallNodeBreakerHvdc)),
+                new Pair<>(withGl("smallNodeBreakerHvdc"), cgmes(CgmesConformity1Catalog::smallNodeBreakerHvdc)),
                 new Pair<>("smallNodeBreakerOnlyEQ", cgmes(CgmesConformity1Catalog::smallNodeBreakerOnlyEQ)),
                 new Pair<>("smallNodeBreakerHvdcOnlyEQ", cgmes(CgmesConformity1Catalog::smallNodeBreakerHvdcOnlyEQ))));
         addFactoryMenu(sampleNetworksMenu, "CgmesConformity1NetworkCatalog", List.of(
                 new Pair<>("microBaseCaseBE", CgmesConformity1NetworkCatalog::microBaseCaseBE),
                 new Pair<>("microType4BE", CgmesConformity1NetworkCatalog::microType4BE)));
         addFactoryMenu(sampleNetworksMenu, "CgmesConformity2Catalog", List.of(
-                new Pair<>("microGridType2Assembled", cgmes(CgmesConformity2Catalog::microGridType2Assembled))));
+                new Pair<>(withGl("microGridType2Assembled"), cgmes(CgmesConformity2Catalog::microGridType2Assembled))));
         addFactoryMenu(sampleNetworksMenu, "CgmesConformity3Catalog", List.of(
-                new Pair<>("microGridBaseCaseBE", cgmes(CgmesConformity3Catalog::microGridBaseCaseBE)),
-                new Pair<>("microGridBaseCaseNL", cgmes(CgmesConformity3Catalog::microGridBaseCaseNL)),
+                new Pair<>(withGl("microGridBaseCaseBE"), cgmes(CgmesConformity3Catalog::microGridBaseCaseBE)),
+                new Pair<>(withGl("microGridBaseCaseNL"), cgmes(CgmesConformity3Catalog::microGridBaseCaseNL)),
                 new Pair<>("microGridBaseCaseAssembled", cgmes(CgmesConformity3Catalog::microGridBaseCaseAssembled))));
         addFactoryMenu(sampleNetworksMenu, "ReliCapGridCatalog", List.of(
                 new Pair<>("belgovia", cgmes(ReliCapGridCatalog::belgovia)),
@@ -594,8 +596,20 @@ public class NetworksController extends AbstractDisposableController {
         parent.getItems().add(factoryMenu);
     }
 
+    private static final Properties CGMES_IMPORT_PARAMETERS = new Properties();
+
+    static {
+        // enables CgmesGLImportPostProcessor (powsybl-cgmes-gl) so the geographical layout profile present
+        // in some CGMES sample networks is imported; a no-op for networks without a GL profile
+        CGMES_IMPORT_PARAMETERS.setProperty(CgmesImport.POST_PROCESSORS, "cgmesGLImport");
+    }
+
     private static Supplier<Network> cgmes(Supplier<? extends GridModelReference> gridModel) {
-        return () -> Network.read(gridModel.get().dataSource());
+        return () -> Network.read(gridModel.get().dataSource(), CGMES_IMPORT_PARAMETERS);
+    }
+
+    private static String withGl(String label) {
+        return label + " (" + Messages.get("networks.toolbar.import.sampleNetworks.geographicalLayout") + ")";
     }
 
     private void initializeExportMenu() {

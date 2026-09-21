@@ -31,10 +31,12 @@
         <testfx.version>4.0.18</testfx.version>
         <lucene.version>10.5.1</lucene.version>
         <powsybl-starter.version>2026.1.0</powsybl-starter.version>
+        <powsybl-core.version>7.3.0</powsybl-core.version>
         <javafx.version>27</javafx.version>
         <controlsfx.version>11.2.5</controlsfx.version>
         <ikonli.version>12.4.0</ikonli.version>
         <logback.version>1.6.3</logback.version>
+        <leaflet.version>1.9.4</leaflet.version>
     </properties>
 
     <dependencies>
@@ -50,10 +52,34 @@
         </dependency>
         <dependency>
             <!-- provides CGMES conformity sample networks; not part of the powsybl-starter BOM, so pinned
-                 explicitly to the powsybl-core version (7.3.0) that powsybl-starter 2026.1.0 resolves -->
+                 explicitly to the powsybl-core version that powsybl-starter 2026.1.0 resolves -->
             <groupId>com.powsybl</groupId>
             <artifactId>powsybl-cgmes-conformity</artifactId>
-            <version>7.3.0</version>
+            <version>${powsybl-core.version}</version>
+        </dependency>
+        <dependency>
+            <!-- provides CgmesGLImportPostProcessor, registered via ServiceLoader, so the geographical layout
+                 profile (GL) present in some CGMES sample networks gets imported; not part of the powsybl-starter
+                 BOM, so pinned explicitly to the powsybl-core version that powsybl-starter 2026.1.0 resolves -->
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-cgmes-gl</artifactId>
+            <version>${powsybl-core.version}</version>
+        </dependency>
+        <dependency>
+            <!-- provides SubstationPosition/LinePosition (used by the Map view); already pulled in
+                 transitively via powsybl-cgmes-gl, but pinned explicitly since that's incidental -->
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-iidm-extensions</artifactId>
+            <version>${powsybl-core.version}</version>
+        </dependency>
+        <dependency>
+            <!-- Leaflet's leaflet.js/leaflet.css for the Map view's WebView. "provided" because the jar itself
+                 isn't needed at runtime: the unpack execution below extracts those two files into the map
+                 package, where MapController reads them as ordinary classpath resources. -->
+            <groupId>org.webjars</groupId>
+            <artifactId>leaflet</artifactId>
+            <version>${leaflet.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
@@ -248,6 +274,31 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <version>3.11.0</version>
                 <executions>
+                    <execution>
+                        <!-- Extracts Leaflet's two dist files from the webjar into the Map view's package, so
+                             they're plain classpath resources next to map.js instead of being checked in. The
+                             version lives only in ${leaflet.version}; flattening drops the webjar's
+                             META-INF/resources/webjars/leaflet/<version>/ prefix. -->
+                        <id>unpack-leaflet</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>unpack</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.webjars</groupId>
+                                    <artifactId>leaflet</artifactId>
+                                    <version>${leaflet.version}</version>
+                                    <includes>META-INF/resources/webjars/leaflet/${leaflet.version}/leaflet.js,META-INF/resources/webjars/leaflet/${leaflet.version}/leaflet.css</includes>
+                                    <outputDirectory>${project.build.outputDirectory}/com/powsybl/powsybldesktop/map</outputDirectory>
+                                    <fileMappers>
+                                        <org.codehaus.plexus.components.io.filemappers.FlattenFileMapper/>
+                                    </fileMappers>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
                     <execution>
                         <id>copy-runtime-dependencies</id>
                         <phase>package</phase>
