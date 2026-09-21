@@ -8,7 +8,7 @@
 
 /* Apply to all cells inside the TableView body */
 .table-view .table-cell {
-    -fx-font-family: "Consolas";   /* "Consolas" or "Monospaced", "Courier New", "Menlo" */
+    -fx-font-family: "Consolas", "Menlo", "DejaVu Sans Mono", monospace;
     -fx-font-size: 13px;
 }
 
@@ -22,7 +22,7 @@
 
 /* Optional: ensure rows inherit properly */
 .table-view .table-row-cell {
-    -fx-font-family: "Consolas";
+    -fx-font-family: "Consolas", "Menlo", "DejaVu Sans Mono", monospace;
 }
 
 .table-row-cell.row-warn .table-cell {
