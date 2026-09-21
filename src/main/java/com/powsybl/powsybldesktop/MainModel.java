@@ -39,6 +39,7 @@ import javafx.collections.ObservableList;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -76,6 +77,11 @@ public class MainModel {
     private final Map<Network, SecurityAnalysisResult> securityAnalysisResults = new HashMap<>();
     private final Map<Network, NetworkSearchIndex> searchIndexes = new HashMap<>();
     private final Map<Network, ObservableList<ContingencyList>> contingencyLists = new HashMap<>();
+    // Whether a sublist is included when contingencies are resolved for a security analysis run, keyed by
+    // identity since editing a sublist's form replaces it with a brand-new instance (see ContingenciesController's
+    // showForm/onReplace) rather than mutating it in place - transferContingencyListEnabled carries the flag
+    // over to the replacement so an edit doesn't silently re-enable a sublist the user disabled.
+    private final Map<ContingencyList, BooleanProperty> contingencyListEnabled = new IdentityHashMap<>();
     private final ObjectProperty<NetworkSearchIndex.State> searchIndexState = new SimpleObjectProperty<>(NetworkSearchIndex.State.NOT_BUILT);
     private final ObjectProperty<NavigationEvent> navigationEvent = new SimpleObjectProperty<>();
     private final LogsModel logsModel = new LogsModel();
@@ -224,6 +230,17 @@ public class MainModel {
 
     public ObservableList<ContingencyList> getContingencyLists(Network network) {
         return contingencyLists.computeIfAbsent(network, n -> FXCollections.observableArrayList());
+    }
+
+    public BooleanProperty contingencyListEnabledProperty(ContingencyList list) {
+        return contingencyListEnabled.computeIfAbsent(list, l -> new SimpleBooleanProperty(true));
+    }
+
+    public void transferContingencyListEnabled(ContingencyList from, ContingencyList to) {
+        BooleanProperty property = contingencyListEnabled.remove(from);
+        if (property != null) {
+            contingencyListEnabled.put(to, property);
+        }
     }
 
     public void setLoadFlowParameters(LoadFlowParameters loadFlowParameters) {

@@ -71,7 +71,7 @@
                 </SplitPane>
                 <VBox spacing="4">
                     <children>
-                        <Label text="%contingencies.computed.title"/>
+                        <Label fx:id="computedTitleLabel" text="%contingencies.computed.title"/>
                         <TableView fx:id="contingenciesTableView" VBox.vgrow="ALWAYS">
                             <columns>
                                 <TableColumn fx:id="idColumn" text="%contingencies.column.id"/>

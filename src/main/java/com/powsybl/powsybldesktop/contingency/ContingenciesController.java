@@ -17,6 +17,7 @@ import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.FileChooserPreferences;
 import com.powsybl.powsybldesktop.utils.Messages;
+import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
@@ -27,21 +28,24 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.layout.StackPane;
 import javafx.stage.FileChooser;
+import javafx.util.StringConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -85,6 +89,9 @@ public class ContingenciesController extends AbstractDisposableController {
     private StackPane formHost;
 
     @FXML
+    private Label computedTitleLabel;
+
+    @FXML
     TableView<Contingency> contingenciesTableView;
 
     @FXML
@@ -99,6 +106,11 @@ public class ContingenciesController extends AbstractDisposableController {
     private MainModel mainModel;
     private Network network;
     private Set<String> validContingencyIds = Set.of();
+    // The enabled/disabled flag itself lives in MainModel (contingencyListEnabledProperty), since the security
+    // analysis run in MainController needs it too - this just tracks, by identity, which lists this controller
+    // has already attached its refreshComputedTable listener to, so re-fetching the same property (e.g. from
+    // the cell factory) doesn't pile up duplicate listeners.
+    private final Set<ContingencyList> listenedEnabledLists = Collections.newSetFromMap(new IdentityHashMap<>());
     // Suppresses showForm() re-entering (and tearing down/rebuilding the currently open form) when the
     // selectedItemProperty change it's about to react to was itself caused by one of that form's own edits
     // (see showForm's onReplace) rather than a genuine user selection change.
@@ -112,13 +124,17 @@ public class ContingenciesController extends AbstractDisposableController {
             addMenuButton.getItems().add(item);
         }
         removeButton.disableProperty().bind(contingencyListsListView.getSelectionModel().selectedItemProperty().isNull());
-        contingencyListsListView.setCellFactory(lv -> new ListCell<>() {
+        contingencyListsListView.setCellFactory(CheckBoxListCell.forListView(this::enabledProperty, new StringConverter<>() {
             @Override
-            protected void updateItem(ContingencyList item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(empty || item == null ? null : ContingencyListKind.labelFor(item) + " — " + displayName(item));
+            public String toString(ContingencyList item) {
+                return item == null ? "" : ContingencyListKind.labelFor(item) + " — " + displayName(item);
             }
-        });
+
+            @Override
+            public ContingencyList fromString(String string) {
+                throw new UnsupportedOperationException();
+            }
+        }));
         contingencyListsListView.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> showForm(newValue));
 
         idColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getId()));
@@ -173,15 +189,26 @@ public class ContingenciesController extends AbstractDisposableController {
         if (network == null) {
             validContingencyIds = Set.of();
             contingenciesTableView.setItems(FXCollections.observableArrayList());
+            computedTitleLabel.setText(Messages.get("contingencies.computed.title"));
             return;
         }
         List<Contingency> contingencies = mainModel.getContingencyLists(network).stream()
+                .filter(list -> enabledProperty(list).get())
                 .flatMap(this::contingenciesOf)
                 .collect(Collectors.toList());
         validContingencyIds = ContingencyList.getValidContingencies(contingencies, network).stream()
                 .map(Contingency::getId)
                 .collect(Collectors.toSet());
         contingenciesTableView.setItems(FXCollections.observableArrayList(contingencies));
+        computedTitleLabel.setText(Messages.get("contingencies.computed.title.count", contingencies.size()));
+    }
+
+    private BooleanProperty enabledProperty(ContingencyList list) {
+        BooleanProperty property = mainModel.contingencyListEnabledProperty(list);
+        if (listenedEnabledLists.add(list)) {
+            property.addListener((obs, oldValue, newValue) -> refreshComputedTable());
+        }
+        return property;
     }
 
     // DefaultContingencyList.getContingencies(Network) silently drops any contingency referencing missing
@@ -211,6 +238,7 @@ public class ContingenciesController extends AbstractDisposableController {
             return;
         }
         mainModel.getContingencyLists(network).remove(selected);
+        listenedEnabledLists.remove(selected);
     }
 
     // Mutating the network's ObservableList (bound directly to contingencyListsListView's items) re-fires the
@@ -232,6 +260,10 @@ public class ContingenciesController extends AbstractDisposableController {
             List<ContingencyList> lists = mainModel.getContingencyLists(network);
             int index = lists.indexOf(current[0]);
             if (index >= 0) {
+                mainModel.transferContingencyListEnabled(current[0], replacement);
+                if (listenedEnabledLists.remove(current[0])) {
+                    listenedEnabledLists.add(replacement);
+                }
                 applyingReplace = true;
                 try {
                     lists.set(index, replacement);
