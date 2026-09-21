@@ -89,6 +89,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -269,7 +271,7 @@ public class MainController extends AbstractDisposableController {
             protected Task<LoadFlowResultAndReport> createTask() {
                 return new Task<>() {
                     @Override
-                    protected LoadFlowResultAndReport call() {
+                    protected LoadFlowResultAndReport call() throws Exception {
                         ReportNode reportNode = ReportNode.newRootReportNode()
                                 .withAllResourceBundlesFromClasspath()
                                 .withMessageTemplate("powsybl.desktop.loadflow")
@@ -279,8 +281,22 @@ public class MainController extends AbstractDisposableController {
                         LoadFlowRunParameters runParameters = LoadFlowRunParameters.getDefault()
                                 .setParameters(mainModel.loadFlowParametersProperty().getValue())
                                 .setReportNode(reportNode);
-                        LoadFlowResult loadFlowResult = LoadFlow.run(network, runParameters);
-                        return new LoadFlowResultAndReport(loadFlowResult, reportNode);
+                        // LoadFlow.run() blocks on CompletableFuture.join(), which ignores thread interruption,
+                        // so cancelling this task wouldn't stop the underlying computation - runAsync()+get() honors it
+                        CompletableFuture<LoadFlowResult> future = LoadFlow.runAsync(network, runParameters);
+                        try {
+                            LoadFlowResult loadFlowResult = future.get();
+                            return new LoadFlowResultAndReport(loadFlowResult, reportNode);
+                        } catch (InterruptedException e) {
+                            future.cancel(true);
+                            Thread.currentThread().interrupt();
+                            throw e;
+                        } catch (ExecutionException e) {
+                            if (e.getCause() instanceof Exception cause) {
+                                throw cause;
+                            }
+                            throw e;
+                        }
                     }
                 };
             }
@@ -347,7 +363,7 @@ public class MainController extends AbstractDisposableController {
             protected Task<SecurityAnalysisResultAndReport> createTask() {
                 return new Task<>() {
                     @Override
-                    protected SecurityAnalysisResultAndReport call() {
+                    protected SecurityAnalysisResultAndReport call() throws Exception {
                         ReportNode reportNode = ReportNode.newRootReportNode()
                                 .withAllResourceBundlesFromClasspath()
                                 .withMessageTemplate("powsybl.desktop.securityanalysis")
@@ -358,8 +374,22 @@ public class MainController extends AbstractDisposableController {
                         SecurityAnalysisRunParameters runParameters = SecurityAnalysisRunParameters.getDefault()
                                 .setSecurityAnalysisParameters(mainModel.securityAnalysisParametersProperty().getValue())
                                 .setReportNode(reportNode);
-                        SecurityAnalysisReport securityAnalysisReport = SecurityAnalysis.run(network, contingencies, runParameters);
-                        return new SecurityAnalysisResultAndReport(securityAnalysisReport.getResult(), reportNode);
+                        // SecurityAnalysis.run() blocks on CompletableFuture.join(), which ignores thread interruption,
+                        // so cancelling this task wouldn't stop the underlying computation - runAsync()+get() honors it
+                        CompletableFuture<SecurityAnalysisReport> future = SecurityAnalysis.runAsync(network, contingencies, runParameters);
+                        try {
+                            SecurityAnalysisReport securityAnalysisReport = future.get();
+                            return new SecurityAnalysisResultAndReport(securityAnalysisReport.getResult(), reportNode);
+                        } catch (InterruptedException e) {
+                            future.cancel(true);
+                            Thread.currentThread().interrupt();
+                            throw e;
+                        } catch (ExecutionException e) {
+                            if (e.getCause() instanceof Exception cause) {
+                                throw cause;
+                            }
+                            throw e;
+                        }
                     }
                 };
             }
