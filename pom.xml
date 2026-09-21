@@ -49,6 +49,13 @@
             <version>${powsybl-starter.version}</version>
         </dependency>
         <dependency>
+            <!-- provides CGMES conformity sample networks; not part of the powsybl-starter BOM, so pinned
+                 explicitly to the powsybl-core version (7.3.0) that powsybl-starter 2026.1.0 resolves -->
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-cgmes-conformity</artifactId>
+            <version>7.3.0</version>
+        </dependency>
+        <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
