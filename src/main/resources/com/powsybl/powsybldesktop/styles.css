@@ -6,9 +6,13 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-/* Apply to all cells inside the TableView body */
+/* Apply to all cells inside the TableView body.
+   JavaFX's -fx-font-family does not fall back through a comma list like web CSS: an
+   unresolvable name resolves straight to the default UI font, it never tries the next
+   entry. "monospace" alone is the one value guaranteed to resolve on every platform,
+   via JavaFX's built-in logical "Monospaced" font family. */
 .table-view .table-cell {
-    -fx-font-family: "Consolas", "Menlo", "DejaVu Sans Mono", monospace;
+    -fx-font-family: monospace;
     -fx-font-size: 13px;
 }
 
@@ -22,7 +26,7 @@
 
 /* Optional: ensure rows inherit properly */
 .table-view .table-row-cell {
-    -fx-font-family: "Consolas", "Menlo", "DejaVu Sans Mono", monospace;
+    -fx-font-family: monospace;
 }
 
 .table-row-cell.row-warn .table-cell {
