@@ -407,9 +407,13 @@ public class NetworksController extends AbstractDisposableController {
         importMenuButton.getItems().add(new SeparatorMenuItem());
 
         Menu sampleNetworksMenu = new Menu(Messages.get("networks.toolbar.import.sampleNetworks"));
-        MenuItem mapTestItem = new MenuItem("Map test");
-        mapTestItem.setOnAction(event -> loadSample(MapTestNetworkFactory::create));
-        sampleNetworksMenu.getItems().add(mapTestItem);
+        Menu mapTestsMenu = new Menu("Map performance tests");
+        MenuItem mapTest10kItem = new MenuItem("Map test 10k");
+        mapTest10kItem.setOnAction(event -> loadSample(MapTestNetworkFactory::create));
+        MenuItem mapTest50kItem = new MenuItem("Map test 50k");
+        mapTest50kItem.setOnAction(event -> loadSample(MapTestNetworkFactory::createEurope));
+        mapTestsMenu.getItems().addAll(mapTest10kItem, mapTest50kItem);
+        sampleNetworksMenu.getItems().add(mapTestsMenu);
         addFactoryMenu(sampleNetworksMenu, "IeeeCdfNetworkFactory", List.of(
                 new Pair<>("create9", IeeeCdfNetworkFactory::create9),
                 new Pair<>("create14", IeeeCdfNetworkFactory::create14),
