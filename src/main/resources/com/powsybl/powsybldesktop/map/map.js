@@ -10,25 +10,127 @@ var MAX_ZOOM = 19;
 // Tiles replaced after a zoom are removed this long after all their replacements loaded, so that the WebView has
 // painted those first: removing a tile as soon as its replacement loaded flickered.
 var PRUNE_DELAY_MS = 100;
+// Zooming is animated by animateZoom, as zoom levels in quarter steps: the mouse wheel moves one zoom level per
+// WHEEL_PIXELS_PER_ZOOM_LEVEL of Leaflet's wheel delta, which in the WebView is about one level per notch; double
+// click and the zoom buttons move one level.
+var ZOOM_ANIMATION_MS = 180;
+var ZOOM_STEP = 0.25;
+var WHEEL_PIXELS_PER_ZOOM_LEVEL = 30;
 
-// animations off: the WebView doesn't reliably finish Leaflet's CSS transitions, and an interrupted one
-// leaves stale frames on screen.
-var map = L.map('map', {
+// Animations off: the WebView doesn't reliably finish Leaflet's CSS transitions, and an interrupted one
+// leaves stale frames on screen. Zooming is animated by animateZoom instead, hence Leaflet's own wheel, double
+// click and zoom buttons handling off, and zoomSnap 0 for its intermediate zoom levels. With any3d off, Leaflet
+// ignores zoomSnap and rounds every zoom to a whole level, hence _limitZoom, as Leaflet's with any3d on.
+var FractionalZoomMap = L.Map.extend({
+    _limitZoom: function (zoom) {
+        var snap = this.options.zoomSnap;
+        if (snap) {
+            zoom = Math.round(zoom / snap) * snap;
+        }
+        return Math.max(this.getMinZoom(), Math.min(this.getMaxZoom(), zoom));
+    }
+});
+var map = new FractionalZoomMap('map', {
     maxZoom: MAX_ZOOM,
+    zoomSnap: 0,
+    zoomDelta: 0.5,
     zoomAnimation: false,
     fadeAnimation: false,
-    markerZoomAnimation: false
+    markerZoomAnimation: false,
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    zoomControl: false
 }).setView([48.8566, 2.3522], 5);
+
+// Moves the zoom from the current level towards target, easing out, re-centering at each step so that the
+// point under containerPoint stays put. Each step only moves and scales the tiles already there: new ones are
+// requested whenever the rounded zoom level changes, and replace the scaled ones as they arrive. A new zoom
+// request during the animation restarts it from where it is towards the new target.
+var zoomAnimation = null;
+
+function animateZoom(containerPoint, target) {
+    target = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), target));
+    var start = map.getZoom();
+    if (target === start) {
+        return;
+    }
+    var restarting = zoomAnimation !== null;
+    zoomAnimation = {containerPoint: containerPoint, start: start, target: target, startTime: Date.now()};
+    if (!restarting) {
+        L.Util.requestAnimFrame(zoomFrame);
+    }
+}
+
+function zoomFrame() {
+    var a = zoomAnimation;
+    var t = Math.min(1, (Date.now() - a.startTime) / ZOOM_ANIMATION_MS);
+    var eased = 1 - (1 - t) * (1 - t);
+    map.setZoomAround(a.containerPoint, a.start + (a.target - a.start) * eased, {animate: false});
+    if (t < 1) {
+        L.Util.requestAnimFrame(zoomFrame);
+    } else {
+        zoomAnimation = null;
+    }
+}
+
+// the zoom the animation is heading to, so that a burst of wheel notches adds up
+function zoomTarget() {
+    return zoomAnimation !== null ? zoomAnimation.target : map.getZoom();
+}
+
+function snapZoom(zoom) {
+    return Math.round(zoom / ZOOM_STEP) * ZOOM_STEP;
+}
+
+var wheelZoom = 0;
+L.DomEvent.on(map.getContainer(), 'wheel', function (e) {
+    L.DomEvent.stop(e);
+    // touchpads send many small deltas: accumulated, as each would round to no zoom change on its own
+    wheelZoom += L.DomEvent.getWheelDelta(e) / WHEEL_PIXELS_PER_ZOOM_LEVEL;
+    var step = snapZoom(wheelZoom);
+    if (step !== 0) {
+        wheelZoom -= step;
+        animateZoom(map.mouseEventToContainerPoint(e), snapZoom(zoomTarget() + step));
+    }
+});
+
+map.on('dblclick', function (e) {
+    animateZoom(e.containerPoint, snapZoom(zoomTarget() + (e.originalEvent.shiftKey ? -1 : 1)));
+});
+
+var AnimatedZoomControl = L.Control.Zoom.extend({
+    _zoomIn: function (e) {
+        this._animatedZoom(e.shiftKey ? 3 : 1);
+    },
+    _zoomOut: function (e) {
+        this._animatedZoom(e.shiftKey ? -3 : -1);
+    },
+    _animatedZoom: function (delta) {
+        if (!this._disabled) {
+            animateZoom(this._map.getSize().divideBy(2), snapZoom(zoomTarget() + delta));
+        }
+    }
+});
+new AnimatedZoomControl().addTo(map);
 
 // With zoom animation off, every zoom resets the map view, and grid layers drop all their tiles on the
 // viewprereset event that starts it: the map went blank until the new zoom level's tiles arrived. Without that
 // handler, the viewreset that follows updates the layer as an animated zoom would, keeping the previous level's
-// tiles, scaled, until the new ones replace them.
+// tiles until the new ones replace them.
+// Tiles are drawn for whole zoom levels, and each level's tiles scaled to the current zoom, also fractional -
+// except with any3d off, where Leaflet only positions them, at their own level's size. _setZoomTransform scales
+// them too, as Leaflet's with any3d on, with a 2D transform rather than the translate3d the WebView mis-composites.
 var keepTilesOnViewReset = {
     getEvents: function () {
         var events = L.GridLayer.prototype.getEvents.call(this);
         delete events.viewprereset;
         return events;
+    },
+
+    _setZoomTransform: function (level, center, zoom) {
+        var scale = this._map.getZoomScale(zoom, level.zoom);
+        var translate = level.origin.multiplyBy(scale).subtract(this._map._getNewPixelOrigin(center, zoom)).round();
+        level.el.style.transform = 'translate(' + translate.x + 'px,' + translate.y + 'px) scale(' + scale + ')';
     }
 };
 
@@ -216,6 +318,11 @@ function renderNetwork(boundsJson) {
     if (b && b[0] === b[2] && b[1] === b[3]) {
         map.setView([b[0], b[1]], 12, {animate: false});
     } else if (b) {
-        map.fitBounds([[b[0], b[1]], [b[2], b[3]]], {padding: [20, 20], animate: false});
+        // as fitBounds with 20 pixels of padding would, but with the zoom rounded down to a ZOOM_STEP: tiles are only
+        // crisp at whole levels, and are scaled in between
+        var bounds = L.latLngBounds([b[0], b[1]], [b[2], b[3]]);
+        var zoom = Math.floor(map.getBoundsZoom(bounds, false, L.point(40, 40)) / ZOOM_STEP) * ZOOM_STEP;
+        var center = map.project(bounds.getSouthWest(), zoom).add(map.project(bounds.getNorthEast(), zoom)).divideBy(2);
+        map.setView(map.unproject(center, zoom), zoom, {animate: false});
     }
 }

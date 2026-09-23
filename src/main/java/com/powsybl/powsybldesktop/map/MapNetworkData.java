@@ -421,6 +421,9 @@ record MapNetworkData(List<Color> colors,
     /**
      * Substations win over lines, as they're drawn on top; among each kind the closest one wins. Elements of a
      * hidden base voltage aren't hit.
+     * <p>
+     * At a fractional {@code zoom}, Leaflet shows the tiles of the rounded zoom level scaled, markers and lines
+     * included, so the hit distances are those of that level, scaled the same.
      */
     Hit hitTest(double latitude, double longitude, double zoom, Set<String> hiddenBaseVoltages) {
         if (grid == null) {
@@ -429,8 +432,10 @@ record MapNetworkData(List<Color> colors,
         double px = projectX(longitude);
         double py = projectY(latitude);
         double scale = Math.pow(2, zoom);
-        double substationLimit = (substationSize(scale) / 2.0 + SUBSTATION_CLICK_TOLERANCE) / scale;
-        double lineLimit = LINE_HIT_DISTANCE / scale;
+        double tileScale = Math.pow(2, Math.round(zoom));
+        double displayScale = scale / tileScale;
+        double substationLimit = (substationSize(tileScale) * displayScale / 2 + SUBSTATION_CLICK_TOLERANCE) / scale;
+        double lineLimit = LINE_HIT_DISTANCE * displayScale / scale;
         double tolerance = Math.max(substationLimit, lineLimit);
         int bestSubstation = -1;
         double bestSubstationDistance = substationLimit * substationLimit;
