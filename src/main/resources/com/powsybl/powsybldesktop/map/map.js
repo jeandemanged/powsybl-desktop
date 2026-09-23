@@ -42,15 +42,21 @@ function setBasemap(name) {
     networkLayer.redraw();
 }
 
-var SUBSTATION_SIZE = 10;
+// Substation markers are sized to SUBSTATION_SPACING_FACTOR times the typical on-screen distance between
+// neighbouring substations, within these bounds, so a sparse view gets big markers and a dense one small
+// markers that don't pile up.
+var SUBSTATION_MIN_SIZE = 2;
+var SUBSTATION_MAX_SIZE = 12;
+var SUBSTATION_SPACING_FACTOR = 0.5;
+// nearest neighbour distances measured on at most this many substations, enough for a median
+var SPACING_SAMPLE_SIZE = 1000;
 var SUBSTATION_CLICK_TOLERANCE = 5;
 var LINE_WEIGHT = 2;
 // dash and gap lengths for disconnected lines; round caps eat LINE_WEIGHT out of each gap
 var LINE_DASH = [6, 6];
 // same hit tolerance Leaflet's canvas renderer used for polyline: half the stroke width
-var SUBSTATION_HIT_DISTANCE = SUBSTATION_SIZE / 2 + SUBSTATION_CLICK_TOLERANCE;
 var LINE_HIT_DISTANCE = LINE_WEIGHT / 2;
-var MAX_HIT_DISTANCE = Math.max(SUBSTATION_HIT_DISTANCE, LINE_HIT_DISTANCE);
+var MAX_HIT_DISTANCE = Math.max(SUBSTATION_MAX_SIZE / 2 + SUBSTATION_CLICK_TOLERANCE, LINE_HIT_DISTANCE);
 var CANVAS_PADDING = 0.1;
 var GRID_SIZE = 128;
 var HOVER_THROTTLE_MS = 32;
@@ -114,7 +120,7 @@ function emptyData() {
         lineIds: [], lineTexts: [], lineStart: new Int32Array(1), lineBounds: new Float64Array(0),
         lineColor: new Int32Array(0), lineBaseVoltages: [], lineDisconnected: new Uint8Array(0),
         pointX: new Float64Array(0), pointY: new Float64Array(0), pointLine: new Int32Array(0),
-        grid: null
+        grid: null, substationSpacing: Infinity
     };
 }
 
@@ -191,7 +197,68 @@ function buildData(json) {
     });
     d.lineStart[lineCount] = k;
     d.grid = buildGrid(d);
+    d.substationSpacing = substationSpacing(d);
     return d;
+}
+
+// Median distance, at zoom 0, from a substation to its nearest neighbour; Infinity with fewer than two
+// distinct positions. Searched through the grid ring by ring around each sampled substation: a substation
+// in ring r + 1 or beyond is at least r cells away, so the search stops once the best distance is below that.
+function substationSpacing(d) {
+    var grid = d.grid;
+    var count = d.substationX.length;
+    if (!grid || count < 2) {
+        return Infinity;
+    }
+    var cellSize = Math.min(grid.cellWidth, grid.cellHeight);
+    var step = Math.max(1, Math.floor(count / SPACING_SAMPLE_SIZE));
+    var distances = [];
+    for (var i = 0; i < count; i += step) {
+        var x = d.substationX[i], y = d.substationY[i];
+        var cx = cellX(grid, x), cy = cellY(grid, y);
+        var best = Infinity;
+        for (var r = 0; r < GRID_SIZE && best > (r - 1) * cellSize * (r - 1) * cellSize; r++) {
+            for (var gy = Math.max(0, cy - r); gy <= Math.min(GRID_SIZE - 1, cy + r); gy++) {
+                for (var gx = Math.max(0, cx - r); gx <= Math.min(GRID_SIZE - 1, cx + r); gx++) {
+                    if (Math.max(Math.abs(gx - cx), Math.abs(gy - cy)) !== r) {
+                        continue;
+                    }
+                    var cell = grid.cells[gy * GRID_SIZE + gx];
+                    if (!cell) {
+                        continue;
+                    }
+                    for (var j = 0; j < cell.length; j++) {
+                        var item = cell[j];
+                        if (item < 0) {
+                            continue;
+                        }
+                        var dx = d.substationX[item] - x, dy = d.substationY[item] - y;
+                        var distance = dx * dx + dy * dy;
+                        // substations sharing a position don't make the view any denser
+                        if (distance > 0 && distance < best) {
+                            best = distance;
+                        }
+                    }
+                }
+            }
+        }
+        if (best < Infinity) {
+            distances.push(Math.sqrt(best));
+        }
+    }
+    if (distances.length === 0) {
+        return Infinity;
+    }
+    distances.sort(function (a, b) {
+        return a - b;
+    });
+    return distances[Math.floor(distances.length / 2)];
+}
+
+// whole pixels, so zooming only ever creates a handful of sprite sizes
+function substationSize(scale) {
+    return Math.max(SUBSTATION_MIN_SIZE,
+        Math.min(SUBSTATION_MAX_SIZE, Math.round(data.substationSpacing * scale * SUBSTATION_SPACING_FACTOR)));
 }
 
 // Grid cells hold substation indices (>= 0) and line segment start point indices, encoded as -(k + 1).
@@ -282,7 +349,7 @@ function hitTest(latlng) {
     var tolerance = MAX_HIT_DISTANCE / scale;
     var cx0 = cellX(grid, p.x - tolerance), cx1 = cellX(grid, p.x + tolerance);
     var cy0 = cellY(grid, p.y - tolerance), cy1 = cellY(grid, p.y + tolerance);
-    var substationLimit = SUBSTATION_HIT_DISTANCE / scale;
+    var substationLimit = (substationSize(scale) / 2 + SUBSTATION_CLICK_TOLERANCE) / scale;
     var lineLimit = LINE_HIT_DISTANCE / scale;
     var bestSubstation = -1, bestSubstationDistance = substationLimit * substationLimit;
     var bestLine = -1, bestLineDistance = lineLimit * lineLimit;
@@ -425,10 +492,11 @@ var NetworkLayer = L.Layer.extend({
         // WebKit's JavaFX port replays canvas calls through Prism on the FX thread, and on the Map test
         // network 10k substations as arcs in one path measured ~375 ms of that replay (~140 ms as rects),
         // against ~20 ms as blits of a pre-rendered sprite.
+        var size = substationSize(scale);
         var colorSprites = data.colors.map(function (color) {
-            return substationSprite(ratio, color);
+            return substationSprite(ratio, color, size);
         });
-        var spriteSize = Math.ceil(SUBSTATION_SIZE * ratio) / ratio;
+        var spriteSize = Math.ceil(size * ratio) / ratio;
         var spriteHalf = spriteSize / 2;
         for (var i = 0; i < data.substationIds.length; i++) {
             if (hiddenBaseVoltages[data.substationBaseVoltages[i]]) {
@@ -483,11 +551,11 @@ function drawCountries(ctx, scale, offsetX, offsetY, viewMinX, viewMinY, viewMax
 var sprites = {};
 
 // one substation marker pre-rendered at device resolution
-function substationSprite(ratio, color) {
-    var key = ratio + color;
+function substationSprite(ratio, color, size) {
+    var key = ratio + '|' + color + '|' + size;
     if (!sprites[key]) {
         var sprite = document.createElement('canvas');
-        sprite.width = sprite.height = Math.ceil(SUBSTATION_SIZE * ratio);
+        sprite.width = sprite.height = Math.ceil(size * ratio);
         var ctx = sprite.getContext('2d');
         ctx.fillStyle = color;
         ctx.fillRect(0, 0, sprite.width, sprite.height);
