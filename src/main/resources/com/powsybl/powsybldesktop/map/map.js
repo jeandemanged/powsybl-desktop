@@ -42,11 +42,11 @@ function setBasemap(name) {
     networkLayer.redraw();
 }
 
-var SUBSTATION_RADIUS = 6;
-var SUBSTATION_WEIGHT = 2;
+var SUBSTATION_SIZE = 10;
+var SUBSTATION_CLICK_TOLERANCE = 5;
 var LINE_WEIGHT = 2;
-// same hit tolerances Leaflet's canvas renderer used for circleMarker/polyline: half the stroke width
-var SUBSTATION_HIT_DISTANCE = SUBSTATION_RADIUS + SUBSTATION_WEIGHT / 2;
+// same hit tolerance Leaflet's canvas renderer used for polyline: half the stroke width
+var SUBSTATION_HIT_DISTANCE = SUBSTATION_SIZE / 2 + SUBSTATION_CLICK_TOLERANCE;
 var LINE_HIT_DISTANCE = LINE_WEIGHT / 2;
 var MAX_HIT_DISTANCE = Math.max(SUBSTATION_HIT_DISTANCE, LINE_HIT_DISTANCE);
 var CANVAS_PADDING = 0.1;
@@ -426,23 +426,14 @@ function drawCountries(ctx, scale, offsetX, offsetY, viewMinX, viewMinY, viewMax
 
 var sprites = {};
 
-// one substation marker (Leaflet circleMarker look) pre-rendered at device resolution
+// one substation marker pre-rendered at device resolution
 function substationSprite(ratio) {
     if (!sprites[ratio]) {
         var sprite = document.createElement('canvas');
-        sprite.width = sprite.height = Math.ceil((SUBSTATION_RADIUS + SUBSTATION_WEIGHT) * 2 * ratio);
-        var center = sprite.width / ratio / 2;
+        sprite.width = sprite.height = Math.ceil(SUBSTATION_SIZE * ratio);
         var ctx = sprite.getContext('2d');
-        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-        ctx.beginPath();
-        ctx.arc(center, center, SUBSTATION_RADIUS, 0, Math.PI * 2);
-        ctx.globalAlpha = 0.9;
-        ctx.fillStyle = '#42a5f5';
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        ctx.strokeStyle = '#1565c0';
-        ctx.lineWidth = SUBSTATION_WEIGHT;
-        ctx.stroke();
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, sprite.width, sprite.height);
         sprites[ratio] = sprite;
     }
     return sprites[ratio];
