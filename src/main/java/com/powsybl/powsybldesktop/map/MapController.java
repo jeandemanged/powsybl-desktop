@@ -62,7 +62,7 @@ import java.util.regex.Pattern;
  * {@link SubstationPosition}/{@link LinePosition} network extensions - equipment without one of those
  * extensions simply isn't drawn. Lines, tie lines and boundary lines are drawn alike: the CGMES geographical
  * layout import puts a tie line's positions on its two boundary line halves, which are then drawn as, and
- * navigate to, that tie line. Clicking a substation marker or a line navigates to it in the substations view /
+ * navigate to, that tie line. A line disconnected on at least one side is dashed. Clicking a substation marker or a line navigates to it in the substations view /
  * lines, tie lines or boundary lines table, same as any other cross-view link in this app.
  * <p>
  * Built the same way as the single line diagram ({@code SubstationsController}/{@code sld.js}): the
@@ -333,14 +333,16 @@ public class MapController extends AbstractDisposableController {
                 }
             });
             network.getLineStream().forEach(line -> addLine(lines, line, line,
-                    Math.max(line.getTerminal1().getVoltageLevel().getNominalV(), line.getTerminal2().getVoltageLevel().getNominalV())));
-            network.getTieLineStream().forEach(tieLine -> addLine(lines, tieLine, tieLine, nominalV(tieLine)));
+                    Math.max(line.getTerminal1().getVoltageLevel().getNominalV(), line.getTerminal2().getVoltageLevel().getNominalV()),
+                    !line.getTerminal1().isConnected() || !line.getTerminal2().isConnected()));
+            network.getTieLineStream().forEach(tieLine -> addLine(lines, tieLine, tieLine, nominalV(tieLine), isDisconnected(tieLine)));
             network.getBoundaryLineStream().forEach(boundaryLine -> {
                 TieLine tieLine = boundaryLine.getTieLine().orElse(null);
                 if (tieLine == null) {
-                    addLine(lines, boundaryLine, boundaryLine, boundaryLine.getTerminal().getVoltageLevel().getNominalV());
+                    addLine(lines, boundaryLine, boundaryLine, boundaryLine.getTerminal().getVoltageLevel().getNominalV(),
+                            !boundaryLine.getTerminal().isConnected());
                 } else if (tieLine.getExtension(LinePosition.class) == null) {
-                    addLine(lines, boundaryLine, tieLine, nominalV(tieLine));
+                    addLine(lines, boundaryLine, tieLine, nominalV(tieLine), isDisconnected(tieLine));
                 }
             });
         }
@@ -352,18 +354,24 @@ public class MapController extends AbstractDisposableController {
                 tieLine.getBoundaryLine2().getTerminal().getVoltageLevel().getNominalV());
     }
 
+    private static boolean isDisconnected(TieLine tieLine) {
+        return !tieLine.getBoundaryLine1().getTerminal().isConnected() || !tieLine.getBoundaryLine2().getTerminal().isConnected();
+    }
+
     /**
      * Adds {@code positioned}'s line position, if any, drawn as and navigating to {@code shown}: they differ for a
      * tie line half.
      */
-    private <T extends Identifiable<T>> void addLine(List<LineData> lines, T positioned, Identifiable<?> shown, double nominalV) {
+    private <T extends Identifiable<T>> void addLine(List<LineData> lines, T positioned, Identifiable<?> shown, double nominalV,
+                                                     boolean disconnected) {
         LinePosition<T> position = positioned.getExtension(LinePosition.class);
         if (position != null && !position.getCoordinates().isEmpty()) {
             List<double[]> points = position.getCoordinates().stream()
                     .map(coordinate -> new double[] {coordinate.getLatitude(), coordinate.getLongitude()})
                     .toList();
             String baseVoltage = baseVoltageName(nominalV);
-            lines.add(new LineData(shown.getId(), points, shown.getNameOrId(), baseVoltage, color(baseVoltage, DEFAULT_LINE_COLOR)));
+            lines.add(new LineData(shown.getId(), points, shown.getNameOrId(), baseVoltage, color(baseVoltage, DEFAULT_LINE_COLOR),
+                    disconnected));
         }
     }
 
@@ -408,7 +416,7 @@ public class MapController extends AbstractDisposableController {
     private record MarkerData(String id, double lat, double lng, String text, String baseVoltage, String color) {
     }
 
-    private record LineData(String id, List<double[]> points, String text, String baseVoltage, String color) {
+    private record LineData(String id, List<double[]> points, String text, String baseVoltage, String color, boolean disconnected) {
     }
 
     private record MapData(List<MarkerData> substations, List<LineData> lines) {

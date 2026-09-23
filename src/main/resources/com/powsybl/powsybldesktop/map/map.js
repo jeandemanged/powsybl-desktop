@@ -45,6 +45,8 @@ function setBasemap(name) {
 var SUBSTATION_SIZE = 10;
 var SUBSTATION_CLICK_TOLERANCE = 5;
 var LINE_WEIGHT = 2;
+// dash and gap lengths for disconnected lines; round caps eat LINE_WEIGHT out of each gap
+var LINE_DASH = [6, 6];
 // same hit tolerance Leaflet's canvas renderer used for polyline: half the stroke width
 var SUBSTATION_HIT_DISTANCE = SUBSTATION_SIZE / 2 + SUBSTATION_CLICK_TOLERANCE;
 var LINE_HIT_DISTANCE = LINE_WEIGHT / 2;
@@ -110,7 +112,7 @@ function emptyData() {
         substationIds: [], substationTexts: [], substationX: new Float64Array(0), substationY: new Float64Array(0),
         substationColor: new Int32Array(0), substationBaseVoltages: [],
         lineIds: [], lineTexts: [], lineStart: new Int32Array(1), lineBounds: new Float64Array(0),
-        lineColor: new Int32Array(0), lineBaseVoltages: [],
+        lineColor: new Int32Array(0), lineBaseVoltages: [], lineDisconnected: new Uint8Array(0),
         pointX: new Float64Array(0), pointY: new Float64Array(0), pointLine: new Int32Array(0),
         grid: null
     };
@@ -158,6 +160,7 @@ function buildData(json) {
     d.lineStart = new Int32Array(lineCount + 1);
     d.lineBounds = new Float64Array(lineCount * 4);
     d.lineColor = new Int32Array(lineCount);
+    d.lineDisconnected = new Uint8Array(lineCount);
     d.pointX = new Float64Array(pointCount);
     d.pointY = new Float64Array(pointCount);
     d.pointLine = new Int32Array(pointCount);
@@ -167,6 +170,7 @@ function buildData(json) {
         d.lineTexts.push(line.text);
         d.lineColor[i] = colorIndex(line.color);
         d.lineBaseVoltages.push(line.baseVoltage);
+        d.lineDisconnected[i] = line.disconnected ? 1 : 0;
         d.lineStart[i] = k;
         var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         line.points.forEach(function (point) {
@@ -380,37 +384,43 @@ var NetworkLayer = L.Layer.extend({
         }
 
         ctx.lineWidth = LINE_WEIGHT;
-        // one batched path per color, as a canvas path has a single stroke style
-        for (var color = 0; color < data.colors.length; color++) {
-            ctx.beginPath();
-            for (var line = 0; line < data.lineIds.length; line++) {
-                if (data.lineColor[line] !== color || hiddenBaseVoltages[data.lineBaseVoltages[line]]) {
-                    continue;
-                }
-                var b = line * 4;
-                if (data.lineBounds[b + 2] < viewMinX || data.lineBounds[b] > viewMaxX
-                    || data.lineBounds[b + 3] < viewMinY || data.lineBounds[b + 1] > viewMaxY) {
-                    continue;
-                }
-                var start = data.lineStart[line], end = data.lineStart[line + 1];
-                var lastX = data.pointX[start] * scale - offsetX;
-                var lastY = data.pointY[start] * scale - offsetY;
-                ctx.moveTo(lastX, lastY);
-                for (var k = start + 1; k < end; k++) {
-                    var x = data.pointX[k] * scale - offsetX;
-                    var y = data.pointY[k] * scale - offsetY;
-                    // sub-pixel steps are invisible, and skipping them keeps zoomed-out paths short
-                    if (k < end - 1 && Math.abs(x - lastX) < 1 && Math.abs(y - lastY) < 1) {
+        // one batched path per color and dash style, as a canvas path has a single stroke style
+        for (var dashed = 0; dashed < 2; dashed++) {
+            ctx.setLineDash(dashed ? LINE_DASH : []);
+            for (var color = 0; color < data.colors.length; color++) {
+                ctx.beginPath();
+                for (var line = 0; line < data.lineIds.length; line++) {
+                    if (data.lineColor[line] !== color || data.lineDisconnected[line] !== dashed
+                        || hiddenBaseVoltages[data.lineBaseVoltages[line]]) {
                         continue;
                     }
-                    ctx.lineTo(x, y);
-                    lastX = x;
-                    lastY = y;
+                    var b = line * 4;
+                    if (data.lineBounds[b + 2] < viewMinX || data.lineBounds[b] > viewMaxX
+                        || data.lineBounds[b + 3] < viewMinY || data.lineBounds[b + 1] > viewMaxY) {
+                        continue;
+                    }
+                    var start = data.lineStart[line], end = data.lineStart[line + 1];
+                    var lastX = data.pointX[start] * scale - offsetX;
+                    var lastY = data.pointY[start] * scale - offsetY;
+                    ctx.moveTo(lastX, lastY);
+                    for (var k = start + 1; k < end; k++) {
+                        var x = data.pointX[k] * scale - offsetX;
+                        var y = data.pointY[k] * scale - offsetY;
+                        // sub-pixel steps are invisible, and skipping them keeps zoomed-out paths short
+                        if (k < end - 1 && Math.abs(x - lastX) < 1 && Math.abs(y - lastY) < 1) {
+                            continue;
+                        }
+                        ctx.lineTo(x, y);
+                        lastX = x;
+                        lastY = y;
+                    }
                 }
+                ctx.strokeStyle = data.colors[color];
+                ctx.stroke();
             }
-            ctx.strokeStyle = data.colors[color];
-            ctx.stroke();
         }
+        // the countries are stroked with this context on the next redraw
+        ctx.setLineDash([]);
 
         // WebKit's JavaFX port replays canvas calls through Prism on the FX thread, and on the Map test
         // network 10k substations as arcs in one path measured ~375 ms of that replay (~140 ms as rects),

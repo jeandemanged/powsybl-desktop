@@ -29,7 +29,8 @@ import java.util.Random;
  * lower nominal voltage of its two substations: the higher one gets an extra voltage level at that voltage, so
  * that lines always connect voltage levels of the same nominal voltage and a substation's highest voltage level
  * stays its own. Within a substation, voltage levels are chained by transformers in decreasing nominal voltage
- * order (e.g. 400/220 and 220/90), so the whole network is one connected component.
+ * order (e.g. 400/220 and 220/90), so the whole network is one connected component. {@value #DISCONNECTED_LINE_SHARE}
+ * of the lines, picked at random, are disconnected on their first side.
  * <ul>
  *     <li>{@link #create()}: 100 x 100 substations over mainland France, every neighbour linked.</li>
  *     <li>{@link #createEurope()}: 200 x 250 substations over Europe, all horizontal neighbours and a random subset of
@@ -46,6 +47,7 @@ public final class MapTestNetworkFactory {
     private static final int LINE_BREAKS = 10;
     /** Zigzag amplitude of the line breaks, as a fraction of the line length. */
     private static final double LINE_ZIGZAG = 0.1;
+    private static final double DISCONNECTED_LINE_SHARE = 0.05;
     private static final double[] NOMINAL_VOLTAGES = {400, 220, 150, 90, 63};
     private static final double[] NOMINAL_VOLTAGE_SHARES = {0.2, 0.3, 0.15, 0.2, 0.15};
 
@@ -73,6 +75,7 @@ public final class MapTestNetworkFactory {
             }
         }
         addTransformers(network);
+        disconnectLines(network);
         return network;
     }
 
@@ -96,6 +99,7 @@ public final class MapTestNetworkFactory {
             addLine(network, EUROPE, cell[0], cell[1], cell[0] + 1, cell[1], LINE_BREAKS);
         }
         addTransformers(network);
+        disconnectLines(network);
         return network;
     }
 
@@ -150,6 +154,14 @@ public final class MapTestNetworkFactory {
                         .add();
             }
         }
+    }
+
+    private static void disconnectLines(Network network) {
+        List<Line> lines = new ArrayList<>(network.getLineStream().toList());
+        // fixed seed so the network is the same on every load
+        Collections.shuffle(lines, new Random(0));
+        lines.subList(0, (int) Math.round(lines.size() * DISCONNECTED_LINE_SHARE))
+                .forEach(line -> line.getTerminal1().disconnect());
     }
 
     private static String busId(VoltageLevel voltageLevel) {
