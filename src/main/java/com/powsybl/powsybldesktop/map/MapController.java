@@ -9,9 +9,12 @@ package com.powsybl.powsybldesktop.map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.powsybl.commons.config.BaseVoltageConfig;
+import com.powsybl.commons.config.BaseVoltagesConfig;
 import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
+import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.LinePosition;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
 import com.powsybl.powsybldesktop.MainModel;
@@ -23,8 +26,13 @@ import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.concurrent.Worker;
 import javafx.fxml.FXML;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.web.WebView;
 import javafx.util.StringConverter;
 import netscape.javascript.JSObject;
@@ -36,8 +44,13 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Shows substations and lines on a basemap, using the coordinates carried by the IIDM
@@ -55,6 +68,13 @@ import java.util.Objects;
  * The default basemap is {@link Basemap#OFFLINE}, country outlines bundled as {@code countries.geojson}
  * (Natural Earth 1:50m admin-0 countries, public domain, properties stripped and coordinates rounded to
  * 0.01 degree), so the view works without internet access. OpenStreetMap tiles are opt-in.
+ * <p>
+ * Substations and lines are colored by base voltage like single line diagrams: ranges from the
+ * {@link BaseVoltagesConfig}, colors from the single line diagram's {@code baseVoltages.css}. A substation
+ * takes its highest voltage level nominal voltage, a line the highest of its two ends. The highest base voltage
+ * range is open-ended here, so e.g. 750 kV equipment is shown as the 300-500 kV range rather than uncolored.
+ * Each base voltage can be hidden from an overlay checkbox, remembered in
+ * {@link MainModel#getMapHiddenBaseVoltages()}.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -87,6 +107,10 @@ public class MapController extends AbstractDisposableController {
             </html>
             """;
 
+    private static final Pattern BASE_VOLTAGE_COLOR = Pattern.compile("\\.sld-(\\w+)\\s*\\{\\s*--sld-vl-color:\\s*(#\\w+)\\s*}");
+    private static final String DEFAULT_SUBSTATION_COLOR = "#000000";
+    private static final String DEFAULT_LINE_COLOR = "#616161";
+
     private enum Basemap {
         OFFLINE("offline", "map.basemap.offline"),
         OPEN_STREET_MAP("osm", "map.basemap.openStreetMap");
@@ -101,6 +125,16 @@ public class MapController extends AbstractDisposableController {
     }
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final BaseVoltagesConfig baseVoltagesConfig = BaseVoltagesConfig.fromPlatformConfig();
+    private final Map<String, String> baseVoltageColors = readBaseVoltageColors();
+    private final List<BaseVoltageConfig> baseVoltages = baseVoltagesConfig.getBaseVoltages().stream()
+            .filter(baseVoltage -> baseVoltage.getProfile().equals(baseVoltagesConfig.getDefaultProfile()))
+            .toList();
+    private final BaseVoltageConfig highestBaseVoltage = baseVoltages.stream()
+            .max(Comparator.comparingDouble(BaseVoltageConfig::getMaxValue))
+            .orElse(null);
+    private final List<CheckBox> baseVoltageCheckBoxes = new ArrayList<>();
+    private boolean settingAllBaseVoltages;
 
     @FXML
     private WebView webView;
@@ -110,6 +144,15 @@ public class MapController extends AbstractDisposableController {
 
     @FXML
     private Label basemapUnreachableLabel;
+
+    @FXML
+    private VBox baseVoltagesBox;
+
+    @FXML
+    private Hyperlink checkAllBaseVoltagesLink;
+
+    @FXML
+    private Hyperlink checkNoBaseVoltagesLink;
 
     private MainModel mainModel;
     private boolean engineLoaded;
@@ -141,6 +184,7 @@ public class MapController extends AbstractDisposableController {
                 window.setMember("controller", this);
                 engineLoaded = true;
                 applyBasemap();
+                applyHiddenBaseVoltages();
                 invalidateMapSize();
                 refresh();
             }
@@ -184,6 +228,50 @@ public class MapController extends AbstractDisposableController {
         this.mainModel = Objects.requireNonNull(mainModel);
         listenerManager.listen(mainModel.networkProperty(), (observable, oldValue, newValue) -> refresh());
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
+        createBaseVoltageCheckBoxes();
+    }
+
+    private void createBaseVoltageCheckBoxes() {
+        checkAllBaseVoltagesLink.setOnAction(event -> setAllBaseVoltagesSelected(true));
+        checkNoBaseVoltagesLink.setOnAction(event -> setAllBaseVoltagesSelected(false));
+        for (BaseVoltageConfig baseVoltage : baseVoltages) {
+            CheckBox checkBox = new CheckBox(baseVoltage == highestBaseVoltage
+                    ? Messages.get("map.baseVoltages.rangeAbove", baseVoltage.getMinValue())
+                    : Messages.get("map.baseVoltages.range", baseVoltage.getMinValue(), baseVoltage.getMaxValue()));
+            checkBox.setGraphic(new Rectangle(10, 10, Color.web(color(baseVoltage.getName(), DEFAULT_SUBSTATION_COLOR))));
+            checkBox.setSelected(!mainModel.getMapHiddenBaseVoltages().contains(baseVoltage.getName()));
+            checkBox.selectedProperty().addListener((observable, oldValue, selected) -> {
+                if (selected) {
+                    mainModel.getMapHiddenBaseVoltages().remove(baseVoltage.getName());
+                } else {
+                    mainModel.getMapHiddenBaseVoltages().add(baseVoltage.getName());
+                }
+                if (!settingAllBaseVoltages) {
+                    applyHiddenBaseVoltages();
+                }
+            });
+            baseVoltageCheckBoxes.add(checkBox);
+            baseVoltagesBox.getChildren().add(checkBox);
+        }
+    }
+
+    // a single redraw rather than one per checkbox
+    private void setAllBaseVoltagesSelected(boolean selected) {
+        settingAllBaseVoltages = true;
+        baseVoltageCheckBoxes.forEach(checkBox -> checkBox.setSelected(selected));
+        settingAllBaseVoltages = false;
+        applyHiddenBaseVoltages();
+    }
+
+    // filtered in map.js rather than by re-sending the network, which would rebuild all its arrays and its grid
+    private void applyHiddenBaseVoltages() {
+        if (engineLoaded) {
+            try {
+                webView.getEngine().executeScript("setHiddenBaseVoltages(" + objectMapper.writeValueAsString(mainModel.getMapHiddenBaseVoltages()) + ")");
+            } catch (JsonProcessingException e) {
+                LOGGER.error(e.getMessage(), e);
+            }
+        }
     }
 
     /**
@@ -224,9 +312,11 @@ public class MapController extends AbstractDisposableController {
             network.getSubstationStream().forEach(substation -> {
                 SubstationPosition position = substation.getExtension(SubstationPosition.class);
                 if (position != null) {
+                    String baseVoltage = baseVoltageName(substation.getVoltageLevelStream()
+                            .mapToDouble(VoltageLevel::getNominalV).max().orElse(Double.NaN));
                     substations.add(new MarkerData(substation.getId(),
                             position.getCoordinate().getLatitude(), position.getCoordinate().getLongitude(),
-                            substation.getNameOrId()));
+                            substation.getNameOrId(), baseVoltage, color(baseVoltage, DEFAULT_SUBSTATION_COLOR)));
                 }
             });
             network.getLineStream().forEach(line -> {
@@ -235,7 +325,9 @@ public class MapController extends AbstractDisposableController {
                     List<double[]> points = position.getCoordinates().stream()
                             .map(coordinate -> new double[] {coordinate.getLatitude(), coordinate.getLongitude()})
                             .toList();
-                    lines.add(new LineData(line.getId(), points, line.getNameOrId()));
+                    String baseVoltage = baseVoltageName(Math.max(line.getTerminal1().getVoltageLevel().getNominalV(),
+                            line.getTerminal2().getVoltageLevel().getNominalV()));
+                    lines.add(new LineData(line.getId(), points, line.getNameOrId(), baseVoltage, color(baseVoltage, DEFAULT_LINE_COLOR)));
                 }
             });
         }
@@ -252,6 +344,26 @@ public class MapController extends AbstractDisposableController {
         }
     }
 
+    private String baseVoltageName(double nominalV) {
+        if (highestBaseVoltage != null && nominalV >= highestBaseVoltage.getMinValue()) {
+            return highestBaseVoltage.getName();
+        }
+        return baseVoltagesConfig.getBaseVoltageName(nominalV, baseVoltagesConfig.getDefaultProfile()).orElse(null);
+    }
+
+    private String color(String baseVoltage, String defaultColor) {
+        return baseVoltage == null ? defaultColor : baseVoltageColors.getOrDefault(baseVoltage, defaultColor);
+    }
+
+    private Map<String, String> readBaseVoltageColors() {
+        Map<String, String> colors = new HashMap<>();
+        Matcher matcher = BASE_VOLTAGE_COLOR.matcher(readResource("/baseVoltages.css"));
+        while (matcher.find()) {
+            colors.put(matcher.group(1), matcher.group(2));
+        }
+        return colors;
+    }
+
     private String readResource(String name) {
         try (var stream = getClass().getResourceAsStream(name)) {
             return new String(Objects.requireNonNull(stream).readAllBytes(), StandardCharsets.UTF_8);
@@ -260,10 +372,10 @@ public class MapController extends AbstractDisposableController {
         }
     }
 
-    private record MarkerData(String id, double lat, double lng, String text) {
+    private record MarkerData(String id, double lat, double lng, String text, String baseVoltage, String color) {
     }
 
-    private record LineData(String id, List<double[]> points, String text) {
+    private record LineData(String id, List<double[]> points, String text, String baseVoltage, String color) {
     }
 
     private record MapData(List<MarkerData> substations, List<LineData> lines) {

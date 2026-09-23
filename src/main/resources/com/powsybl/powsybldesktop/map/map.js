@@ -106,8 +106,11 @@ function buildCountries(geojson) {
 
 function emptyData() {
     return {
+        colors: [],
         substationIds: [], substationTexts: [], substationX: new Float64Array(0), substationY: new Float64Array(0),
+        substationColor: new Int32Array(0), substationBaseVoltages: [],
         lineIds: [], lineTexts: [], lineStart: new Int32Array(1), lineBounds: new Float64Array(0),
+        lineColor: new Int32Array(0), lineBaseVoltages: [],
         pointX: new Float64Array(0), pointY: new Float64Array(0), pointLine: new Int32Array(0),
         grid: null
     };
@@ -125,15 +128,26 @@ function decodeBase64Json(base64) {
 
 function buildData(json) {
     var d = emptyData();
+    var colorIndices = {};
+    function colorIndex(color) {
+        if (!(color in colorIndices)) {
+            colorIndices[color] = d.colors.length;
+            d.colors.push(color);
+        }
+        return colorIndices[color];
+    }
     var substationCount = json.substations.length;
     d.substationX = new Float64Array(substationCount);
     d.substationY = new Float64Array(substationCount);
+    d.substationColor = new Int32Array(substationCount);
     json.substations.forEach(function (substation, i) {
         var p = map.project([substation.lat, substation.lng], 0);
         d.substationIds.push(substation.id);
         d.substationTexts.push(substation.text);
         d.substationX[i] = p.x;
         d.substationY[i] = p.y;
+        d.substationColor[i] = colorIndex(substation.color);
+        d.substationBaseVoltages.push(substation.baseVoltage);
     });
 
     var lineCount = json.lines.length;
@@ -143,6 +157,7 @@ function buildData(json) {
     });
     d.lineStart = new Int32Array(lineCount + 1);
     d.lineBounds = new Float64Array(lineCount * 4);
+    d.lineColor = new Int32Array(lineCount);
     d.pointX = new Float64Array(pointCount);
     d.pointY = new Float64Array(pointCount);
     d.pointLine = new Int32Array(pointCount);
@@ -150,6 +165,8 @@ function buildData(json) {
     json.lines.forEach(function (line, i) {
         d.lineIds.push(line.id);
         d.lineTexts.push(line.text);
+        d.lineColor[i] = colorIndex(line.color);
+        d.lineBaseVoltages.push(line.baseVoltage);
         d.lineStart[i] = k;
         var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         line.points.forEach(function (point) {
@@ -238,6 +255,18 @@ function squaredDistanceToSegment(px, py, ax, ay, bx, by) {
     return ex * ex + ey * ey;
 }
 
+// base voltage name -> true, for the base voltages whose substations and lines are neither drawn nor hit-tested
+var hiddenBaseVoltages = {};
+
+function setHiddenBaseVoltages(names) {
+    hiddenBaseVoltages = {};
+    names.forEach(function (name) {
+        hiddenBaseVoltages[name] = true;
+    });
+    setHovered(null);
+    networkLayer.redraw();
+}
+
 // Substations win over lines, as they're drawn on top; among each kind the closest one wins.
 function hitTest(latlng) {
     var grid = data.grid;
@@ -263,6 +292,9 @@ function hitTest(latlng) {
                 var item = cell[j];
                 var distance;
                 if (item >= 0) {
+                    if (hiddenBaseVoltages[data.substationBaseVoltages[item]]) {
+                        continue;
+                    }
                     var sx = data.substationX[item] - p.x, sy = data.substationY[item] - p.y;
                     distance = sx * sx + sy * sy;
                     if (distance <= bestSubstationDistance) {
@@ -271,6 +303,9 @@ function hitTest(latlng) {
                     }
                 } else {
                     var k = -item - 1;
+                    if (hiddenBaseVoltages[data.lineBaseVoltages[data.pointLine[k]]]) {
+                        continue;
+                    }
                     distance = squaredDistanceToSegment(p.x, p.y,
                         data.pointX[k], data.pointY[k], data.pointX[k + 1], data.pointY[k + 1]);
                     if (distance <= bestLineDistance) {
@@ -344,40 +379,51 @@ var NetworkLayer = L.Layer.extend({
             drawCountries(ctx, scale, offsetX, offsetY, viewMinX, viewMinY, viewMaxX, viewMaxY);
         }
 
-        ctx.beginPath();
-        for (var line = 0; line < data.lineIds.length; line++) {
-            var b = line * 4;
-            if (data.lineBounds[b + 2] < viewMinX || data.lineBounds[b] > viewMaxX
-                || data.lineBounds[b + 3] < viewMinY || data.lineBounds[b + 1] > viewMaxY) {
-                continue;
-            }
-            var start = data.lineStart[line], end = data.lineStart[line + 1];
-            var lastX = data.pointX[start] * scale - offsetX;
-            var lastY = data.pointY[start] * scale - offsetY;
-            ctx.moveTo(lastX, lastY);
-            for (var k = start + 1; k < end; k++) {
-                var x = data.pointX[k] * scale - offsetX;
-                var y = data.pointY[k] * scale - offsetY;
-                // sub-pixel steps are invisible, and skipping them keeps zoomed-out paths short
-                if (k < end - 1 && Math.abs(x - lastX) < 1 && Math.abs(y - lastY) < 1) {
+        ctx.lineWidth = LINE_WEIGHT;
+        // one batched path per color, as a canvas path has a single stroke style
+        for (var color = 0; color < data.colors.length; color++) {
+            ctx.beginPath();
+            for (var line = 0; line < data.lineIds.length; line++) {
+                if (data.lineColor[line] !== color || hiddenBaseVoltages[data.lineBaseVoltages[line]]) {
                     continue;
                 }
-                ctx.lineTo(x, y);
-                lastX = x;
-                lastY = y;
+                var b = line * 4;
+                if (data.lineBounds[b + 2] < viewMinX || data.lineBounds[b] > viewMaxX
+                    || data.lineBounds[b + 3] < viewMinY || data.lineBounds[b + 1] > viewMaxY) {
+                    continue;
+                }
+                var start = data.lineStart[line], end = data.lineStart[line + 1];
+                var lastX = data.pointX[start] * scale - offsetX;
+                var lastY = data.pointY[start] * scale - offsetY;
+                ctx.moveTo(lastX, lastY);
+                for (var k = start + 1; k < end; k++) {
+                    var x = data.pointX[k] * scale - offsetX;
+                    var y = data.pointY[k] * scale - offsetY;
+                    // sub-pixel steps are invisible, and skipping them keeps zoomed-out paths short
+                    if (k < end - 1 && Math.abs(x - lastX) < 1 && Math.abs(y - lastY) < 1) {
+                        continue;
+                    }
+                    ctx.lineTo(x, y);
+                    lastX = x;
+                    lastY = y;
+                }
             }
+            ctx.strokeStyle = data.colors[color];
+            ctx.stroke();
         }
-        ctx.strokeStyle = '#616161';
-        ctx.lineWidth = LINE_WEIGHT;
-        ctx.stroke();
 
         // WebKit's JavaFX port replays canvas calls through Prism on the FX thread, and on the Map test
         // network 10k substations as arcs in one path measured ~375 ms of that replay (~140 ms as rects),
         // against ~20 ms as blits of a pre-rendered sprite.
-        var sprite = substationSprite(ratio);
-        var spriteSize = sprite.width / ratio;
+        var colorSprites = data.colors.map(function (color) {
+            return substationSprite(ratio, color);
+        });
+        var spriteSize = Math.ceil(SUBSTATION_SIZE * ratio) / ratio;
         var spriteHalf = spriteSize / 2;
         for (var i = 0; i < data.substationIds.length; i++) {
+            if (hiddenBaseVoltages[data.substationBaseVoltages[i]]) {
+                continue;
+            }
             var sx = data.substationX[i], sy = data.substationY[i];
             if (sx < viewMinX - spriteHalf / scale || sx > viewMaxX + spriteHalf / scale
                 || sy < viewMinY - spriteHalf / scale || sy > viewMaxY + spriteHalf / scale) {
@@ -386,7 +432,7 @@ var NetworkLayer = L.Layer.extend({
             // snapped to whole device pixels so the sprite is copied 1:1 rather than resampled
             var left = Math.round((sx * scale - offsetX - spriteHalf) * ratio) / ratio;
             var top = Math.round((sy * scale - offsetY - spriteHalf) * ratio) / ratio;
-            ctx.drawImage(sprite, left, top, spriteSize, spriteSize);
+            ctx.drawImage(colorSprites[data.substationColor[i]], left, top, spriteSize, spriteSize);
         }
     }
 });
@@ -427,16 +473,17 @@ function drawCountries(ctx, scale, offsetX, offsetY, viewMinX, viewMinY, viewMax
 var sprites = {};
 
 // one substation marker pre-rendered at device resolution
-function substationSprite(ratio) {
-    if (!sprites[ratio]) {
+function substationSprite(ratio, color) {
+    var key = ratio + color;
+    if (!sprites[key]) {
         var sprite = document.createElement('canvas');
         sprite.width = sprite.height = Math.ceil(SUBSTATION_SIZE * ratio);
         var ctx = sprite.getContext('2d');
-        ctx.fillStyle = '#000000';
+        ctx.fillStyle = color;
         ctx.fillRect(0, 0, sprite.width, sprite.height);
-        sprites[ratio] = sprite;
+        sprites[key] = sprite;
     }
-    return sprites[ratio];
+    return sprites[key];
 }
 
 var networkLayer = new NetworkLayer().addTo(map);

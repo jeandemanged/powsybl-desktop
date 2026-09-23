@@ -35,6 +35,7 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.ObservableSet;
 
 import java.time.Instant;
 import java.util.Collections;
@@ -89,6 +90,7 @@ public class MainModel {
     private final DoubleProperty diagramZoom = new SimpleDoubleProperty(1.0);
     private final BooleanProperty diagramFitToScreen = new SimpleBooleanProperty(false);
     private final IntegerProperty diagramAreaDepth = new SimpleIntegerProperty(1);
+    private final ObservableSet<String> mapHiddenBaseVoltages = FXCollections.observableSet();
 
     public MainModel() {
         loadFlowParameters.setValue(new LoadFlowParameters());
@@ -449,5 +451,12 @@ public class MainModel {
 
     public void setDiagramAreaDepth(int depth) {
         diagramAreaDepth.set(depth);
+    }
+
+    /**
+     * Names of the base voltages (see {@code BaseVoltagesConfig}) whose substations and lines the Map view hides.
+     */
+    public ObservableSet<String> getMapHiddenBaseVoltages() {
+        return mapHiddenBaseVoltages;
     }
 }

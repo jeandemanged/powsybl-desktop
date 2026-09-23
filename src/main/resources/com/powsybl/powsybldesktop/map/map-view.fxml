@@ -8,9 +8,11 @@
 -->
 
 <?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Hyperlink?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
 <?import javafx.scene.web.WebView?>
 
 <AnchorPane fx:id="mapContainer" prefHeight="600.0" prefWidth="900.0" xmlns="http://javafx.com/javafx/17.0.12"
@@ -18,12 +20,28 @@
     <children>
         <WebView fx:id="webView" AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0"
                   AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0"/>
-        <HBox alignment="CENTER_RIGHT" spacing="8.0" pickOnBounds="false" AnchorPane.topAnchor="10.0" AnchorPane.rightAnchor="10.0">
+        <VBox alignment="TOP_RIGHT" spacing="8.0" pickOnBounds="false" AnchorPane.topAnchor="10.0" AnchorPane.rightAnchor="10.0">
             <children>
-                <Label fx:id="basemapUnreachableLabel" text="%map.basemap.unreachable" styleClass="alert-label"
-                       style="-fx-background-color: white; -fx-padding: 2 6 2 6;" visible="false" managed="false"/>
-                <ComboBox fx:id="basemapComboBox"/>
+                <HBox alignment="CENTER_RIGHT" spacing="8.0" pickOnBounds="false">
+                    <children>
+                        <Label fx:id="basemapUnreachableLabel" text="%map.basemap.unreachable" styleClass="alert-label"
+                               style="-fx-background-color: white; -fx-padding: 2 6 2 6;" visible="false" managed="false"/>
+                        <ComboBox fx:id="basemapComboBox"/>
+                    </children>
+                </HBox>
+                <VBox fx:id="baseVoltagesBox" spacing="4.0" maxWidth="-Infinity"
+                      style="-fx-background-color: white; -fx-padding: 6 8 6 8; -fx-background-radius: 4;">
+                    <children>
+                        <Label text="%map.baseVoltages" style="-fx-font-weight: bold;"/>
+                        <HBox spacing="4.0">
+                            <children>
+                                <Hyperlink fx:id="checkAllBaseVoltagesLink" text="%map.baseVoltages.checkAll"/>
+                                <Hyperlink fx:id="checkNoBaseVoltagesLink" text="%map.baseVoltages.checkNone"/>
+                            </children>
+                        </HBox>
+                    </children>
+                </VBox>
             </children>
-        </HBox>
+        </VBox>
     </children>
 </AnchorPane>
