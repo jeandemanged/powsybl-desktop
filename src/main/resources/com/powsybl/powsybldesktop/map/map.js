@@ -56,6 +56,8 @@ var LINE_DASH = [6, 6];
 var LINE_HIT_DISTANCE = LINE_WEIGHT / 2;
 var MAX_HIT_DISTANCE = Math.max(SUBSTATION_MAX_SIZE / 2 + SUBSTATION_CLICK_TOLERANCE, LINE_HIT_DISTANCE);
 var CANVAS_PADDING = 0.1;
+// the full redraw after a zoom waits for this long without another zoom, showing a scaled preview meanwhile
+var ZOOM_REDRAW_DELAY_MS = 150;
 var HOVER_THROTTLE_MS = 32;
 // between two network chunks, giving the FX thread a pulse to paint the map filling in
 var LOAD_CHUNK_DELAY_MS = 16;
@@ -122,7 +124,6 @@ function emptyData() {
         grid: null, substationSpacing: Infinity
     };
 }
-
 
 // whole pixels, so zooming only ever creates a handful of sprite sizes
 function substationSize(scale) {
@@ -230,10 +231,63 @@ var NetworkLayer = L.Layer.extend({
 
     getEvents: function () {
         // no viewreset: Leaflet's view reset always ends with a moveend, so listening to both drew twice
-        return {moveend: this.redraw, resize: this.redraw};
+        return {moveend: this._onMoveEnd, resize: this.redraw};
+    },
+
+    // A full redraw of a large network takes long enough to make each zoom step lag, and a burst of mouse wheel
+    // steps queue one each. So a zoom first rescales what the canvas already shows, which costs a couple of
+    // bitmap copies, and redraws once the zooming has paused.
+    _onMoveEnd: function () {
+        if (!this._view || map.getZoomScale(map.getZoom(), 0) === this._view.scale) {
+            this.redraw();
+            return;
+        }
+        this._previewZoom();
+        clearTimeout(this._redrawTimer);
+        var layer = this;
+        this._redrawTimer = setTimeout(function () {
+            layer.redraw();
+        }, ZOOM_REDRAW_DELAY_MS);
+    },
+
+    // Redraws the current canvas content, as laid out for the previous view, scaled and shifted to the current
+    // one: a point p at zoom 0 was at p * oldScale - oldOffset on the canvas, and belongs at p * scale - offset.
+    _previewZoom: function () {
+        var old = this._view;
+        var canvas = this._canvas;
+        if (!this._snapshot) {
+            this._snapshot = document.createElement('canvas');
+        }
+        var snapshot = this._snapshot;
+        if (snapshot.width !== canvas.width || snapshot.height !== canvas.height) {
+            snapshot.width = canvas.width;
+            snapshot.height = canvas.height;
+        }
+        var snapshotCtx = snapshot.getContext('2d');
+        snapshotCtx.clearRect(0, 0, snapshot.width, snapshot.height);
+        snapshotCtx.drawImage(canvas, 0, 0);
+        // WebKit's JavaFX port defers canvas calls, replaying them through Prism later: without forcing this copy
+        // to happen now, it read the canvas after _layOut cleared it, and the preview came out blank. Reading a
+        // pixel back flushes the pending calls.
+        snapshotCtx.getImageData(0, 0, 1, 1);
+
+        var v = this._layOut();
+        var k = v.scale / old.scale;
+        v.ctx.drawImage(snapshot, k * old.offsetX - v.offsetX, k * old.offsetY - v.offsetY,
+            k * snapshot.width / old.ratio, k * snapshot.height / old.ratio);
     },
 
     redraw: function () {
+        clearTimeout(this._redrawTimer);
+        var v = this._layOut();
+        if (showCountries) {
+            drawCountries(v.ctx, v.scale, v.offsetX, v.offsetY, v.viewMinX, v.viewMinY, v.viewMaxX, v.viewMaxY);
+        }
+        this.drawRange(0, data.lineCount, 0, data.substationCount);
+    },
+
+    // Positions, sizes and clears the canvas for the current view, which it returns and records for drawRange.
+    _layOut: function () {
         var mapSize = map.getSize();
         var topLeft = map.containerPointToLayerPoint(mapSize.multiplyBy(-CANVAS_PADDING)).round();
         var canvasSize = mapSize.multiplyBy(1 + CANVAS_PADDING * 2).round();
@@ -269,10 +323,7 @@ var NetworkLayer = L.Layer.extend({
             ctx: ctx, ratio: ratio, scale: scale, offsetX: offsetX, offsetY: offsetY,
             viewMinX: viewMinX, viewMinY: viewMinY, viewMaxX: viewMaxX, viewMaxY: viewMaxY
         };
-        if (showCountries) {
-            drawCountries(ctx, scale, offsetX, offsetY, viewMinX, viewMinY, viewMaxX, viewMaxY);
-        }
-        this.drawRange(0, data.lineCount, 0, data.substationCount);
+        return this._view;
     },
 
     // Draws lines lineFrom to lineTo (exclusive), then substations substationFrom to substationTo (exclusive), over
