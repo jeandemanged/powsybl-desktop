@@ -29,8 +29,10 @@ import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.TieLineNavigationState;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Messages;
+import javafx.animation.PauseTransition;
 import javafx.concurrent.Worker;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Hyperlink;
@@ -39,6 +41,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.web.WebView;
+import javafx.util.Duration;
 import javafx.util.StringConverter;
 import netscape.javascript.JSObject;
 import org.slf4j.Logger;
@@ -156,6 +159,16 @@ public class MapController extends AbstractDisposableController {
     private VBox baseVoltagesBox;
 
     @FXML
+    private Node loadingPane;
+
+    /**
+     * Sending a big network to map.js blocks the FX thread for seconds, and so does the page load. Rendering
+     * the network after a short pause lets a pulse paint the loading indicator and the basemap first; restarting
+     * the pause also coalesces refresh requests arriving meanwhile.
+     */
+    private final PauseTransition renderDelay = new PauseTransition(Duration.millis(50));
+
+    @FXML
     private Hyperlink checkAllBaseVoltagesLink;
 
     @FXML
@@ -196,6 +209,7 @@ public class MapController extends AbstractDisposableController {
                 refresh();
             }
         });
+        renderDelay.setOnFinished(event -> render());
         webView.getEngine().loadContent(html);
 
         // Leaflet computes its container size once, at L.map() init time - which happens as soon as the
@@ -314,10 +328,21 @@ public class MapController extends AbstractDisposableController {
         }
     }
 
+    @Override
+    public void dispose() {
+        renderDelay.stop();
+        super.dispose();
+    }
+
     private void refresh() {
         if (!engineLoaded) {
             return;
         }
+        loadingPane.setVisible(true);
+        renderDelay.playFromStart();
+    }
+
+    private void render() {
         Network network = mainModel.getNetwork();
         List<MarkerData> substations = new ArrayList<>();
         List<LineData> lines = new ArrayList<>();
@@ -347,6 +372,7 @@ public class MapController extends AbstractDisposableController {
             });
         }
         renderNetwork(new MapData(substations, lines));
+        loadingPane.setVisible(false);
     }
 
     private static double nominalV(TieLine tieLine) {
