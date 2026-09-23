@@ -128,7 +128,7 @@ public final class MapTestNetworkFactory {
     }
 
     private static void addTransformers(Network network) {
-        network.getSubstations().forEach(substation -> {
+        for (Substation substation : network.getSubstations()) {
             List<VoltageLevel> voltageLevels = substation.getVoltageLevelStream()
                     .sorted(Comparator.comparingDouble(VoltageLevel::getNominalV).reversed())
                     .toList();
@@ -149,7 +149,7 @@ public final class MapTestNetworkFactory {
                         .setB(0)
                         .add();
             }
-        });
+        }
     }
 
     private static String busId(VoltageLevel voltageLevel) {

@@ -11,17 +11,22 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.powsybl.commons.config.BaseVoltageConfig;
 import com.powsybl.commons.config.BaseVoltagesConfig;
+import com.powsybl.iidm.network.BoundaryLine;
+import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
+import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.LinePosition;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.navigation.BoundaryLineNavigationState;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.LineNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
+import com.powsybl.powsybldesktop.navigation.TieLineNavigationState;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.concurrent.Worker;
@@ -55,8 +60,10 @@ import java.util.regex.Pattern;
 /**
  * Shows substations and lines on a basemap, using the coordinates carried by the IIDM
  * {@link SubstationPosition}/{@link LinePosition} network extensions - equipment without one of those
- * extensions simply isn't drawn. Clicking a substation marker or a line navigates to it in the
- * substations view / lines table, same as any other cross-view link in this app.
+ * extensions simply isn't drawn. Lines, tie lines and boundary lines are drawn alike: the CGMES geographical
+ * layout import puts a tie line's positions on its two boundary line halves, which are then drawn as, and
+ * navigate to, that tie line. Clicking a substation marker or a line navigates to it in the substations view /
+ * lines, tie lines or boundary lines table, same as any other cross-view link in this app.
  * <p>
  * Built the same way as the single line diagram ({@code SubstationsController}/{@code sld.js}): the
  * stylesheet and scripts are injected into a {@link WebView} shell, with a {@code window.controller}
@@ -221,7 +228,9 @@ public class MapController extends AbstractDisposableController {
     public static boolean hasPositions(Network network) {
         return network != null
                 && (network.getSubstationStream().anyMatch(substation -> substation.getExtension(SubstationPosition.class) != null)
-                || network.getLineStream().anyMatch(line -> line.getExtension(LinePosition.class) != null));
+                || network.getLineStream().anyMatch(line -> line.getExtension(LinePosition.class) != null)
+                || network.getTieLineStream().anyMatch(tieLine -> tieLine.getExtension(LinePosition.class) != null)
+                || network.getBoundaryLineStream().anyMatch(boundaryLine -> boundaryLine.getExtension(LinePosition.class) != null));
     }
 
     public void setMainModel(MainModel mainModel) {
@@ -295,9 +304,13 @@ public class MapController extends AbstractDisposableController {
     @SuppressWarnings("unused") // called from map.js
     public void onLineClick(String lineId) {
         Network network = mainModel.getNetwork();
-        Line line = network == null ? null : network.getLine(lineId);
-        if (line != null) {
+        Identifiable<?> identifiable = network == null ? null : network.getIdentifiable(lineId);
+        if (identifiable instanceof Line line) {
             mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_LINES, LineNavigationState.create(line)));
+        } else if (identifiable instanceof TieLine tieLine) {
+            mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_TIE_LINES, TieLineNavigationState.create(tieLine)));
+        } else if (identifiable instanceof BoundaryLine boundaryLine) {
+            mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_BOUNDARY_LINES, BoundaryLineNavigationState.create(boundaryLine)));
         }
     }
 
@@ -319,19 +332,39 @@ public class MapController extends AbstractDisposableController {
                             substation.getNameOrId(), baseVoltage, color(baseVoltage, DEFAULT_SUBSTATION_COLOR)));
                 }
             });
-            network.getLineStream().forEach(line -> {
-                LinePosition<Line> position = line.getExtension(LinePosition.class);
-                if (position != null && !position.getCoordinates().isEmpty()) {
-                    List<double[]> points = position.getCoordinates().stream()
-                            .map(coordinate -> new double[] {coordinate.getLatitude(), coordinate.getLongitude()})
-                            .toList();
-                    String baseVoltage = baseVoltageName(Math.max(line.getTerminal1().getVoltageLevel().getNominalV(),
-                            line.getTerminal2().getVoltageLevel().getNominalV()));
-                    lines.add(new LineData(line.getId(), points, line.getNameOrId(), baseVoltage, color(baseVoltage, DEFAULT_LINE_COLOR)));
+            network.getLineStream().forEach(line -> addLine(lines, line, line,
+                    Math.max(line.getTerminal1().getVoltageLevel().getNominalV(), line.getTerminal2().getVoltageLevel().getNominalV())));
+            network.getTieLineStream().forEach(tieLine -> addLine(lines, tieLine, tieLine, nominalV(tieLine)));
+            network.getBoundaryLineStream().forEach(boundaryLine -> {
+                TieLine tieLine = boundaryLine.getTieLine().orElse(null);
+                if (tieLine == null) {
+                    addLine(lines, boundaryLine, boundaryLine, boundaryLine.getTerminal().getVoltageLevel().getNominalV());
+                } else if (tieLine.getExtension(LinePosition.class) == null) {
+                    addLine(lines, boundaryLine, tieLine, nominalV(tieLine));
                 }
             });
         }
         renderNetwork(new MapData(substations, lines));
+    }
+
+    private static double nominalV(TieLine tieLine) {
+        return Math.max(tieLine.getBoundaryLine1().getTerminal().getVoltageLevel().getNominalV(),
+                tieLine.getBoundaryLine2().getTerminal().getVoltageLevel().getNominalV());
+    }
+
+    /**
+     * Adds {@code positioned}'s line position, if any, drawn as and navigating to {@code shown}: they differ for a
+     * tie line half.
+     */
+    private <T extends Identifiable<T>> void addLine(List<LineData> lines, T positioned, Identifiable<?> shown, double nominalV) {
+        LinePosition<T> position = positioned.getExtension(LinePosition.class);
+        if (position != null && !position.getCoordinates().isEmpty()) {
+            List<double[]> points = position.getCoordinates().stream()
+                    .map(coordinate -> new double[] {coordinate.getLatitude(), coordinate.getLongitude()})
+                    .toList();
+            String baseVoltage = baseVoltageName(nominalV);
+            lines.add(new LineData(shown.getId(), points, shown.getNameOrId(), baseVoltage, color(baseVoltage, DEFAULT_LINE_COLOR)));
+        }
     }
 
     private void renderNetwork(MapData data) {
