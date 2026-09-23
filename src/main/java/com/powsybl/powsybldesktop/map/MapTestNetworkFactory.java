@@ -23,10 +23,11 @@ import java.util.Random;
 
 /**
  * Synthetic networks for stress-testing the Map view, made of a grid of substations linked to their neighbours.
+ * Every line has {@value #LINE_BREAKS} breaks, zigzagging between its substations.
  * <ul>
- *     <li>{@link #create()}: 100 x 100 substations over mainland France, every neighbour linked by a straight line.</li>
+ *     <li>{@link #create()}: 100 x 100 substations over mainland France, every neighbour linked.</li>
  *     <li>{@link #createEurope()}: 200 x 250 substations over Europe, all horizontal neighbours and a random subset of
- *     vertical ones linked, for {@value #EUROPE_LINE_COUNT} lines of {@value #EUROPE_LINE_BREAKS} breaks each.</li>
+ *     vertical ones linked, for {@value #EUROPE_LINE_COUNT} lines.</li>
  * </ul>
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -36,7 +37,7 @@ public final class MapTestNetworkFactory {
     private static final Grid FRANCE = new Grid(100, 100, 42.5, 51.0, -4.5, 8.0);
     private static final Grid EUROPE = new Grid(200, 250, 36.0, 71.0, -10.0, 40.0);
     private static final int EUROPE_LINE_COUNT = 70_000;
-    private static final int EUROPE_LINE_BREAKS = 10;
+    private static final int LINE_BREAKS = 10;
     /** Zigzag amplitude of the line breaks, as a fraction of the line length. */
     private static final double LINE_ZIGZAG = 0.1;
 
@@ -52,14 +53,14 @@ public final class MapTestNetworkFactory {
     }
 
     public static Network create() {
-        Network network = createSubstations("mapTest", FRANCE);
+        Network network = createSubstations("mapTest10k", FRANCE);
         for (int row = 0; row < FRANCE.rows(); row++) {
             for (int col = 0; col < FRANCE.cols(); col++) {
                 if (col + 1 < FRANCE.cols()) {
-                    addLine(network, FRANCE, row, col, row, col + 1, 0);
+                    addLine(network, FRANCE, row, col, row, col + 1, LINE_BREAKS);
                 }
                 if (row + 1 < FRANCE.rows()) {
-                    addLine(network, FRANCE, row, col, row + 1, col, 0);
+                    addLine(network, FRANCE, row, col, row + 1, col, LINE_BREAKS);
                 }
             }
         }
@@ -67,12 +68,12 @@ public final class MapTestNetworkFactory {
     }
 
     public static Network createEurope() {
-        Network network = createSubstations("mapTestEurope", EUROPE);
+        Network network = createSubstations("mapTest50k", EUROPE);
         List<int[]> verticalCandidates = new ArrayList<>();
         for (int row = 0; row < EUROPE.rows(); row++) {
             for (int col = 0; col < EUROPE.cols(); col++) {
                 if (col + 1 < EUROPE.cols()) {
-                    addLine(network, EUROPE, row, col, row, col + 1, EUROPE_LINE_BREAKS);
+                    addLine(network, EUROPE, row, col, row, col + 1, LINE_BREAKS);
                 }
                 if (row + 1 < EUROPE.rows()) {
                     verticalCandidates.add(new int[] {row, col});
@@ -83,7 +84,7 @@ public final class MapTestNetworkFactory {
         Collections.shuffle(verticalCandidates, new Random(0));
         int verticalCount = EUROPE_LINE_COUNT - EUROPE.rows() * (EUROPE.cols() - 1);
         for (int[] cell : verticalCandidates.subList(0, verticalCount)) {
-            addLine(network, EUROPE, cell[0], cell[1], cell[0] + 1, cell[1], EUROPE_LINE_BREAKS);
+            addLine(network, EUROPE, cell[0], cell[1], cell[0] + 1, cell[1], LINE_BREAKS);
         }
         return network;
     }

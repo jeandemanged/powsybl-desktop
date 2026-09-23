@@ -20,9 +20,13 @@ import com.powsybl.powsybldesktop.navigation.LineNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
+import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.concurrent.Worker;
 import javafx.fxml.FXML;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
 import javafx.scene.web.WebView;
+import javafx.util.StringConverter;
 import netscape.javascript.JSObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +40,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Shows substations and lines on an OpenStreetMap basemap, using the coordinates carried by the IIDM
+ * Shows substations and lines on a basemap, using the coordinates carried by the IIDM
  * {@link SubstationPosition}/{@link LinePosition} network extensions - equipment without one of those
  * extensions simply isn't drawn. Clicking a substation marker or a line navigates to it in the
  * substations view / lines table, same as any other cross-view link in this app.
@@ -47,6 +51,10 @@ import java.util.Objects;
  * in - they're unpacked into this package from the {@code org.webjars:leaflet} artifact at build time
  * (see the {@code unpack-leaflet} execution in {@code pom.xml}), so only the version in {@code pom.xml}
  * pins them.
+ * <p>
+ * The default basemap is {@link Basemap#OFFLINE}, country outlines bundled as {@code countries.geojson}
+ * (Natural Earth 1:50m admin-0 countries, public domain, properties stripped and coordinates rounded to
+ * 0.01 degree), so the view works without internet access. OpenStreetMap tiles are opt-in.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -70,6 +78,7 @@ public class MapController extends AbstractDisposableController {
                         .leaflet-container img.leaflet-tile { mix-blend-mode: normal; }
                     </style>
                     <script>%s</script>
+                    <script>var COUNTRIES = %s;</script>
                 </head>
                 <body>
                     <div id="map"></div>
@@ -78,10 +87,29 @@ public class MapController extends AbstractDisposableController {
             </html>
             """;
 
+    private enum Basemap {
+        OFFLINE("offline", "map.basemap.offline"),
+        OPEN_STREET_MAP("osm", "map.basemap.openStreetMap");
+
+        private final String jsName;
+        private final String labelKey;
+
+        Basemap(String jsName, String labelKey) {
+            this.jsName = jsName;
+            this.labelKey = labelKey;
+        }
+    }
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @FXML
     private WebView webView;
+
+    @FXML
+    private ComboBox<Basemap> basemapComboBox;
+
+    @FXML
+    private Label basemapUnreachableLabel;
 
     private MainModel mainModel;
     private boolean engineLoaded;
@@ -89,12 +117,30 @@ public class MapController extends AbstractDisposableController {
     @FXML
     private void initialize() {
         webView.setContextMenuEnabled(false);
-        String html = HTML_SHELL.formatted(readResource("leaflet.css"), readResource("leaflet.js"), readResource("map.js"));
+        basemapComboBox.getItems().setAll(Basemap.values());
+        basemapComboBox.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(Basemap basemap) {
+                return basemap == null ? "" : Messages.get(basemap.labelKey);
+            }
+
+            @Override
+            public Basemap fromString(String string) {
+                return null;
+            }
+        });
+        basemapComboBox.setValue(Basemap.OFFLINE);
+        basemapComboBox.valueProperty().addListener((observable, oldValue, newValue) -> applyBasemap());
+        basemapUnreachableLabel.managedProperty().bind(basemapUnreachableLabel.visibleProperty());
+
+        String html = HTML_SHELL.formatted(readResource("leaflet.css"), readResource("leaflet.js"),
+                readResource("countries.geojson"), readResource("map.js"));
         webView.getEngine().getLoadWorker().stateProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue == Worker.State.SUCCEEDED) {
                 JSObject window = (JSObject) webView.getEngine().executeScript("window");
                 window.setMember("controller", this);
                 engineLoaded = true;
+                applyBasemap();
                 invalidateMapSize();
                 refresh();
             }
@@ -116,6 +162,13 @@ public class MapController extends AbstractDisposableController {
         }
     }
 
+    private void applyBasemap() {
+        basemapUnreachableLabel.setVisible(false);
+        if (engineLoaded) {
+            webView.getEngine().executeScript("setBasemap('" + basemapComboBox.getValue().jsName + "')");
+        }
+    }
+
     /**
      * Whether {@code network} has anything this view could draw, i.e. at least one substation or line
      * carrying a position extension (only networks imported with the CGMES geographical layout profile do).
@@ -131,6 +184,15 @@ public class MapController extends AbstractDisposableController {
         this.mainModel = Objects.requireNonNull(mainModel);
         listenerManager.listen(mainModel.networkProperty(), (observable, oldValue, newValue) -> refresh());
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
+    }
+
+    /**
+     * Called from map.js as OpenStreetMap tiles load or fail: WebKit gives no other signal of a missing
+     * connection, and a successful tile after a failed one (connection back) clears the warning.
+     */
+    @SuppressWarnings("unused") // called from map.js
+    public void onTileLoad(boolean success) {
+        basemapUnreachableLabel.setVisible(!success && basemapComboBox.getValue() == Basemap.OPEN_STREET_MAP);
     }
 
     @SuppressWarnings("unused") // called from map.js

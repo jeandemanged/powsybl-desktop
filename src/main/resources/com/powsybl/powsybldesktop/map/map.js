@@ -11,10 +11,36 @@ var map = L.map('map', {
     fadeAnimation: false,
     markerZoomAnimation: false
 }).setView([48.8566, 2.3522], 5);
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+
+var osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-}).addTo(map);
+});
+osmLayer.on('tileload', function () {
+    window.controller.onTileLoad(true);
+});
+osmLayer.on('tileerror', function () {
+    window.controller.onTileLoad(false);
+});
+// sea color behind the country outlines; OSM tiles cover it
+var SEA_COLOR = '#aad3df';
+var LAND_COLOR = '#f2efe9';
+var BORDER_COLOR = '#9e9e9e';
+var showCountries = false;
+
+// The offline basemap is drawn by the network layer, below the network, rather than as an L.geoJSON: that
+// re-projected ~100k points through one Leaflet layer per country on every zoom and filled/stroked each
+// country separately, which made it far slower than the network itself.
+function setBasemap(name) {
+    showCountries = name === 'offline';
+    if (showCountries) {
+        map.removeLayer(osmLayer);
+    } else {
+        osmLayer.addTo(map);
+    }
+    map.getContainer().style.background = showCountries ? SEA_COLOR : '';
+    networkLayer.redraw();
+}
 
 var SUBSTATION_RADIUS = 6;
 var SUBSTATION_WEIGHT = 2;
@@ -33,6 +59,50 @@ var HOVER_THROTTLE_MS = 32;
 // batched path and substations as sprite blits. Hover/click hit-testing goes through a uniform grid over
 // the same zoom-0 coordinates.
 var data = emptyData();
+var countries = buildCountries(COUNTRIES);
+
+// every polygon ring of every country, projected at zoom 0 like the network
+function buildCountries(geojson) {
+    var rings = [];
+    geojson.features.forEach(function (feature) {
+        var polygons = feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates] : feature.geometry.coordinates;
+        polygons.forEach(function (polygon) {
+            polygon.forEach(function (ring) {
+                rings.push(ring);
+            });
+        });
+    });
+    var pointCount = 0;
+    rings.forEach(function (ring) {
+        pointCount += ring.length;
+    });
+    var c = {
+        ringStart: new Int32Array(rings.length + 1), ringBounds: new Float64Array(rings.length * 4),
+        pointX: new Float64Array(pointCount), pointY: new Float64Array(pointCount)
+    };
+    var k = 0;
+    rings.forEach(function (ring, i) {
+        c.ringStart[i] = k;
+        var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        ring.forEach(function (point) {
+            // GeoJSON is [lng, lat]
+            var p = map.project([point[1], point[0]], 0);
+            c.pointX[k] = p.x;
+            c.pointY[k] = p.y;
+            minX = Math.min(minX, p.x);
+            minY = Math.min(minY, p.y);
+            maxX = Math.max(maxX, p.x);
+            maxY = Math.max(maxY, p.y);
+            k++;
+        });
+        c.ringBounds[i * 4] = minX;
+        c.ringBounds[i * 4 + 1] = minY;
+        c.ringBounds[i * 4 + 2] = maxX;
+        c.ringBounds[i * 4 + 3] = maxY;
+    });
+    c.ringStart[rings.length] = k;
+    return c;
+}
 
 function emptyData() {
     return {
@@ -270,6 +340,10 @@ var NetworkLayer = L.Layer.extend({
         var viewMinX = offsetX / scale, viewMinY = offsetY / scale;
         var viewMaxX = (offsetX + canvasSize.x) / scale, viewMaxY = (offsetY + canvasSize.y) / scale;
 
+        if (showCountries) {
+            drawCountries(ctx, scale, offsetX, offsetY, viewMinX, viewMinY, viewMaxX, viewMaxY);
+        }
+
         ctx.beginPath();
         for (var line = 0; line < data.lineIds.length; line++) {
             var b = line * 4;
@@ -316,6 +390,39 @@ var NetworkLayer = L.Layer.extend({
         }
     }
 });
+
+// Whole countries in one path, so the fill and the stroke are one canvas call each for the whole basemap.
+// Countries don't overlap, so even-odd filling leaves exactly the holes (e.g. Lesotho in South Africa) unfilled.
+function drawCountries(ctx, scale, offsetX, offsetY, viewMinX, viewMinY, viewMaxX, viewMaxY) {
+    ctx.beginPath();
+    for (var ring = 0; ring < countries.ringStart.length - 1; ring++) {
+        var b = ring * 4;
+        if (countries.ringBounds[b + 2] < viewMinX || countries.ringBounds[b] > viewMaxX
+            || countries.ringBounds[b + 3] < viewMinY || countries.ringBounds[b + 1] > viewMaxY) {
+            continue;
+        }
+        var start = countries.ringStart[ring], end = countries.ringStart[ring + 1];
+        var lastX = countries.pointX[start] * scale - offsetX;
+        var lastY = countries.pointY[start] * scale - offsetY;
+        ctx.moveTo(lastX, lastY);
+        for (var k = start + 1; k < end; k++) {
+            var x = countries.pointX[k] * scale - offsetX;
+            var y = countries.pointY[k] * scale - offsetY;
+            if (Math.abs(x - lastX) < 1 && Math.abs(y - lastY) < 1) {
+                continue;
+            }
+            ctx.lineTo(x, y);
+            lastX = x;
+            lastY = y;
+        }
+        ctx.closePath();
+    }
+    ctx.fillStyle = LAND_COLOR;
+    ctx.fill('evenodd');
+    ctx.strokeStyle = BORDER_COLOR;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+}
 
 var sprites = {};
 
