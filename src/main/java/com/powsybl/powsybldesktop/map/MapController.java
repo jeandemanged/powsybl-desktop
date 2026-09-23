@@ -18,6 +18,7 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.iidm.network.extensions.LinePosition;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
 import com.powsybl.powsybldesktop.MainModel;
@@ -29,7 +30,8 @@ import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.TieLineNavigationState;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Messages;
-import javafx.animation.PauseTransition;
+import javafx.concurrent.Service;
+import javafx.concurrent.Task;
 import javafx.concurrent.Worker;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
@@ -41,7 +43,6 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.web.WebView;
-import javafx.util.Duration;
 import javafx.util.StringConverter;
 import netscape.javascript.JSObject;
 import org.slf4j.Logger;
@@ -51,7 +52,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Base64;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -120,6 +122,21 @@ public class MapController extends AbstractDisposableController {
     private static final Pattern BASE_VOLTAGE_COLOR = Pattern.compile("\\.sld-(\\w+)\\s*\\{\\s*--sld-vl-color:\\s*(#\\w+)\\s*}");
     private static final String DEFAULT_SUBSTATION_COLOR = "#000000";
     private static final String DEFAULT_LINE_COLOR = "#616161";
+    /** Leaflet's {@code L.Projection.SphericalMercator.MAX_LATITUDE}. */
+    private static final double MAX_LATITUDE = 85.0511287798;
+    /** Width of the world at zoom 0, in pixels. */
+    private static final double WORLD_SIZE = 256;
+    /**
+     * Projected coordinates are rounded to this, still 0.05 px at Leaflet's max zoom 19, to keep the JSON short:
+     * Jackson writes the shortest representation of each double.
+     */
+    private static final double COORDINATE_PRECISION = 1e7;
+    /** The hit-testing grid has this many cells along each axis. */
+    private static final int GRID_SIZE = 128;
+    /** Nearest neighbour distances are measured on at most this many substations, enough for a median. */
+    private static final int SPACING_SAMPLE_SIZE = 1000;
+    /** At most this many substations and this many lines per chunk sent to map.js. */
+    private static final int CHUNK_SIZE = 2500;
 
     private enum Basemap {
         OFFLINE("offline", "map.basemap.offline"),
@@ -162,11 +179,21 @@ public class MapController extends AbstractDisposableController {
     private Node loadingPane;
 
     /**
-     * Sending a big network to map.js blocks the FX thread for seconds, and so does the page load. Rendering
-     * the network after a short pause lets a pulse paint the loading indicator and the basemap first; restarting
-     * the pause also coalesces refresh requests arriving meanwhile.
+     * Builds the JSON sent to map.js off the FX thread, so the loading indicator and the basemap are painted
+     * meanwhile. Restarting it on each refresh cancels a build still running, whose result is then dropped.
      */
-    private final PauseTransition renderDelay = new PauseTransition(Duration.millis(50));
+    private final Service<List<String>> networkDataService = new Service<>() {
+        @Override
+        protected Task<List<String>> createTask() {
+            Network network = mainModel.getNetwork();
+            return new Task<>() {
+                @Override
+                protected List<String> call() throws JsonProcessingException {
+                    return buildNetworkData(network);
+                }
+            };
+        }
+    };
 
     @FXML
     private Hyperlink checkAllBaseVoltagesLink;
@@ -176,6 +203,7 @@ public class MapController extends AbstractDisposableController {
 
     private MainModel mainModel;
     private boolean engineLoaded;
+    private JSObject jsWindow;
 
     @FXML
     private void initialize() {
@@ -200,8 +228,8 @@ public class MapController extends AbstractDisposableController {
                 readResource("countries.geojson"), readResource("map.js"));
         webView.getEngine().getLoadWorker().stateProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue == Worker.State.SUCCEEDED) {
-                JSObject window = (JSObject) webView.getEngine().executeScript("window");
-                window.setMember("controller", this);
+                jsWindow = (JSObject) webView.getEngine().executeScript("window");
+                jsWindow.setMember("controller", this);
                 engineLoaded = true;
                 applyBasemap();
                 applyHiddenBaseVoltages();
@@ -209,7 +237,18 @@ public class MapController extends AbstractDisposableController {
                 refresh();
             }
         });
-        renderDelay.setOnFinished(event -> render());
+        networkDataService.setOnSucceeded(event -> {
+            // Passed as JS string arguments rather than spliced into a script, so they need no escaping. map.js
+            // only queues the chunks here, and applies them one by one afterwards, see onNetworkRendered.
+            List<String> jsons = networkDataService.getValue();
+            jsWindow.call("renderNetwork", jsons.getFirst());
+            jsons.subList(1, jsons.size() - 1).forEach(chunk -> jsWindow.call("addNetworkChunk", chunk));
+            jsWindow.call("endNetwork", jsons.getLast());
+        });
+        networkDataService.setOnFailed(event -> {
+            LOGGER.error(networkDataService.getException().getMessage(), networkDataService.getException());
+            loadingPane.setVisible(false);
+        });
         webView.getEngine().loadContent(html);
 
         // Leaflet computes its container size once, at L.map() init time - which happens as soon as the
@@ -306,6 +345,14 @@ public class MapController extends AbstractDisposableController {
         basemapUnreachableLabel.setVisible(!success && basemapComboBox.getValue() == Basemap.OPEN_STREET_MAP);
     }
 
+    /**
+     * Called from map.js once it has applied the last piece of the network sent by the latest refresh.
+     */
+    @SuppressWarnings("unused") // called from map.js
+    public void onNetworkRendered() {
+        loadingPane.setVisible(false);
+    }
+
     @SuppressWarnings("unused") // called from map.js
     public void onSubstationClick(String substationId) {
         Network network = mainModel.getNetwork();
@@ -330,7 +377,7 @@ public class MapController extends AbstractDisposableController {
 
     @Override
     public void dispose() {
-        renderDelay.stop();
+        networkDataService.cancel();
         super.dispose();
     }
 
@@ -339,11 +386,18 @@ public class MapController extends AbstractDisposableController {
             return;
         }
         loadingPane.setVisible(true);
-        renderDelay.playFromStart();
+        networkDataService.restart();
     }
 
-    private void render() {
-        Network network = mainModel.getNetwork();
+    /**
+     * Runs off the FX thread: must not touch the scene graph or the WebView. Everything map.js would otherwise
+     * compute per element is done here - the projection to Leaflet's zoom 0 pixel coordinates, line bounds, color
+     * indices, the hit-testing grid, the substation spacing - as the FX thread runs map.js.
+     * <p>
+     * The result is sent in pieces map.js applies one at a time, painting in between: a {@link MapHeader}, then
+     * {@link MapChunk}s of at most {@value #CHUNK_SIZE} substations and lines each, then the {@link GridData}.
+     */
+    private List<String> buildNetworkData(Network network) throws JsonProcessingException {
         List<MarkerData> substations = new ArrayList<>();
         List<LineData> lines = new ArrayList<>();
         if (network != null) {
@@ -353,7 +407,7 @@ public class MapController extends AbstractDisposableController {
                     String baseVoltage = baseVoltageName(substation.getVoltageLevelStream()
                             .mapToDouble(VoltageLevel::getNominalV).max().orElse(Double.NaN));
                     substations.add(new MarkerData(substation.getId(),
-                            position.getCoordinate().getLatitude(), position.getCoordinate().getLongitude(),
+                            projectX(position.getCoordinate().getLongitude()), projectY(position.getCoordinate().getLatitude()),
                             substation.getNameOrId(), baseVoltage, color(baseVoltage, DEFAULT_SUBSTATION_COLOR)));
                 }
             });
@@ -371,8 +425,276 @@ public class MapController extends AbstractDisposableController {
                 }
             });
         }
-        renderNetwork(new MapData(substations, lines));
-        loadingPane.setVisible(false);
+        return toJsonPieces(toMapData(substations, lines));
+    }
+
+    private List<String> toJsonPieces(MapData data) throws JsonProcessingException {
+        int substationCount = data.substationIds().length;
+        int lineCount = data.lineIds().length;
+        GridData grid = data.grid();
+        List<String> jsons = new ArrayList<>();
+        jsons.add(objectMapper.writeValueAsString(new MapHeader(data.colors(), substationCount, lineCount, data.pointX().length,
+                grid == null ? null : new double[] {grid.minX(), grid.minY(), grid.maxX(), grid.maxY()},
+                substationSpacing(grid, data.substationX(), data.substationY()))));
+        int chunkCount = Math.ceilDiv(Math.max(substationCount, lineCount), CHUNK_SIZE);
+        for (int i = 0; i < chunkCount; i++) {
+            int substationFrom = (int) ((long) substationCount * i / chunkCount);
+            int substationTo = (int) ((long) substationCount * (i + 1) / chunkCount);
+            int lineFrom = (int) ((long) lineCount * i / chunkCount);
+            int lineTo = (int) ((long) lineCount * (i + 1) / chunkCount);
+            int pointFrom = data.lineStart()[lineFrom];
+            int pointTo = data.lineStart()[lineTo];
+            jsons.add(objectMapper.writeValueAsString(new MapChunk(
+                    substationFrom,
+                    Arrays.copyOfRange(data.substationIds(), substationFrom, substationTo),
+                    Arrays.copyOfRange(data.substationTexts(), substationFrom, substationTo),
+                    Arrays.copyOfRange(data.substationX(), substationFrom, substationTo),
+                    Arrays.copyOfRange(data.substationY(), substationFrom, substationTo),
+                    Arrays.copyOfRange(data.substationColor(), substationFrom, substationTo),
+                    Arrays.copyOfRange(data.substationBaseVoltages(), substationFrom, substationTo),
+                    lineFrom,
+                    Arrays.copyOfRange(data.lineIds(), lineFrom, lineTo),
+                    Arrays.copyOfRange(data.lineTexts(), lineFrom, lineTo),
+                    Arrays.copyOfRange(data.lineStart(), lineFrom, lineTo + 1),
+                    Arrays.copyOfRange(data.lineBounds(), lineFrom * 4, lineTo * 4),
+                    Arrays.copyOfRange(data.lineColor(), lineFrom, lineTo),
+                    Arrays.copyOfRange(data.lineBaseVoltages(), lineFrom, lineTo),
+                    Arrays.copyOfRange(data.lineDisconnected(), lineFrom, lineTo),
+                    pointFrom,
+                    Arrays.copyOfRange(data.pointX(), pointFrom, pointTo),
+                    Arrays.copyOfRange(data.pointY(), pointFrom, pointTo),
+                    Arrays.copyOfRange(data.pointLine(), pointFrom, pointTo))));
+        }
+        jsons.add(objectMapper.writeValueAsString(grid));
+        return jsons;
+    }
+
+    /**
+     * Median distance, at zoom 0, from a substation to its nearest neighbour, which map.js sizes substation markers
+     * from; null with fewer than two distinct positions.
+     */
+    private static Double substationSpacing(GridData grid, double[] substationX, double[] substationY) {
+        if (grid == null || substationX.length < 2) {
+            return null;
+        }
+        int step = Math.max(1, substationX.length / SPACING_SAMPLE_SIZE);
+        List<Double> distances = new ArrayList<>();
+        for (int i = 0; i < substationX.length; i += step) {
+            double squaredDistance = nearestSquaredDistance(grid, substationX, substationY, i);
+            if (squaredDistance < Double.POSITIVE_INFINITY) {
+                distances.add(Math.sqrt(squaredDistance));
+            }
+        }
+        if (distances.isEmpty()) {
+            return null;
+        }
+        Collections.sort(distances);
+        return distances.get(distances.size() / 2);
+    }
+
+    /**
+     * Searched through the grid ring by ring around substation {@code i}: a substation in ring r + 1 or beyond is
+     * at least r cells away, so the search stops once the best distance is below that. Substations sharing a
+     * position are skipped, they don't make the view any denser.
+     */
+    private static double nearestSquaredDistance(GridData grid, double[] substationX, double[] substationY, int i) {
+        double x = substationX[i];
+        double y = substationY[i];
+        int cx = cell(x, grid.minX(), grid.cellWidth());
+        int cy = cell(y, grid.minY(), grid.cellHeight());
+        double cellSize = Math.min(grid.cellWidth(), grid.cellHeight());
+        double best = Double.POSITIVE_INFINITY;
+        for (int r = 0; r < GRID_SIZE && best > (r - 1) * cellSize * (r - 1) * cellSize; r++) {
+            for (int gy = Math.max(0, cy - r); gy <= Math.min(GRID_SIZE - 1, cy + r); gy++) {
+                for (int gx = Math.max(0, cx - r); gx <= Math.min(GRID_SIZE - 1, cx + r); gx++) {
+                    if (Math.max(Math.abs(gx - cx), Math.abs(gy - cy)) == r) {
+                        best = Math.min(best, nearestSquaredDistanceInCell(grid, substationX, substationY, x, y, gy * GRID_SIZE + gx));
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    private static double nearestSquaredDistanceInCell(GridData grid, double[] substationX, double[] substationY,
+                                                       double x, double y, int cell) {
+        double best = Double.POSITIVE_INFINITY;
+        for (int j = grid.cellStart()[cell]; j < grid.cellStart()[cell + 1]; j++) {
+            int item = grid.items()[j];
+            if (item >= 0) {
+                double dx = substationX[item] - x;
+                double dy = substationY[item] - y;
+                double distance = dx * dx + dy * dy;
+                if (distance > 0 && distance < best) {
+                    best = distance;
+                }
+            }
+        }
+        return best;
+    }
+
+    // Leaflet's EPSG:3857 (L.CRS.EPSG3857.latLngToPoint) at zoom 0
+    private static double projectX(double longitude) {
+        return round(WORLD_SIZE * (longitude / 360 + 0.5));
+    }
+
+    private static double projectY(double latitude) {
+        double sin = Math.sin(Math.toRadians(Math.clamp(latitude, -MAX_LATITUDE, MAX_LATITUDE)));
+        return round(WORLD_SIZE * (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)));
+    }
+
+    private static double round(double coordinate) {
+        return Math.round(coordinate * COORDINATE_PRECISION) / COORDINATE_PRECISION;
+    }
+
+    private static MapData toMapData(List<MarkerData> substations, List<LineData> lines) {
+        List<String> colors = new ArrayList<>();
+        Map<String, Integer> colorIndices = new HashMap<>();
+        int substationCount = substations.size();
+        String[] substationIds = new String[substationCount];
+        String[] substationTexts = new String[substationCount];
+        String[] substationBaseVoltages = new String[substationCount];
+        double[] substationX = new double[substationCount];
+        double[] substationY = new double[substationCount];
+        int[] substationColor = new int[substationCount];
+        for (int i = 0; i < substationCount; i++) {
+            MarkerData substation = substations.get(i);
+            substationIds[i] = substation.id();
+            substationTexts[i] = substation.text();
+            substationBaseVoltages[i] = substation.baseVoltage();
+            substationX[i] = substation.x();
+            substationY[i] = substation.y();
+            substationColor[i] = colorIndex(substation.color(), colors, colorIndices);
+        }
+
+        int lineCount = lines.size();
+        int pointCount = lines.stream().mapToInt(line -> line.points().length / 2).sum();
+        String[] lineIds = new String[lineCount];
+        String[] lineTexts = new String[lineCount];
+        String[] lineBaseVoltages = new String[lineCount];
+        int[] lineColor = new int[lineCount];
+        boolean[] lineDisconnected = new boolean[lineCount];
+        int[] lineStart = new int[lineCount + 1];
+        double[] lineBounds = new double[lineCount * 4];
+        double[] pointX = new double[pointCount];
+        double[] pointY = new double[pointCount];
+        int[] pointLine = new int[pointCount];
+        int k = 0;
+        for (int i = 0; i < lineCount; i++) {
+            LineData line = lines.get(i);
+            lineIds[i] = line.id();
+            lineTexts[i] = line.text();
+            lineBaseVoltages[i] = line.baseVoltage();
+            lineColor[i] = colorIndex(line.color(), colors, colorIndices);
+            lineDisconnected[i] = line.disconnected();
+            lineStart[i] = k;
+            double minX = Double.POSITIVE_INFINITY;
+            double minY = Double.POSITIVE_INFINITY;
+            double maxX = Double.NEGATIVE_INFINITY;
+            double maxY = Double.NEGATIVE_INFINITY;
+            for (int p = 0; p < line.points().length; p += 2) {
+                double x = line.points()[p];
+                double y = line.points()[p + 1];
+                pointX[k] = x;
+                pointY[k] = y;
+                pointLine[k] = i;
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x);
+                maxY = Math.max(maxY, y);
+                k++;
+            }
+            lineBounds[i * 4] = minX;
+            lineBounds[i * 4 + 1] = minY;
+            lineBounds[i * 4 + 2] = maxX;
+            lineBounds[i * 4 + 3] = maxY;
+        }
+        lineStart[lineCount] = k;
+        return new MapData(colors, substationIds, substationTexts, substationX, substationY, substationColor, substationBaseVoltages,
+                lineIds, lineTexts, lineStart, lineBounds, lineColor, lineBaseVoltages, lineDisconnected, pointX, pointY, pointLine,
+                buildGrid(substationX, substationY, lineStart, pointX, pointY));
+    }
+
+    /**
+     * Uniform grid over all substations and line points: each cell lists the substations in it (their index,
+     * {@code >= 0}) and the line segments crossing its bounds (their start point index {@code k}, as
+     * {@code -(k + 1)}). Null when there is nothing to draw.
+     */
+    private static GridData buildGrid(double[] substationX, double[] substationY, int[] lineStart, double[] pointX, double[] pointY) {
+        double minX = Double.POSITIVE_INFINITY;
+        double minY = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+        for (int i = 0; i < substationX.length; i++) {
+            minX = Math.min(minX, substationX[i]);
+            minY = Math.min(minY, substationY[i]);
+            maxX = Math.max(maxX, substationX[i]);
+            maxY = Math.max(maxY, substationY[i]);
+        }
+        for (int k = 0; k < pointX.length; k++) {
+            minX = Math.min(minX, pointX[k]);
+            minY = Math.min(minY, pointY[k]);
+            maxX = Math.max(maxX, pointX[k]);
+            maxY = Math.max(maxY, pointY[k]);
+        }
+        if (minX == Double.POSITIVE_INFINITY) {
+            return null;
+        }
+        GridData bounds = new GridData(GRID_SIZE, minX, minY, maxX, maxY,
+                Math.max((maxX - minX) / GRID_SIZE, 1e-9), Math.max((maxY - minY) / GRID_SIZE, 1e-9), null, null);
+        // cells as one flat item array, cell c's items from cellStart[c] to cellStart[c + 1]: a first pass counts
+        // each cell's items, a second one fills them in
+        int[] cellStart = new int[GRID_SIZE * GRID_SIZE + 1];
+        forEachGridItem(bounds, substationX, substationY, lineStart, pointX, pointY, (item, cell) -> cellStart[cell + 1]++);
+        for (int cell = 0; cell < GRID_SIZE * GRID_SIZE; cell++) {
+            cellStart[cell + 1] += cellStart[cell];
+        }
+        int[] items = new int[cellStart[GRID_SIZE * GRID_SIZE]];
+        int[] cursor = Arrays.copyOf(cellStart, GRID_SIZE * GRID_SIZE);
+        forEachGridItem(bounds, substationX, substationY, lineStart, pointX, pointY, (item, cell) -> items[cursor[cell]++] = item);
+        return new GridData(GRID_SIZE, minX, minY, maxX, maxY, bounds.cellWidth(), bounds.cellHeight(), cellStart, items);
+    }
+
+    private interface GridItemConsumer {
+        void accept(int item, int cell);
+    }
+
+    private static void forEachGridItem(GridData grid, double[] substationX, double[] substationY, int[] lineStart,
+                                        double[] pointX, double[] pointY, GridItemConsumer consumer) {
+        for (int i = 0; i < substationX.length; i++) {
+            forEachCell(grid, i, substationX[i], substationY[i], substationX[i], substationY[i], consumer);
+        }
+        for (int line = 0; line + 1 < lineStart.length; line++) {
+            for (int k = lineStart[line]; k < lineStart[line + 1] - 1; k++) {
+                forEachCell(grid, -(k + 1),
+                        Math.min(pointX[k], pointX[k + 1]), Math.min(pointY[k], pointY[k + 1]),
+                        Math.max(pointX[k], pointX[k + 1]), Math.max(pointY[k], pointY[k + 1]), consumer);
+            }
+        }
+    }
+
+    private static void forEachCell(GridData grid, int item, double x0, double y0, double x1, double y1, GridItemConsumer consumer) {
+        int cx0 = cell(x0, grid.minX(), grid.cellWidth());
+        int cx1 = cell(x1, grid.minX(), grid.cellWidth());
+        int cy0 = cell(y0, grid.minY(), grid.cellHeight());
+        int cy1 = cell(y1, grid.minY(), grid.cellHeight());
+        for (int cy = cy0; cy <= cy1; cy++) {
+            for (int cx = cx0; cx <= cx1; cx++) {
+                consumer.accept(item, cy * GRID_SIZE + cx);
+            }
+        }
+    }
+
+    // same as map.js' cellX/cellY, which look points up in this grid
+    private static int cell(double coordinate, double min, double cellSize) {
+        return Math.clamp((long) Math.floor((coordinate - min) / cellSize), 0, GRID_SIZE - 1);
+    }
+
+    private static int colorIndex(String color, List<String> colors, Map<String, Integer> colorIndices) {
+        return colorIndices.computeIfAbsent(color, c -> {
+            colors.add(c);
+            return colors.size() - 1;
+        });
     }
 
     private static double nominalV(TieLine tieLine) {
@@ -392,22 +714,15 @@ public class MapController extends AbstractDisposableController {
                                                      boolean disconnected) {
         LinePosition<T> position = positioned.getExtension(LinePosition.class);
         if (position != null && !position.getCoordinates().isEmpty()) {
-            List<double[]> points = position.getCoordinates().stream()
-                    .map(coordinate -> new double[] {coordinate.getLatitude(), coordinate.getLongitude()})
-                    .toList();
+            List<Coordinate> coordinates = position.getCoordinates();
+            double[] points = new double[coordinates.size() * 2];
+            for (int i = 0; i < coordinates.size(); i++) {
+                points[2 * i] = projectX(coordinates.get(i).getLongitude());
+                points[2 * i + 1] = projectY(coordinates.get(i).getLatitude());
+            }
             String baseVoltage = baseVoltageName(nominalV);
             lines.add(new LineData(shown.getId(), points, shown.getNameOrId(), baseVoltage, color(baseVoltage, DEFAULT_LINE_COLOR),
                     disconnected));
-        }
-    }
-
-    private void renderNetwork(MapData data) {
-        try {
-            String json = objectMapper.writeValueAsString(data);
-            String base64 = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
-            webView.getEngine().executeScript("renderNetwork('" + base64 + "')");
-        } catch (JsonProcessingException e) {
-            LOGGER.error(e.getMessage(), e);
         }
     }
 
@@ -439,12 +754,49 @@ public class MapController extends AbstractDisposableController {
         }
     }
 
-    private record MarkerData(String id, double lat, double lng, String text, String baseVoltage, String color) {
+    private record MarkerData(String id, double x, double y, String text, String baseVoltage, String color) {
     }
 
-    private record LineData(String id, List<double[]> points, String text, String baseVoltage, String color, boolean disconnected) {
+    /**
+     * @param points projected coordinates, x and y interleaved
+     */
+    private record LineData(String id, double[] points, String text, String baseVoltage, String color, boolean disconnected) {
     }
 
-    private record MapData(List<MarkerData> substations, List<LineData> lines) {
+    /**
+     * The arrays map.js draws from, named as there, sent in {@link MapChunk} slices: line {@code i}'s points are {@code lineStart[i]} (inclusive)
+     * to {@code lineStart[i + 1]} (exclusive), its bounds {@code lineBounds[4 * i]} to {@code [4 * i + 3]} as
+     * min x, min y, max x, max y, and {@code substationColor}/{@code lineColor} index {@code colors}.
+     */
+    private record MapData(List<String> colors,
+                           String[] substationIds, String[] substationTexts, double[] substationX, double[] substationY,
+                           int[] substationColor, String[] substationBaseVoltages,
+                           String[] lineIds, String[] lineTexts, int[] lineStart, double[] lineBounds, int[] lineColor,
+                           String[] lineBaseVoltages, boolean[] lineDisconnected,
+                           double[] pointX, double[] pointY, int[] pointLine, GridData grid) {
+    }
+
+    /**
+     * Sizes the arrays map.js fills from the chunks, and fits the view to {@code bounds} (min x, min y, max x,
+     * max y; null when there is nothing to draw) before they arrive.
+     */
+    private record MapHeader(List<String> colors, int substationCount, int lineCount, int pointCount, double[] bounds,
+                             Double substationSpacing) {
+    }
+
+    /**
+     * A slice of {@link MapData}: substations from {@code substationFrom}, lines from {@code lineFrom} and their
+     * points from {@code pointFrom}. {@code lineStart} has one more entry than {@code lineIds}, the end of the last
+     * line's points.
+     */
+    private record MapChunk(int substationFrom, String[] substationIds, String[] substationTexts, double[] substationX,
+                            double[] substationY, int[] substationColor, String[] substationBaseVoltages,
+                            int lineFrom, String[] lineIds, String[] lineTexts, int[] lineStart, double[] lineBounds,
+                            int[] lineColor, String[] lineBaseVoltages, boolean[] lineDisconnected,
+                            int pointFrom, double[] pointX, double[] pointY, int[] pointLine) {
+    }
+
+    private record GridData(int size, double minX, double minY, double maxX, double maxY, double cellWidth, double cellHeight,
+                            int[] cellStart, int[] items) {
     }
 }

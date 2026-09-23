@@ -48,8 +48,6 @@ function setBasemap(name) {
 var SUBSTATION_MIN_SIZE = 2;
 var SUBSTATION_MAX_SIZE = 12;
 var SUBSTATION_SPACING_FACTOR = 0.5;
-// nearest neighbour distances measured on at most this many substations, enough for a median
-var SPACING_SAMPLE_SIZE = 1000;
 var SUBSTATION_CLICK_TOLERANCE = 5;
 var LINE_WEIGHT = 2;
 // dash and gap lengths for disconnected lines; round caps eat LINE_WEIGHT out of each gap
@@ -58,8 +56,9 @@ var LINE_DASH = [6, 6];
 var LINE_HIT_DISTANCE = LINE_WEIGHT / 2;
 var MAX_HIT_DISTANCE = Math.max(SUBSTATION_MAX_SIZE / 2 + SUBSTATION_CLICK_TOLERANCE, LINE_HIT_DISTANCE);
 var CANVAS_PADDING = 0.1;
-var GRID_SIZE = 128;
 var HOVER_THROTTLE_MS = 32;
+// between two network chunks, giving the FX thread a pulse to paint the map filling in
+var LOAD_CHUNK_DELAY_MS = 16;
 
 // One Leaflet layer per substation/line made every zoom re-project, clip and redraw each layer
 // individually. Instead, everything is projected once at zoom 0 into flat arrays - at any zoom a pixel
@@ -114,7 +113,7 @@ function buildCountries(geojson) {
 
 function emptyData() {
     return {
-        colors: [],
+        colors: [], substationCount: 0, lineCount: 0,
         substationIds: [], substationTexts: [], substationX: new Float64Array(0), substationY: new Float64Array(0),
         substationColor: new Int32Array(0), substationBaseVoltages: [],
         lineIds: [], lineTexts: [], lineStart: new Int32Array(1), lineBounds: new Float64Array(0),
@@ -124,136 +123,6 @@ function emptyData() {
     };
 }
 
-// base64 -> UTF-8 JSON, so equipment names with non-ASCII characters survive the Java -> JS call unescaped
-function decodeBase64Json(base64) {
-    var binary = atob(base64);
-    var bytes = new Uint8Array(binary.length);
-    for (var i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-    }
-    return JSON.parse(new TextDecoder('utf-8').decode(bytes));
-}
-
-function buildData(json) {
-    var d = emptyData();
-    var colorIndices = {};
-    function colorIndex(color) {
-        if (!(color in colorIndices)) {
-            colorIndices[color] = d.colors.length;
-            d.colors.push(color);
-        }
-        return colorIndices[color];
-    }
-    var substationCount = json.substations.length;
-    d.substationX = new Float64Array(substationCount);
-    d.substationY = new Float64Array(substationCount);
-    d.substationColor = new Int32Array(substationCount);
-    json.substations.forEach(function (substation, i) {
-        var p = map.project([substation.lat, substation.lng], 0);
-        d.substationIds.push(substation.id);
-        d.substationTexts.push(substation.text);
-        d.substationX[i] = p.x;
-        d.substationY[i] = p.y;
-        d.substationColor[i] = colorIndex(substation.color);
-        d.substationBaseVoltages.push(substation.baseVoltage);
-    });
-
-    var lineCount = json.lines.length;
-    var pointCount = 0;
-    json.lines.forEach(function (line) {
-        pointCount += line.points.length;
-    });
-    d.lineStart = new Int32Array(lineCount + 1);
-    d.lineBounds = new Float64Array(lineCount * 4);
-    d.lineColor = new Int32Array(lineCount);
-    d.lineDisconnected = new Uint8Array(lineCount);
-    d.pointX = new Float64Array(pointCount);
-    d.pointY = new Float64Array(pointCount);
-    d.pointLine = new Int32Array(pointCount);
-    var k = 0;
-    json.lines.forEach(function (line, i) {
-        d.lineIds.push(line.id);
-        d.lineTexts.push(line.text);
-        d.lineColor[i] = colorIndex(line.color);
-        d.lineBaseVoltages.push(line.baseVoltage);
-        d.lineDisconnected[i] = line.disconnected ? 1 : 0;
-        d.lineStart[i] = k;
-        var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        line.points.forEach(function (point) {
-            var p = map.project(point, 0);
-            d.pointX[k] = p.x;
-            d.pointY[k] = p.y;
-            d.pointLine[k] = i;
-            minX = Math.min(minX, p.x);
-            minY = Math.min(minY, p.y);
-            maxX = Math.max(maxX, p.x);
-            maxY = Math.max(maxY, p.y);
-            k++;
-        });
-        d.lineBounds[i * 4] = minX;
-        d.lineBounds[i * 4 + 1] = minY;
-        d.lineBounds[i * 4 + 2] = maxX;
-        d.lineBounds[i * 4 + 3] = maxY;
-    });
-    d.lineStart[lineCount] = k;
-    d.grid = buildGrid(d);
-    d.substationSpacing = substationSpacing(d);
-    return d;
-}
-
-// Median distance, at zoom 0, from a substation to its nearest neighbour; Infinity with fewer than two
-// distinct positions. Searched through the grid ring by ring around each sampled substation: a substation
-// in ring r + 1 or beyond is at least r cells away, so the search stops once the best distance is below that.
-function substationSpacing(d) {
-    var grid = d.grid;
-    var count = d.substationX.length;
-    if (!grid || count < 2) {
-        return Infinity;
-    }
-    var cellSize = Math.min(grid.cellWidth, grid.cellHeight);
-    var step = Math.max(1, Math.floor(count / SPACING_SAMPLE_SIZE));
-    var distances = [];
-    for (var i = 0; i < count; i += step) {
-        var x = d.substationX[i], y = d.substationY[i];
-        var cx = cellX(grid, x), cy = cellY(grid, y);
-        var best = Infinity;
-        for (var r = 0; r < GRID_SIZE && best > (r - 1) * cellSize * (r - 1) * cellSize; r++) {
-            for (var gy = Math.max(0, cy - r); gy <= Math.min(GRID_SIZE - 1, cy + r); gy++) {
-                for (var gx = Math.max(0, cx - r); gx <= Math.min(GRID_SIZE - 1, cx + r); gx++) {
-                    if (Math.max(Math.abs(gx - cx), Math.abs(gy - cy)) !== r) {
-                        continue;
-                    }
-                    var cell = grid.cells[gy * GRID_SIZE + gx];
-                    if (!cell) {
-                        continue;
-                    }
-                    for (var j = 0; j < cell.length; j++) {
-                        var item = cell[j];
-                        if (item < 0) {
-                            continue;
-                        }
-                        var dx = d.substationX[item] - x, dy = d.substationY[item] - y;
-                        var distance = dx * dx + dy * dy;
-                        // substations sharing a position don't make the view any denser
-                        if (distance > 0 && distance < best) {
-                            best = distance;
-                        }
-                    }
-                }
-            }
-        }
-        if (best < Infinity) {
-            distances.push(Math.sqrt(best));
-        }
-    }
-    if (distances.length === 0) {
-        return Infinity;
-    }
-    distances.sort(function (a, b) {
-        return a - b;
-    });
-    return distances[Math.floor(distances.length / 2)];
-}
 
 // whole pixels, so zooming only ever creates a handful of sprite sizes
 function substationSize(scale) {
@@ -261,61 +130,14 @@ function substationSize(scale) {
         Math.min(SUBSTATION_MAX_SIZE, Math.round(data.substationSpacing * scale * SUBSTATION_SPACING_FACTOR)));
 }
 
-// Grid cells hold substation indices (>= 0) and line segment start point indices, encoded as -(k + 1).
-function buildGrid(d) {
-    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    function extend(x, y) {
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x);
-        maxY = Math.max(maxY, y);
-    }
-    for (var i = 0; i < d.substationX.length; i++) {
-        extend(d.substationX[i], d.substationY[i]);
-    }
-    for (var k = 0; k < d.pointX.length; k++) {
-        extend(d.pointX[k], d.pointY[k]);
-    }
-    if (minX === Infinity) {
-        return null;
-    }
-    var grid = {
-        minX: minX,
-        minY: minY,
-        maxX: maxX,
-        maxY: maxY,
-        cellWidth: Math.max((maxX - minX) / GRID_SIZE, 1e-9),
-        cellHeight: Math.max((maxY - minY) / GRID_SIZE, 1e-9),
-        cells: new Array(GRID_SIZE * GRID_SIZE)
-    };
-    function insert(item, x0, y0, x1, y1) {
-        var cx0 = cellX(grid, x0), cx1 = cellX(grid, x1), cy0 = cellY(grid, y0), cy1 = cellY(grid, y1);
-        for (var cy = cy0; cy <= cy1; cy++) {
-            for (var cx = cx0; cx <= cx1; cx++) {
-                var index = cy * GRID_SIZE + cx;
-                (grid.cells[index] || (grid.cells[index] = [])).push(item);
-            }
-        }
-    }
-    for (i = 0; i < d.substationX.length; i++) {
-        insert(i, d.substationX[i], d.substationY[i], d.substationX[i], d.substationY[i]);
-    }
-    for (var line = 0; line < d.lineIds.length; line++) {
-        for (k = d.lineStart[line]; k < d.lineStart[line + 1] - 1; k++) {
-            insert(-(k + 1),
-                Math.min(d.pointX[k], d.pointX[k + 1]), Math.min(d.pointY[k], d.pointY[k + 1]),
-                Math.max(d.pointX[k], d.pointX[k + 1]), Math.max(d.pointY[k], d.pointY[k + 1]));
-        }
-    }
-    return grid;
-}
-
+// The grid is built by MapController.buildGrid: cell c lists items[cellStart[c]] to items[cellStart[c + 1] - 1],
+// substation indices (>= 0) and line segment start point indices, encoded as -(k + 1).
 function cellX(grid, x) {
-    return Math.min(GRID_SIZE - 1, Math.max(0, Math.floor((x - grid.minX) / grid.cellWidth)));
+    return Math.min(grid.size - 1, Math.max(0, Math.floor((x - grid.minX) / grid.cellWidth)));
 }
 
 function cellY(grid, y) {
-    return Math.min(GRID_SIZE - 1, Math.max(0, Math.floor((y - grid.minY) / grid.cellHeight)));
+    return Math.min(grid.size - 1, Math.max(0, Math.floor((y - grid.minY) / grid.cellHeight)));
 }
 
 function squaredDistanceToSegment(px, py, ax, ay, bx, by) {
@@ -355,12 +177,9 @@ function hitTest(latlng) {
     var bestLine = -1, bestLineDistance = lineLimit * lineLimit;
     for (var cy = cy0; cy <= cy1; cy++) {
         for (var cx = cx0; cx <= cx1; cx++) {
-            var cell = grid.cells[cy * GRID_SIZE + cx];
-            if (!cell) {
-                continue;
-            }
-            for (var j = 0; j < cell.length; j++) {
-                var item = cell[j];
+            var cell = cy * grid.size + cx;
+            for (var j = grid.cellStart[cell]; j < grid.cellStart[cell + 1]; j++) {
+                var item = grid.items[j];
                 var distance;
                 if (item >= 0) {
                     if (hiddenBaseVoltages[data.substationBaseVoltages[item]]) {
@@ -415,9 +234,9 @@ var NetworkLayer = L.Layer.extend({
     },
 
     redraw: function () {
-        var size = map.getSize();
-        var topLeft = map.containerPointToLayerPoint(size.multiplyBy(-CANVAS_PADDING)).round();
-        var canvasSize = size.multiplyBy(1 + CANVAS_PADDING * 2).round();
+        var mapSize = map.getSize();
+        var topLeft = map.containerPointToLayerPoint(mapSize.multiplyBy(-CANVAS_PADDING)).round();
+        var canvasSize = mapSize.multiplyBy(1 + CANVAS_PADDING * 2).round();
         var ratio = window.devicePixelRatio || 1;
         var canvas = this._canvas;
         L.DomUtil.setPosition(canvas, topLeft);
@@ -446,9 +265,23 @@ var NetworkLayer = L.Layer.extend({
         var viewMinX = offsetX / scale, viewMinY = offsetY / scale;
         var viewMaxX = (offsetX + canvasSize.x) / scale, viewMaxY = (offsetY + canvasSize.y) / scale;
 
+        this._view = {
+            ctx: ctx, ratio: ratio, scale: scale, offsetX: offsetX, offsetY: offsetY,
+            viewMinX: viewMinX, viewMinY: viewMinY, viewMaxX: viewMaxX, viewMaxY: viewMaxY
+        };
         if (showCountries) {
             drawCountries(ctx, scale, offsetX, offsetY, viewMinX, viewMinY, viewMaxX, viewMaxY);
         }
+        this.drawRange(0, data.lineCount, 0, data.substationCount);
+    },
+
+    // Draws lines lineFrom to lineTo (exclusive), then substations substationFrom to substationTo (exclusive), over
+    // the canvas as the last redraw laid it out: while the view hasn't moved since, this adds a newly loaded chunk
+    // without redrawing everything loaded before it.
+    drawRange: function (lineFrom, lineTo, substationFrom, substationTo) {
+        var v = this._view;
+        var ctx = v.ctx, ratio = v.ratio, scale = v.scale, offsetX = v.offsetX, offsetY = v.offsetY;
+        var viewMinX = v.viewMinX, viewMinY = v.viewMinY, viewMaxX = v.viewMaxX, viewMaxY = v.viewMaxY;
 
         ctx.lineWidth = LINE_WEIGHT;
         // one batched path per color and dash style, as a canvas path has a single stroke style
@@ -456,7 +289,7 @@ var NetworkLayer = L.Layer.extend({
             ctx.setLineDash(dashed ? LINE_DASH : []);
             for (var color = 0; color < data.colors.length; color++) {
                 ctx.beginPath();
-                for (var line = 0; line < data.lineIds.length; line++) {
+                for (var line = lineFrom; line < lineTo; line++) {
                     if (data.lineColor[line] !== color || data.lineDisconnected[line] !== dashed
                         || hiddenBaseVoltages[data.lineBaseVoltages[line]]) {
                         continue;
@@ -498,7 +331,7 @@ var NetworkLayer = L.Layer.extend({
         });
         var spriteSize = Math.ceil(size * ratio) / ratio;
         var spriteHalf = spriteSize / 2;
-        for (var i = 0; i < data.substationIds.length; i++) {
+        for (var i = substationFrom; i < substationTo; i++) {
             if (hiddenBaseVoltages[data.substationBaseVoltages[i]]) {
                 continue;
             }
@@ -638,19 +471,115 @@ map.on('click', function (e) {
     }
 });
 
-function renderNetwork(base64) {
+// The network arrives from MapController.buildNetworkData in pieces, everything already computed there: a header
+// sizing the arrays and fitting the view, chunks each filling a range of substations, lines and line points, then
+// the hit-testing grid, which enables hover and clicks. The FX thread runs this script, so the chunks are applied
+// one per timer tick, and the map fills in progressively instead of freezing until complete. Each chunk is only
+// drawn over what is already on the canvas: redrawing everything loaded so far made every chunk slower than the
+// last. Its lines may then cover earlier chunks' substations, until the full redraw once the grid arrives.
+var loadQueue = [];
+var loadGeneration = 0;
+
+function renderNetwork(headerJson) {
+    // drops what is still queued from a previous network
+    loadQueue = [];
+    loadGeneration++;
     setHovered(null);
-    data = buildData(decodeBase64Json(base64));
+    var header = JSON.parse(headerJson);
+    var d = emptyData();
+    d.colors = header.colors;
+    d.substationIds = new Array(header.substationCount);
+    d.substationTexts = new Array(header.substationCount);
+    d.substationBaseVoltages = new Array(header.substationCount);
+    d.substationX = new Float64Array(header.substationCount);
+    d.substationY = new Float64Array(header.substationCount);
+    d.substationColor = new Int32Array(header.substationCount);
+    d.lineIds = new Array(header.lineCount);
+    d.lineTexts = new Array(header.lineCount);
+    d.lineBaseVoltages = new Array(header.lineCount);
+    d.lineStart = new Int32Array(header.lineCount + 1);
+    d.lineBounds = new Float64Array(header.lineCount * 4);
+    d.lineColor = new Int32Array(header.lineCount);
+    d.lineDisconnected = new Uint8Array(header.lineCount);
+    d.pointX = new Float64Array(header.pointCount);
+    d.pointY = new Float64Array(header.pointCount);
+    d.pointLine = new Int32Array(header.pointCount);
+    // JSON has no Infinity
+    d.substationSpacing = header.substationSpacing === null ? Infinity : header.substationSpacing;
+    data = d;
     networkLayer.redraw();
 
-    var grid = data.grid;
-    if (!grid) {
+    var b = header.bounds;
+    if (!b) {
         return;
     }
-    if (grid.minX === grid.maxX && grid.minY === grid.maxY) {
-        map.setView(map.unproject([grid.minX, grid.minY], 0), 12, {animate: false});
+    if (b[0] === b[2] && b[1] === b[3]) {
+        map.setView(map.unproject([b[0], b[1]], 0), 12, {animate: false});
     } else {
-        map.fitBounds(L.latLngBounds(map.unproject([grid.minX, grid.minY], 0), map.unproject([grid.maxX, grid.maxY], 0)),
+        map.fitBounds(L.latLngBounds(map.unproject([b[0], b[1]], 0), map.unproject([b[2], b[3]], 0)),
             {padding: [20, 20], animate: false});
     }
+}
+
+function addNetworkChunk(chunkJson) {
+    enqueueLoad(function () {
+        var c = JSON.parse(chunkJson);
+        var d = data;
+        var lineFrom = d.lineCount, substationFrom = d.substationCount;
+        for (var i = 0; i < c.substationIds.length; i++) {
+            d.substationIds[c.substationFrom + i] = c.substationIds[i];
+            d.substationTexts[c.substationFrom + i] = c.substationTexts[i];
+            d.substationBaseVoltages[c.substationFrom + i] = c.substationBaseVoltages[i];
+        }
+        d.substationX.set(c.substationX, c.substationFrom);
+        d.substationY.set(c.substationY, c.substationFrom);
+        d.substationColor.set(c.substationColor, c.substationFrom);
+        for (var j = 0; j < c.lineIds.length; j++) {
+            d.lineIds[c.lineFrom + j] = c.lineIds[j];
+            d.lineTexts[c.lineFrom + j] = c.lineTexts[j];
+            d.lineBaseVoltages[c.lineFrom + j] = c.lineBaseVoltages[j];
+        }
+        d.lineStart.set(c.lineStart, c.lineFrom);
+        d.lineBounds.set(c.lineBounds, c.lineFrom * 4);
+        d.lineColor.set(c.lineColor, c.lineFrom);
+        d.lineDisconnected.set(c.lineDisconnected, c.lineFrom);
+        d.pointX.set(c.pointX, c.pointFrom);
+        d.pointY.set(c.pointY, c.pointFrom);
+        d.pointLine.set(c.pointLine, c.pointFrom);
+        // chunks come in order, so everything below these counts is loaded
+        d.substationCount = c.substationFrom + c.substationIds.length;
+        d.lineCount = c.lineFrom + c.lineIds.length;
+        networkLayer.drawRange(lineFrom, d.lineCount, substationFrom, d.substationCount);
+    });
+}
+
+function endNetwork(gridJson) {
+    enqueueLoad(function () {
+        var g = JSON.parse(gridJson);
+        data.grid = g && {
+            size: g.size, minX: g.minX, minY: g.minY, maxX: g.maxX, maxY: g.maxY, cellWidth: g.cellWidth, cellHeight: g.cellHeight,
+            cellStart: new Int32Array(g.cellStart), items: new Int32Array(g.items)
+        };
+        networkLayer.redraw();
+        window.controller.onNetworkRendered();
+    });
+}
+
+function enqueueLoad(task) {
+    loadQueue.push(task);
+    if (loadQueue.length === 1) {
+        scheduleLoad(loadGeneration);
+    }
+}
+
+function scheduleLoad(generation) {
+    setTimeout(function () {
+        if (generation !== loadGeneration) {
+            return;
+        }
+        loadQueue.shift()();
+        if (loadQueue.length > 0) {
+            scheduleLoad(generation);
+        }
+    }, LOAD_CHUNK_DELAY_MS);
 }
