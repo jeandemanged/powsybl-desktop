@@ -45,6 +45,7 @@ import com.powsybl.iidm.network.test.ThreeWindingsTransformerNetworkFactory;
 import com.powsybl.iidm.network.test.TwoVoltageLevelNetworkFactory;
 import com.powsybl.iidm.serde.test.MetrixTutorialSixBusesFactory;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.map.MapTestNetworkFactory;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.NetworkNavigationState;
@@ -406,6 +407,9 @@ public class NetworksController extends AbstractDisposableController {
         importMenuButton.getItems().add(new SeparatorMenuItem());
 
         Menu sampleNetworksMenu = new Menu(Messages.get("networks.toolbar.import.sampleNetworks"));
+        MenuItem mapTestItem = new MenuItem("Map test");
+        mapTestItem.setOnAction(event -> loadSample(MapTestNetworkFactory::create));
+        sampleNetworksMenu.getItems().add(mapTestItem);
         addFactoryMenu(sampleNetworksMenu, "IeeeCdfNetworkFactory", List.of(
                 new Pair<>("create9", IeeeCdfNetworkFactory::create9),
                 new Pair<>("create14", IeeeCdfNetworkFactory::create14),
