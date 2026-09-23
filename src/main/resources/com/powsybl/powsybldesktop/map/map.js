@@ -21,6 +21,9 @@ var WHEEL_PIXELS_PER_ZOOM_LEVEL = 30;
 // leaves stale frames on screen. Zooming is animated by animateZoom instead, hence Leaflet's own wheel, double
 // click and zoom buttons handling off, and zoomSnap 0 for its intermediate zoom levels. With any3d off, Leaflet
 // ignores zoomSnap and rounds every zoom to a whole level, hence _limitZoom, as Leaflet's with any3d on.
+// the world as Leaflet's Web Mercator projection shows it, up to its max latitude
+var WORLD_BOUNDS = L.latLngBounds([-85.0511287798, -180], [85.0511287798, 180]);
+
 var FractionalZoomMap = L.Map.extend({
     _limitZoom: function (zoom) {
         var snap = this.options.zoomSnap;
@@ -39,8 +42,21 @@ var map = new FractionalZoomMap('map', {
     markerZoomAnimation: false,
     scrollWheelZoom: false,
     doubleClickZoom: false,
-    zoomControl: false
+    zoomControl: false,
+    // a single world: no panning past its edges, and tile layers with noWrap, so no copies of it side by side
+    maxBounds: WORLD_BOUNDS,
+    maxBoundsViscosity: 1
 }).setView([48.8566, 2.3522], 5);
+
+// zooming out stops once the whole world fits in the view
+function limitZoomOutToWorld() {
+    map.setMinZoom(map.getBoundsZoom(WORLD_BOUNDS));
+}
+limitZoomOutToWorld();
+map.on('resize', function () {
+    limitZoomOutToWorld();
+    fitNetwork();
+});
 
 // Moves the zoom from the current level towards target, easing out, re-centering at each step so that the
 // point under containerPoint stays put. Each step only moves and scales the tiles already there: new ones are
@@ -54,6 +70,8 @@ function animateZoom(containerPoint, target) {
     if (target === start) {
         return;
     }
+    // the user took over the view
+    networkBounds = null;
     var restarting = zoomAnimation !== null;
     zoomAnimation = {containerPoint: containerPoint, start: start, target: target, startTime: Date.now()};
     if (!restarting) {
@@ -136,6 +154,7 @@ var keepTilesOnViewReset = {
 
 var osmLayer = new (L.TileLayer.extend(keepTilesOnViewReset))('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: MAX_ZOOM,
+    noWrap: true,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 });
 osmLayer.on('tileload', function () {
@@ -154,7 +173,8 @@ var HOVER_THROTTLE_MS = 32;
 // to draw in it.
 var NetworkTileLayer = L.GridLayer.extend(keepTilesOnViewReset).extend({
     options: {
-        maxZoom: MAX_ZOOM
+        maxZoom: MAX_ZOOM,
+        noWrap: true
     },
 
     createTile: function (coords, done) {
@@ -314,14 +334,32 @@ map.on('click', function (e) {
 function renderNetwork(boundsJson) {
     // before fitting the view: tiles it adds are drawn from the new network already
     redrawNetwork();
-    var b = JSON.parse(boundsJson);
-    if (b && b[0] === b[2] && b[1] === b[3]) {
+    networkBounds = JSON.parse(boundsJson);
+    fitNetwork();
+}
+
+// The view is fitted to the network again on each resize until the user pans or zooms: a small network is ready
+// before the WebView has its final size, and fitting to the size the map had then zoomed in far too much.
+var networkBounds = null;
+var FIT_PADDING = 20;
+map.on('dragstart', function () {
+    networkBounds = null;
+});
+
+function fitNetwork() {
+    var b = networkBounds;
+    var size = map.getSize();
+    // not laid out yet: no room for the padding below
+    if (!b || size.x <= FIT_PADDING * 2 || size.y <= FIT_PADDING * 2) {
+        return;
+    }
+    if (b[0] === b[2] && b[1] === b[3]) {
         map.setView([b[0], b[1]], 12, {animate: false});
-    } else if (b) {
-        // as fitBounds with 20 pixels of padding would, but with the zoom rounded down to a ZOOM_STEP: tiles are only
-        // crisp at whole levels, and are scaled in between
+    } else {
+        // as fitBounds with FIT_PADDING pixels of padding would, but with the zoom rounded down to a ZOOM_STEP: tiles
+        // are only crisp at whole levels, and are scaled in between
         var bounds = L.latLngBounds([b[0], b[1]], [b[2], b[3]]);
-        var zoom = Math.floor(map.getBoundsZoom(bounds, false, L.point(40, 40)) / ZOOM_STEP) * ZOOM_STEP;
+        var zoom = Math.floor(map.getBoundsZoom(bounds, false, L.point(FIT_PADDING * 2, FIT_PADDING * 2)) / ZOOM_STEP) * ZOOM_STEP;
         var center = map.project(bounds.getSouthWest(), zoom).add(map.project(bounds.getNorthEast(), zoom)).divideBy(2);
         map.setView(map.unproject(center, zoom), zoom, {animate: false});
     }
