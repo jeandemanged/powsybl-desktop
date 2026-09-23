@@ -35,6 +35,8 @@ import java.util.Random;
  *     <li>{@link #create()}: 100 x 100 substations over mainland France, every neighbour linked.</li>
  *     <li>{@link #createEurope()}: 200 x 250 substations over Europe, all horizontal neighbours and a random subset of
  *     vertical ones linked, for {@value #EUROPE_LINE_COUNT} lines.</li>
+ *     <li>{@link #createEuropeAfrica()}: 500 x 400 substations over Europe and Africa, linked the same way, for
+ *     {@value #EUROPE_AFRICA_LINE_COUNT} lines.</li>
  * </ul>
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -44,6 +46,8 @@ public final class MapTestNetworkFactory {
     private static final Grid FRANCE = new Grid(100, 100, 42.5, 51.0, -4.5, 8.0);
     private static final Grid EUROPE = new Grid(200, 250, 36.0, 71.0, -10.0, 40.0);
     private static final int EUROPE_LINE_COUNT = 70_000;
+    private static final Grid EUROPE_AFRICA = new Grid(500, 400, -35.0, 71.0, -18.0, 52.0);
+    private static final int EUROPE_AFRICA_LINE_COUNT = 250_000;
     private static final int LINE_BREAKS = 10;
     /** Zigzag amplitude of the line breaks, as a fraction of the line length. */
     private static final double LINE_ZIGZAG = 0.1;
@@ -80,23 +84,32 @@ public final class MapTestNetworkFactory {
     }
 
     public static Network createEurope() {
-        Network network = createSubstations("mapTest50k", EUROPE);
+        return createPartiallyLinked("mapTest50k", EUROPE, EUROPE_LINE_COUNT);
+    }
+
+    public static Network createEuropeAfrica() {
+        return createPartiallyLinked("mapTest200k", EUROPE_AFRICA, EUROPE_AFRICA_LINE_COUNT);
+    }
+
+    // all horizontal neighbours linked, and as many vertical ones, picked at random, as needed for lineCount lines
+    private static Network createPartiallyLinked(String id, Grid grid, int lineCount) {
+        Network network = createSubstations(id, grid);
         List<int[]> verticalCandidates = new ArrayList<>();
-        for (int row = 0; row < EUROPE.rows(); row++) {
-            for (int col = 0; col < EUROPE.cols(); col++) {
-                if (col + 1 < EUROPE.cols()) {
-                    addLine(network, EUROPE, row, col, row, col + 1, LINE_BREAKS);
+        for (int row = 0; row < grid.rows(); row++) {
+            for (int col = 0; col < grid.cols(); col++) {
+                if (col + 1 < grid.cols()) {
+                    addLine(network, grid, row, col, row, col + 1, LINE_BREAKS);
                 }
-                if (row + 1 < EUROPE.rows()) {
+                if (row + 1 < grid.rows()) {
                     verticalCandidates.add(new int[] {row, col});
                 }
             }
         }
         // fixed seed so the network is the same on every load
         Collections.shuffle(verticalCandidates, new Random(0));
-        int verticalCount = EUROPE_LINE_COUNT - EUROPE.rows() * (EUROPE.cols() - 1);
+        int verticalCount = lineCount - grid.rows() * (grid.cols() - 1);
         for (int[] cell : verticalCandidates.subList(0, verticalCount)) {
-            addLine(network, EUROPE, cell[0], cell[1], cell[0] + 1, cell[1], LINE_BREAKS);
+            addLine(network, grid, cell[0], cell[1], cell[0] + 1, cell[1], LINE_BREAKS);
         }
         addTransformers(network);
         disconnectLines(network);
