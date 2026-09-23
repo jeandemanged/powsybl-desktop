@@ -47,8 +47,11 @@ import netscape.javascript.JSObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.Desktop;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -407,6 +410,15 @@ public class MapController extends AbstractDisposableController {
         } catch (JsonProcessingException e) {
             LOGGER.error(e.getMessage(), e);
             return null;
+        }
+    }
+
+    @SuppressWarnings("unused") // called from map.js
+    public void openLink(String url) {
+        try {
+            Desktop.getDesktop().browse(new URI(url));
+        } catch (IOException | URISyntaxException e) {
+            LOGGER.warn("Could not open link: {}", url, e);
         }
     }
 

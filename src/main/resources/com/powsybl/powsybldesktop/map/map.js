@@ -131,6 +131,15 @@ var AnimatedZoomControl = L.Control.Zoom.extend({
 });
 new AnimatedZoomControl().addTo(map);
 
+// the attribution's links would otherwise navigate the WebView itself away from the map
+L.DomEvent.on(map.attributionControl.getContainer(), 'click', function (e) {
+    var link = e.target.closest('a');
+    if (link) {
+        L.DomEvent.preventDefault(e);
+        window.controller.openLink(link.href);
+    }
+});
+
 // With zoom animation off, every zoom resets the map view, and grid layers drop all their tiles on the
 // viewprereset event that starts it: the map went blank until the new zoom level's tiles arrived. Without that
 // handler, the viewreset that follows updates the layer as an animated zoom would, keeping the previous level's
