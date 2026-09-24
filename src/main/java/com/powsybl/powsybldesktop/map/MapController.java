@@ -33,13 +33,23 @@ import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import javafx.concurrent.Worker;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.Toggle;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.layout.Background;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.CycleMethod;
+import javafx.scene.paint.LinearGradient;
+import javafx.scene.paint.Stop;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.web.WebView;
 import javafx.util.StringConverter;
@@ -95,6 +105,11 @@ import java.util.regex.Pattern;
  * range is open-ended here, so e.g. 750 kV equipment is shown as the 300-500 kV range rather than uncolored.
  * Each base voltage can be hidden from an overlay checkbox, remembered in
  * {@link MainModel#getMapHiddenBaseVoltages()}.
+ * <p>
+ * Once a load flow has computed bus voltages, either their angles or their voltage limit violations can be shown as a
+ * heatmap below the network, see {@link HeatmapField} and {@link MapOverlay}, with its color scale's legend in the
+ * bottom left corner. Voltage violations are transparent where there are none, so the heatmap only shows around
+ * them.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -129,6 +144,11 @@ public class MapController extends AbstractDisposableController {
     private static final Pattern BASE_VOLTAGE_COLOR = Pattern.compile("\\.sld-(\\w+)\\s*\\{\\s*--sld-vl-color:\\s*(#\\w+)\\s*}");
     /** One core is left to the FX thread. */
     private static final int TILE_THREADS = Math.max(1, Runtime.getRuntime().availableProcessors() - 1);
+    /** Matches map-view.fxml's legend layout: the bar is inset by half a tick label on each side. */
+    private static final double LEGEND_TICK_WIDTH = 50;
+    private static final int LEGEND_TICKS = 5;
+    private static final double ANGLE_RANGE_STEP = 10;
+    private static final double VIOLATION_RANGE_STEP = 0.05;
 
     private enum Basemap {
         OFFLINE("offline", "map.basemap.offline"),
@@ -141,6 +161,27 @@ public class MapController extends AbstractDisposableController {
             this.jsName = jsName;
             this.labelKey = labelKey;
         }
+    }
+
+    private enum AngleCenter {
+        REFERENCE("map.overlay.center.reference"),
+        MEAN("map.overlay.center.mean");
+
+        private final String labelKey;
+
+        AngleCenter(String labelKey) {
+            this.labelKey = labelKey;
+        }
+    }
+
+    private record MapData(MapNetworkData network, HeatmapField angles, HeatmapField violations) {
+    }
+
+    /**
+     * The heatmap shown, and its legend's ticks: {@code tickOffset + tickCenter + range * k} for k from -1 to 1.
+     */
+    private record ShownHeatmap(MapOverlay overlay, HeatmapField field, HeatmapField.ColorScale colors, double tickCenter,
+                                double range) {
     }
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -176,18 +217,53 @@ public class MapController extends AbstractDisposableController {
     @FXML
     private Hyperlink checkNoBaseVoltagesLink;
 
+    @FXML
+    private RadioButton noOverlayRadioButton;
+
+    @FXML
+    private RadioButton angleOverlayRadioButton;
+
+    @FXML
+    private RadioButton violationsOverlayRadioButton;
+
+    @FXML
+    private Label overlaysUnavailableLabel;
+
+    @FXML
+    private Node angleHeatmapCenterBox;
+
+    @FXML
+    private ComboBox<AngleCenter> angleHeatmapCenterComboBox;
+
+    @FXML
+    private Node heatmapLegend;
+
+    @FXML
+    private Label heatmapLegendTitle;
+
+    @FXML
+    private Region heatmapLegendBar;
+
+    @FXML
+    private HBox heatmapLegendTicks;
+
+    private final ToggleGroup overlayToggleGroup = new ToggleGroup();
+
     /**
-     * Builds the {@link MapNetworkData} off the FX thread. Restarting it on each refresh cancels a build still
+     * Builds the {@link MapNetworkData} and its {@link HeatmapField}s off the FX thread. Restarting it on each refresh cancels a build still
      * running, whose result is then dropped.
      */
-    private final Service<MapNetworkData> networkDataService = new Service<>() {
+    private final Service<MapData> networkDataService = new Service<>() {
         @Override
-        protected Task<MapNetworkData> createTask() {
+        protected Task<MapData> createTask() {
             Network network = mainModel.getNetwork();
             return new Task<>() {
                 @Override
-                protected MapNetworkData call() {
-                    return MapNetworkData.build(network, MapController.this::baseVoltageName, MapController.this::color);
+                protected MapData call() {
+                    MapNetworkData data = MapNetworkData.build(network, MapController.this::baseVoltageName, MapController.this::color);
+                    return new MapData(data,
+                            HeatmapField.build(data.substationX(), data.substationY(), data.substationAngles(), data.substationSpacing()),
+                            HeatmapField.build(data.substationX(), data.substationY(), data.substationViolations(), data.substationSpacing()));
                 }
             };
         }
@@ -204,6 +280,8 @@ public class MapController extends AbstractDisposableController {
 
     // What tiles are drawn from, read on the FX thread when a tile is requested and handed to its task
     private MapNetworkData networkData;
+    private HeatmapField angleField;
+    private HeatmapField violationField;
     private Set<String> hiddenBaseVoltages = Set.of();
 
     private MainModel mainModel;
@@ -228,6 +306,32 @@ public class MapController extends AbstractDisposableController {
         basemapComboBox.setValue(Basemap.OFFLINE);
         basemapComboBox.valueProperty().addListener((observable, oldValue, newValue) -> applyBasemap());
         basemapUnreachableLabel.managedProperty().bind(basemapUnreachableLabel.visibleProperty());
+        angleHeatmapCenterComboBox.getItems().setAll(AngleCenter.values());
+        angleHeatmapCenterComboBox.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(AngleCenter center) {
+                return center == null ? "" : Messages.get(center.labelKey);
+            }
+
+            @Override
+            public AngleCenter fromString(String string) {
+                return null;
+            }
+        });
+        overlaysUnavailableLabel.managedProperty().bind(overlaysUnavailableLabel.visibleProperty());
+        angleHeatmapCenterBox.managedProperty().bind(angleHeatmapCenterBox.visibleProperty());
+        noOverlayRadioButton.setUserData(MapOverlay.NONE);
+        angleOverlayRadioButton.setUserData(MapOverlay.VOLTAGE_ANGLE);
+        violationsOverlayRadioButton.setUserData(MapOverlay.VOLTAGE_VIOLATIONS);
+        overlayToggleGroup.getToggles().setAll(noOverlayRadioButton, angleOverlayRadioButton, violationsOverlayRadioButton);
+        heatmapLegendBar.setPrefWidth(LEGEND_TICK_WIDTH * (LEGEND_TICKS - 1));
+        for (int i = 0; i < LEGEND_TICKS; i++) {
+            Label tick = new Label();
+            tick.setPrefWidth(LEGEND_TICK_WIDTH);
+            tick.setAlignment(Pos.CENTER);
+            heatmapLegendTicks.getChildren().add(tick);
+        }
+        updateOverlayControls();
 
         String html = HTML_SHELL.formatted(readResource("leaflet.css"), readResource("leaflet.js"), readResource("map.js"));
         webView.getEngine().getLoadWorker().stateProperty().addListener((observable, oldValue, newValue) -> {
@@ -242,7 +346,10 @@ public class MapController extends AbstractDisposableController {
             }
         });
         networkDataService.setOnSucceeded(event -> {
-            networkData = networkDataService.getValue();
+            networkData = networkDataService.getValue().network();
+            angleField = networkDataService.getValue().angles();
+            violationField = networkDataService.getValue().violations();
+            updateOverlayControls();
             loadingPane.setVisible(false);
             try {
                 // passed as a JS string argument rather than spliced into a script, so it needs no escaping
@@ -299,6 +406,88 @@ public class MapController extends AbstractDisposableController {
         listenerManager.listen(mainModel.networkProperty(), (observable, oldValue, newValue) -> refresh());
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
         createBaseVoltageCheckBoxes();
+        overlayToggleGroup.getToggles().stream()
+                .filter(toggle -> toggle.getUserData() == mainModel.mapOverlayProperty().get())
+                .findFirst()
+                .ifPresent(overlayToggleGroup::selectToggle);
+        angleHeatmapCenterComboBox.setValue(mainModel.mapAngleHeatmapCenteredOnMeanProperty().get() ? AngleCenter.MEAN : AngleCenter.REFERENCE);
+        // listened to only once set from the model, which outlives this view
+        overlayToggleGroup.selectedToggleProperty().addListener((observable, oldValue, toggle) -> {
+            mainModel.mapOverlayProperty().set(overlay(toggle));
+            applyOverlay();
+        });
+        angleHeatmapCenterComboBox.valueProperty().addListener((observable, oldValue, center) -> {
+            mainModel.mapAngleHeatmapCenteredOnMeanProperty().set(center == AngleCenter.MEAN);
+            applyOverlay();
+        });
+        updateOverlayControls();
+    }
+
+    private static MapOverlay overlay(Toggle toggle) {
+        return toggle == null ? MapOverlay.NONE : (MapOverlay) toggle.getUserData();
+    }
+
+    private void applyOverlay() {
+        updateOverlayControls();
+        if (engineLoaded) {
+            webView.getEngine().executeScript("redrawNetwork()");
+        }
+    }
+
+    /**
+     * Null when no overlay is selected, or the selected one has nothing to show, e.g. before a load flow.
+     */
+    private ShownHeatmap shownHeatmap() {
+        return switch (overlay(overlayToggleGroup.getSelectedToggle())) {
+            case NONE -> null;
+            case VOLTAGE_ANGLE -> {
+                if (angleField == null) {
+                    yield null;
+                }
+                double center = angleHeatmapCenterComboBox.getValue() == AngleCenter.MEAN ? angleField.meanValue() : 0;
+                double range = angleField.range(center, ANGLE_RANGE_STEP);
+                yield new ShownHeatmap(MapOverlay.VOLTAGE_ANGLE, angleField, HeatmapField.diverging(center, range), center, range);
+            }
+            case VOLTAGE_VIOLATIONS -> {
+                if (violationField == null) {
+                    yield null;
+                }
+                double range = violationField.range(0, VIOLATION_RANGE_STEP);
+                // violations are distances from 1 pu
+                yield new ShownHeatmap(MapOverlay.VOLTAGE_VIOLATIONS, violationField, HeatmapField.signedIntensity(range), 1, range);
+            }
+        };
+    }
+
+    private void updateOverlayControls() {
+        angleOverlayRadioButton.setDisable(angleField == null);
+        violationsOverlayRadioButton.setDisable(violationField == null);
+        overlaysUnavailableLabel.setVisible(angleField == null && violationField == null);
+        ShownHeatmap shown = shownHeatmap();
+        angleHeatmapCenterBox.setVisible(shown != null && shown.overlay() == MapOverlay.VOLTAGE_ANGLE);
+        heatmapLegend.setVisible(shown != null);
+        if (shown == null) {
+            return;
+        }
+        boolean angles = shown.overlay() == MapOverlay.VOLTAGE_ANGLE;
+        heatmapLegendTitle.setText(Messages.get(angles ? "map.legend.voltageAngle" : "map.legend.voltageViolations"));
+        List<Stop> stops = new ArrayList<>();
+        if (angles) {
+            for (int i = 0; i < HeatmapField.DIVERGING_COLOR_STOPS.length; i++) {
+                stops.add(new Stop((double) i / (HeatmapField.DIVERGING_COLOR_STOPS.length - 1),
+                        Color.web(HeatmapField.DIVERGING_COLOR_STOPS[i], HeatmapField.OPACITY)));
+            }
+        } else {
+            stops.add(new Stop(0, Color.web(HeatmapField.UNDER_COLOR, HeatmapField.OPACITY)));
+            stops.add(new Stop(0.5, Color.TRANSPARENT));
+            stops.add(new Stop(1, Color.web(HeatmapField.OVER_COLOR, HeatmapField.OPACITY)));
+        }
+        heatmapLegendBar.setBackground(Background.fill(new LinearGradient(0, 0, 1, 0, true, CycleMethod.NO_CYCLE, stops)));
+        for (int i = 0; i < LEGEND_TICKS; i++) {
+            // + 0.0 turns -0 into 0
+            double tick = shown.tickCenter() + shown.range() * (2.0 * i / (LEGEND_TICKS - 1) - 1) + 0.0;
+            ((Label) heatmapLegendTicks.getChildren().get(i)).setText(String.format(angles ? "%.0f" : "%.2f", tick));
+        }
     }
 
     private void createBaseVoltageCheckBoxes() {
@@ -357,11 +546,14 @@ public class MapController extends AbstractDisposableController {
     public void requestTile(int id, int zoom, int x, int y, double ratio) {
         MapNetworkData data = networkData;
         boolean showCountries = basemapComboBox.getValue() == Basemap.OFFLINE;
+        ShownHeatmap shown = shownHeatmap();
+        HeatmapField heatmap = shown == null ? null : shown.field();
+        HeatmapField.ColorScale colors = shown == null ? null : shown.colors();
         Set<String> hidden = hiddenBaseVoltages;
         pendingTiles.put(id, tileExecutor.submit(() -> {
             String url = "";
             try {
-                url = renderTile(data, showCountries, hidden, zoom, x, y, ratio);
+                url = renderTile(data, showCountries, heatmap, colors, hidden, zoom, x, y, ratio);
             } finally {
                 // even if drawing failed, or Leaflet would wait for the tile forever
                 deliverTile(id, url);
@@ -369,9 +561,10 @@ public class MapController extends AbstractDisposableController {
         }));
     }
 
-    private static String renderTile(MapNetworkData data, boolean showCountries, Set<String> hidden, int zoom, int x, int y, double ratio) {
+    private static String renderTile(MapNetworkData data, boolean showCountries, HeatmapField heatmap, HeatmapField.ColorScale colors,
+                                     Set<String> hidden, int zoom, int x, int y, double ratio) {
         try {
-            byte[] png = MapTileRenderer.render(data, showCountries, hidden, zoom, x, y, ratio);
+            byte[] png = MapTileRenderer.render(data, showCountries, heatmap, colors, hidden, zoom, x, y, ratio);
             return png == null ? "" : "data:image/png;base64," + Base64.getEncoder().encodeToString(png);
         } catch (IOException e) {
             LOGGER.error(e.getMessage(), e);

@@ -7,8 +7,10 @@
  */
 package com.powsybl.powsybldesktop.map;
 
+import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.Coordinate;
@@ -19,6 +21,7 @@ import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +37,8 @@ import java.util.function.DoubleFunction;
  * wide: at zoom z, a pixel position is that times 2^z. Line {@code i}'s points are {@code lineStart[i]} (inclusive)
  * to {@code lineStart[i + 1]} (exclusive), its bounds {@code lineBounds[4 * i]} to {@code [4 * i + 3]} as min x,
  * min y, max x, max y; {@code substationColor}/{@code lineColor} index {@code colors}; base voltages are the
- * {@code BaseVoltagesConfig} names, null outside all ranges.
+ * {@code BaseVoltagesConfig} names, null outside all ranges. {@code substationAngles} are in degrees, NaN for none;
+ * {@code substationViolations} and {@code substationViolationVoltages} are described by {@link #build}.
  *
  * @param grid null when there is nothing to draw
  * @param substationSpacing median distance from a substation to its nearest neighbour, infinite with fewer than
@@ -43,7 +47,8 @@ import java.util.function.DoubleFunction;
  */
 record MapNetworkData(List<Color> colors,
                       String[] substationIds, String[] substationTexts, String[] substationBaseVoltages,
-                      double[] substationX, double[] substationY, int[] substationColor,
+                      double[] substationX, double[] substationY, int[] substationColor, double[] substationAngles,
+                      double[] substationViolations, double[] substationViolationVoltages,
                       String[] lineIds, String[] lineTexts, String[] lineBaseVoltages, int[] lineColor,
                       boolean[] lineDisconnected, int[] lineStart, double[] lineBounds,
                       double[] pointX, double[] pointY, int[] pointLine,
@@ -106,11 +111,15 @@ record MapNetworkData(List<Color> colors,
      * What the mouse is over, and where its tooltip goes: a substation's position, or halfway along a line.
      *
      * @param key identifies the element, to tell whether the hovered element changed
+     * @param angle a substation's voltage angle in degrees, null for a line or without one
+     * @param violationVoltage a substation's worst voltage limit violation, in pu, null for a line or without one
      */
-    record Hit(String key, boolean substation, String id, String text, double lat, double lng) {
+    record Hit(String key, boolean substation, String id, String text, double lat, double lng, Double angle,
+               Double violationVoltage) {
     }
 
-    private record MarkerData(String id, double x, double y, String text, String baseVoltage, String color) {
+    private record MarkerData(String id, double x, double y, String text, String baseVoltage, String color, double angle,
+                              double violation, double violationVoltage) {
     }
 
     /**
@@ -127,6 +136,15 @@ record MapNetworkData(List<Color> colors,
      * Lines, tie lines and boundary lines are drawn alike: the CGMES geographical layout import puts a tie line's
      * positions on its two boundary line halves, which are then drawn as, and navigate to, that tie line. A
      * substation takes its highest voltage level nominal voltage, a line the highest of its two ends.
+     * <p>
+     * A substation's angle is that of the bus with the most connected terminals in its highest voltage level: a
+     * single voltage level, so that transformer phase shifts within the substation don't mix in. Only buses in the
+     * main synchronous component count, the angles of other islands being relative to another reference.
+     * <p>
+     * A substation's worst voltage violation is, among the buses of all its voltage levels outside their voltage
+     * level's limits, the one farthest from 1 pu: {@code substationViolationVoltages} is its voltage in pu, and
+     * {@code substationViolations} that distance, negative below the low limit and positive above the high one. Without
+     * any violation, they are NaN and 0; without any bus voltage, both NaN.
      *
      * @param color the color of a base voltage, or the given default color for a null one
      */
@@ -137,11 +155,13 @@ record MapNetworkData(List<Color> colors,
             network.getSubstationStream().forEach(substation -> {
                 SubstationPosition position = substation.getExtension(SubstationPosition.class);
                 if (position != null) {
-                    String baseVoltage = baseVoltageName.apply(substation.getVoltageLevelStream()
-                            .mapToDouble(VoltageLevel::getNominalV).max().orElse(Double.NaN));
+                    VoltageLevel highest = highestVoltageLevel(substation);
+                    String baseVoltage = baseVoltageName.apply(highest == null ? Double.NaN : highest.getNominalV());
+                    double[] violation = worstViolation(substation);
                     substations.add(new MarkerData(substation.getId(),
                             projectX(position.getCoordinate().getLongitude()), projectY(position.getCoordinate().getLatitude()),
-                            substation.getNameOrId(), baseVoltage, color.apply(baseVoltage, DEFAULT_SUBSTATION_COLOR)));
+                            substation.getNameOrId(), baseVoltage, color.apply(baseVoltage, DEFAULT_SUBSTATION_COLOR), angle(highest),
+                            violation[0], violation[1]));
                 }
             });
             network.getLineStream().forEach(line -> addLine(lines, line, line,
@@ -160,6 +180,41 @@ record MapNetworkData(List<Color> colors,
             });
         }
         return pack(substations, lines);
+    }
+
+    private static VoltageLevel highestVoltageLevel(Substation substation) {
+        return substation.getVoltageLevelStream().max(Comparator.comparingDouble(VoltageLevel::getNominalV)).orElse(null);
+    }
+
+    private static double angle(VoltageLevel voltageLevel) {
+        return voltageLevel == null ? Double.NaN : voltageLevel.getBusView().getBusStream()
+                .filter(bus -> bus.isInMainSynchronousComponent() && !Double.isNaN(bus.getAngle()))
+                .max(Comparator.comparingInt(Bus::getConnectedTerminalCount))
+                .map(Bus::getAngle)
+                .orElse(Double.NaN);
+    }
+
+    /**
+     * The substation's violation and violation voltage, see {@link #build}.
+     */
+    private static double[] worstViolation(Substation substation) {
+        double[] worst = {Double.NaN, Double.NaN};
+        substation.getVoltageLevelStream().forEach(voltageLevel -> voltageLevel.getBusView().getBusStream().forEach(bus -> {
+            double v = bus.getV();
+            if (Double.isNaN(v)) {
+                return;
+            }
+            double distance = Math.abs(v / voltageLevel.getNominalV() - 1);
+            boolean under = v < voltageLevel.getLowVoltageLimit();
+            boolean over = v > voltageLevel.getHighVoltageLimit();
+            if ((under || over) && (Double.isNaN(worst[1]) || distance > Math.abs(worst[0]))) {
+                worst[0] = under ? -distance : distance;
+                worst[1] = v / voltageLevel.getNominalV();
+            } else if (Double.isNaN(worst[0])) {
+                worst[0] = 0;
+            }
+        }));
+        return worst;
     }
 
     private static double nominalV(TieLine tieLine) {
@@ -202,6 +257,9 @@ record MapNetworkData(List<Color> colors,
         double[] substationX = new double[substationCount];
         double[] substationY = new double[substationCount];
         int[] substationColor = new int[substationCount];
+        double[] substationAngles = new double[substationCount];
+        double[] substationViolations = new double[substationCount];
+        double[] substationViolationVoltages = new double[substationCount];
         for (int i = 0; i < substationCount; i++) {
             MarkerData substation = substations.get(i);
             substationIds[i] = substation.id();
@@ -210,6 +268,9 @@ record MapNetworkData(List<Color> colors,
             substationX[i] = substation.x();
             substationY[i] = substation.y();
             substationColor[i] = colorIndex(substation.color(), colors, colorIndices);
+            substationAngles[i] = substation.angle();
+            substationViolations[i] = substation.violation();
+            substationViolationVoltages[i] = substation.violationVoltage();
         }
 
         int lineCount = lines.size();
@@ -257,7 +318,7 @@ record MapNetworkData(List<Color> colors,
         lineStart[lineCount] = k;
         Grid grid = buildGrid(substationX, substationY, lineStart, pointX, pointY);
         return new MapNetworkData(colors, substationIds, substationTexts, substationBaseVoltages, substationX, substationY,
-                substationColor, lineIds, lineTexts, lineBaseVoltages, lineColor, lineDisconnected, lineStart, lineBounds,
+                substationColor, substationAngles, substationViolations, substationViolationVoltages, lineIds, lineTexts, lineBaseVoltages, lineColor, lineDisconnected, lineStart, lineBounds,
                 pointX, pointY, pointLine, grid, substationSpacing(grid, substationX, substationY));
     }
 
@@ -467,12 +528,14 @@ record MapNetworkData(List<Color> colors,
         }
         if (bestSubstation >= 0) {
             return new Hit("s" + bestSubstation, true, substationIds[bestSubstation], substationTexts[bestSubstation],
-                    unprojectLatitude(substationY[bestSubstation]), unprojectLongitude(substationX[bestSubstation]));
+                    unprojectLatitude(substationY[bestSubstation]), unprojectLongitude(substationX[bestSubstation]),
+                    Double.isNaN(substationAngles[bestSubstation]) ? null : substationAngles[bestSubstation],
+                    Double.isNaN(substationViolationVoltages[bestSubstation]) ? null : substationViolationVoltages[bestSubstation]);
         }
         if (bestLine >= 0) {
             double[] anchor = lineMiddle(bestLine);
             return new Hit("l" + bestLine, false, lineIds[bestLine], lineTexts[bestLine],
-                    unprojectLatitude(anchor[1]), unprojectLongitude(anchor[0]));
+                    unprojectLatitude(anchor[1]), unprojectLongitude(anchor[0]), null, null);
         }
         return null;
     }

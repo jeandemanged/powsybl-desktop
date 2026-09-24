@@ -294,7 +294,8 @@ function setBasemap(name) {
 }
 
 // A single shared tooltip, re-anchored whenever the hovered element changes. Hover and clicks are hit-tested by
-// MapController, which returns what is under the mouse as {key, text, lat, lng}.
+// MapController, which returns what is under the mouse as {key, text, lat, lng, angle, violationVoltage}, the last
+// two null but for a substation with a voltage angle, and with a voltage limit violation (its worst, in pu).
 var tooltip = L.tooltip();
 var hovered = null;
 var pendingHoverEvent = null;
@@ -307,7 +308,14 @@ function setHovered(hit) {
     hovered = hit;
     map.getContainer().style.cursor = hit ? 'pointer' : '';
     if (hit) {
-        tooltip.setLatLng([hit.lat, hit.lng]).setContent(hit.text);
+        var content = hit.text;
+        if (hit.angle !== null) {
+            content += '<br>θ = ' + hit.angle.toFixed(1) + '°';
+        }
+        if (hit.violationVoltage !== null) {
+            content += '<br>U = ' + hit.violationVoltage.toFixed(3) + ' pu';
+        }
+        tooltip.setLatLng([hit.lat, hit.lng]).setContent(content);
         if (!map.hasLayer(tooltip)) {
             tooltip.addTo(map);
         }

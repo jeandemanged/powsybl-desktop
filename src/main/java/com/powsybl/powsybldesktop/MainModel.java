@@ -17,6 +17,7 @@ import com.powsybl.nad.NadParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
 import com.powsybl.powsybldesktop.logs.LogsModel;
+import com.powsybl.powsybldesktop.map.MapOverlay;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.network.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.notification.Notification;
@@ -91,6 +92,8 @@ public class MainModel {
     private final BooleanProperty diagramFitToScreen = new SimpleBooleanProperty(false);
     private final IntegerProperty diagramAreaDepth = new SimpleIntegerProperty(1);
     private final ObservableSet<String> mapHiddenBaseVoltages = FXCollections.observableSet();
+    private final ObjectProperty<MapOverlay> mapOverlay = new SimpleObjectProperty<>(MapOverlay.NONE);
+    private final BooleanProperty mapAngleHeatmapCenteredOnMean = new SimpleBooleanProperty(false);
 
     public MainModel() {
         loadFlowParameters.setValue(new LoadFlowParameters());
@@ -458,5 +461,17 @@ public class MainModel {
      */
     public ObservableSet<String> getMapHiddenBaseVoltages() {
         return mapHiddenBaseVoltages;
+    }
+
+    public ObjectProperty<MapOverlay> mapOverlayProperty() {
+        return mapOverlay;
+    }
+
+    /**
+     * Whether the Map view's voltage angle heatmap is white at the mean substation angle rather than at the load flow
+     * reference angle, 0.
+     */
+    public BooleanProperty mapAngleHeatmapCenteredOnMeanProperty() {
+        return mapAngleHeatmapCenteredOnMean;
     }
 }

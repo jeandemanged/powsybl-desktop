@@ -13,6 +13,7 @@ import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.RadioButton;
 import javafx.scene.layout.AnchorPane;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
@@ -21,7 +22,9 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -52,7 +55,16 @@ class MapControllerEmptyStateTest extends AbstractHeadlessApplicationTest {
 
     @Test
     void noExceptionWhenNoNetworkIsSelected() {
-        assertEquals(3, mapContainer.getChildren().size());
+        assertEquals(4, mapContainer.getChildren().size());
+    }
+
+    @Test
+    void overlaysAreUnavailableWithoutLoadFlow() {
+        assertTrue(lookup("#angleOverlayRadioButton").queryAs(RadioButton.class).isDisabled());
+        assertTrue(lookup("#violationsOverlayRadioButton").queryAs(RadioButton.class).isDisabled());
+        assertTrue(lookup("#noOverlayRadioButton").queryAs(RadioButton.class).isSelected());
+        assertTrue(lookup("#overlaysUnavailableLabel").query().isVisible());
+        assertFalse(lookup("#heatmapLegend").query().isVisible());
     }
 
     // leaflet.js/leaflet.css aren't checked in: they're unpacked from the org.webjars:leaflet artifact by

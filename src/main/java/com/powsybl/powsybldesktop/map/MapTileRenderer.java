@@ -15,6 +15,7 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.Shape;
 import java.awt.Stroke;
 import java.awt.geom.Path2D;
 import java.awt.image.BufferedImage;
@@ -38,6 +39,9 @@ import java.util.Set;
  * The offline basemap is drawn here too, below the network: the country outlines bundled as
  * {@code countries.geojson} (Natural Earth 1:50m admin-0 countries, public domain, properties stripped and
  * coordinates rounded to 0.01 degree). Its sea is the map container's background color, set by map.js.
+ * <p>
+ * A heatmap ({@link HeatmapField}) goes between the basemap and the network. With the offline basemap
+ * it's clipped to land and the country borders are drawn again over it; over OpenStreetMap it only fades out.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -72,11 +76,13 @@ final class MapTileRenderer {
     /**
      * @param data the network to draw, null for none
      * @param showCountries whether to draw the offline basemap
+     * @param heatmap the heatmap to draw, null for none
+     * @param colors the heatmap's color scale
      * @param ratio device pixels per CSS pixel: the tile is drawn {@code 256 * ratio} pixels wide
      * @return the tile as PNG, or null when it would be fully transparent
      */
-    static byte[] render(MapNetworkData data, boolean showCountries, Set<String> hiddenBaseVoltages,
-                         int zoom, int tileX, int tileY, double ratio) throws IOException {
+    static byte[] render(MapNetworkData data, boolean showCountries, HeatmapField heatmap, HeatmapField.ColorScale colors,
+                         Set<String> hiddenBaseVoltages, int zoom, int tileX, int tileY, double ratio) throws IOException {
         int pixels = (int) Math.ceil(TILE_SIZE * ratio);
         double scale = Math.pow(2, zoom);
         double originX = tileX * (double) TILE_SIZE;
@@ -89,8 +95,10 @@ final class MapTileRenderer {
             g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
             g.scale(ratio, ratio);
             g.translate(-originX, -originY);
-            if (showCountries) {
-                drawn = drawCountries(g, CountriesHolder.COUNTRIES, scale, originX, originY);
+            Path2D.Double land = showCountries ? drawCountries(g, CountriesHolder.COUNTRIES, scale, originX, originY) : null;
+            drawn = land != null;
+            if (heatmap != null && (!showCountries || land != null)) {
+                drawn |= drawHeatmap(g, heatmap, colors, land, pixels, scale, originX, originY, ratio);
             }
             if (data != null && data.grid() != null) {
                 drawn |= drawNetwork(g, image, data, hiddenBaseVoltages, scale, originX, originY, ratio);
@@ -107,7 +115,10 @@ final class MapTileRenderer {
     }
 
     // Countries don't overlap, so even-odd filling leaves exactly the holes (e.g. Lesotho in South Africa) unfilled.
-    private static boolean drawCountries(Graphics2D g, Countries countries, double scale, double originX, double originY) {
+    /**
+     * @return the countries' outline, to clip the heatmap to, or null when there are none in the tile
+     */
+    private static Path2D.Double drawCountries(Graphics2D g, Countries countries, double scale, double originX, double originY) {
         double margin = 1 / scale;
         double minX = originX / scale - margin;
         double minY = originY / scale - margin;
@@ -126,13 +137,54 @@ final class MapTileRenderer {
             empty = false;
         }
         if (empty) {
-            return false;
+            return null;
         }
         g.setColor(LAND_COLOR);
         g.fill(path);
+        drawBorders(g, path);
+        return path;
+    }
+
+    private static void drawBorders(Graphics2D g, Path2D.Double countries) {
         g.setColor(BORDER_COLOR);
         g.setStroke(BORDER_STROKE);
-        g.draw(path);
+        g.draw(countries);
+    }
+
+    /**
+     * Sampled at each device pixel's center into an image of its own, then drawn over the basemap, clipped to
+     * {@code land} unless null.
+     */
+    private static boolean drawHeatmap(Graphics2D g, HeatmapField heatmap, HeatmapField.ColorScale colors, Path2D.Double land,
+                                       int pixels, double scale, double originX, double originY, double ratio) {
+        if (!heatmap.intersects(originX / scale, originY / scale, (originX + TILE_SIZE) / scale, (originY + TILE_SIZE) / scale)) {
+            return false;
+        }
+        int[] argb = new int[pixels * pixels];
+        boolean drawn = false;
+        for (int py = 0; py < pixels; py++) {
+            double y = (originY + (py + 0.5) / ratio) / scale;
+            for (int px = 0; px < pixels; px++) {
+                int color = heatmap.argb((originX + (px + 0.5) / ratio) / scale, y, colors);
+                argb[py * pixels + px] = color;
+                drawn |= color >>> 24 != 0;
+            }
+        }
+        if (!drawn) {
+            return false;
+        }
+        BufferedImage image = new BufferedImage(pixels, pixels, BufferedImage.TYPE_INT_ARGB);
+        image.setRGB(0, 0, pixels, pixels, argb, 0, pixels);
+        Shape clip = g.getClip();
+        if (land != null) {
+            g.clip(land);
+        }
+        // g is in CSS pixels: the image's device pixels are drawn over the tile's TILE_SIZE
+        g.drawImage(image, (int) originX, (int) originY, TILE_SIZE, TILE_SIZE, null);
+        g.setClip(clip);
+        if (land != null) {
+            drawBorders(g, land);
+        }
         return true;
     }
 
