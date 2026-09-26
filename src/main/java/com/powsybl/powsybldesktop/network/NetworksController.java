@@ -53,6 +53,7 @@ import com.powsybl.powsybldesktop.navigation.ReportNavigationState;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
+import com.powsybl.powsybldesktop.utils.FileChooserPreferences;
 import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.property.SimpleStringProperty;
@@ -78,10 +79,15 @@ import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
+import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
+import javafx.stage.Window;
 import javafx.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.nio.file.Path;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -97,8 +103,6 @@ import java.util.stream.Stream;
 public class NetworksController extends AbstractDisposableController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NetworksController.class);
-
-    private static final List<String> IIDM_FORMATS = List.of("XIIDM", "BIIDM", "JIIDM");
 
     @FXML
     private TreeView<Network> networksTreeView;
@@ -392,20 +396,32 @@ public class NetworksController extends AbstractDisposableController {
     }
 
     private void initializeImportMenu() {
-        MenuItem iidmItem = new MenuItem("IIDM");
-        iidmItem.setOnAction(event -> importNetwork(IIDM_FORMATS));
-        importMenuButton.getItems().add(iidmItem);
-
-        Importer.getFormats().stream()
-                .filter(format -> !IIDM_FORMATS.contains(format))
-                .sorted()
-                .forEach(format -> {
-                    MenuItem formatItem = new MenuItem(format);
-                    formatItem.setOnAction(event -> importNetwork(List.of(format)));
-                    importMenuButton.getItems().add(formatItem);
-                });
+        addImportFormatItems();
         importMenuButton.getItems().add(new SeparatorMenuItem());
+        addSampleNetworksMenu();
+    }
 
+    private void addImportFormatItems() {
+        NetworkFormatParametersController.importFormats().forEach((format, importers) -> {
+            // CGMES networks are commonly distributed as a folder of CIM files (EQ, TP, SV, SSH...) rather than a
+            // single file; the importer's DataSource transparently reads all files in a directory.
+            if ("CGMES".equals(format)) {
+                MenuItem fromFolderItem = new MenuItem(Messages.get("networks.toolbar.import.fromFolder"));
+                fromFolderItem.setOnAction(event -> importNetwork(format, importers, true));
+                MenuItem fromFileItem = new MenuItem(Messages.get("networks.toolbar.import.fromFile"));
+                fromFileItem.setOnAction(event -> importNetwork(format, importers, false));
+                Menu cgmesMenu = new Menu(format);
+                cgmesMenu.getItems().addAll(fromFolderItem, fromFileItem);
+                importMenuButton.getItems().add(cgmesMenu);
+            } else {
+                MenuItem formatItem = new MenuItem(format);
+                formatItem.setOnAction(event -> importNetwork(format, importers, false));
+                importMenuButton.getItems().add(formatItem);
+            }
+        });
+    }
+
+    private void addSampleNetworksMenu() {
         Menu sampleNetworksMenu = new Menu(Messages.get("networks.toolbar.import.sampleNetworks"));
         Menu mapTestsMenu = new Menu("Map performance tests");
         MenuItem mapTest10kItem = new MenuItem("Map test 10k");
@@ -623,27 +639,45 @@ public class NetworksController extends AbstractDisposableController {
     }
 
     private void initializeExportMenu() {
-        Stream.concat(
-                IIDM_FORMATS.stream().filter(Exporter.getFormats()::contains),
-                Exporter.getFormats().stream().filter(format -> !IIDM_FORMATS.contains(format)).sorted()
-        ).forEach(format -> {
+        NetworkFormatParametersController.exportFormats().forEach(format -> {
             MenuItem formatItem = new MenuItem(format);
             formatItem.setOnAction(event -> exportNetwork(selectedNetwork, format));
             exportMenuButton.getItems().add(formatItem);
         });
     }
 
-    private void importNetwork(List<String> formats) {
-        List<Importer> importers = formats.stream().map(Importer::find).filter(Objects::nonNull).toList();
-        if (importers.isEmpty()) {
-            return;
+    private void importNetwork(String format, List<Importer> importers, boolean fromFolder) {
+        Window owner = networksTreeView.getScene().getWindow();
+        File selected;
+        if (fromFolder) {
+            DirectoryChooser directoryChooser = new DirectoryChooser();
+            FileChooserPreferences.applyLastDirectory(directoryChooser);
+            selected = directoryChooser.showDialog(owner);
+        } else {
+            FileChooser fileChooser = new FileChooser();
+            addExtensionFilters(fileChooser, importers.stream().flatMap(importer -> importer.getSupportedExtensions().stream()).distinct().toList());
+            FileChooserPreferences.applyLastDirectory(fileChooser);
+            selected = fileChooser.showOpenDialog(owner);
         }
-        String dialogFormat = importers.size() > 1 ? "IIDM" : formats.getFirst();
-        ImportNetworkDialog.show(networksTreeView.getScene().getWindow(), dialogFormat, importers)
-                .ifPresent(request -> runImport(importers, request));
+        if (selected != null) {
+            FileChooserPreferences.saveLastDirectory(selected);
+            // copied since the parameters view may edit the stored instance while the import runs off the FX thread
+            Properties parameters = new Properties();
+            parameters.putAll(mainModel.getNetworkImportParameters(format));
+            runImport(importers, selected.toPath(), parameters);
+        }
     }
 
-    private void runImport(List<Importer> importers, ImportNetworkDialog.Request request) {
+    private static void addExtensionFilters(FileChooser fileChooser, List<String> baseExtensions) {
+        List<String> extensions = FileChooserPreferences.extensionPatterns(baseExtensions);
+        if (!extensions.isEmpty()) {
+            fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(
+                    Messages.get("networks.file.supportedFiles", String.join(", ", baseExtensions)), extensions));
+        }
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(Messages.get("networks.file.allFiles"), "*.*"));
+    }
+
+    private void runImport(List<Importer> importers, Path inputPath, Properties parameters) {
         Service<NetworkAndReport> networkImportService = new Service<>() {
             @Override
             protected Task<NetworkAndReport> createTask() {
@@ -655,10 +689,10 @@ public class NetworksController extends AbstractDisposableController {
                                 .withMessageTemplate("powsybl.desktop.network.import")
                                 .withTimestamp()
                                 .build();
-                        ReadOnlyDataSource dataSource = Exporters.createDataSource(request.inputPath());
+                        ReadOnlyDataSource dataSource = Exporters.createDataSource(inputPath);
                         Importer importer = importers.size() == 1 ? importers.getFirst()
                                 : importers.stream().filter(candidate -> candidate.exists(dataSource)).findFirst().orElse(importers.getFirst());
-                        Network network = importer.importData(dataSource, NetworkFactory.findDefault(), request.parameters(), reportNode);
+                        Network network = importer.importData(dataSource, NetworkFactory.findDefault(), parameters, reportNode);
                         return new NetworkAndReport(network, reportNode);
                     }
                 };
@@ -772,11 +806,22 @@ public class NetworksController extends AbstractDisposableController {
         if (exporter == null) {
             return;
         }
-        ExportNetworkDialog.show(networksTreeView.getScene().getWindow(), network, format, exporter)
-                .ifPresent(request -> runExport(network, exporter, request));
+        FileChooser fileChooser = new FileChooser();
+        // Exporter doesn't expose file extensions; the matching importer for the same format does.
+        Importer matchingImporter = Importer.find(format);
+        addExtensionFilters(fileChooser, matchingImporter == null ? List.of() : matchingImporter.getSupportedExtensions());
+        FileChooserPreferences.applyLastDirectory(fileChooser);
+        fileChooser.setInitialFileName(network.getNameOrId());
+        File selectedFile = fileChooser.showSaveDialog(networksTreeView.getScene().getWindow());
+        if (selectedFile != null) {
+            FileChooserPreferences.saveLastDirectory(selectedFile);
+            Properties parameters = new Properties();
+            parameters.putAll(mainModel.getNetworkExportParameters(NetworkFormatParametersController.exportParametersKey(format)));
+            runExport(network, exporter, selectedFile.toPath(), parameters);
+        }
     }
 
-    private void runExport(Network network, Exporter exporter, ExportNetworkDialog.Request request) {
+    private void runExport(Network network, Exporter exporter, Path outputPath, Properties parameters) {
         ReportNode reportNode = ReportNode.newRootReportNode()
                 .withAllResourceBundlesFromClasspath()
                 .withMessageTemplate("powsybl.desktop.network.export")
@@ -788,8 +833,8 @@ public class NetworksController extends AbstractDisposableController {
                 return new Task<>() {
                     @Override
                     protected Void call() {
-                        DataSource dataSource = Exporters.createDataSource(request.outputPath());
-                        exporter.export(network, request.parameters(), dataSource, reportNode);
+                        DataSource dataSource = Exporters.createDataSource(outputPath);
+                        exporter.export(network, parameters, dataSource, reportNode);
                         return null;
                     }
                 };

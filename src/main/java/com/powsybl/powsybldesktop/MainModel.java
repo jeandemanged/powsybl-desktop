@@ -44,6 +44,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Properties;
 
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -74,6 +75,10 @@ public class MainModel {
     private final ObjectProperty<SecurityAnalysisParameters> securityAnalysisParameters = new SimpleObjectProperty<>();
     private final ObjectProperty<SldParameters> sldParameters = new SimpleObjectProperty<>();
     private final ObjectProperty<NadParameters> nadParameters = new SimpleObjectProperty<>();
+    // keyed by format as listed in the parameters view / import-export menus (e.g. "IIDM" for all IIDM importers),
+    // holding only the values the user edited so the importer/exporter falls back to its own defaults otherwise
+    private final Map<String, Properties> networkImportParameters = new HashMap<>();
+    private final Map<String, Properties> networkExportParameters = new HashMap<>();
     private final Map<Network, LoadFlowResult> loadFlowResults = new HashMap<>();
     private final Map<Network, SecurityAnalysisResult> securityAnalysisResults = new HashMap<>();
     private final Map<Network, NetworkSearchIndex> searchIndexes = new HashMap<>();
@@ -264,6 +269,14 @@ public class MainModel {
 
     public ObjectProperty<NadParameters> nadParametersProperty() {
         return nadParameters;
+    }
+
+    public Properties getNetworkImportParameters(String format) {
+        return networkImportParameters.computeIfAbsent(format, f -> new Properties());
+    }
+
+    public Properties getNetworkExportParameters(String format) {
+        return networkExportParameters.computeIfAbsent(format, f -> new Properties());
     }
 
     public ObjectProperty<Instant> updateProperty() {

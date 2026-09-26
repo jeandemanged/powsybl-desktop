@@ -13,6 +13,16 @@
 <TabPane xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1"
          fx:controller="com.powsybl.powsybldesktop.parameters.ParametersController" tabClosingPolicy="UNAVAILABLE">
     <tabs>
+        <Tab text="%parameters.tab.networkImport">
+            <content>
+                <fx:include fx:id="networkImportEmbedded" source="../network/network-format-parameters.fxml"/>
+            </content>
+        </Tab>
+        <Tab text="%parameters.tab.networkExport">
+            <content>
+                <fx:include fx:id="networkExportEmbedded" source="../network/network-format-parameters.fxml"/>
+            </content>
+        </Tab>
         <Tab text="%parameters.tab.loadFlow">
             <content>
                 <fx:include fx:id="loadFlowEmbedded" source="../loadflow/lf-parameters.fxml"/>

@@ -13,6 +13,8 @@ import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ListView;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.stage.Stage;
@@ -23,7 +25,9 @@ import java.io.IOException;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -55,11 +59,37 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
-    void hostsLoadFlowAndSecurityAnalysisTabsInOrder() {
+    void hostsNetworkImportExportLoadFlowAndSecurityAnalysisTabsInOrder() {
         List<Tab> tabs = tabPane.getTabs();
-        assertEquals(2, tabs.size());
-        assertEquals("Load Flow", tabs.get(0).getText());
-        assertEquals("Security Analysis", tabs.get(1).getText());
+        assertEquals(4, tabs.size());
+        assertEquals("Network Import", tabs.get(0).getText());
+        assertEquals("Network Export", tabs.get(1).getText());
+        assertEquals("Load Flow", tabs.get(2).getText());
+        assertEquals("Security Analysis", tabs.get(3).getText());
+    }
+
+    @Test
+    void networkImportTabListsIidmFirstAndCgmes() {
+        ListView<?> formatList = from(tabPane.getTabs().get(0).getContent()).lookup(".list-view").queryListView();
+        assertEquals("IIDM", formatList.getItems().getFirst());
+        assertTrue(formatList.getItems().contains("CGMES"));
+    }
+
+    @Test
+    void networkExportTabGroupsIidmFormats() {
+        ListView<?> formatList = from(tabPane.getTabs().get(1).getContent()).lookup(".list-view").queryListView();
+        assertEquals("IIDM", formatList.getItems().getFirst());
+        assertFalse(formatList.getItems().contains("XIIDM"));
+        assertFalse(formatList.getItems().contains("BIIDM"));
+        assertFalse(formatList.getItems().contains("JIIDM"));
+    }
+
+    @Test
+    void editingImportParameterWritesIntoMainModel() {
+        CheckBox checkBox = from(tabPane.getTabs().get(0).getContent()).lookup(".check-box").query();
+        boolean initial = checkBox.isSelected();
+        clickOn(checkBox);
+        assertEquals(String.valueOf(!initial), mainModel.getNetworkImportParameters("IIDM").values().iterator().next());
     }
 
     @Test

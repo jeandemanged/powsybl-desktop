@@ -9,12 +9,14 @@ package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.loadflow.parameters.LoadFlowParametersController;
+import com.powsybl.powsybldesktop.network.NetworkFormatParametersController;
 import com.powsybl.powsybldesktop.security.parameters.SecurityAnalysisParametersController;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import javafx.fxml.FXML;
 
 /**
- * Tab host for the app's parameter screens: load flow parameters (existing {@link LoadFlowParametersController},
+ * Tab host for the app's parameter screens: network import/export parameters per format
+ * ({@link NetworkFormatParametersController}), load flow parameters (existing {@link LoadFlowParametersController},
  * embedded unchanged) and security analysis parameters ({@link SecurityAnalysisParametersController}).
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -22,17 +24,25 @@ import javafx.fxml.FXML;
 public class ParametersController extends AbstractDisposableController {
 
     @FXML
+    private NetworkFormatParametersController networkImportEmbeddedController;
+    @FXML
+    private NetworkFormatParametersController networkExportEmbeddedController;
+    @FXML
     private LoadFlowParametersController loadFlowEmbeddedController;
     @FXML
     private SecurityAnalysisParametersController securityAnalysisEmbeddedController;
 
     public void setMainModel(MainModel mainModel) {
+        networkImportEmbeddedController.setImportParameters(mainModel);
+        networkExportEmbeddedController.setExportParameters(mainModel);
         loadFlowEmbeddedController.setLoadFlowParametersProperty(mainModel.loadFlowParametersProperty());
         securityAnalysisEmbeddedController.setSecurityAnalysisParametersProperty(mainModel.securityAnalysisParametersProperty());
     }
 
     @Override
     public void dispose() {
+        networkImportEmbeddedController.dispose();
+        networkExportEmbeddedController.dispose();
         loadFlowEmbeddedController.dispose();
         securityAnalysisEmbeddedController.dispose();
         super.dispose();
