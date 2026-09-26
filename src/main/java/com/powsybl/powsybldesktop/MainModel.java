@@ -39,7 +39,6 @@ import javafx.collections.ObservableList;
 import javafx.collections.ObservableSet;
 
 import java.time.Instant;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;

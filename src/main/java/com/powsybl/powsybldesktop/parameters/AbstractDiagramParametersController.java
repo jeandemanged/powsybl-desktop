@@ -28,7 +28,6 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -228,25 +227,6 @@ public abstract class AbstractDiagramParametersController<T> extends AbstractDis
                 return;
             }
             setter.accept(parametersProperty.getValue(), textField.getText());
-            notifyChange();
-        };
-        bindCommit(textField, commit);
-        addRow(category, label, tooltip, textField);
-    }
-
-    // comma-separated free-form list, e.g. SLD's componentsOnBusbars component-type names
-    protected void addStringListField(String category, String label, String tooltip,
-                                       Function<T, List<String>> getter, BiConsumer<T, List<String>> setter) {
-        TextField textField = new TextField();
-        refreshers.add(() -> textField.setText(String.join(",", getter.apply(parametersProperty.getValue()))));
-        Runnable commit = () -> {
-            if (refreshing) {
-                return;
-            }
-            String text = textField.getText();
-            List<String> values = text.isBlank() ? List.of()
-                    : Arrays.stream(text.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
-            setter.accept(parametersProperty.getValue(), values);
             notifyChange();
         };
         bindCommit(textField, commit);

@@ -10,6 +10,7 @@ package com.powsybl.powsybldesktop.parameters;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.sld.SldParameters;
 import com.powsybl.sld.layout.LayoutParameters;
+import com.powsybl.sld.library.SldComponentTypeName;
 import com.powsybl.sld.svg.SvgParameters;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
@@ -18,6 +19,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -268,8 +270,10 @@ public class SldParametersController extends AbstractDiagramParametersController
     private void addAlignmentTopologyFields() {
         addEnumField(CAT_ALIGNMENT_TOPOLOGY, label("busbarsAlignment"), tooltip("busbarsAlignment"), LayoutParameters.Alignment.class,
                 p -> p.getLayoutParameters().getBusbarsAlignment(), (p, v) -> p.getLayoutParameters().setBusbarsAlignment(v));
-        addStringListField(CAT_ALIGNMENT_TOPOLOGY, label("componentsOnBusbars"), tooltip("componentsOnBusbars"),
-                p -> p.getLayoutParameters().getComponentsOnBusbars(), (p, v) -> p.getLayoutParameters().setComponentsOnBusbars(v));
+        // SLD's layout only supports disconnectors on busbars, so the component-type list is either empty or this single entry
+        addBooleanField(CAT_ALIGNMENT_TOPOLOGY, label("disconnectorsOnBusbars"), tooltip("disconnectorsOnBusbars"),
+                p -> p.getLayoutParameters().getComponentsOnBusbars().contains(SldComponentTypeName.DISCONNECTOR),
+                (p, v) -> p.getLayoutParameters().setComponentsOnBusbars(v ? List.of(SldComponentTypeName.DISCONNECTOR) : List.of()));
         addBooleanField(CAT_ALIGNMENT_TOPOLOGY, label("removeFictitiousSwitchNodes"), tooltip("removeFictitiousSwitchNodes"),
                 p -> p.getLayoutParameters().isRemoveFictitiousSwitchNodes(), (p, v) -> p.getLayoutParameters().setRemoveFictitiousSwitchNodes(v));
         addBooleanField(CAT_ALIGNMENT_TOPOLOGY, label("displayTeePointsInVoltageLevels"), tooltip("displayTeePointsInVoltageLevels"),
