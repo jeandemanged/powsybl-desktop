@@ -39,7 +39,9 @@ public class ParametersController extends AbstractDisposableController {
         networkImportEmbeddedController.setImportParameters(mainModel);
         networkExportEmbeddedController.setExportParameters(mainModel);
         sldEmbeddedController.setParametersProperty(mainModel.sldParametersProperty());
+        sldEmbeddedController.setOnChange(mainModel::sldParametersChanged);
         nadEmbeddedController.setParametersProperty(mainModel.nadParametersProperty());
+        nadEmbeddedController.setOnChange(mainModel::nadParametersChanged);
         loadFlowEmbeddedController.setLoadFlowParametersProperty(mainModel.loadFlowParametersProperty());
         securityAnalysisEmbeddedController.setSecurityAnalysisParametersProperty(mainModel.securityAnalysisParametersProperty());
     }

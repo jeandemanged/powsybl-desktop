@@ -228,6 +228,8 @@ public class SubstationsController extends AbstractDisposableController {
         // stale, possibly-invalidated data
         equipmentTabs.forEach(equipmentTab -> equipmentTab.controller().setMainModel(mainModel));
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> this.update());
+        listenerManager.listen(mainModel.sldParametersRevisionProperty(), (observable, oldValue, newValue) -> renderSingleLineDiagram());
+        listenerManager.listen(mainModel.nadParametersRevisionProperty(), (observable, oldValue, newValue) -> updateAreaDiagram());
 
         sldPaneController.loadShell(SLD_HTML_SHELL.replace("%__JS__%", js));
         // the single line diagram's zoom/fit-to-screen state is remembered across navigation/views (see
@@ -708,9 +710,15 @@ public class SubstationsController extends AbstractDisposableController {
         Container<?> container = selectedItem != null && selectedItem.getValue() instanceof Container<?> c
                 && (c instanceof VoltageLevel || c instanceof Substation) ? c : null;
         currentContainer = container;
-        if (container != null) {
+        renderSingleLineDiagram();
+        updateAreaDiagram();
+        updateEquipmentTabs(container);
+    }
+
+    private void renderSingleLineDiagram() {
+        if (currentContainer != null) {
             try {
-                SubstationDiagramRenderer.DiagramRender render = SubstationDiagramRenderer.render(container, mainModel.sldParametersProperty().getValue());
+                SubstationDiagramRenderer.DiagramRender render = SubstationDiagramRenderer.render(currentContainer, mainModel.sldParametersProperty().getValue());
                 sldMetadata = render.metadata();
                 sldPaneController.showDiagram(render.svg());
             } catch (IOException e) {
@@ -721,8 +729,6 @@ public class SubstationsController extends AbstractDisposableController {
             sldMetadata = null;
             sldPaneController.showNoSelection();
         }
-        updateAreaDiagram();
-        updateEquipmentTabs(container);
     }
 
     // rendered lazily: only while the area diagram tab is showing, since it's a separate (possibly

@@ -139,6 +139,8 @@ public class MainController extends AbstractDisposableController {
 
     private Stage memoryStage;
 
+    private Stage parametersStage;
+
     public MainController(MainModel mainModel) {
         this.mainModel = Objects.requireNonNull(mainModel);
     }
@@ -249,6 +251,9 @@ public class MainController extends AbstractDisposableController {
         }
         if (memoryStage != null) {
             memoryStage.close();
+        }
+        if (parametersStage != null) {
+            parametersStage.close();
         }
         super.dispose();
     }
@@ -632,8 +637,6 @@ public class MainController extends AbstractDisposableController {
         }
         if (newValue.navigationType() == NavigationType.LOGS) {
             ensureController(LogsViewController.class, "logs/logs-view.fxml", c -> c.setLogsModel(mainModel.getLogsModel()));
-        } else if (newValue.navigationType() == NavigationType.PARAMETERS) {
-            ensureController(ParametersController.class, "parameters/parameters-view.fxml", c -> c.setMainModel(mainModel));
         } else if (newValue.navigationType() == NavigationType.NETWORKS) {
             NetworksController controller = ensureController(NetworksController.class, "network/networks-view.fxml", c -> c.setMainModel(mainModel));
             if (newValue.state() instanceof NetworkNavigationState state) {
@@ -814,8 +817,38 @@ public class MainController extends AbstractDisposableController {
         mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.CONTINGENCIES, NetworkNavigationState.create(mainModel.getNetwork())));
     }
 
+    // a separate non-modal window rather than a center view, so parameters can be edited while the main
+    // stage keeps showing e.g. the diagram they apply to
     public void onParameters() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.PARAMETERS));
+        if (parametersStage != null) {
+            parametersStage.requestFocus();
+            parametersStage.toFront();
+            return;
+        }
+
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("parameters/parameters-view.fxml"), Messages.bundle());
+        Parent root;
+        try {
+            root = loader.load();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        root.getStylesheets().add(Objects.requireNonNull(
+                getClass().getResource("/com/powsybl/powsybldesktop/styles.css")).toExternalForm());
+        ParametersController controller = loader.getController();
+        controller.setMainModel(mainModel);
+
+        parametersStage = new Stage();
+        parametersStage.initOwner(borderPane.getScene().getWindow());
+        parametersStage.setTitle(Messages.get("main.toolbar.parameters"));
+        parametersStage.getIcons().add(new Image(
+                Objects.requireNonNull(MainApplication.class.getResourceAsStream("logo.png"))));
+        parametersStage.setScene(new Scene(root, 1000, 700));
+        parametersStage.setOnHidden(event -> {
+            controller.dispose();
+            parametersStage = null;
+        });
+        parametersStage.show();
     }
 
     public void onLogs() {

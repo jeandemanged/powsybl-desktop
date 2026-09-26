@@ -95,6 +95,18 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
+    void editingDiagramParametersBumpsMainModelRevisions() {
+        interact(() -> tabPane.getSelectionModel().select(2));
+        clickOn(from(tabPane.getTabs().get(2).getContent()).lookup(".check-box").<CheckBox>query());
+        assertEquals(1, mainModel.sldParametersRevisionProperty().get());
+        assertEquals(0, mainModel.nadParametersRevisionProperty().get());
+
+        interact(() -> tabPane.getSelectionModel().select(3));
+        clickOn(from(tabPane.getTabs().get(3).getContent()).lookup(".check-box").<CheckBox>query());
+        assertEquals(1, mainModel.nadParametersRevisionProperty().get());
+    }
+
+    @Test
     void embeddedControllersShareMainModelParameters() {
         assertSame(mainModel.loadFlowParametersProperty().get(),
                 mainModel.securityAnalysisParametersProperty().get().getLoadFlowParameters());

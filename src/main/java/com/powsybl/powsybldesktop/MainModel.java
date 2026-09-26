@@ -29,10 +29,13 @@ import com.powsybl.sld.svg.SvgParameters;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.LongProperty;
 import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyLongProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -75,6 +78,10 @@ public class MainModel {
     private final ObjectProperty<SecurityAnalysisParameters> securityAnalysisParameters = new SimpleObjectProperty<>();
     private final ObjectProperty<DesktopSldParameters> sldParameters = new SimpleObjectProperty<>();
     private final ObjectProperty<DesktopNadParameters> nadParameters = new SimpleObjectProperty<>();
+    // the diagram parameters are edited in place, so their properties don't fire: these counters are bumped
+    // instead, for the displayed diagrams to re-render
+    private final LongProperty sldParametersRevision = new SimpleLongProperty();
+    private final LongProperty nadParametersRevision = new SimpleLongProperty();
     // keyed by format as listed in the parameters view / import-export menus (e.g. "IIDM" for all IIDM importers),
     // holding only the values the user edited so the importer/exporter falls back to its own defaults otherwise
     private final Map<String, Properties> networkImportParameters = new HashMap<>();
@@ -273,6 +280,22 @@ public class MainModel {
 
     public ObjectProperty<DesktopNadParameters> nadParametersProperty() {
         return nadParameters;
+    }
+
+    public ReadOnlyLongProperty sldParametersRevisionProperty() {
+        return sldParametersRevision;
+    }
+
+    public void sldParametersChanged() {
+        sldParametersRevision.set(sldParametersRevision.get() + 1);
+    }
+
+    public ReadOnlyLongProperty nadParametersRevisionProperty() {
+        return nadParametersRevision;
+    }
+
+    public void nadParametersChanged() {
+        nadParametersRevision.set(nadParametersRevision.get() + 1);
     }
 
     public Properties getNetworkImportParameters(String format) {
