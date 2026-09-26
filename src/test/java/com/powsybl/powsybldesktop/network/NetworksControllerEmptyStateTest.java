@@ -15,11 +15,11 @@ import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Pair;
 import org.junit.jupiter.api.AfterEach;
@@ -64,8 +64,8 @@ class NetworksControllerEmptyStateTest extends AbstractHeadlessApplicationTest {
         return (TreeView<Network>) lookup(".tree-view").queryAs(TreeView.class);
     }
 
-    private Label noNetworksLabel() {
-        return lookup("#noNetworksLabel").queryAs(Label.class);
+    private VBox noNetworksPane() {
+        return lookup("#noNetworksPane").queryAs(VBox.class);
     }
 
     private BorderPane networkDetailsPane() {
@@ -82,8 +82,8 @@ class NetworksControllerEmptyStateTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
-    void noNetworksLabelIsShownWhenNoNetworkIsLoaded() {
-        assertTrue(noNetworksLabel().isVisible());
+    void noNetworksPaneIsShownWhenNoNetworkIsLoaded() {
+        assertTrue(noNetworksPane().isVisible());
     }
 
     @Test
@@ -102,10 +102,10 @@ class NetworksControllerEmptyStateTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
-    void noNetworksLabelIsHiddenOnceANetworkIsAdded() {
+    void noNetworksPaneIsHiddenOnceANetworkIsAdded() {
         interact(() -> mainModel.addNetwork(IeeeCdfNetworkFactory.create14()));
 
-        assertFalse(noNetworksLabel().isVisible());
+        assertFalse(noNetworksPane().isVisible());
     }
 
     @Test

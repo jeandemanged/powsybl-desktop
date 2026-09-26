@@ -235,3 +235,25 @@
 .memory-usage-bar .bar {
     -fx-background-color: green;
 }
+
+.networks-empty-state-icon {
+    -fx-icon-color: gray;
+}
+
+.networks-empty-state-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.networks-empty-state-hint {
+    -fx-text-fill: gray;
+}
+
+.networks-drop-overlay {
+    -fx-border-color: -fx-accent;
+    -fx-border-width: 2px;
+    -fx-border-style: dashed;
+    -fx-border-insets: 4px;
+    -fx-background-color: rgba(0, 150, 201, 0.12);
+    -fx-background-insets: 4px;
+}

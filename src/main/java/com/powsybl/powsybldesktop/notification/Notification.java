@@ -19,27 +19,32 @@ import java.util.List;
  * re-renders in the current UI language instead of staying frozen in whichever language was active
  * when it was created. {@code startTimestamp} is carried over from the running notification into its
  * outcome (see {@link #createSuccess}/{@link #createError}/{@link #createCancelled}) so
- * {@link #duration()} reports how long the operation actually took.
+ * {@link #duration()} reports how long the operation actually took. The message template gets the elapsed time
+ * as {@code {0}}, followed by {@code messageArgs} as {@code {1}}, {@code {2}}...
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 public record Notification(Instant startTimestamp, Instant timestamp, NotificationStatus status,
-                            String messageKey, List<NotificationAction> actions, Runnable onCancel) {
+                            String messageKey, List<Object> messageArgs, List<NotificationAction> actions, Runnable onCancel) {
     public static Notification createRunning(String messageKey, Runnable onCancel) {
         Instant now = Instant.now();
-        return new Notification(now, now, NotificationStatus.RUNNING, messageKey, List.of(), onCancel);
+        return new Notification(now, now, NotificationStatus.RUNNING, messageKey, List.of(), List.of(), onCancel);
     }
 
     public static Notification createSuccess(Instant startTimestamp, String messageKey, NotificationAction... actions) {
-        return new Notification(startTimestamp, Instant.now(), NotificationStatus.SUCCESS, messageKey, List.of(actions), null);
+        return new Notification(startTimestamp, Instant.now(), NotificationStatus.SUCCESS, messageKey, List.of(), List.of(actions), null);
     }
 
     public static Notification createError(Instant startTimestamp, String messageKey, NotificationAction... actions) {
-        return new Notification(startTimestamp, Instant.now(), NotificationStatus.ERROR, messageKey, List.of(actions), null);
+        return new Notification(startTimestamp, Instant.now(), NotificationStatus.ERROR, messageKey, List.of(), List.of(actions), null);
     }
 
     public static Notification createCancelled(Instant startTimestamp, String messageKey) {
-        return new Notification(startTimestamp, Instant.now(), NotificationStatus.CANCELLED, messageKey, List.of(), null);
+        return new Notification(startTimestamp, Instant.now(), NotificationStatus.CANCELLED, messageKey, List.of(), List.of(), null);
+    }
+
+    public Notification withMessageArgs(Object... args) {
+        return new Notification(startTimestamp, timestamp, status, messageKey, List.of(args), actions, onCancel);
     }
 
     /** Time elapsed since the operation started: still growing while {@link NotificationStatus#RUNNING}, fixed once terminal. */
@@ -48,6 +53,11 @@ public record Notification(Instant startTimestamp, Instant timestamp, Notificati
     }
 
     public String message() {
-        return Messages.get(messageKey, duration().toSeconds() + " s");
+        Object[] args = new Object[messageArgs.size() + 1];
+        args[0] = duration().toSeconds() + " s";
+        for (int i = 0; i < messageArgs.size(); i++) {
+            args[i + 1] = messageArgs.get(i);
+        }
+        return Messages.get(messageKey, args);
     }
 }

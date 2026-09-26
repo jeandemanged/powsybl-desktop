@@ -10,12 +10,17 @@ package com.powsybl.powsybldesktop.network;
 import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
 import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.Country;
+import com.powsybl.iidm.network.Importer;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.NetworkFactory;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.test.EurostagTutorialExample1Factory;
+import com.powsybl.iidm.network.test.FourSubstationsNodeBreakerFactory;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.network.NetworksController.ImportChoice;
+import com.powsybl.powsybldesktop.notification.Notification;
+import com.powsybl.powsybldesktop.notification.NotificationStatus;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
@@ -33,9 +38,17 @@ import javafx.stage.Stage;
 import javafx.util.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.testfx.util.WaitForAsyncUtils;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -345,5 +358,62 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> networkInfoTable().requestFocus());
 
         assertEquals("Original name", ieee14.getOptionalName().orElse(null));
+    }
+
+    @Test
+    void acceptingImportersKeepsOnlyFormatsRecognizingTheFile(@TempDir Path dir) {
+        Path file = dir.resolve("network.xiidm");
+        EurostagTutorialExample1Factory.create().write("XIIDM", new Properties(), file);
+
+        Map<String, List<Importer>> accepting = NetworksController.acceptingImporters(NetworkFormatParametersController.importFormats(), file);
+
+        assertEquals(List.of("IIDM"), List.copyOf(accepting.keySet()));
+        assertEquals(List.of("XIIDM"), accepting.get("IIDM").stream().map(Importer::getFormat).toList());
+    }
+
+    @Test
+    void acceptingImportersIsEmptyForAnUnsupportedFile(@TempDir Path dir) throws IOException {
+        Path file = Files.writeString(dir.resolve("notes.txt"), "not a network");
+
+        assertTrue(NetworksController.acceptingImporters(NetworkFormatParametersController.importFormats(), file).isEmpty());
+    }
+
+    private Notification importAllAndWait(List<ImportChoice> choices) throws TimeoutException {
+        interact(() -> controller.importAll(choices));
+        WaitForAsyncUtils.waitFor(30, TimeUnit.SECONDS, () -> mainModel.getNotifications().getLast().status() != NotificationStatus.RUNNING);
+        return mainModel.getNotifications().getLast();
+    }
+
+    private static ImportChoice xiidmChoice(Path path) {
+        return new ImportChoice(path, "IIDM", List.of(Importer.find("XIIDM")));
+    }
+
+    @Test
+    void importAllImportsEveryNetwork(@TempDir Path dir) throws TimeoutException {
+        Path first = dir.resolve("first.xiidm");
+        EurostagTutorialExample1Factory.create().write("XIIDM", new Properties(), first);
+        Path second = dir.resolve("second.xiidm");
+        FourSubstationsNodeBreakerFactory.create().write("XIIDM", new Properties(), second);
+
+        Notification outcome = importAllAndWait(List.of(xiidmChoice(first), xiidmChoice(second)));
+
+        assertEquals(4, mainModel.getNetworks().size(), outcome.status() + " " + outcome.message());
+        assertEquals(NotificationStatus.SUCCESS, outcome.status());
+        assertTrue(outcome.message().startsWith("All 2 networks imported"), outcome.message());
+    }
+
+    @Test
+    void importAllKeepsImportingAfterAFailure(@TempDir Path dir) throws IOException, TimeoutException {
+        Path first = dir.resolve("first.xiidm");
+        EurostagTutorialExample1Factory.create().write("XIIDM", new Properties(), first);
+        Path broken = Files.writeString(dir.resolve("broken.xiidm"), "<not-a-network/>");
+        Path last = dir.resolve("last.xiidm");
+        FourSubstationsNodeBreakerFactory.create().write("XIIDM", new Properties(), last);
+
+        Notification outcome = importAllAndWait(List.of(xiidmChoice(first), xiidmChoice(broken), xiidmChoice(last)));
+
+        assertEquals(4, mainModel.getNetworks().size(), outcome.status() + " " + outcome.message());
+        assertEquals(NotificationStatus.ERROR, outcome.status());
+        assertTrue(outcome.message().startsWith("2 of 3 networks imported, 1 failed"), outcome.message());
     }
 }

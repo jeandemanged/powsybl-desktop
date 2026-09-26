@@ -15,6 +15,7 @@ import com.powsybl.cgmes.conformity.CgmesConformity3Catalog;
 import com.powsybl.cgmes.conformity.ReliCapGridCatalog;
 import com.powsybl.cgmes.conversion.CgmesImport;
 import com.powsybl.cgmes.model.GridModelReference;
+import com.powsybl.commons.PowsyblException;
 import com.powsybl.commons.datasource.DataSource;
 import com.powsybl.commons.datasource.ReadOnlyDataSource;
 import com.powsybl.commons.report.ReportNode;
@@ -77,8 +78,12 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
+import javafx.scene.input.DragEvent;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
@@ -87,8 +92,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -104,11 +114,19 @@ public class NetworksController extends AbstractDisposableController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NetworksController.class);
 
+    private static final int MAX_DROPPED_IMPORTS = 100;
+
     @FXML
     private TreeView<Network> networksTreeView;
 
     @FXML
-    private Label noNetworksLabel;
+    private StackPane networksDropPane;
+
+    @FXML
+    private VBox noNetworksPane;
+
+    @FXML
+    private Region dropOverlay;
 
     @FXML
     private MenuButton importMenuButton;
@@ -350,7 +368,7 @@ public class NetworksController extends AbstractDisposableController {
         });
         networksTreeView.setRoot(rootItem);
         networksTreeView.getSelectionModel().select(selectedNetworkTreeItem[0]);
-        noNetworksLabel.setVisible(mainModel.getNetworks().isEmpty());
+        noNetworksPane.setVisible(mainModel.getNetworks().isEmpty());
         closeAllButton.setDisable(mainModel.getNetworks().isEmpty());
     }
 
@@ -381,6 +399,7 @@ public class NetworksController extends AbstractDisposableController {
         });
         initializeImportMenu();
         initializeExportMenu();
+        initializeDropImport();
         propertyColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getKey()));
         valueColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getValue()));
         nameField.setOnAction(event -> commitNameChange());
@@ -661,11 +680,171 @@ public class NetworksController extends AbstractDisposableController {
         }
         if (selected != null) {
             FileChooserPreferences.saveLastDirectory(selected);
-            // copied since the parameters view may edit the stored instance while the import runs off the FX thread
-            Properties parameters = new Properties();
-            parameters.putAll(mainModel.getNetworkImportParameters(format));
-            runImport(importers, selected.toPath(), parameters);
+            importNetwork(format, importers, selected.toPath());
         }
+    }
+
+    private void importNetwork(String format, List<Importer> importers, Path inputPath) {
+        runImport(importers, inputPath, importParameters(format));
+    }
+
+    private Properties importParameters(String format) {
+        // copied since the parameters view may edit the stored instance while the import runs off the FX thread
+        Properties parameters = new Properties();
+        parameters.putAll(mainModel.getNetworkImportParameters(format));
+        return parameters;
+    }
+
+    private void initializeDropImport() {
+        networksDropPane.setOnDragOver(event -> {
+            if (isExternalFileDrag(event)) {
+                event.acceptTransferModes(TransferMode.COPY);
+            }
+            event.consume();
+        });
+        networksDropPane.setOnDragEntered(event -> dropOverlay.setVisible(isExternalFileDrag(event)));
+        networksDropPane.setOnDragExited(event -> dropOverlay.setVisible(false));
+        networksDropPane.setOnDragDropped(event -> {
+            boolean accepted = isExternalFileDrag(event);
+            event.setDropCompleted(accepted);
+            event.consume();
+            if (accepted) {
+                importDropped(event.getDragboard().getFiles().stream()
+                        .map(File::toPath)
+                        .sorted(Comparator.comparing(path -> path.getFileName().toString(), String.CASE_INSENSITIVE_ORDER))
+                        .toList());
+            }
+        });
+    }
+
+    private static boolean isExternalFileDrag(DragEvent event) {
+        return event.getGestureSource() == null && event.getDragboard().hasFiles() && !event.getDragboard().getFiles().isEmpty();
+    }
+
+    /** A dropped file or folder with the import formats recognizing it, each mapped to its recognizing importers. */
+    record DroppedPath(Path path, Map<String, List<Importer>> accepting) {
+    }
+
+    record ImportChoice(Path path, String format, List<Importer> importers) {
+    }
+
+    private void importDropped(List<Path> paths) {
+        Map<String, List<Importer>> formats = NetworkFormatParametersController.importFormats();
+        // detection reads the dropped files, hence off the FX thread; this also defers the dialogs below until
+        // after the drop handler has returned, since a modal dialog inside it blocks the drag source application
+        Service<List<DroppedPath>> detectionService = new Service<>() {
+            @Override
+            protected Task<List<DroppedPath>> createTask() {
+                return new Task<>() {
+                    @Override
+                    protected List<DroppedPath> call() {
+                        return paths.stream().map(path -> new DroppedPath(path, acceptingImporters(formats, path))).toList();
+                    }
+                };
+            }
+        };
+        detectionService.setOnSucceeded(event -> {
+            List<DroppedPath> dropped = detectionService.getValue();
+            long importable = dropped.stream().filter(droppedPath -> !droppedPath.accepting().isEmpty()).count();
+            if (importable > MAX_DROPPED_IMPORTS) {
+                showTooManyDropped(importable);
+            } else if (dropped.stream().allMatch(droppedPath -> droppedPath.accepting().size() == 1)) {
+                importAll(dropped.stream().map(droppedPath -> {
+                    Map.Entry<String, List<Importer>> entry = droppedPath.accepting().entrySet().iterator().next();
+                    return new ImportChoice(droppedPath.path(), entry.getKey(), entry.getValue());
+                }).toList());
+            } else if (dropped.stream().allMatch(droppedPath -> droppedPath.accepting().isEmpty())) {
+                showUnsupportedDrop(paths, formats);
+            } else {
+                DropImportDialog.show(networksTreeView.getScene().getWindow(), dropped).ifPresent(this::importAll);
+            }
+        });
+        detectionService.setOnFailed(event -> {
+            Throwable exception = event.getSource().getException();
+            LOGGER.error(exception.toString(), exception);
+            showUnsupportedDrop(paths, formats);
+        });
+        detectionService.start();
+    }
+
+    void importAll(List<ImportChoice> choices) {
+        if (choices.size() == 1) {
+            ImportChoice choice = choices.getFirst();
+            importNetwork(choice.format(), choice.importers(), choice.path());
+        } else if (!choices.isEmpty()) {
+            runImports(choices.stream()
+                    .map(choice -> new ImportRequest(choice.path(), choice.importers(), importParameters(choice.format())))
+                    .toList());
+        }
+    }
+
+    /**
+     * Formats of {@code formats}, in the same order, having at least one importer recognizing {@code path}, each
+     * mapped to its recognizing importers only.
+     */
+    static Map<String, List<Importer>> acceptingImporters(Map<String, List<Importer>> formats, Path path) {
+        Map<String, List<Importer>> accepting = new LinkedHashMap<>();
+        ReadOnlyDataSource dataSource;
+        try {
+            dataSource = Exporters.createDataSource(path);
+        } catch (PowsyblException | UncheckedIOException e) {
+            LOGGER.debug("Cannot read {}", path, e);
+            return accepting;
+        }
+        formats.forEach((format, importers) -> {
+            List<Importer> matching = importers.stream().filter(importer -> accepts(importer, dataSource)).toList();
+            if (!matching.isEmpty()) {
+                accepting.put(format, matching);
+            }
+        });
+        return accepting;
+    }
+
+    private static boolean accepts(Importer importer, ReadOnlyDataSource dataSource) {
+        try {
+            return importer.exists(dataSource);
+        } catch (PowsyblException | UncheckedIOException e) {
+            // some importers throw on content they cannot parse instead of returning false
+            LOGGER.debug("Importer {} failed to check data source {}", importer.getFormat(), dataSource.getBaseName(), e);
+            return false;
+        }
+    }
+
+    private void showTooManyDropped(long importable) {
+        showDropError(Messages.get("networks.drop.tooMany.title"),
+                Messages.get("networks.drop.tooMany.header", MAX_DROPPED_IMPORTS),
+                Messages.get("networks.drop.tooMany.content", importable, MAX_DROPPED_IMPORTS));
+    }
+
+    private void showUnsupportedDrop(List<Path> paths, Map<String, List<Importer>> formats) {
+        String importers = String.join(", ", formats.keySet());
+        if (paths.size() == 1) {
+            showDropError(Messages.get("networks.drop.unsupported.title"),
+                    Messages.get("networks.drop.unsupported.header", paths.getFirst().getFileName()),
+                    Messages.get("networks.drop.unsupported.content", importers));
+        } else {
+            showDropError(Messages.get("networks.drop.unsupported.title"),
+                    Messages.get("networks.drop.unsupportedAll.header", paths.size()),
+                    Messages.get("networks.drop.unsupportedAll.content", importers,
+                            paths.stream().map(path -> "- " + path.getFileName()).collect(Collectors.joining("\n"))));
+        }
+    }
+
+    private void showDropError(String title, String header, String content) {
+        // Alert's built-in content label is sized before wrapping is accounted for and gets truncated with an
+        // ellipsis on long text: a fixed-width wrapping label and a dialog kept at its preferred height avoid it
+        Label contentLabel = new Label(content);
+        contentLabel.setWrapText(true);
+        contentLabel.setPrefWidth(480);
+        contentLabel.setMinHeight(Region.USE_PREF_SIZE);
+        Alert alert = new Alert(Alert.AlertType.ERROR, null, ButtonType.OK);
+        alert.initOwner(networksTreeView.getScene().getWindow());
+        alert.setTitle(title);
+        alert.setHeaderText(header);
+        alert.getDialogPane().setContent(contentLabel);
+        alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+        alert.setResizable(true);
+        alert.showAndWait();
     }
 
     private static void addExtensionFilters(FileChooser fileChooser, List<String> baseExtensions) {
@@ -684,16 +863,7 @@ public class NetworksController extends AbstractDisposableController {
                 return new Task<>() {
                     @Override
                     protected NetworkAndReport call() {
-                        ReportNode reportNode = ReportNode.newRootReportNode()
-                                .withAllResourceBundlesFromClasspath()
-                                .withMessageTemplate("powsybl.desktop.network.import")
-                                .withTimestamp()
-                                .build();
-                        ReadOnlyDataSource dataSource = Exporters.createDataSource(inputPath);
-                        Importer importer = importers.size() == 1 ? importers.getFirst()
-                                : importers.stream().filter(candidate -> candidate.exists(dataSource)).findFirst().orElse(importers.getFirst());
-                        Network network = importer.importData(dataSource, NetworkFactory.findDefault(), parameters, reportNode);
-                        return new NetworkAndReport(network, reportNode);
+                        return doImport(importers, inputPath, parameters);
                     }
                 };
             }
@@ -726,6 +896,93 @@ public class NetworksController extends AbstractDisposableController {
         networkImportService.setOnCancelled(event -> mainModel.replaceNotification(runningNotification,
                 Notification.createCancelled(runningNotification.startTimestamp(), "main.networkImport.cancelled")));
         networkImportService.start();
+    }
+
+    private static NetworkAndReport doImport(List<Importer> importers, Path inputPath, Properties parameters) {
+        ReportNode reportNode = ReportNode.newRootReportNode()
+                .withAllResourceBundlesFromClasspath()
+                .withMessageTemplate("powsybl.desktop.network.import")
+                .withTimestamp()
+                .build();
+        ReadOnlyDataSource dataSource = Exporters.createDataSource(inputPath);
+        Importer importer = importers.size() == 1 ? importers.getFirst()
+                : importers.stream().filter(candidate -> candidate.exists(dataSource)).findFirst().orElse(importers.getFirst());
+        Network network = importer.importData(dataSource, NetworkFactory.findDefault(), parameters, reportNode);
+        return new NetworkAndReport(network, reportNode);
+    }
+
+    private record ImportRequest(Path path, List<Importer> importers, Properties parameters) {
+    }
+
+    /**
+     * Imports one after the other, each as its own task run of the same {@link Service}, so that a failing import is
+     * reported through the regular task failure path and doesn't prevent the next ones.
+     */
+    private void runImports(List<ImportRequest> requests) {
+        int total = requests.size();
+        int[] succeeded = {0};
+        int[] failed = {0};
+        Service<NetworkAndReport> importService = new Service<>() {
+            @Override
+            protected Task<NetworkAndReport> createTask() {
+                ImportRequest request = requests.get(succeeded[0] + failed[0]);
+                return new Task<>() {
+                    @Override
+                    protected NetworkAndReport call() {
+                        return doImport(request.importers(), request.path(), request.parameters());
+                    }
+                };
+            }
+        };
+        Notification runningNotification = Notification.createRunning("main.networkImports.running", importService::cancel);
+        Notification[] currentNotification = {runningNotification.withMessageArgs(0, total)};
+        mainModel.addNotification(currentNotification[0]);
+
+        Runnable next = () -> {
+            int done = succeeded[0] + failed[0];
+            Notification updated = done < total
+                    ? runningNotification.withMessageArgs(done, total)
+                    : importsOutcome(runningNotification.startTimestamp(), total, succeeded[0], failed[0]);
+            mainModel.replaceNotification(currentNotification[0], updated);
+            currentNotification[0] = updated;
+            if (done < total) {
+                // not restart(), which goes through CANCELLED and would fire onCancelled
+                importService.reset();
+                importService.start();
+            }
+        };
+        importService.setOnSucceeded(event -> {
+            NetworkAndReport networkAndReport = importService.getValue();
+            mainModel.addNetwork(networkAndReport.network());
+            mainModel.addReport(networkAndReport.reportNode());
+            succeeded[0]++;
+            next.run();
+        });
+        importService.setOnFailed(event -> {
+            LOGGER.error("Failed to import network from {}", requests.get(succeeded[0] + failed[0]).path(), importService.getException());
+            failed[0]++;
+            next.run();
+        });
+        importService.setOnCancelled(event -> mainModel.replaceNotification(currentNotification[0],
+                Notification.createCancelled(runningNotification.startTimestamp(), "main.networkImports.cancelled")
+                        .withMessageArgs(succeeded[0], total, failed[0])));
+        importService.start();
+    }
+
+    private Notification importsOutcome(Instant startTimestamp, int total, int succeeded, int failed) {
+        NotificationAction viewReportsAction = new NotificationAction("main.report.viewReports", e ->
+                mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.REPORTS)));
+        if (failed == 0) {
+            return Notification.createSuccess(startTimestamp, "main.networkImports.completed", viewReportsAction)
+                    .withMessageArgs(succeeded, total);
+        }
+        List<NotificationAction> actions = new ArrayList<>();
+        if (succeeded > 0) {
+            actions.add(viewReportsAction);
+        }
+        actions.add(new NotificationAction("main.viewLogs", e -> mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.LOGS))));
+        return Notification.createError(startTimestamp, "main.networkImports.failed", actions.toArray(NotificationAction[]::new))
+                .withMessageArgs(succeeded, total, failed);
     }
 
     private void loadSample(Supplier<Network> supplier) {

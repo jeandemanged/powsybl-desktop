@@ -78,10 +78,23 @@
                         </ToolBar>
                     </top>
                     <center>
-                        <StackPane>
+                        <StackPane fx:id="networksDropPane">
                             <children>
                                 <TreeView fx:id="networksTreeView" prefHeight="399.2" prefWidth="71.2" showRoot="false"/>
-                                <Label fx:id="noNetworksLabel" mouseTransparent="true" text="%networks.noNetworkLoaded"/>
+                                <VBox fx:id="noNetworksPane" alignment="CENTER" spacing="8.0" mouseTransparent="true"
+                                      styleClass="networks-empty-state">
+                                    <padding>
+                                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
+                                    </padding>
+                                    <children>
+                                        <FontIcon iconLiteral="mdi2t-tray-arrow-down" iconSize="48" styleClass="networks-empty-state-icon"/>
+                                        <Label fx:id="noNetworksLabel" text="%networks.noNetworkLoaded" styleClass="networks-empty-state-title"/>
+                                        <Label text="%networks.dropHint" wrapText="true" textAlignment="CENTER"
+                                               styleClass="networks-empty-state-hint"/>
+                                    </children>
+                                </VBox>
+                                <Region fx:id="dropOverlay" mouseTransparent="true" visible="false"
+                                        styleClass="networks-drop-overlay"/>
                             </children>
                         </StackPane>
                     </center>
