@@ -21,9 +21,12 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Control;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +35,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -66,12 +70,16 @@ class SecurityAnalysisParametersControllerTest extends AbstractHeadlessApplicati
         interact(controller::dispose);
     }
 
-    private GridPane grid() {
-        return (GridPane) controller.scrollPane.getContent();
+    @SuppressWarnings("unchecked")
+    private GridPane selectCategory(String title) {
+        ListView<String> categories = (ListView<String>) controller.splitPane.getItems().get(0);
+        StackPane detail = (StackPane) controller.splitPane.getItems().get(1);
+        interact(() -> categories.getSelectionModel().select(title));
+        ScrollPane scrollPane = (ScrollPane) detail.getChildren().get(0);
+        return (GridPane) scrollPane.getContent();
     }
 
-    private Control controlForLabel(String labelText) {
-        GridPane grid = grid();
+    private Control controlForLabel(GridPane grid, String labelText) {
         for (Node node : grid.getChildren()) {
             if (node instanceof Label label && labelText.equals(label.getText())) {
                 Integer rowIndex = GridPane.getRowIndex(node);
@@ -91,8 +99,15 @@ class SecurityAnalysisParametersControllerTest extends AbstractHeadlessApplicati
     }
 
     @Test
+    void categoryListShowsGeneralFirstAndMiscellaneousLast() {
+        @SuppressWarnings("unchecked")
+        ListView<String> categories = (ListView<String>) controller.splitPane.getItems().get(0);
+        assertEquals(List.of("General", "Increased Violations", "Modified Monitored Elements", "Miscellaneous"), categories.getItems());
+    }
+
+    @Test
     void toggleContingencyPropagationUpdatesModel() {
-        CheckBox checkBox = (CheckBox) controlForLabel("Contingency Propagation");
+        CheckBox checkBox = (CheckBox) controlForLabel(selectCategory("General"), "Contingency Propagation");
         boolean before = OpenSecurityAnalysisParameters.getOrDefault(params.get()).isContingencyPropagation();
 
         clickOn(checkBox);
@@ -102,7 +117,7 @@ class SecurityAnalysisParametersControllerTest extends AbstractHeadlessApplicati
 
     @Test
     void debugDirEmptyTextMapsToNullNotEmptyString() {
-        TextField debugDir = (TextField) controlForLabel("Debug Directory");
+        TextField debugDir = (TextField) controlForLabel(selectCategory("Miscellaneous"), "Debug Directory");
         assertNull(params.get().getDebugDir());
         assertEquals("", debugDir.getText());
 
@@ -118,7 +133,7 @@ class SecurityAnalysisParametersControllerTest extends AbstractHeadlessApplicati
 
     @Test
     void threadCountRejectsInvalidValueAndRevertsDisplay() {
-        TextField threadCount = (TextField) controlForLabel("Thread Count");
+        TextField threadCount = (TextField) controlForLabel(selectCategory("General"), "Thread Count");
         assertEquals("1", threadCount.getText());
 
         clickOn(threadCount);
@@ -132,7 +147,7 @@ class SecurityAnalysisParametersControllerTest extends AbstractHeadlessApplicati
     @Test
     void contingencyActivePowerLossDistributionRoundTripsToExtension() {
         @SuppressWarnings("unchecked")
-        ChoiceBox<String> choiceBox = (ChoiceBox<String>) controlForLabel("Contingency Active Power Loss Distribution");
+        ChoiceBox<String> choiceBox = (ChoiceBox<String>) controlForLabel(selectCategory("General"), "Contingency Active Power Loss Distribution");
         assertEquals("Default", choiceBox.getValue());
 
         interact(() -> choiceBox.getSelectionModel().select("Default"));
@@ -142,7 +157,7 @@ class SecurityAnalysisParametersControllerTest extends AbstractHeadlessApplicati
 
     @Test
     void flowProportionalThresholdRoundTripsToParameters() {
-        TextField textField = (TextField) controlForLabel("Flow Proportional Threshold");
+        TextField textField = (TextField) controlForLabel(selectCategory("Increased Violations"), "Flow Proportional Threshold");
         assertEquals(Double.toString(params.get().getIncreasedViolationsParameters().getFlowProportionalThreshold()), textField.getText());
 
         clickOn(textField);

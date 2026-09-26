@@ -24,18 +24,23 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Control;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.SplitPane;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.StackPane;
 import javafx.stage.FileChooser;
 
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
@@ -53,11 +58,16 @@ import java.util.function.ToIntFunction;
  */
 public class SecurityAnalysisParametersController extends AbstractDisposableController {
 
+    private static final String GENERAL_CATEGORY = "general";
+    private static final String INCREASED_VIOLATIONS_CATEGORY = "increasedViolations";
+    private static final String MODIFIED_MONITORED_ELEMENTS_CATEGORY = "modifiedMonitoredElements";
+    private static final String MISCELLANEOUS_CATEGORY = "miscellaneous";
+
     @FXML
-    public ScrollPane scrollPane;
+    public SplitPane splitPane;
 
     private ObjectProperty<SecurityAnalysisParameters> securityAnalysisParametersProperty;
-    private GridPane grid;
+    private final Map<String, GridPane> categoryGrids = new LinkedHashMap<>();
     private final List<Runnable> refreshers = new ArrayList<>();
     private boolean refreshing;
 
@@ -78,7 +88,42 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
 
     @FXML
     private void initialize() {
-        grid = new GridPane();
+        Map<String, String> categoryTitles = new LinkedHashMap<>();
+        categoryTitles.put(GENERAL_CATEGORY, Messages.get("securityAnalysis.category.general"));
+        categoryTitles.put(INCREASED_VIOLATIONS_CATEGORY, Messages.get("securityAnalysis.category.increasedViolations"));
+        categoryTitles.put(MODIFIED_MONITORED_ELEMENTS_CATEGORY, Messages.get("securityAnalysis.category.modifiedMonitoredElements"));
+        categoryTitles.put(MISCELLANEOUS_CATEGORY, Messages.get("securityAnalysis.category.miscellaneous"));
+        categoryTitles.keySet().forEach(category -> categoryGrids.put(category, createCategoryGrid()));
+
+        addGeneralFields();
+        addIncreasedViolationsFields();
+        addModifiedMonitoredElementsFields();
+        addMiscellaneousFields();
+
+        ListView<String> categoryListView = new ListView<>();
+        Map<String, ScrollPane> categoryPanes = new LinkedHashMap<>();
+        categoryTitles.forEach((category, title) -> {
+            ScrollPane scrollPane = new ScrollPane(categoryGrids.get(category));
+            scrollPane.setFitToWidth(true);
+            categoryPanes.put(title, scrollPane);
+            categoryListView.getItems().add(title);
+        });
+
+        StackPane detailPane = new StackPane();
+        categoryListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue != null) {
+                detailPane.getChildren().setAll(categoryPanes.get(newValue));
+            }
+        });
+        categoryListView.setPrefWidth(220);
+        categoryListView.getSelectionModel().selectFirst();
+
+        splitPane.getItems().addAll(categoryListView, detailPane);
+        splitPane.setDividerPositions(0.18);
+    }
+
+    private static GridPane createCategoryGrid() {
+        GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(8);
         grid.setPadding(new Insets(10));
@@ -90,12 +135,7 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
         controlColumn.setHalignment(HPos.LEFT);
         controlColumn.setHgrow(Priority.ALWAYS);
         grid.getColumnConstraints().addAll(labelColumn, controlColumn);
-        scrollPane.setContent(grid);
-
-        addGeneralFields();
-        addExecutionFields();
-        addIncreasedViolationsFields();
-        addModifiedMonitoredElementsFields();
+        return grid;
     }
 
     // extension is self-healing: a SecurityAnalysisParameters read back without it (e.g. imported from a JSON
@@ -109,13 +149,8 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
         return extension;
     }
 
-    private void addSectionHeader(String title) {
-        Label label = new Label(title);
-        label.setStyle("-fx-font-weight: bold;");
-        grid.add(label, 0, grid.getRowCount(), 2, 1);
-    }
-
-    private void addRow(String labelText, String tooltipText, Control control) {
+    private void addRow(String category, String labelText, String tooltipText, Control control) {
+        GridPane grid = categoryGrids.get(category);
         Label label = new Label(labelText);
         label.setWrapText(true);
         Tooltip tooltip = new Tooltip(tooltipText);
@@ -134,74 +169,70 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
     }
 
     private void addGeneralFields() {
-        addSectionHeader(Messages.get("securityAnalysis.category.general"));
-        addBooleanField(Messages.get("securityAnalysis.param.intermediateResultsInOperatorStrategy.label"),
-                Messages.get("securityAnalysis.param.intermediateResultsInOperatorStrategy.tooltip"),
-                SecurityAnalysisParameters::getIntermediateResultsInOperatorStrategy, SecurityAnalysisParameters::setIntermediateResultsInOperatorStrategy);
-        addDebugDirField();
-    }
-
-    private void addExecutionFields() {
-        addSectionHeader(Messages.get("securityAnalysis.category.execution"));
-        addBooleanField(Messages.get("securityAnalysis.param.createResultExtension.label"),
+        addBooleanField(GENERAL_CATEGORY, Messages.get("securityAnalysis.param.createResultExtension.label"),
                 Messages.get("securityAnalysis.param.createResultExtension.tooltip"),
                 p -> ext(p).isCreateResultExtension(), (p, v) -> ext(p).setCreateResultExtension(v));
-        addBooleanField(Messages.get("securityAnalysis.param.contingencyPropagation.label"),
+        addBooleanField(GENERAL_CATEGORY, Messages.get("securityAnalysis.param.contingencyPropagation.label"),
                 Messages.get("securityAnalysis.param.contingencyPropagation.tooltip"),
                 p -> ext(p).isContingencyPropagation(), (p, v) -> ext(p).setContingencyPropagation(v));
-        addIntField(Messages.get("securityAnalysis.param.threadCount.label"),
+        addIntField(GENERAL_CATEGORY, Messages.get("securityAnalysis.param.threadCount.label"),
                 Messages.get("securityAnalysis.param.threadCount.tooltip"),
                 p -> ext(p).getThreadCount(), (p, v) -> ext(p).setThreadCount(v));
-        addBooleanField(Messages.get("securityAnalysis.param.dcFastMode.label"),
+        addBooleanField(GENERAL_CATEGORY, Messages.get("securityAnalysis.param.dcFastMode.label"),
                 Messages.get("securityAnalysis.param.dcFastMode.tooltip"),
                 p -> ext(p).isDcFastMode(), (p, v) -> ext(p).setDcFastMode(v));
-        addContingencyActivePowerLossDistributionField();
-        addBooleanField(Messages.get("securityAnalysis.param.startWithFrozenACEmulation.label"),
+        addContingencyActivePowerLossDistributionField(GENERAL_CATEGORY);
+        addBooleanField(GENERAL_CATEGORY, Messages.get("securityAnalysis.param.startWithFrozenACEmulation.label"),
                 Messages.get("securityAnalysis.param.startWithFrozenACEmulation.tooltip"),
                 p -> ext(p).isStartWithFrozenACEmulation(), (p, v) -> ext(p).setStartWithFrozenACEmulation(v));
     }
 
     private void addIncreasedViolationsFields() {
-        addSectionHeader(Messages.get("securityAnalysis.category.increasedViolations"));
-        addDoubleField(Messages.get("securityAnalysis.param.flowProportionalThreshold.label"),
+        addDoubleField(INCREASED_VIOLATIONS_CATEGORY, Messages.get("securityAnalysis.param.flowProportionalThreshold.label"),
                 Messages.get("securityAnalysis.param.flowProportionalThreshold.tooltip"),
                 p -> p.getIncreasedViolationsParameters().getFlowProportionalThreshold(),
                 (p, v) -> p.getIncreasedViolationsParameters().setFlowProportionalThreshold(v));
-        addDoubleField(Messages.get("securityAnalysis.param.lowVoltageProportionalThreshold.label"),
+        addDoubleField(INCREASED_VIOLATIONS_CATEGORY, Messages.get("securityAnalysis.param.lowVoltageProportionalThreshold.label"),
                 Messages.get("securityAnalysis.param.lowVoltageProportionalThreshold.tooltip"),
                 p -> p.getIncreasedViolationsParameters().getLowVoltageProportionalThreshold(),
                 (p, v) -> p.getIncreasedViolationsParameters().setLowVoltageProportionalThreshold(v));
-        addDoubleField(Messages.get("securityAnalysis.param.lowVoltageAbsoluteThreshold.label"),
+        addDoubleField(INCREASED_VIOLATIONS_CATEGORY, Messages.get("securityAnalysis.param.lowVoltageAbsoluteThreshold.label"),
                 Messages.get("securityAnalysis.param.lowVoltageAbsoluteThreshold.tooltip"),
                 p -> p.getIncreasedViolationsParameters().getLowVoltageAbsoluteThreshold(),
                 (p, v) -> p.getIncreasedViolationsParameters().setLowVoltageAbsoluteThreshold(v));
-        addDoubleField(Messages.get("securityAnalysis.param.highVoltageProportionalThreshold.label"),
+        addDoubleField(INCREASED_VIOLATIONS_CATEGORY, Messages.get("securityAnalysis.param.highVoltageProportionalThreshold.label"),
                 Messages.get("securityAnalysis.param.highVoltageProportionalThreshold.tooltip"),
                 p -> p.getIncreasedViolationsParameters().getHighVoltageProportionalThreshold(),
                 (p, v) -> p.getIncreasedViolationsParameters().setHighVoltageProportionalThreshold(v));
-        addDoubleField(Messages.get("securityAnalysis.param.highVoltageAbsoluteThreshold.label"),
+        addDoubleField(INCREASED_VIOLATIONS_CATEGORY, Messages.get("securityAnalysis.param.highVoltageAbsoluteThreshold.label"),
                 Messages.get("securityAnalysis.param.highVoltageAbsoluteThreshold.tooltip"),
                 p -> p.getIncreasedViolationsParameters().getHighVoltageAbsoluteThreshold(),
                 (p, v) -> p.getIncreasedViolationsParameters().setHighVoltageAbsoluteThreshold(v));
     }
 
     private void addModifiedMonitoredElementsFields() {
-        addSectionHeader(Messages.get("securityAnalysis.category.modifiedMonitoredElements"));
-        addDoubleField(Messages.get("securityAnalysis.param.powerModificationThreshold.label"),
+        addDoubleField(MODIFIED_MONITORED_ELEMENTS_CATEGORY, Messages.get("securityAnalysis.param.powerModificationThreshold.label"),
                 Messages.get("securityAnalysis.param.powerModificationThreshold.tooltip"),
                 p -> p.getModifiedMonitoredElementsParameters().getPowerModificationThreshold(),
                 (p, v) -> p.getModifiedMonitoredElementsParameters().setPowerModificationThreshold(v));
-        addDoubleField(Messages.get("securityAnalysis.param.voltageModificationProportionalThreshold.label"),
+        addDoubleField(MODIFIED_MONITORED_ELEMENTS_CATEGORY, Messages.get("securityAnalysis.param.voltageModificationProportionalThreshold.label"),
                 Messages.get("securityAnalysis.param.voltageModificationProportionalThreshold.tooltip"),
                 p -> p.getModifiedMonitoredElementsParameters().getVoltageModificationProportionalThreshold(),
                 (p, v) -> p.getModifiedMonitoredElementsParameters().setVoltageModificationProportionalThreshold(v));
-        addDoubleField(Messages.get("securityAnalysis.param.voltageModificationAbsoluteThreshold.label"),
+        addDoubleField(MODIFIED_MONITORED_ELEMENTS_CATEGORY, Messages.get("securityAnalysis.param.voltageModificationAbsoluteThreshold.label"),
                 Messages.get("securityAnalysis.param.voltageModificationAbsoluteThreshold.tooltip"),
                 p -> p.getModifiedMonitoredElementsParameters().getVoltageModificationAbsoluteThreshold(),
                 (p, v) -> p.getModifiedMonitoredElementsParameters().setVoltageModificationAbsoluteThreshold(v));
     }
 
-    private void addBooleanField(String label, String tooltip,
+    private void addMiscellaneousFields() {
+        addBooleanField(MISCELLANEOUS_CATEGORY, Messages.get("securityAnalysis.param.intermediateResultsInOperatorStrategy.label"),
+                Messages.get("securityAnalysis.param.intermediateResultsInOperatorStrategy.tooltip"),
+                SecurityAnalysisParameters::getIntermediateResultsInOperatorStrategy, SecurityAnalysisParameters::setIntermediateResultsInOperatorStrategy);
+        addDebugDirField(MISCELLANEOUS_CATEGORY);
+    }
+
+    private void addBooleanField(String category, String label, String tooltip,
                                   Predicate<SecurityAnalysisParameters> getter, BiConsumer<SecurityAnalysisParameters, Boolean> setter) {
         CheckBox checkBox = new CheckBox();
         refreshers.add(() -> checkBox.setSelected(getter.test(securityAnalysisParametersProperty.getValue())));
@@ -210,10 +241,10 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
                 setter.accept(securityAnalysisParametersProperty.getValue(), newValue);
             }
         });
-        addRow(label, tooltip, checkBox);
+        addRow(category, label, tooltip, checkBox);
     }
 
-    private void addDoubleField(String label, String tooltip,
+    private void addDoubleField(String category, String label, String tooltip,
                                  ToDoubleFunction<SecurityAnalysisParameters> getter, BiConsumer<SecurityAnalysisParameters, Double> setter) {
         TextField textField = new TextField();
         refreshers.add(() -> textField.setText(Double.toString(getter.applyAsDouble(securityAnalysisParametersProperty.getValue()))));
@@ -228,10 +259,10 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
             }
         };
         bindCommit(textField, commit);
-        addRow(label, tooltip, textField);
+        addRow(category, label, tooltip, textField);
     }
 
-    private void addIntField(String label, String tooltip,
+    private void addIntField(String category, String label, String tooltip,
                               ToIntFunction<SecurityAnalysisParameters> getter, BiConsumer<SecurityAnalysisParameters, Integer> setter) {
         TextField textField = new TextField();
         refreshers.add(() -> textField.setText(Integer.toString(getter.applyAsInt(securityAnalysisParametersProperty.getValue()))));
@@ -246,10 +277,10 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
             }
         };
         bindCommit(textField, commit);
-        addRow(label, tooltip, textField);
+        addRow(category, label, tooltip, textField);
     }
 
-    private void addDebugDirField() {
+    private void addDebugDirField(String category) {
         TextField textField = new TextField();
         refreshers.add(() -> textField.setText(Objects.toString(securityAnalysisParametersProperty.getValue().getDebugDir(), "")));
         Runnable commit = () -> {
@@ -260,10 +291,10 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
             securityAnalysisParametersProperty.getValue().setDebugDir(text.isEmpty() ? null : text);
         };
         bindCommit(textField, commit);
-        addRow(Messages.get("securityAnalysis.param.debugDir.label"), Messages.get("securityAnalysis.param.debugDir.tooltip"), textField);
+        addRow(category, Messages.get("securityAnalysis.param.debugDir.label"), Messages.get("securityAnalysis.param.debugDir.tooltip"), textField);
     }
 
-    private void addContingencyActivePowerLossDistributionField() {
+    private void addContingencyActivePowerLossDistributionField(String category) {
         ChoiceBox<String> choiceBox = new ChoiceBox<>(FXCollections.observableArrayList(
                 ContingencyActivePowerLossDistribution.findAll().stream().map(ContingencyActivePowerLossDistribution::getName).toList()));
         refreshers.add(() -> choiceBox.setValue(ext(securityAnalysisParametersProperty.getValue()).getContingencyActivePowerLossDistribution()));
@@ -272,7 +303,7 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
                 ext(securityAnalysisParametersProperty.getValue()).setContingencyActivePowerLossDistribution(newValue);
             }
         });
-        addRow(Messages.get("securityAnalysis.param.contingencyActivePowerLossDistribution.label"),
+        addRow(category, Messages.get("securityAnalysis.param.contingencyActivePowerLossDistribution.label"),
                 Messages.get("securityAnalysis.param.contingencyActivePowerLossDistribution.tooltip"), choiceBox);
     }
 
@@ -280,7 +311,7 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
         FileChooser fileChooser = new FileChooser();
         addJsonExtensionFilters(fileChooser);
         FileChooserPreferences.applyLastDirectory(fileChooser);
-        File selectedFile = fileChooser.showOpenDialog(this.scrollPane.getScene().getWindow());
+        File selectedFile = fileChooser.showOpenDialog(this.splitPane.getScene().getWindow());
         if (selectedFile != null) {
             FileChooserPreferences.saveLastDirectory(selectedFile);
             importFrom(selectedFile.toPath());
@@ -291,7 +322,7 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
         FileChooser fileChooser = new FileChooser();
         addJsonExtensionFilters(fileChooser);
         FileChooserPreferences.applyLastDirectory(fileChooser);
-        File selectedFile = fileChooser.showSaveDialog(this.scrollPane.getScene().getWindow());
+        File selectedFile = fileChooser.showSaveDialog(this.splitPane.getScene().getWindow());
         if (selectedFile != null) {
             FileChooserPreferences.saveLastDirectory(selectedFile);
             exportTo(selectedFile.toPath());
