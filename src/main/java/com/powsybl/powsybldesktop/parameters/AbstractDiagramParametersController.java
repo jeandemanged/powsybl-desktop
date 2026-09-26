@@ -210,7 +210,7 @@ public abstract class AbstractDiagramParametersController<T> extends AbstractDis
             try {
                 setter.accept(parametersProperty.getValue(), Double.parseDouble(textField.getText()));
                 notifyChange();
-            } catch (NumberFormatException e) {
+            } catch (IllegalArgumentException e) { // NumberFormatException, or a value rejected by a parameters builder
                 refresh();
             }
         };
@@ -229,7 +229,7 @@ public abstract class AbstractDiagramParametersController<T> extends AbstractDis
             try {
                 setter.accept(parametersProperty.getValue(), Integer.parseInt(textField.getText()));
                 notifyChange();
-            } catch (NumberFormatException e) {
+            } catch (IllegalArgumentException e) { // NumberFormatException, or a value rejected by a parameters builder
                 refresh();
             }
         };

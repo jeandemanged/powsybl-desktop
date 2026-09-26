@@ -13,7 +13,6 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.loadflow.LoadFlowResult;
-import com.powsybl.nad.NadParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
 import com.powsybl.powsybldesktop.logs.LogsModel;
@@ -21,9 +20,10 @@ import com.powsybl.powsybldesktop.map.MapController;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.network.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.notification.Notification;
+import com.powsybl.powsybldesktop.parameters.DesktopNadParameters;
+import com.powsybl.powsybldesktop.parameters.DesktopSldParameters;
 import com.powsybl.security.SecurityAnalysisParameters;
 import com.powsybl.security.SecurityAnalysisResult;
-import com.powsybl.sld.SldParameters;
 import com.powsybl.sld.layout.LayoutParameters;
 import com.powsybl.sld.svg.SvgParameters;
 import javafx.beans.property.BooleanProperty;
@@ -73,8 +73,8 @@ public class MainModel {
     private VoltageLevel updatedVoltageLevel;
     private final ObjectProperty<LoadFlowParameters> loadFlowParameters = new SimpleObjectProperty<>();
     private final ObjectProperty<SecurityAnalysisParameters> securityAnalysisParameters = new SimpleObjectProperty<>();
-    private final ObjectProperty<SldParameters> sldParameters = new SimpleObjectProperty<>();
-    private final ObjectProperty<NadParameters> nadParameters = new SimpleObjectProperty<>();
+    private final ObjectProperty<DesktopSldParameters> sldParameters = new SimpleObjectProperty<>();
+    private final ObjectProperty<DesktopNadParameters> nadParameters = new SimpleObjectProperty<>();
     // keyed by format as listed in the parameters view / import-export menus (e.g. "IIDM" for all IIDM importers),
     // holding only the values the user edited so the importer/exporter falls back to its own defaults otherwise
     private final Map<String, Properties> networkImportParameters = new HashMap<>();
@@ -112,7 +112,7 @@ public class MainModel {
         loadFlowParameters.addListener((observable, oldValue, newValue) -> syncSecurityAnalysisLoadFlowParameters());
         securityAnalysisParameters.addListener((observable, oldValue, newValue) -> syncSecurityAnalysisLoadFlowParameters());
         sldParameters.setValue(defaultSldParameters());
-        nadParameters.setValue(new NadParameters());
+        nadParameters.setValue(new DesktopNadParameters());
         update.setValue(Instant.now());
     }
 
@@ -123,9 +123,9 @@ public class MainModel {
     // Diagram appearance defaults previously hardcoded in SubstationDiagramRenderer; svgWidthAndHeightAdded
     // and diagramName are excluded here as they're forced/computed by the renderer on every render call, not
     // user-editable via the SLD parameters popup.
-    private static SldParameters defaultSldParameters() {
-        return new SldParameters()
-                .setSvgParameters(new SvgParameters()
+    private static DesktopSldParameters defaultSldParameters() {
+        DesktopSldParameters parameters = new DesktopSldParameters();
+        parameters.setSvgParameters(new SvgParameters()
                         .setUseName(true)
                         .setLabelDiagonal(false)
                         .setLabelCentered(true)
@@ -140,6 +140,7 @@ public class MainModel {
                         .setBusesLegendAdded(true)
                         .setTooltipEnabled(true))
                 .setLayoutParameters(new LayoutParameters());
+        return parameters;
     }
 
     public void addNetwork(Network network) {
@@ -266,11 +267,11 @@ public class MainModel {
         return securityAnalysisParameters;
     }
 
-    public ObjectProperty<SldParameters> sldParametersProperty() {
+    public ObjectProperty<DesktopSldParameters> sldParametersProperty() {
         return sldParameters;
     }
 
-    public ObjectProperty<NadParameters> nadParametersProperty() {
+    public ObjectProperty<DesktopNadParameters> nadParametersProperty() {
         return nadParameters;
     }
 

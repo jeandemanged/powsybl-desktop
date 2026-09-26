@@ -9,9 +9,17 @@ package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.sld.SldParameters;
+import com.powsybl.sld.layout.HorizontalSubstationLayoutFactory;
 import com.powsybl.sld.layout.LayoutParameters;
+import com.powsybl.sld.layout.VerticalSubstationLayoutFactory;
+import com.powsybl.sld.library.ConvergenceComponentLibrary;
+import com.powsybl.sld.library.FlatDesignLibrary;
 import com.powsybl.sld.library.SldComponentTypeName;
 import com.powsybl.sld.svg.SvgParameters;
+import com.powsybl.sld.svg.styles.BusHighlightStyleProviderFactory;
+import com.powsybl.sld.svg.styles.DefaultStyleProviderFactory;
+import com.powsybl.sld.svg.styles.NominalVoltageStyleProviderFactory;
+import com.powsybl.sld.svg.styles.StyleProviderFactory;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -27,12 +35,32 @@ import java.util.function.Function;
  * {@link LayoutParameters} except {@code svgWidthAndHeightAdded} (forced by the app, see
  * {@link com.powsybl.powsybldesktop.network.SubstationDiagramRenderer}) and {@code diagramName} (computed from the selected container on
  * every render, not user-editable) - see {@link AbstractDiagramParametersController} for the shared shape.
- * {@code componentsSize} (a non-fluent, {@code @JsonIgnore}d component-type-to-size lookup table) and
- * NAD's {@code maxSteps} are likewise excluded, per the plan.
+ * {@code componentsSize} (a non-fluent, {@code @JsonIgnore}d component-type-to-size lookup table) is likewise excluded.
+ * Of the {@link SldParameters} factories, the label provider and legend writer ones are left out (PowSyBl's only
+ * alternative, {@code CustomLabelProvider}, needs per-equipment label maps), as are the zone layout ones (zone diagrams aren't drawn by this app).
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-public class SldParametersController extends AbstractDiagramParametersController<SldParameters> {
+public class SldParametersController extends AbstractDiagramParametersController<DesktopSldParameters> {
+
+    private enum ComponentLibraryChoice {
+        CONVERGENCE,
+        FLAT_DESIGN
+    }
+
+    private enum StyleChoice {
+        TOPOLOGICAL,
+        BUS_HIGHLIGHT,
+        NOMINAL_VOLTAGE
+    }
+
+    private enum SubstationLayoutChoice {
+        HORIZONTAL,
+        VERTICAL
+    }
+
+    private static final String CAT_LAYOUT_ALGORITHMS = "layoutAlgorithms";
+    private static final String CAT_COMPONENTS_STYLE = "componentsStyle";
 
     private static final String CAT_IDENTIFICATION = "identification";
     private static final String CAT_LOCALIZATION = "localization";
@@ -52,6 +80,8 @@ public class SldParametersController extends AbstractDiagramParametersController
 
     private static Map<String, String> buildCategoryTitles() {
         Map<String, String> titles = new LinkedHashMap<>();
+        titles.put(CAT_LAYOUT_ALGORITHMS, Messages.get("parameters.sld.category.layoutAlgorithms"));
+        titles.put(CAT_COMPONENTS_STYLE, Messages.get("parameters.sld.category.componentsStyle"));
         titles.put(CAT_IDENTIFICATION, Messages.get("parameters.sld.category.identification"));
         titles.put(CAT_LOCALIZATION, Messages.get("parameters.sld.category.localization"));
         titles.put(CAT_BUS_FEEDER, Messages.get("parameters.sld.category.busFeeder"));
@@ -75,6 +105,8 @@ public class SldParametersController extends AbstractDiagramParametersController
 
     @Override
     protected void buildFields() {
+        addLayoutAlgorithmsFields();
+        addComponentsStyleFields();
         addIdentificationFields();
         addLocalizationFields();
         addBusFeederFields();
@@ -88,6 +120,56 @@ public class SldParametersController extends AbstractDiagramParametersController
         addComponentSizingFields();
         addPaddingFields();
         addAlignmentTopologyFields();
+    }
+
+    private void addLayoutAlgorithmsFields() {
+        addEnumField(CAT_LAYOUT_ALGORITHMS, label("substationLayout"), tooltip("substationLayout"), SubstationLayoutChoice.class,
+                p -> p.getSubstationLayoutFactory() instanceof VerticalSubstationLayoutFactory ? SubstationLayoutChoice.VERTICAL : SubstationLayoutChoice.HORIZONTAL,
+                (p, v) -> p.setSubstationLayoutFactory(v == SubstationLayoutChoice.VERTICAL ? new VerticalSubstationLayoutFactory() : new HorizontalSubstationLayoutFactory()));
+        addEnumField(CAT_LAYOUT_ALGORITHMS, label("voltageLevelLayout"), tooltip("voltageLevelLayout"), DesktopSldParameters.VoltageLevelLayout.class,
+                DesktopSldParameters::getVoltageLevelLayout, DesktopSldParameters::setVoltageLevelLayout);
+        addBooleanField(CAT_LAYOUT_ALGORITHMS, label("feederStacked"), tooltip("feederStacked"),
+                p -> p.getPositionLayoutParameters().isFeederStacked(), (p, v) -> p.getPositionLayoutParameters().setFeederStacked(v));
+        addBooleanField(CAT_LAYOUT_ALGORITHMS, label("removeUnnecessaryFictitiousNodes"), tooltip("removeUnnecessaryFictitiousNodes"),
+                p -> p.getPositionLayoutParameters().isRemoveUnnecessaryFictitiousNodes(),
+                (p, v) -> p.getPositionLayoutParameters().setRemoveUnnecessaryFictitiousNodes(v));
+        addBooleanField(CAT_LAYOUT_ALGORITHMS, label("substituteSingularFictitiousByFeederNode"), tooltip("substituteSingularFictitiousByFeederNode"),
+                p -> p.getPositionLayoutParameters().isSubstituteSingularFictitiousByFeederNode(),
+                (p, v) -> p.getPositionLayoutParameters().setSubstituteSingularFictitiousByFeederNode(v));
+        addBooleanField(CAT_LAYOUT_ALGORITHMS, label("substituteInternalMiddle2wtByEquipmentNodes"), tooltip("substituteInternalMiddle2wtByEquipmentNodes"),
+                p -> p.getPositionLayoutParameters().isSubstituteInternalMiddle2wtByEquipmentNodes(),
+                (p, v) -> p.getPositionLayoutParameters().setSubstituteInternalMiddle2wtByEquipmentNodes(v));
+        addBooleanField(CAT_LAYOUT_ALGORITHMS, label("handleShunts"), tooltip("handleShunts"),
+                p -> p.getPositionLayoutParameters().isHandleShunts(), (p, v) -> p.getPositionLayoutParameters().setHandleShunts(v));
+        addBooleanField(CAT_LAYOUT_ALGORITHMS, label("exceptionIfPatternNotHandled"), tooltip("exceptionIfPatternNotHandled"),
+                p -> p.getPositionLayoutParameters().isExceptionIfPatternNotHandled(),
+                (p, v) -> p.getPositionLayoutParameters().setExceptionIfPatternNotHandled(v));
+    }
+
+    private void addComponentsStyleFields() {
+        addEnumField(CAT_COMPONENTS_STYLE, label("componentLibrary"), tooltip("componentLibrary"), ComponentLibraryChoice.class,
+                p -> p.getComponentLibrary() instanceof FlatDesignLibrary ? ComponentLibraryChoice.FLAT_DESIGN : ComponentLibraryChoice.CONVERGENCE,
+                (p, v) -> p.setComponentLibrary(v == ComponentLibraryChoice.FLAT_DESIGN ? new FlatDesignLibrary() : new ConvergenceComponentLibrary()));
+        addEnumField(CAT_COMPONENTS_STYLE, label("styleProvider"), tooltip("styleProvider"), StyleChoice.class,
+                p -> styleChoiceOf(p.getStyleProviderFactory()), (p, v) -> p.setStyleProviderFactory(styleProviderFactoryOf(v)));
+    }
+
+    private static StyleChoice styleChoiceOf(StyleProviderFactory factory) {
+        if (factory instanceof BusHighlightStyleProviderFactory) {
+            return StyleChoice.BUS_HIGHLIGHT;
+        }
+        if (factory instanceof NominalVoltageStyleProviderFactory) {
+            return StyleChoice.NOMINAL_VOLTAGE;
+        }
+        return StyleChoice.TOPOLOGICAL;
+    }
+
+    private static StyleProviderFactory styleProviderFactoryOf(StyleChoice choice) {
+        return switch (choice) {
+            case TOPOLOGICAL -> new DefaultStyleProviderFactory();
+            case BUS_HIGHLIGHT -> new BusHighlightStyleProviderFactory();
+            case NOMINAL_VOLTAGE -> new NominalVoltageStyleProviderFactory();
+        };
     }
 
     private void addIdentificationFields() {
@@ -222,13 +304,13 @@ public class SldParametersController extends AbstractDiagramParametersController
 
     @FunctionalInterface
     private interface PaddingSetter {
-        void set(SldParameters parameters, double left, double top, double right, double bottom);
+        void set(DesktopSldParameters parameters, double left, double top, double right, double bottom);
     }
 
     // SLD's LayoutParameters.Padding is an immutable record (left()/top()/right()/bottom()), and both
     // padding setters take four raw doubles rather than a Padding instance - four fields in one row.
     private void addPaddingField(String category, String labelText, String tooltipText,
-                                  Function<SldParameters, LayoutParameters.Padding> getter, PaddingSetter setter) {
+                                  Function<DesktopSldParameters, LayoutParameters.Padding> getter, PaddingSetter setter) {
         TextField leftField = new TextField();
         TextField topField = new TextField();
         TextField rightField = new TextField();

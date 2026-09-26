@@ -9,7 +9,7 @@ package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
-import com.powsybl.sld.SldParameters;
+import com.powsybl.sld.library.FlatDesignLibrary;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.fxml.FXMLLoader;
@@ -17,6 +17,7 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Control;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
@@ -34,6 +35,7 @@ import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -42,7 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SldParametersControllerTest extends AbstractHeadlessApplicationTest {
 
     private SldParametersController controller;
-    private ObjectProperty<SldParameters> params;
+    private ObjectProperty<DesktopSldParameters> params;
     private AtomicInteger changeCount;
 
     @Override
@@ -52,7 +54,7 @@ class SldParametersControllerTest extends AbstractHeadlessApplicationTest {
         Parent root = loader.load();
         controller = loader.getController();
 
-        params = new SimpleObjectProperty<>(new SldParameters());
+        params = new SimpleObjectProperty<>(new DesktopSldParameters());
         changeCount = new AtomicInteger();
         controller.setParametersProperty(params);
         controller.setOnChange(changeCount::incrementAndGet);
@@ -101,7 +103,22 @@ class SldParametersControllerTest extends AbstractHeadlessApplicationTest {
     void categoryListShowsAllExpectedTitles() {
         @SuppressWarnings("unchecked")
         ListView<String> categories = (ListView<String>) controller.splitPane.getItems().get(0);
-        assertEquals(13, categories.getItems().size());
+        assertEquals(15, categories.getItems().size());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void choosingLayoutAndLibraryUpdatesModel() {
+        GridPane layoutGrid = selectCategory(Messages.get("parameters.sld.category.layoutAlgorithms"));
+        ChoiceBox<Object> layoutChoice = (ChoiceBox<Object>) controlForLabel(layoutGrid, Messages.get("parameters.sld.param.voltageLevelLayout.label"));
+        interact(() -> layoutChoice.setValue(DesktopSldParameters.VoltageLevelLayout.POSITION_BY_CLUSTERING));
+        assertEquals(DesktopSldParameters.VoltageLevelLayout.POSITION_BY_CLUSTERING, params.get().getVoltageLevelLayout());
+
+        GridPane styleGrid = selectCategory(Messages.get("parameters.sld.category.componentsStyle"));
+        ChoiceBox<Object> libraryChoice = (ChoiceBox<Object>) controlForLabel(styleGrid, Messages.get("parameters.sld.param.componentLibrary.label"));
+        interact(() -> libraryChoice.setValue(libraryChoice.getItems().get(1)));
+        assertInstanceOf(FlatDesignLibrary.class, params.get().getComponentLibrary());
+        assertEquals(2, changeCount.get());
     }
 
     @Test

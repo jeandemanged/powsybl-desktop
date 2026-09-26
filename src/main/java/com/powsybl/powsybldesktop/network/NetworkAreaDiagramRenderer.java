@@ -15,6 +15,9 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.nad.NadParameters;
 import com.powsybl.nad.NetworkAreaDiagram;
 import com.powsybl.nad.build.iidm.VoltageLevelFilter;
+import com.powsybl.nad.layout.GeographicalLayoutFactory;
+import com.powsybl.nad.layout.LayoutFactory;
+import com.powsybl.powsybldesktop.parameters.DesktopNadParameters;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -38,11 +41,20 @@ public final class NetworkAreaDiagramRenderer {
         Predicate<VoltageLevel> filter = VoltageLevelFilter.createVoltageLevelsDepthFilter(network, voltageLevelIds, depth);
         // Required by the WebView-based renderer regardless of user-configured parameters.
         nadParameters.getSvgParameters().setSvgWidthAndHeightAdded(true);
+        // GeographicalLayoutFactory needs the network at construction (to read substation positions) whereas
+        // LayoutFactory gets none, so it's swapped in around this render only
+        LayoutFactory layoutFactory = nadParameters.getLayoutFactory();
+        if (nadParameters instanceof DesktopNadParameters desktopParameters
+                && desktopParameters.getLayoutAlgorithm() == DesktopNadParameters.LayoutAlgorithm.GEOGRAPHICAL) {
+            nadParameters.setLayoutFactory(new GeographicalLayoutFactory(network));
+        }
         try (StringWriter svgWriter = new StringWriter();
              StringWriter metadataWriter = new StringWriter()) {
             NetworkAreaDiagram.draw(network, svgWriter, metadataWriter, nadParameters, filter);
             svgWriter.flush();
             return svgWriter.toString();
+        } finally {
+            nadParameters.setLayoutFactory(layoutFactory);
         }
     }
 

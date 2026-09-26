@@ -7,8 +7,9 @@
  */
 package com.powsybl.powsybldesktop.parameters;
 
-import com.powsybl.nad.NadParameters;
+import com.powsybl.nad.svg.EdgeInfoEnum;
 import com.powsybl.nad.svg.SvgParameters;
+import com.powsybl.nad.svg.iidm.DefaultLabelProviderFactory;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.property.ObjectProperty;
@@ -44,7 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class NadParametersControllerTest extends AbstractHeadlessApplicationTest {
 
     private NadParametersController controller;
-    private ObjectProperty<NadParameters> params;
+    private ObjectProperty<DesktopNadParameters> params;
     private AtomicInteger changeCount;
 
     @Override
@@ -54,7 +55,7 @@ class NadParametersControllerTest extends AbstractHeadlessApplicationTest {
         Parent root = loader.load();
         controller = loader.getController();
 
-        params = new SimpleObjectProperty<>(new NadParameters());
+        params = new SimpleObjectProperty<>(new DesktopNadParameters());
         changeCount = new AtomicInteger();
         controller.setParametersProperty(params);
         controller.setOnChange(changeCount::incrementAndGet);
@@ -103,7 +104,44 @@ class NadParametersControllerTest extends AbstractHeadlessApplicationTest {
     void categoryListShowsAllExpectedTitles() {
         @SuppressWarnings("unchecked")
         ListView<String> categories = (ListView<String>) controller.splitPane.getItems().get(0);
-        assertEquals(12, categories.getItems().size());
+        assertEquals(14, categories.getItems().size());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void choosingLayoutAndEdgeInfoUpdatesModel() {
+        GridPane layoutGrid = selectCategory(Messages.get("parameters.nad.category.layout"));
+        ChoiceBox<Object> layoutChoice = (ChoiceBox<Object>) controlForLabel(layoutGrid, Messages.get("parameters.nad.param.layoutAlgorithm.label"));
+        interact(() -> layoutChoice.setValue(DesktopNadParameters.LayoutAlgorithm.GEOGRAPHICAL));
+        assertEquals(DesktopNadParameters.LayoutAlgorithm.GEOGRAPHICAL, params.get().getLayoutAlgorithm());
+
+        GridPane labelsGrid = selectCategory(Messages.get("parameters.nad.category.styleLabels"));
+        ChoiceBox<Object> middleChoice = (ChoiceBox<Object>) controlForLabel(labelsGrid, Messages.get("parameters.nad.param.infoMiddleSide1.label"));
+        interact(() -> middleChoice.setValue(EdgeInfoEnum.CURRENT));
+        var edgeInfo = ((DefaultLabelProviderFactory) params.get().getLabelProviderFactory()).getParameters().getEdgeInfoParameters();
+        assertEquals(EdgeInfoEnum.CURRENT, edgeInfo.infoMiddleSide1());
+        assertEquals(EdgeInfoEnum.ACTIVE_POWER, edgeInfo.infoSideExternal());
+        assertEquals(2, changeCount.get());
+    }
+
+    @Test
+    void editingAtlas2ValueKeepsOthersAndRejectsInvalidOnes() {
+        GridPane grid = selectCategory(Messages.get("parameters.nad.category.forceLayout"));
+        TextField repulsion = (TextField) controlForLabel(grid, Messages.get("parameters.nad.param.atlas2RepulsionIntensity.label"));
+        TextField swing = (TextField) controlForLabel(grid, Messages.get("parameters.nad.param.atlas2SwingTolerance.label"));
+        int maxSteps = params.get().getAtlas2Parameters().getMaxSteps();
+
+        interact(() -> {
+            repulsion.setText("7.5");
+            repulsion.getOnAction().handle(null);
+            swing.setText("-1");
+            swing.getOnAction().handle(null);
+        });
+
+        assertEquals(7.5, params.get().getAtlas2Parameters().getRepulsionIntensity());
+        assertEquals(maxSteps, params.get().getAtlas2Parameters().getMaxSteps());
+        assertEquals(1.0, params.get().getAtlas2Parameters().getSwingTolerance());
+        assertEquals("1.0", swing.getText());
     }
 
     @Test

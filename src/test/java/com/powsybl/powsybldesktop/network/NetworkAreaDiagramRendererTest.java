@@ -12,12 +12,15 @@ import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.test.FourSubstationsNodeBreakerFactory;
 import com.powsybl.nad.NadParameters;
+import com.powsybl.nad.layout.LayoutFactory;
+import com.powsybl.powsybldesktop.parameters.DesktopNadParameters;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -44,6 +47,18 @@ class NetworkAreaDiagramRendererTest {
         Substation s2 = network.getSubstation("S2");
 
         assertDoesNotThrow(() -> NetworkAreaDiagramRenderer.render(s2, 2, new NadParameters()));
+    }
+
+    @Test
+    void geographicalLayoutIsResolvedPerRenderAndFactoryRestored() throws IOException {
+        Network network = FourSubstationsNodeBreakerFactory.create();
+        DesktopNadParameters parameters = new DesktopNadParameters().setLayoutAlgorithm(DesktopNadParameters.LayoutAlgorithm.GEOGRAPHICAL);
+        LayoutFactory layoutFactory = parameters.getLayoutFactory();
+
+        String svg = NetworkAreaDiagramRenderer.render(network.getSubstation("S2"), 2, parameters);
+
+        assertTrue(svg.contains("<svg"));
+        assertSame(layoutFactory, parameters.getLayoutFactory());
     }
 
     @Test

@@ -11,9 +11,15 @@ import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.test.FourSubstationsNodeBreakerFactory;
+import com.powsybl.powsybldesktop.parameters.DesktopSldParameters;
 import com.powsybl.sld.SldParameters;
+import com.powsybl.sld.layout.VerticalSubstationLayoutFactory;
+import com.powsybl.sld.library.FlatDesignLibrary;
 import com.powsybl.sld.svg.GraphMetadata;
+import com.powsybl.sld.svg.styles.NominalVoltageStyleProviderFactory;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.IOException;
 
@@ -61,5 +67,19 @@ class SubstationDiagramRendererTest {
         VoltageLevel vl1 = network.getVoltageLevel("VL1");
 
         assertDoesNotThrow(() -> SubstationDiagramRenderer.render(vl1, new SldParameters()));
+    }
+
+    @ParameterizedTest
+    @EnumSource(DesktopSldParameters.VoltageLevelLayout.class)
+    void rendersSubstationWithEachVoltageLevelLayout(DesktopSldParameters.VoltageLevelLayout layout) throws IOException {
+        Network network = FourSubstationsNodeBreakerFactory.create();
+        DesktopSldParameters parameters = new DesktopSldParameters().setVoltageLevelLayout(layout);
+        parameters.setComponentLibrary(new FlatDesignLibrary())
+                .setStyleProviderFactory(new NominalVoltageStyleProviderFactory())
+                .setSubstationLayoutFactory(new VerticalSubstationLayoutFactory());
+
+        SubstationDiagramRenderer.DiagramRender render = SubstationDiagramRenderer.render(network.getSubstation("S1"), parameters);
+
+        assertTrue(render.svg().contains("<svg"));
     }
 }
