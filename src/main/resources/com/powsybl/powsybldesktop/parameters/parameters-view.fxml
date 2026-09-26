@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+
+<TabPane xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1"
+         fx:controller="com.powsybl.powsybldesktop.parameters.ParametersController" tabClosingPolicy="UNAVAILABLE">
+    <tabs>
+        <Tab text="%parameters.tab.networkImport">
+            <content>
+                <fx:include fx:id="networkImportEmbedded" source="network-format-parameters.fxml"/>
+            </content>
+        </Tab>
+        <Tab text="%parameters.tab.networkExport">
+            <content>
+                <fx:include fx:id="networkExportEmbedded" source="network-format-parameters.fxml"/>
+            </content>
+        </Tab>
+        <Tab text="%parameters.tab.sld">
+            <content>
+                <fx:include fx:id="sldEmbedded" source="sld-parameters.fxml"/>
+            </content>
+        </Tab>
+        <Tab text="%parameters.tab.nad">
+            <content>
+                <fx:include fx:id="nadEmbedded" source="nad-parameters.fxml"/>
+            </content>
+        </Tab>
+        <Tab text="%parameters.tab.loadFlow">
+            <content>
+                <fx:include fx:id="loadFlowEmbedded" source="lf-parameters.fxml"/>
+            </content>
+        </Tab>
+        <Tab text="%parameters.tab.securityAnalysis">
+            <content>
+                <fx:include fx:id="securityAnalysisEmbedded" source="sa-parameters.fxml"/>
+            </content>
+        </Tab>
+    </tabs>
+</TabPane>

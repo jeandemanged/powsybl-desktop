@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.network.tables.BusbarSectionsController">
+   <children>
+      <fx:include fx:id="columnVisibilityToolbar" source="column-visibility-toolbar.fxml"/>
+      <fx:include fx:id="searchBox" source="../search/search-box.fxml"/>
+      <TableView fx:id="busbarSectionsTableView" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">
+         <columns>
+            <TableColumn fx:id="countryColumn" text="%substations.column.country" editable="false"/>
+            <TableColumn fx:id="substationColumn" text="%common.column.substation" editable="false"/>
+            <TableColumn fx:id="voltageLevelColumn" text="%common.column.voltageLevel" editable="false"/>
+            <TableColumn fx:id="nameColumn" text="%common.column.name" editable="false"/>
+            <TableColumn fx:id="vColumn" styleClass="right-aligned-column" text="%buses.column.v" editable="false"/>
+            <TableColumn fx:id="angleColumn" styleClass="right-aligned-column" text="%buses.column.angle" editable="false"/>
+            <TableColumn fx:id="voltageViolationColumn" text="%buses.column.voltageViolation" editable="false"/>
+         </columns>
+      </TableView>
+   </children>
+</VBox>

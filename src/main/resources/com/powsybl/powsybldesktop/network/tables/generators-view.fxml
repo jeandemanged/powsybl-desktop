@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.network.tables.GeneratorsController">
+   <children>
+      <fx:include fx:id="columnVisibilityToolbar" source="column-visibility-toolbar.fxml"/>
+      <fx:include fx:id="searchBox" source="../search/search-box.fxml"/>
+      <TableView fx:id="generatorsTableView" editable="true" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">
+         <columns>
+            <TableColumn fx:id="substationColumn" text="%common.column.substation" editable="false"/>
+            <TableColumn fx:id="voltageLevelColumn" text="%common.column.voltageLevel" editable="false"/>
+            <TableColumn fx:id="nameColumn" text="%common.column.name" editable="false"/>
+            <TableColumn fx:id="connectedColumn" styleClass="centered-column" text="%common.column.connected" editable="false"/>
+            <TableColumn fx:id="connectedComponentColumn" styleClass="centered-column" text="%common.column.connectedComponent" editable="false"/>
+            <TableColumn fx:id="synchronousComponentColumn" styleClass="centered-column" text="%common.column.synchronousComponent" editable="false"/>
+            <TableColumn fx:id="targetPColumn" styleClass="right-aligned-column" text="%generators.column.targetP"/>
+            <TableColumn fx:id="targetQColumn" styleClass="right-aligned-column" text="%common.column.targetQ"/>
+            <TableColumn fx:id="minPColumn" styleClass="right-aligned-column" text="%common.column.minP"/>
+            <TableColumn fx:id="maxPColumn" styleClass="right-aligned-column" text="%common.column.maxP"/>
+            <TableColumn fx:id="voltageControlEnabledColumn" styleClass="centered-column" text="%generators.column.voltageControlEnabled"/>
+            <TableColumn fx:id="targetVColumn" styleClass="right-aligned-column" text="%common.column.targetV"/>
+            <TableColumn fx:id="pColumn" styleClass="right-aligned-column" text="%common.column.p" editable="false"/>
+            <TableColumn fx:id="qColumn" styleClass="right-aligned-column" text="%common.column.q" editable="false"/>
+            <TableColumn fx:id="iColumn" styleClass="right-aligned-column" text="%common.column.i" editable="false"/>
+            <TableColumn fx:id="regulatedBusVoltageColumn" styleClass="right-aligned-column" text="%generators.column.regulatedBusVoltage" editable="false"/>
+         </columns>
+      </TableView>
+   </children>
+</VBox>

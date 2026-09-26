@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressIndicator?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.web.WebView?>
+
+<AnchorPane fx:id="mapContainer" prefHeight="600.0" prefWidth="900.0" xmlns="http://javafx.com/javafx/17.0.12"
+            xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.map.MapController">
+    <children>
+        <WebView fx:id="webView" AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0"
+                  AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0"/>
+        <!-- right of Leaflet's zoom control -->
+        <VBox prefWidth="360.0" maxHeight="-Infinity" AnchorPane.topAnchor="10.0" AnchorPane.leftAnchor="54.0"
+              style="-fx-background-color: white; -fx-background-radius: 4;">
+            <children>
+                <fx:include fx:id="searchBox" source="../network/search/search-box.fxml"/>
+            </children>
+        </VBox>
+        <VBox alignment="TOP_RIGHT" spacing="8.0" pickOnBounds="false" AnchorPane.topAnchor="10.0" AnchorPane.rightAnchor="10.0">
+            <children>
+                <HBox alignment="CENTER_RIGHT" spacing="8.0" pickOnBounds="false">
+                    <children>
+                        <Label fx:id="basemapUnreachableLabel" text="%map.basemap.unreachable" styleClass="alert-label"
+                               style="-fx-background-color: white; -fx-padding: 2 6 2 6;" visible="false" managed="false"/>
+                        <Button text="%map.fitToNetwork" onAction="#onFitToNetwork"/>
+                        <ComboBox fx:id="basemapComboBox"/>
+                    </children>
+                </HBox>
+                <VBox fx:id="baseVoltagesBox" spacing="4.0" maxWidth="-Infinity"
+                      style="-fx-background-color: white; -fx-padding: 6 8 6 8; -fx-background-radius: 4;">
+                    <children>
+                        <Label text="%map.baseVoltages" style="-fx-font-weight: bold;"/>
+                        <HBox spacing="4.0">
+                            <children>
+                                <Hyperlink fx:id="checkAllBaseVoltagesLink" text="%map.baseVoltages.checkAll"/>
+                                <Hyperlink fx:id="checkNoBaseVoltagesLink" text="%map.baseVoltages.checkNone"/>
+                            </children>
+                        </HBox>
+                    </children>
+                </VBox>
+            </children>
+        </VBox>
+        <StackPane fx:id="loadingPane" mouseTransparent="true" AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0"
+                   AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
+            <children>
+                <HBox alignment="CENTER" spacing="8.0" maxWidth="-Infinity" maxHeight="-Infinity"
+                      style="-fx-background-color: white; -fx-padding: 8 12 8 12; -fx-background-radius: 4;">
+                    <children>
+                        <ProgressIndicator prefWidth="20.0" prefHeight="20.0"/>
+                        <Label text="%map.loading"/>
+                    </children>
+                </HBox>
+            </children>
+        </StackPane>
+    </children>
+</AnchorPane>

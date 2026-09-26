@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<BorderPane prefHeight="500.0" prefWidth="900.0" xmlns="http://javafx.com/javafx/17.0.12"
+            xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.contingency.ContingenciesController">
+    <top>
+        <ToolBar BorderPane.alignment="CENTER">
+            <items>
+                <MenuButton fx:id="addMenuButton" mnemonicParsing="false" text="%contingencies.add">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2p-plus" iconSize="16"/>
+                    </graphic>
+                </MenuButton>
+                <Button fx:id="removeButton" mnemonicParsing="false" onAction="#onRemove">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2m-minus" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%contingencies.remove"/>
+                    </tooltip>
+                </Button>
+                <Separator orientation="VERTICAL"/>
+                <Button fx:id="importButton" mnemonicParsing="false" onAction="#onImport">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2u-upload" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%contingencies.import"/>
+                    </tooltip>
+                </Button>
+                <Button fx:id="exportButton" mnemonicParsing="false" onAction="#onExport">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2d-download" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%contingencies.export"/>
+                    </tooltip>
+                </Button>
+            </items>
+        </ToolBar>
+    </top>
+    <center>
+        <SplitPane dividerPositions="0.4" BorderPane.alignment="CENTER">
+            <items>
+                <SplitPane dividerPositions="0.45" orientation="VERTICAL">
+                    <items>
+                        <ListView fx:id="contingencyListsListView"/>
+                        <StackPane fx:id="formHost"/>
+                    </items>
+                </SplitPane>
+                <VBox spacing="4">
+                    <children>
+                        <Label fx:id="computedTitleLabel" text="%contingencies.computed.title"/>
+                        <TableView fx:id="contingenciesTableView" VBox.vgrow="ALWAYS">
+                            <columns>
+                                <TableColumn fx:id="idColumn" text="%contingencies.column.id"/>
+                                <TableColumn fx:id="elementsColumn" text="%contingencies.column.elements"/>
+                                <TableColumn fx:id="validColumn" text="%contingencies.column.valid"/>
+                            </columns>
+                        </TableView>
+                    </children>
+                </VBox>
+            </items>
+        </SplitPane>
+    </center>
+</BorderPane>

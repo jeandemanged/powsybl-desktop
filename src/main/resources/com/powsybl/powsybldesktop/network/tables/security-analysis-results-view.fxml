@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.network.tables.SecurityAnalysisResultsController">
+   <children>
+      <TableView fx:id="resultsTableView" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">
+         <columns>
+            <TableColumn fx:id="contingencyColumn" text="%securityAnalysisResults.column.contingency" prefWidth="150"/>
+            <TableColumn fx:id="statusColumn" text="%securityAnalysisResults.column.status" prefWidth="180"/>
+            <TableColumn fx:id="subjectIdColumn" text="%securityAnalysisResults.column.subjectId" prefWidth="150"/>
+            <TableColumn fx:id="subjectNameColumn" text="%securityAnalysisResults.column.subjectName" prefWidth="150"/>
+            <TableColumn fx:id="limitTypeColumn" styleClass="centered-column" text="%securityAnalysisResults.column.limitType"/>
+            <TableColumn fx:id="sideColumn" styleClass="centered-column" text="%securityAnalysisResults.column.side"/>
+            <TableColumn fx:id="valueColumn" styleClass="right-aligned-column" text="%securityAnalysisResults.column.value"/>
+            <TableColumn fx:id="limitColumn" styleClass="right-aligned-column" text="%securityAnalysisResults.column.limit"/>
+            <TableColumn fx:id="limitReductionColumn" styleClass="right-aligned-column" text="%securityAnalysisResults.column.limitReduction"/>
+            <TableColumn fx:id="limitNameColumn" text="%securityAnalysisResults.column.limitName" prefWidth="150"/>
+            <TableColumn fx:id="acceptableDurationColumn" styleClass="centered-column" text="%securityAnalysisResults.column.acceptableDuration"/>
+            <TableColumn fx:id="operationalLimitsGroupIdColumn" text="%securityAnalysisResults.column.operationalLimitsGroupId" prefWidth="180"/>
+         </columns>
+      </TableView>
+   </children>
+</VBox>

@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.powsybl</groupId>
+        <artifactId>powsybl-parent</artifactId>
+        <version>30</version>
+        <relativePath/>
+    </parent>
+
+    <artifactId>powsybl-desktop</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <name>PowSyBl Desktop</name>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <java.version>25</java.version>
+        <junit.version>5.14.4</junit.version>
+        <autoservice.version>1.1.1</autoservice.version>
+        <testfx.version>4.0.18</testfx.version>
+        <lucene.version>10.5.1</lucene.version>
+        <powsybl-starter.version>2026.1.0</powsybl-starter.version>
+        <powsybl-core.version>7.3.0</powsybl-core.version>
+        <javafx.version>27</javafx.version>
+        <controlsfx.version>11.2.5</controlsfx.version>
+        <ikonli.version>12.4.0</ikonli.version>
+        <logback.version>1.6.3</logback.version>
+        <leaflet.version>1.9.4</leaflet.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.google.auto.service</groupId>
+            <artifactId>auto-service</artifactId>
+            <version>${autoservice.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-starter</artifactId>
+            <version>${powsybl-starter.version}</version>
+        </dependency>
+        <dependency>
+            <!-- provides CGMES conformity sample networks; not part of the powsybl-starter BOM, so pinned
+                 explicitly to the powsybl-core version that powsybl-starter 2026.1.0 resolves -->
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-cgmes-conformity</artifactId>
+            <version>${powsybl-core.version}</version>
+        </dependency>
+        <dependency>
+            <!-- provides CgmesGLImportPostProcessor, registered via ServiceLoader, so the geographical layout
+                 profile (GL) present in some CGMES sample networks gets imported; not part of the powsybl-starter
+                 BOM, so pinned explicitly to the powsybl-core version that powsybl-starter 2026.1.0 resolves -->
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-cgmes-gl</artifactId>
+            <version>${powsybl-core.version}</version>
+        </dependency>
+        <dependency>
+            <!-- provides SubstationPosition/LinePosition (used by the Map view); already pulled in
+                 transitively via powsybl-cgmes-gl, but pinned explicitly since that's incidental -->
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-iidm-extensions</artifactId>
+            <version>${powsybl-core.version}</version>
+        </dependency>
+        <dependency>
+            <!-- Leaflet's leaflet.js/leaflet.css for the Map view's WebView. "provided" because the jar itself
+                 isn't needed at runtime: the unpack execution below extracts those two files into the map
+                 package, where MapController reads them as ordinary classpath resources. -->
+            <groupId>org.webjars</groupId>
+            <artifactId>leaflet</artifactId>
+            <version>${leaflet.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-web</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.controlsfx</groupId>
+            <artifactId>controlsfx</artifactId>
+            <version>${controlsfx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.kordamp.ikonli</groupId>
+            <artifactId>ikonli-javafx</artifactId>
+            <version>${ikonli.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.kordamp.ikonli</groupId>
+            <artifactId>ikonli-materialdesign2-pack</artifactId>
+            <version>${ikonli.version}</version>
+        </dependency>
+        <dependency>
+            <!-- SwingFXUtils, to convert a WebView.snapshot() into a BufferedImage for PNG export -->
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-swing</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.lucene</groupId>
+            <artifactId>lucene-core</artifactId>
+            <version>${lucene.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+            <version>${logback.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>${logback.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testfx</groupId>
+            <artifactId>testfx-core</artifactId>
+            <version>${testfx.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testfx</groupId>
+            <artifactId>testfx-junit5</artifactId>
+            <version>${testfx.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <profiles>
+        <profile>
+            <id>win</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <javafx.platform>win</javafx.platform>
+            </properties>
+        </profile>
+        <profile>
+            <id>linux</id>
+            <activation>
+                <os>
+                    <!-- family "unix" alone also matches macOS in Plexus's Os detection, so name=Linux narrows it -->
+                    <family>unix</family>
+                    <name>Linux</name>
+                </os>
+            </activation>
+            <properties>
+                <javafx.platform>linux</javafx.platform>
+            </properties>
+        </profile>
+        <profile>
+            <id>mac</id>
+            <activation>
+                <os>
+                    <!-- Apple Silicon only (matches GitHub's macos-latest runners); Intel Macs aren't supported. -->
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <javafx.platform>mac-aarch64</javafx.platform>
+            </properties>
+        </profile>
+    </profiles>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>buildnumber-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>templating-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.16.0</version>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>com.google.auto.service</groupId>
+                            <artifactId>auto-service</artifactId>
+                            <version>${autoservice.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <plugin>
+                <!-- pins the default Locale for tests so assertions on literal (English) UI strings
+                     don't depend on the host machine's OS locale now that those strings are resolved
+                     through the i18n message bundle -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- must be a JVM arg, not systemPropertyVariables: Locale.getDefault() is cached
+                         from user.language/user.country at JVM bootstrap, before System.setProperty
+                         calls made after startup could take effect -->
+                    <argLine>-Duser.language=en -Duser.country=US</argLine>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-maven-plugin</artifactId>
+                <version>0.0.8</version>
+                <executions>
+                    <execution>
+                        <!-- Default configuration for running with: mvn clean javafx:run -->
+                        <id>default-cli</id>
+                        <configuration>
+                            <mainClass>
+                                com.powsybl.powsybldesktop.MainApplication
+                            </mainClass>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <!-- Main jar built straight into target/app-libs, next to copy-dependencies output below,
+                     so jpackage's "input" flag can point at a single directory. -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <outputDirectory>${project.build.directory}/app-libs</outputDirectory>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.powsybl.powsybldesktop.Launcher</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.11.0</version>
+                <executions>
+                    <execution>
+                        <!-- Extracts Leaflet's two dist files from the webjar into the Map view's package, so
+                             they're plain classpath resources next to map.js instead of being checked in. The
+                             version lives only in ${leaflet.version}; flattening drops the webjar's
+                             META-INF/resources/webjars/leaflet/<version>/ prefix. -->
+                        <id>unpack-leaflet</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>unpack</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.webjars</groupId>
+                                    <artifactId>leaflet</artifactId>
+                                    <version>${leaflet.version}</version>
+                                    <includes>META-INF/resources/webjars/leaflet/${leaflet.version}/leaflet.js,META-INF/resources/webjars/leaflet/${leaflet.version}/leaflet.css</includes>
+                                    <outputDirectory>${project.build.outputDirectory}/com/powsybl/powsybldesktop/map</outputDirectory>
+                                    <fileMappers>
+                                        <org.codehaus.plexus.components.io.filemappers.FlattenFileMapper/>
+                                    </fileMappers>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-runtime-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/app-libs</outputDirectory>
+                            <includeScope>runtime</includeScope>
+                            <!-- excluded because they're jlinked into the runtime image as real javafx.* modules;
+                                 keeping the jars here too would split those packages between a module and the classpath -->
+                            <excludeGroupIds>org.openjfx</excludeGroupIds>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

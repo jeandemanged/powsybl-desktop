@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.*?>
+
+<BorderPane fx:id="borderPane" prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.MainController">
+    <top>
+        <VBox BorderPane.alignment="CENTER">
+            <children>
+                <MenuBar>
+                    <menus>
+                        <Menu mnemonicParsing="false" text="%main.menu.file">
+                            <items>
+                                <MenuItem mnemonicParsing="false" onAction="#onExit" text="%main.menu.file.exit" />
+                            </items>
+                        </Menu>
+                        <Menu mnemonicParsing="false" text="%main.menu.language">
+                            <items>
+                                <RadioMenuItem fx:id="languageEnglishItem" mnemonicParsing="false" onAction="#onLanguageEnglish" text="English">
+                                    <toggleGroup>
+                                        <ToggleGroup fx:id="languageToggleGroup" />
+                                    </toggleGroup>
+                                </RadioMenuItem>
+                                <RadioMenuItem fx:id="languageFrenchItem" mnemonicParsing="false" onAction="#onLanguageFrench" text="Français" toggleGroup="$languageToggleGroup" />
+                            </items>
+                        </Menu>
+                        <Menu mnemonicParsing="false" text="%main.menu.help">
+                            <items>
+                                <MenuItem mnemonicParsing="false" onAction="#onMemory" text="%main.menu.help.memory" />
+                                <MenuItem mnemonicParsing="false" onAction="#onAbout" text="%main.menu.help.about" />
+                            </items>
+                        </Menu>
+                    </menus>
+                </MenuBar>
+                <ToolBar prefHeight="40.0" prefWidth="200.0">
+                    <items>
+                        <Button fx:id="backwardButton" mnemonicParsing="false" onAction="#onNavigateBackward">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2a-arrow-left" iconSize="16" />
+                            </graphic>
+                            <tooltip>
+                                <Tooltip text="%main.toolbar.back" />
+                            </tooltip>
+                        </Button>
+                        <Button fx:id="forwardButton" mnemonicParsing="false" onAction="#onNavigateForward">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2a-arrow-right" iconSize="16" />
+                            </graphic>
+                            <tooltip>
+                                <Tooltip text="%main.toolbar.forward" />
+                            </tooltip>
+                        </Button>
+                        <Button mnemonicParsing="false" onAction="#onNetworks" text="%main.toolbar.networks">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2h-home" iconSize="16" />
+                            </graphic>
+                        </Button>
+                        <Button mnemonicParsing="false" onAction="#onSubstations" text="%main.toolbar.substations">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2h-hubspot" iconSize="16" />
+                            </graphic>
+                        </Button>
+                        <Button fx:id="mapButton" mnemonicParsing="false" onAction="#onMap" text="%main.toolbar.map">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2e-earth" iconSize="16" />
+                            </graphic>
+                        </Button>
+                        <Button mnemonicParsing="false" onAction="#onContingencies" text="%main.toolbar.contingencies">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2f-flash-off" iconSize="16" />
+                            </graphic>
+                        </Button>
+                        <MenuButton mnemonicParsing="false" text="%main.toolbar.tables">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2t-table-multiple" iconSize="16" />
+                            </graphic>
+                            <items>
+                                <MenuItem mnemonicParsing="false" onAction="#onSubstationsTable" text="%main.toolbar.substationsTable" />
+                                <MenuItem mnemonicParsing="false" onAction="#onVoltageLevelsTable" text="%main.toolbar.voltageLevelsTable" />
+                                <MenuItem mnemonicParsing="false" onAction="#onBusbarSectionsTable" text="%main.toolbar.busbarSectionsTable" />
+                                <MenuItem mnemonicParsing="false" onAction="#onBusesBusView" text="%main.toolbar.busesBusView" />
+                                <MenuItem mnemonicParsing="false" onAction="#onBusesBusBreakerView" text="%main.toolbar.busesBusBreakerView" />
+                                <MenuItem mnemonicParsing="false" onAction="#onGenerators" text="%main.toolbar.generators" />
+                                <MenuItem mnemonicParsing="false" onAction="#onLoads" text="%main.toolbar.loads" />
+                                <MenuItem mnemonicParsing="false" onAction="#onLines" text="%main.toolbar.lines" />
+                                <MenuItem mnemonicParsing="false" onAction="#onTieLines" text="%main.toolbar.tieLines" />
+                                <MenuItem mnemonicParsing="false" onAction="#onBoundaryLines" text="%main.toolbar.boundaryLines" />
+                                <MenuItem mnemonicParsing="false" onAction="#onTransformers" text="%main.toolbar.transformers" />
+                                <MenuItem mnemonicParsing="false" onAction="#onShuntCompensators" text="%main.toolbar.shuntCompensators" />
+                                <MenuItem mnemonicParsing="false" onAction="#onStaticVarCompensators" text="%main.toolbar.staticVarCompensators" />
+                                <SeparatorMenuItem />
+                                <MenuItem mnemonicParsing="false" onAction="#onComponents" text="%main.toolbar.loadflowresult" />
+                                <MenuItem mnemonicParsing="false" onAction="#onSecurityAnalysisResults" text="%main.toolbar.securityAnalysisResults" />
+                            </items>
+                        </MenuButton>
+                        <Separator orientation="VERTICAL" />
+                        <MenuButton mnemonicParsing="false" text="%main.toolbar.run">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2p-play" iconSize="16" />
+                            </graphic>
+                            <items>
+                                <MenuItem mnemonicParsing="false" onAction="#onLoadFlow" text="%main.toolbar.run.loadFlow" />
+                                <MenuItem mnemonicParsing="false" onAction="#onSecurityAnalysis" text="%main.toolbar.run.securityAnalysis" />
+                            </items>
+                        </MenuButton>
+                        <Button mnemonicParsing="false" onAction="#onParameters" text="%main.toolbar.parameters">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2c-cog" iconSize="16" />
+                            </graphic>
+                        </Button>
+                        <Separator orientation="VERTICAL" />
+                        <Button mnemonicParsing="false" onAction="#onLogs" text="%main.toolbar.logs">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2f-file-alert" iconSize="16" />
+                            </graphic>
+                        </Button>
+                        <Button mnemonicParsing="false" onAction="#onReports" text="%main.toolbar.reports">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2f-file-check" iconSize="16" />
+                            </graphic>
+                        </Button>
+                        <Region HBox.hgrow="ALWAYS" />
+                        <ToggleButton fx:id="notificationsButton" mnemonicParsing="false" onAction="#onNotifications">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2c-chat-outline" iconSize="16" />
+                            </graphic>
+                            <tooltip>
+                                <Tooltip text="%main.toolbar.notifications" />
+                            </tooltip>
+                        </ToggleButton>
+                    </items>
+                </ToolBar>
+            </children>
+        </VBox>
+    </top>
+</BorderPane>
