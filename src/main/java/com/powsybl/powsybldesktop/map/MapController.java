@@ -280,6 +280,13 @@ public class MapController extends AbstractDisposableController {
         }
     }
 
+    @FXML
+    private void onFitToNetwork() {
+        if (engineLoaded) {
+            webView.getEngine().executeScript("fitToNetwork()");
+        }
+    }
+
     // map.js redraws the network tiles, which draw the offline basemap or not
     private void applyBasemap() {
         basemapUnreachableLabel.setVisible(false);

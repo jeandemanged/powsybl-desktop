@@ -80,6 +80,10 @@ function animateZoom(containerPoint, target) {
 
 function zoomFrame() {
     var a = zoomAnimation;
+    // stopped by fitToNetwork
+    if (a === null) {
+        return;
+    }
     var t = Math.min(1, (Date.now() - a.startTime) / ZOOM_ANIMATION_MS);
     var eased = 1 - (1 - t) * (1 - t);
     map.setZoomAround(a.containerPoint, a.start + (a.target - a.start) * eased, {animate: false});
@@ -344,6 +348,7 @@ function renderNetwork(boundsJson, viewJson) {
     redrawNetwork();
     userView = false;
     networkBounds = JSON.parse(boundsJson);
+    renderedBounds = networkBounds;
     restoredView = JSON.parse(viewJson);
     fitView();
 }
@@ -352,6 +357,8 @@ function renderNetwork(boundsJson, viewJson) {
 // is ready before the WebView has its final size, and fitting to the size the map had then zoomed in far too much.
 // invalidateSize also keeps the top left corner in place rather than the center, which moved a restored view.
 var networkBounds = null;
+// networkBounds, kept once the user took over the view, for fitToNetwork
+var renderedBounds = null;
 var restoredView = null;
 // Whether the user panned or zoomed since the network was rendered: only such a view is reported to MapController,
 // a fitted one is fitted again next time, to the size the map then has.
@@ -367,6 +374,16 @@ function takeOverView() {
 map.on('dragstart', takeOverView);
 // Leaflet's keyboard panning and zooming
 map.on('keydown', takeOverView);
+
+// Called by MapController's fit to network button. The fitted view is reported to MapController like one the user
+// moved to, and fitted again on resize until the user pans or zooms, like the one the network was first rendered at.
+function fitToNetwork() {
+    zoomAnimation = null;
+    networkBounds = renderedBounds;
+    restoredView = null;
+    userView = true;
+    fitView();
+}
 
 map.on('moveend', function () {
     if (userView) {
