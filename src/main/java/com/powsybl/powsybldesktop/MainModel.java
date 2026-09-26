@@ -83,6 +83,7 @@ public class MainModel {
     private final Map<Network, SecurityAnalysisResult> securityAnalysisResults = new HashMap<>();
     private final Map<Network, NetworkSearchIndex> searchIndexes = new HashMap<>();
     private final Map<Network, ObservableList<ContingencyList>> contingencyLists = new HashMap<>();
+    private final Map<Network, MapView> mapViews = new HashMap<>();
     // Whether a sublist is included when contingencies are resolved for a security analysis run, keyed by
     // identity since editing a sublist's form replaces it with a brand-new instance (see ContingenciesController's
     // showForm/onReplace) rather than mutating it in place - transferContingencyListEnabled carries the flag
@@ -161,6 +162,8 @@ public class MainModel {
         loadFlowResults.remove(network);
         securityAnalysisResults.remove(network);
         contingencyLists.remove(network);
+        // the Map view can show a subnetwork too, whose view goes with its root network
+        mapViews.keySet().removeIf(n -> n.getNetwork() == network.getNetwork());
         NetworkSearchIndex index = searchIndexes.remove(network);
         if (index != null) {
             index.close();
@@ -471,5 +474,23 @@ public class MainModel {
      */
     public ObservableSet<String> getMapHiddenBaseVoltages() {
         return mapHiddenBaseVoltages;
+    }
+
+    /**
+     * Center and zoom of the Map view, as last panned or zoomed by the user.
+     */
+    public record MapView(double latitude, double longitude, double zoom) {
+    }
+
+    /**
+     * The Map view's last view of {@code network}, or null if the user never panned or zoomed it: the view is then
+     * fitted to the network.
+     */
+    public MapView getMapView(Network network) {
+        return mapViews.get(network);
+    }
+
+    public void setMapView(Network network, MapView mapView) {
+        mapViews.put(Objects.requireNonNull(network), Objects.requireNonNull(mapView));
     }
 }

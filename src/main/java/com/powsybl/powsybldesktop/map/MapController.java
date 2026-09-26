@@ -184,6 +184,7 @@ public class MapController extends AbstractDisposableController {
         @Override
         protected Task<MapNetworkData> createTask() {
             Network network = mainModel.getNetwork();
+            buildingNetwork = network;
             return new Task<>() {
                 @Override
                 protected MapNetworkData call() {
@@ -204,6 +205,10 @@ public class MapController extends AbstractDisposableController {
 
     // What tiles are drawn from, read on the FX thread when a tile is requested and handed to its task
     private MapNetworkData networkData;
+    // the network networkData was built from, which the view map.js reports is saved for
+    private Network displayedNetwork;
+    // the network the running networkDataService build is for: restarting it drops the result of a previous build
+    private Network buildingNetwork;
     private Set<String> hiddenBaseVoltages = Set.of();
 
     private MainModel mainModel;
@@ -243,10 +248,13 @@ public class MapController extends AbstractDisposableController {
         });
         networkDataService.setOnSucceeded(event -> {
             networkData = networkDataService.getValue();
+            displayedNetwork = buildingNetwork;
             loadingPane.setVisible(false);
+            MainModel.MapView mapView = displayedNetwork == null ? null : mainModel.getMapView(displayedNetwork);
             try {
-                // passed as a JS string argument rather than spliced into a script, so it needs no escaping
-                jsWindow.call("renderNetwork", objectMapper.writeValueAsString(networkData.latLngBounds()));
+                // passed as JS string arguments rather than spliced into a script, so they need no escaping
+                jsWindow.call("renderNetwork", objectMapper.writeValueAsString(networkData.latLngBounds()),
+                        objectMapper.writeValueAsString(mapView));
             } catch (JsonProcessingException e) {
                 LOGGER.error(e.getMessage(), e);
             }
@@ -419,6 +427,16 @@ public class MapController extends AbstractDisposableController {
             Desktop.getDesktop().browse(new URI(url));
         } catch (IOException | URISyntaxException e) {
             LOGGER.warn("Could not open link: {}", url, e);
+        }
+    }
+
+    /**
+     * Called from map.js whenever the user moved the view, so that it's restored when navigating back to this view.
+     */
+    @SuppressWarnings("unused") // called from map.js
+    public void onViewChanged(double latitude, double longitude, double zoom) {
+        if (displayedNetwork != null) {
+            mainModel.setMapView(displayedNetwork, new MainModel.MapView(latitude, longitude, zoom));
         }
     }
 

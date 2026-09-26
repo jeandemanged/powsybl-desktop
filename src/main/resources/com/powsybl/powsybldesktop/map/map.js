@@ -55,7 +55,7 @@ function limitZoomOutToWorld() {
 limitZoomOutToWorld();
 map.on('resize', function () {
     limitZoomOutToWorld();
-    fitNetwork();
+    fitView();
 });
 
 // Moves the zoom from the current level towards target, easing out, re-centering at each step so that the
@@ -70,8 +70,7 @@ function animateZoom(containerPoint, target) {
     if (target === start) {
         return;
     }
-    // the user took over the view
-    networkBounds = null;
+    takeOverView();
     var restarting = zoomAnimation !== null;
     zoomAnimation = {containerPoint: containerPoint, start: start, target: target, startTime: Date.now()};
     if (!restarting) {
@@ -339,23 +338,49 @@ map.on('click', function (e) {
 });
 
 // Called by MapController once a network is ready to be drawn, with the south, west, north and east of what it
-// draws, null for nothing.
-function renderNetwork(boundsJson) {
+// draws, null for nothing, and the view the user last left it at, as {latitude, longitude, zoom}, null for none.
+function renderNetwork(boundsJson, viewJson) {
     // before fitting the view: tiles it adds are drawn from the new network already
     redrawNetwork();
+    userView = false;
     networkBounds = JSON.parse(boundsJson);
-    fitNetwork();
+    restoredView = JSON.parse(viewJson);
+    fitView();
 }
 
-// The view is fitted to the network again on each resize until the user pans or zooms: a small network is ready
-// before the WebView has its final size, and fitting to the size the map had then zoomed in far too much.
+// The view is restored, or fitted to the network, again on each resize until the user pans or zooms: a small network
+// is ready before the WebView has its final size, and fitting to the size the map had then zoomed in far too much.
+// invalidateSize also keeps the top left corner in place rather than the center, which moved a restored view.
 var networkBounds = null;
+var restoredView = null;
+// Whether the user panned or zoomed since the network was rendered: only such a view is reported to MapController,
+// a fitted one is fitted again next time, to the size the map then has.
+var userView = false;
 var FIT_PADDING = 20;
-map.on('dragstart', function () {
+
+function takeOverView() {
     networkBounds = null;
+    restoredView = null;
+    userView = true;
+}
+
+map.on('dragstart', takeOverView);
+// Leaflet's keyboard panning and zooming
+map.on('keydown', takeOverView);
+
+map.on('moveend', function () {
+    if (userView) {
+        var center = map.getCenter();
+        window.controller.onViewChanged(center.lat, center.lng, map.getZoom());
+    }
 });
 
-function fitNetwork() {
+function fitView() {
+    var v = restoredView;
+    if (v) {
+        map.setView([v.latitude, v.longitude], v.zoom, {animate: false});
+        return;
+    }
     var b = networkBounds;
     var size = map.getSize();
     // not laid out yet: no room for the padding below
