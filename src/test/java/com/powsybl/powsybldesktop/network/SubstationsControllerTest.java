@@ -117,7 +117,7 @@ class SubstationsControllerTest extends AbstractHeadlessApplicationTest {
 
         assertFalse(hasTabWithText(Messages.get("main.toolbar.substationsTable")));
         assertFalse(hasTabWithText(Messages.get("main.toolbar.voltageLevelsTable")));
-        assertFalse(hasTabWithText(Messages.get("main.toolbar.components")));
+        assertFalse(hasTabWithText(Messages.get("main.toolbar.loadflowresult")));
     }
 
     @Test

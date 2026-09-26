@@ -97,7 +97,8 @@
                                 <MenuItem mnemonicParsing="false" onAction="#onTransformers" text="%main.toolbar.transformers" />
                                 <MenuItem mnemonicParsing="false" onAction="#onShuntCompensators" text="%main.toolbar.shuntCompensators" />
                                 <MenuItem mnemonicParsing="false" onAction="#onStaticVarCompensators" text="%main.toolbar.staticVarCompensators" />
-                                <MenuItem mnemonicParsing="false" onAction="#onComponents" text="%main.toolbar.components" />
+                                <SeparatorMenuItem />
+                                <MenuItem mnemonicParsing="false" onAction="#onComponents" text="%main.toolbar.loadflowresult" />
                                 <MenuItem mnemonicParsing="false" onAction="#onSecurityAnalysisResults" text="%main.toolbar.securityAnalysisResults" />
                             </items>
                         </MenuButton>

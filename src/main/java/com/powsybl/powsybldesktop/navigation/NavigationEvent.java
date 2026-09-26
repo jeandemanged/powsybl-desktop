@@ -43,7 +43,7 @@ public record NavigationEvent(NavigationType navigationType, NavigationState sta
             case NETWORK_TABLE_TRANSFORMERS -> Messages.get("main.toolbar.transformers");
             case NETWORK_TABLE_TIE_LINES -> Messages.get("main.toolbar.tieLines");
             case NETWORK_TABLE_BOUNDARY_LINES -> Messages.get("main.toolbar.boundaryLines");
-            case NETWORK_TABLE_COMPONENTS -> Messages.get("main.toolbar.components");
+            case NETWORK_TABLE_COMPONENTS -> Messages.get("main.toolbar.loadflowresult");
             case NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS -> Messages.get("main.toolbar.securityAnalysisResults");
             case REPORTS -> Messages.get("main.toolbar.reports");
         };
