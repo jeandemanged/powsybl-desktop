@@ -346,6 +346,7 @@ map.on('click', function (e) {
 function renderNetwork(boundsJson, viewJson) {
     // before fitting the view: tiles it adds are drawn from the new network already
     redrawNetwork();
+    highlight('[]');
     userView = false;
     networkBounds = JSON.parse(boundsJson);
     renderedBounds = networkBounds;
@@ -378,8 +379,72 @@ map.on('keydown', takeOverView);
 // Called by MapController's fit to network button. The fitted view is reported to MapController like one the user
 // moved to, and fitted again on resize until the user pans or zooms, like the one the network was first rendered at.
 function fitToNetwork() {
+    fitTo(renderedBounds);
+}
+
+// Called by MapController for a search match, with the south, west, north and east to show, fitted as the network
+// is by fitToNetwork.
+function zoomTo(boundsJson) {
+    fitTo(JSON.parse(boundsJson));
+}
+
+// A search match's markers: DOM markers rather than vector ones, since Leaflet's vector renderers are moved by
+// translate3d while zooming, which the WebView mis-composites; markers are positioned by left/top with any3d off.
+// Not interactive, so clicks and hover go through to what they mark.
+var HIGHLIGHT_SIZE = 26;
+// A new marker's ring first pulses HIGHLIGHT_PULSES times, each shrinking it from HIGHLIGHT_PULSE_START_SIZE to a
+// point, before it settles at HIGHLIGHT_SIZE. Driven frame by frame like animateZoom, as the WebView doesn't reliably
+// finish CSS animations; its size rather than a scale transform is animated, which keeps its border's thickness.
+var HIGHLIGHT_PULSES = 1;
+var HIGHLIGHT_PULSE_MS = 350;
+var HIGHLIGHT_PULSE_START_SIZE = 2 * HIGHLIGHT_SIZE;
+var HIGHLIGHT_FADE_SIZE = 10;
+// the ring is centered in the icon by its stylesheet, so it can outgrow it
+var highlightIcon = L.divIcon({className: '', html: '<div class="search-highlight"></div>', iconSize: [HIGHLIGHT_SIZE, HIGHLIGHT_SIZE]});
+var highlightLayer = L.layerGroup().addTo(map);
+var highlightAnimation = null;
+
+// Called by MapController with the [latitude, longitude] of each marker to show, replacing the previous ones
+function highlight(pointsJson) {
+    highlightLayer.clearLayers();
+    var rings = JSON.parse(pointsJson).map(function (point) {
+        var marker = L.marker(point, {icon: highlightIcon, interactive: false, keyboard: false}).addTo(highlightLayer);
+        return marker.getElement().firstChild;
+    });
+    var restarting = highlightAnimation !== null;
+    highlightAnimation = rings.length > 0 ? {rings: rings, startTime: Date.now()} : null;
+    if (highlightAnimation !== null && !restarting) {
+        L.Util.requestAnimFrame(highlightFrame);
+    }
+}
+
+function highlightFrame() {
+    var a = highlightAnimation;
+    // stopped by a highlight without markers
+    if (a === null) {
+        return;
+    }
+    var elapsed = Date.now() - a.startTime;
+    var done = elapsed >= HIGHLIGHT_PULSES * HIGHLIGHT_PULSE_MS;
+    var t = (elapsed % HIGHLIGHT_PULSE_MS) / HIGHLIGHT_PULSE_MS;
+    // easing in: the collapse speeds up towards the point
+    var size = HIGHLIGHT_PULSE_START_SIZE * (1 - t * t);
+    a.rings.forEach(function (ring) {
+        ring.style.width = done ? '' : size + 'px';
+        ring.style.height = done ? '' : size + 'px';
+        // faded out once it's no bigger than its border, which it can't shrink past
+        ring.style.opacity = done ? '' : Math.min(1, size / HIGHLIGHT_FADE_SIZE);
+    });
+    if (done) {
+        highlightAnimation = null;
+    } else {
+        L.Util.requestAnimFrame(highlightFrame);
+    }
+}
+
+function fitTo(bounds) {
     zoomAnimation = null;
-    networkBounds = renderedBounds;
+    networkBounds = bounds;
     restoredView = null;
     userView = true;
     fitView();

@@ -72,6 +72,10 @@ record MapNetworkData(List<Color> colors,
     private static final int GRID_SIZE = 128;
     /** Nearest neighbour distances are measured on at most this many substations, enough for a median. */
     private static final int SPACING_SAMPLE_SIZE = 1000;
+    /** A substation found by a search is shown with this many of its nearest neighbours around it. */
+    private static final int NEIGHBOURHOOD_SIZE = 5;
+    /** Keeps the farthest of those neighbours off the view's edge. */
+    private static final double NEIGHBOURHOOD_MARGIN = 1.2;
 
     /**
      * Uniform grid over all substations and line points: cell {@code c} lists {@code items[cellStart[c]]} to
@@ -414,8 +418,116 @@ record MapNetworkData(List<Color> colors,
      * South, west, north and east of everything drawn, null when there is nothing to draw.
      */
     double[] latLngBounds() {
-        return grid == null ? null : new double[] {unprojectLatitude(grid.maxY()), unprojectLongitude(grid.minX()),
-            unprojectLatitude(grid.minY()), unprojectLongitude(grid.maxX())};
+        return grid == null ? null : latLngBounds(grid.minX(), grid.minY(), grid.maxX(), grid.maxY());
+    }
+
+    /**
+     * South, west, north and east of the square centered on substation {@code id} that holds its
+     * {@value #NEIGHBOURHOOD_SIZE} nearest neighbours, so they're shown around it; a single point when it has none,
+     * null when it isn't drawn.
+     */
+    double[] substationNeighbourhoodLatLngBounds(String id) {
+        int index = Arrays.asList(substationIds).indexOf(id);
+        if (index < 0) {
+            return null;
+        }
+        double x = substationX[index];
+        double y = substationY[index];
+        // the NEIGHBOURHOOD_SIZE smallest squared distances, ascending
+        double[] nearest = new double[NEIGHBOURHOOD_SIZE];
+        Arrays.fill(nearest, Double.POSITIVE_INFINITY);
+        for (int i = 0; i < substationX.length; i++) {
+            double dx = substationX[i] - x;
+            double dy = substationY[i] - y;
+            double distance = dx * dx + dy * dy;
+            // substations sharing its position are no neighbours: they'd all be shown at the same place
+            if (distance > 0 && distance < nearest[NEIGHBOURHOOD_SIZE - 1]) {
+                int k = NEIGHBOURHOOD_SIZE - 1;
+                while (k > 0 && nearest[k - 1] > distance) {
+                    nearest[k] = nearest[k - 1];
+                    k--;
+                }
+                nearest[k] = distance;
+            }
+        }
+        double farthest = 0;
+        for (double distance : nearest) {
+            if (distance < Double.POSITIVE_INFINITY) {
+                farthest = distance;
+            }
+        }
+        double halfSize = Math.sqrt(farthest) * NEIGHBOURHOOD_MARGIN;
+        return latLngBounds(x - halfSize, y - halfSize, x + halfSize, y + halfSize);
+    }
+
+    /**
+     * South, west, north and east of line, tie line or boundary line {@code id}, both halves of a tie line drawn
+     * from its boundary lines included, null when it isn't drawn.
+     */
+    double[] lineLatLngBounds(String id) {
+        double minX = Double.POSITIVE_INFINITY;
+        double minY = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+        for (int i = 0; i < lineIds.length; i++) {
+            if (lineIds[i].equals(id)) {
+                minX = Math.min(minX, lineBounds[i * 4]);
+                minY = Math.min(minY, lineBounds[i * 4 + 1]);
+                maxX = Math.max(maxX, lineBounds[i * 4 + 2]);
+                maxY = Math.max(maxY, lineBounds[i * 4 + 3]);
+            }
+        }
+        return minX == Double.POSITIVE_INFINITY ? null : latLngBounds(minX, minY, maxX, maxY);
+    }
+
+    /**
+     * South, west, north and east of those of substations {@code ids} that are drawn, null for none.
+     */
+    double[] substationsLatLngBounds(Set<String> ids) {
+        double minX = Double.POSITIVE_INFINITY;
+        double minY = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+        for (int i = 0; i < substationIds.length; i++) {
+            if (ids.contains(substationIds[i])) {
+                minX = Math.min(minX, substationX[i]);
+                minY = Math.min(minY, substationY[i]);
+                maxX = Math.max(maxX, substationX[i]);
+                maxY = Math.max(maxY, substationY[i]);
+            }
+        }
+        return minX == Double.POSITIVE_INFINITY ? null : latLngBounds(minX, minY, maxX, maxY);
+    }
+
+    /**
+     * Latitude and longitude of substation {@code id}, null when it isn't drawn.
+     */
+    double[] substationLatLng(String id) {
+        int index = Arrays.asList(substationIds).indexOf(id);
+        return index < 0 ? null : new double[] {unprojectLatitude(substationY[index]), unprojectLongitude(substationX[index])};
+    }
+
+    /**
+     * Latitude and longitude halfway along line, tie line or boundary line {@code id}, both halves of a tie line
+     * drawn from its boundary lines included, null when it isn't drawn.
+     */
+    double[] lineMiddleLatLng(String id) {
+        List<Integer> lines = new ArrayList<>();
+        for (int i = 0; i < lineIds.length; i++) {
+            if (lineIds[i].equals(id)) {
+                lines.add(i);
+            }
+        }
+        if (lines.isEmpty()) {
+            return null;
+        }
+        double[] middle = lineMiddle(lines);
+        return new double[] {unprojectLatitude(middle[1]), unprojectLongitude(middle[0])};
+    }
+
+    private static double[] latLngBounds(double minX, double minY, double maxX, double maxY) {
+        // y grows southwards
+        return new double[] {unprojectLatitude(maxY), unprojectLongitude(minX), unprojectLatitude(minY), unprojectLongitude(maxX)};
     }
 
     /**
@@ -470,7 +582,7 @@ record MapNetworkData(List<Color> colors,
                     unprojectLatitude(substationY[bestSubstation]), unprojectLongitude(substationX[bestSubstation]));
         }
         if (bestLine >= 0) {
-            double[] anchor = lineMiddle(bestLine);
+            double[] anchor = lineMiddle(List.of(bestLine));
             return new Hit("l" + bestLine, false, lineIds[bestLine], lineTexts[bestLine],
                     unprojectLatitude(anchor[1]), unprojectLongitude(anchor[0]));
         }
@@ -487,24 +599,28 @@ record MapNetworkData(List<Color> colors,
         return ex * ex + ey * ey;
     }
 
-    // Where Leaflet anchored a polyline's tooltip: halfway along its on-screen length. Pixel positions at any zoom
-    // are the zoom 0 ones scaled, so measuring at zoom 0 is exact.
-    private double[] lineMiddle(int line) {
-        int start = lineStart[line];
-        int end = lineStart[line + 1];
+    // Where Leaflet anchored a polyline's tooltip: halfway along its on-screen length, here along several lines one
+    // after the other for a tie line's two halves. Pixel positions at any zoom are the zoom 0 ones scaled, so
+    // measuring at zoom 0 is exact.
+    private double[] lineMiddle(List<Integer> lines) {
         double length = 0;
-        for (int k = start; k < end - 1; k++) {
-            length += Math.hypot(pointX[k + 1] - pointX[k], pointY[k + 1] - pointY[k]);
+        for (int line : lines) {
+            for (int k = lineStart[line]; k < lineStart[line + 1] - 1; k++) {
+                length += Math.hypot(pointX[k + 1] - pointX[k], pointY[k + 1] - pointY[k]);
+            }
         }
         double remaining = length / 2;
-        for (int k = start; k < end - 1; k++) {
-            double segment = Math.hypot(pointX[k + 1] - pointX[k], pointY[k + 1] - pointY[k]);
-            if (segment > 0 && remaining <= segment) {
-                double t = remaining / segment;
-                return new double[] {pointX[k] + t * (pointX[k + 1] - pointX[k]), pointY[k] + t * (pointY[k + 1] - pointY[k])};
+        for (int line : lines) {
+            for (int k = lineStart[line]; k < lineStart[line + 1] - 1; k++) {
+                double segment = Math.hypot(pointX[k + 1] - pointX[k], pointY[k + 1] - pointY[k]);
+                if (segment > 0 && remaining <= segment) {
+                    double t = remaining / segment;
+                    return new double[] {pointX[k] + t * (pointX[k + 1] - pointX[k]), pointY[k] + t * (pointY[k + 1] - pointY[k])};
+                }
+                remaining -= segment;
             }
-            remaining -= segment;
         }
+        int start = lineStart[lines.getFirst()];
         return new double[] {pointX[start], pointY[start]};
     }
 }

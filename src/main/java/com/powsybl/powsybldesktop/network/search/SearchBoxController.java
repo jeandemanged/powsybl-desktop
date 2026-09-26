@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
  * falls back to fuzzy/typo-tolerant matching and flags the result {@link NetworkSearchIndex.Result#approximate()};
  * this is surfaced by appending an "(Approximate match)"-style hint to the status label. Included via
  * {@code fx:include} in the substations, generators, shunt compensators, static var compensators, loads, lines,
- * transformers, tie lines and boundary lines views, each supplying its own way of revealing a match through
+ * transformers, tie lines, boundary lines and map views, each supplying its own way of revealing a match through
  * {@link #bind}.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -71,6 +71,7 @@ public class SearchBoxController {
     private MainModel mainModel;
     private Set<NetworkSearch.Kind> kinds = NetworkSearch.ALL_KINDS;
     private Consumer<Identifiable<?>> onMatchSelected;
+    private Runnable onNoMatch = () -> { };
     private List<Identifiable<?>> matches = List.of();
     private boolean approximateMatches;
     private int matchIndex = -1;
@@ -141,6 +142,14 @@ public class SearchBoxController {
     }
 
     /**
+     * @param onNoMatch called whenever the search no longer has a current match: query cleared, nothing found, or
+     *                  the index being rebuilt
+     */
+    public void setOnNoMatch(Runnable onNoMatch) {
+        this.onNoMatch = onNoMatch;
+    }
+
+    /**
      * Hides this search box - used when a table embedded in
      * {@link com.powsybl.powsybldesktop.network.SubstationsController} gets filtered to one substation/voltage
      * level, where searching the whole network from there would be redundant.
@@ -169,6 +178,7 @@ public class SearchBoxController {
             searchPreviousButton.setDisable(true);
             searchNextButton.setDisable(true);
             searchStatusLabel.setText(Messages.get("network.search.indexing"));
+            onNoMatch.run();
         } else {
             // re-runs whatever query is currently typed, now that the index is ready (or reflects a failed build)
             runSearch(searchField.getText());
@@ -208,7 +218,9 @@ public class SearchBoxController {
         approximateMatches = result.approximate();
         matchIndex = matches.isEmpty() ? -1 : 0;
         updateStatus();
-        if (!matches.isEmpty()) {
+        if (matches.isEmpty()) {
+            onNoMatch.run();
+        } else {
             onMatchSelected.accept(matches.get(matchIndex));
         }
     }

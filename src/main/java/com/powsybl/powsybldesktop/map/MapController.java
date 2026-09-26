@@ -12,11 +12,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.powsybl.commons.config.BaseVoltageConfig;
 import com.powsybl.commons.config.BaseVoltagesConfig;
 import com.powsybl.iidm.network.BoundaryLine;
+import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
+import com.powsybl.iidm.network.Terminal;
 import com.powsybl.iidm.network.TieLine;
+import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.LinePosition;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
 import com.powsybl.powsybldesktop.MainModel;
@@ -26,6 +29,8 @@ import com.powsybl.powsybldesktop.navigation.LineNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.TieLineNavigationState;
+import com.powsybl.powsybldesktop.network.search.NetworkSearch;
+import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.application.Platform;
@@ -60,12 +65,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Shows substations and lines on a basemap, using the coordinates carried by the IIDM
@@ -95,6 +102,10 @@ import java.util.regex.Pattern;
  * range is open-ended here, so e.g. 750 kV equipment is shown as the 300-500 kV range rather than uncolored.
  * Each base voltage can be hidden from an overlay checkbox, remembered in
  * {@link MainModel#getMapHiddenBaseVoltages()}.
+ * <p>
+ * The search box zooms to its current match: a line, tie line or boundary line to fit it whole, anything else to its
+ * substation, with some neighbouring substations around it, and marks it: a line halfway along, anything else at its
+ * substation. A match with nothing drawn to zoom to leaves the view as it is, unmarked.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -116,6 +127,19 @@ public class MapController extends AbstractDisposableController {
                            from the render thread on every repaint. Tile fade animation is off here
                            anyway, so there are no seams for it to hide. */
                         .leaflet-container img.leaflet-tile { mix-blend-mode: normal; }
+                        /* a black ring outlined in white, visible on any basemap and voltage color */
+                        .search-highlight {
+                            position: absolute;
+                            left: 50%%;
+                            top: 50%%;
+                            width: 100%%;
+                            height: 100%%;
+                            transform: translate(-50%%, -50%%);
+                            box-sizing: border-box;
+                            border: 3px solid #000;
+                            border-radius: 50%%;
+                            box-shadow: 0 0 0 2px #fff, inset 0 0 0 2px #fff;
+                        }
                     </style>
                     <script>%s</script>
                 </head>
@@ -175,6 +199,9 @@ public class MapController extends AbstractDisposableController {
 
     @FXML
     private Hyperlink checkNoBaseVoltagesLink;
+
+    @FXML
+    private SearchBoxController searchBoxController;
 
     /**
      * Builds the {@link MapNetworkData} off the FX thread. Restarting it on each refresh cancels a build still
@@ -317,6 +344,83 @@ public class MapController extends AbstractDisposableController {
         listenerManager.listen(mainModel.networkProperty(), (observable, oldValue, newValue) -> refresh());
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
         createBaseVoltageCheckBoxes();
+        searchBoxController.bind(mainModel, this::onSearchMatch);
+        searchBoxController.setOnNoMatch(this::clearSearchHighlight);
+    }
+
+    /**
+     * Where to zoom for a search match, and where to put its highlight markers.
+     *
+     * @param bounds south, west, north and east
+     * @param highlights latitude and longitude of each marker
+     */
+    private record SearchFocus(double[] bounds, List<double[]> highlights) {
+    }
+
+    private void onSearchMatch(Identifiable<?> match) {
+        // not drawn yet, or still drawn from the previous network
+        if (networkData == null || displayedNetwork != mainModel.getNetwork()) {
+            return;
+        }
+        SearchFocus focus = searchFocus(match);
+        if (focus == null) {
+            // a marker left on the previous match would read as this one's
+            clearSearchHighlight();
+            return;
+        }
+        try {
+            jsWindow.call("zoomTo", objectMapper.writeValueAsString(focus.bounds()));
+            jsWindow.call("highlight", objectMapper.writeValueAsString(focus.highlights()));
+        } catch (JsonProcessingException e) {
+            LOGGER.error(e.getMessage(), e);
+        }
+    }
+
+    private void clearSearchHighlight() {
+        if (engineLoaded) {
+            jsWindow.call("highlight", "[]");
+        }
+    }
+
+    private SearchFocus searchFocus(Identifiable<?> match) {
+        // a boundary line paired into a tie line is drawn as that tie line
+        Identifiable<?> shown = match instanceof BoundaryLine boundaryLine && boundaryLine.getTieLine().isPresent()
+                ? boundaryLine.getTieLine().get() : match;
+        List<Terminal> terminals;
+        if (shown instanceof Line line) {
+            terminals = List.of(line.getTerminal1(), line.getTerminal2());
+        } else if (shown instanceof TieLine tieLine) {
+            terminals = List.of(tieLine.getTerminal1(), tieLine.getTerminal2());
+        } else if (shown instanceof BoundaryLine boundaryLine) {
+            terminals = List.of(boundaryLine.getTerminal());
+        } else {
+            Container<?> container = NetworkSearch.containerOf(shown);
+            return substationFocus(container instanceof VoltageLevel voltageLevel
+                    ? voltageLevel.getSubstation().orElse(null)
+                    : (Substation) container);
+        }
+        double[] bounds = networkData.lineLatLngBounds(shown.getId());
+        if (bounds != null) {
+            return new SearchFocus(bounds, List.of(networkData.lineMiddleLatLng(shown.getId())));
+        }
+        // no position of its own: from one end's substation to the other's, both marked
+        List<Substation> substations = terminals.stream()
+                .map(terminal -> terminal.getVoltageLevel().getSubstation())
+                .flatMap(Optional::stream)
+                .toList();
+        bounds = networkData.substationsLatLngBounds(substations.stream().map(Substation::getId).collect(Collectors.toSet()));
+        if (bounds != null && (bounds[0] != bounds[2] || bounds[1] != bounds[3])) {
+            return new SearchFocus(bounds, substations.stream()
+                    .map(substation -> networkData.substationLatLng(substation.getId()))
+                    .filter(Objects::nonNull)
+                    .toList());
+        }
+        return substations.stream().map(this::substationFocus).filter(Objects::nonNull).findFirst().orElse(null);
+    }
+
+    private SearchFocus substationFocus(Substation substation) {
+        double[] bounds = substation == null ? null : networkData.substationNeighbourhoodLatLngBounds(substation.getId());
+        return bounds == null ? null : new SearchFocus(bounds, List.of(networkData.substationLatLng(substation.getId())));
     }
 
     private void createBaseVoltageCheckBoxes() {
@@ -471,6 +575,7 @@ public class MapController extends AbstractDisposableController {
 
     @Override
     public void dispose() {
+        searchBoxController.dispose();
         networkDataService.cancel();
         tileExecutor.shutdownNow();
         pendingTiles.clear();

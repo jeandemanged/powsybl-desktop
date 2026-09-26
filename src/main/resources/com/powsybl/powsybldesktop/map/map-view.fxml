@@ -23,6 +23,13 @@
     <children>
         <WebView fx:id="webView" AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0"
                   AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0"/>
+        <!-- right of Leaflet's zoom control -->
+        <VBox prefWidth="360.0" maxHeight="-Infinity" AnchorPane.topAnchor="10.0" AnchorPane.leftAnchor="54.0"
+              style="-fx-background-color: white; -fx-background-radius: 4;">
+            <children>
+                <fx:include fx:id="searchBox" source="../network/search/search-box.fxml"/>
+            </children>
+        </VBox>
         <VBox alignment="TOP_RIGHT" spacing="8.0" pickOnBounds="false" AnchorPane.topAnchor="10.0" AnchorPane.rightAnchor="10.0">
             <children>
                 <HBox alignment="CENTER_RIGHT" spacing="8.0" pickOnBounds="false">
