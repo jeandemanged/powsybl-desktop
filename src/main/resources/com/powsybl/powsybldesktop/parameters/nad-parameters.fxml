@@ -11,4 +11,4 @@
 
 <SplitPane fx:id="splitPane" prefWidth="750.0" prefHeight="550.0"
            xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1"
-           fx:controller="com.powsybl.powsybldesktop.network.NadParametersController"/>
+           fx:controller="com.powsybl.powsybldesktop.parameters.NadParametersController"/>

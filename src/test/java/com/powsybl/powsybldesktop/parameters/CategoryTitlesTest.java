@@ -5,7 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.loadflow.parameters;
+package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import org.junit.jupiter.api.Test;

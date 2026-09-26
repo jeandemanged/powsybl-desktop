@@ -5,7 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.network;
+package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.commons.parameters.Parameter;
 import com.powsybl.iidm.network.Exporter;
@@ -32,7 +32,7 @@ import java.util.stream.Stream;
 /**
  * Edits the per-format network import or export parameters held by {@link MainModel}, as a format list + detail
  * pane like {@code LoadFlowParametersController}. Also the single source of the format lists shown in
- * {@link NetworksController}'s import/export menus, so both always agree on format keys.
+ * {@link com.powsybl.powsybldesktop.network.NetworksController}'s import/export menus, so both always agree on format keys.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -47,7 +47,7 @@ public class NetworkFormatParametersController extends AbstractDisposableControl
      * Import formats in menu order, XIIDM/BIIDM/JIIDM grouped under a single "IIDM" entry since the importer
      * is picked from the file content at import time.
      */
-    static Map<String, List<Importer>> importFormats() {
+    public static Map<String, List<Importer>> importFormats() {
         Map<String, List<Importer>> formats = new LinkedHashMap<>();
         List<Importer> iidmImporters = IIDM_FORMATS.stream().map(Importer::find).filter(Objects::nonNull).toList();
         if (!iidmImporters.isEmpty()) {
@@ -64,11 +64,11 @@ public class NetworkFormatParametersController extends AbstractDisposableControl
      * Key under which an export format's parameters are stored: XIIDM/BIIDM/JIIDM share a single "IIDM" entry,
      * like on import, since they only differ by serialization and expose the same parameters.
      */
-    static String exportParametersKey(String format) {
+    public static String exportParametersKey(String format) {
         return IIDM_FORMATS.contains(format) ? "IIDM" : format;
     }
 
-    static List<String> exportFormats() {
+    public static List<String> exportFormats() {
         return Stream.concat(
                 IIDM_FORMATS.stream().filter(Exporter.getFormats()::contains),
                 Exporter.getFormats().stream().filter(format -> !IIDM_FORMATS.contains(format)).sorted()

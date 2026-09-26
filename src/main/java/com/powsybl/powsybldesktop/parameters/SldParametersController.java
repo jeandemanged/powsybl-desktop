@@ -5,7 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.network;
+package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.sld.SldParameters;
@@ -22,9 +22,9 @@ import java.util.Map;
 import java.util.function.Function;
 
 /**
- * Popup form for {@link SldParameters}, covering every field of its {@link SvgParameters} and
+ * Parameters-view tab form for {@link SldParameters}, covering every field of its {@link SvgParameters} and
  * {@link LayoutParameters} except {@code svgWidthAndHeightAdded} (forced by the app, see
- * {@link SubstationDiagramRenderer}) and {@code diagramName} (computed from the selected container on
+ * {@link com.powsybl.powsybldesktop.network.SubstationDiagramRenderer}) and {@code diagramName} (computed from the selected container on
  * every render, not user-editable) - see {@link AbstractDiagramParametersController} for the shared shape.
  * {@code componentsSize} (a non-fluent, {@code @JsonIgnore}d component-type-to-size lookup table) and
  * NAD's {@code maxSteps} are likewise excluded, per the plan.
@@ -51,19 +51,19 @@ public class SldParametersController extends AbstractDiagramParametersController
 
     private static Map<String, String> buildCategoryTitles() {
         Map<String, String> titles = new LinkedHashMap<>();
-        titles.put(CAT_IDENTIFICATION, Messages.get("substations.sldParameters.category.identification"));
-        titles.put(CAT_LOCALIZATION, Messages.get("substations.sldParameters.category.localization"));
-        titles.put(CAT_BUS_FEEDER, Messages.get("substations.sldParameters.category.busFeeder"));
-        titles.put(CAT_LABELS, Messages.get("substations.sldParameters.category.labels"));
-        titles.put(CAT_INTERACTION, Messages.get("substations.sldParameters.category.interaction"));
-        titles.put(CAT_SVG_OUTPUT, Messages.get("substations.sldParameters.category.svgOutput"));
-        titles.put(CAT_DRAWING_STYLE, Messages.get("substations.sldParameters.category.drawingStyle"));
-        titles.put(CAT_BUS_SPACING, Messages.get("substations.sldParameters.category.busSpacing"));
-        titles.put(CAT_CELL_DIMENSIONS, Messages.get("substations.sldParameters.category.cellDimensions"));
-        titles.put(CAT_SNAKE_LINES, Messages.get("substations.sldParameters.category.snakeLines"));
-        titles.put(CAT_COMPONENT_SIZING, Messages.get("substations.sldParameters.category.componentSizing"));
-        titles.put(CAT_PADDING, Messages.get("substations.sldParameters.category.padding"));
-        titles.put(CAT_ALIGNMENT_TOPOLOGY, Messages.get("substations.sldParameters.category.alignmentTopology"));
+        titles.put(CAT_IDENTIFICATION, Messages.get("parameters.sld.category.identification"));
+        titles.put(CAT_LOCALIZATION, Messages.get("parameters.sld.category.localization"));
+        titles.put(CAT_BUS_FEEDER, Messages.get("parameters.sld.category.busFeeder"));
+        titles.put(CAT_LABELS, Messages.get("parameters.sld.category.labels"));
+        titles.put(CAT_INTERACTION, Messages.get("parameters.sld.category.interaction"));
+        titles.put(CAT_SVG_OUTPUT, Messages.get("parameters.sld.category.svgOutput"));
+        titles.put(CAT_DRAWING_STYLE, Messages.get("parameters.sld.category.drawingStyle"));
+        titles.put(CAT_BUS_SPACING, Messages.get("parameters.sld.category.busSpacing"));
+        titles.put(CAT_CELL_DIMENSIONS, Messages.get("parameters.sld.category.cellDimensions"));
+        titles.put(CAT_SNAKE_LINES, Messages.get("parameters.sld.category.snakeLines"));
+        titles.put(CAT_COMPONENT_SIZING, Messages.get("parameters.sld.category.componentSizing"));
+        titles.put(CAT_PADDING, Messages.get("parameters.sld.category.padding"));
+        titles.put(CAT_ALIGNMENT_TOPOLOGY, Messages.get("parameters.sld.category.alignmentTopology"));
         return titles;
     }
 
@@ -257,10 +257,10 @@ public class SldParametersController extends AbstractDiagramParametersController
         bindCommit(rightField, commit);
         bindCommit(bottomField, commit);
         HBox box = new HBox(5,
-                new Label(Messages.get("substations.diagram.padding.left")), leftField,
-                new Label(Messages.get("substations.diagram.padding.top")), topField,
-                new Label(Messages.get("substations.diagram.padding.right")), rightField,
-                new Label(Messages.get("substations.diagram.padding.bottom")), bottomField);
+                new Label(Messages.get("parameters.diagram.padding.left")), leftField,
+                new Label(Messages.get("parameters.diagram.padding.top")), topField,
+                new Label(Messages.get("parameters.diagram.padding.right")), rightField,
+                new Label(Messages.get("parameters.diagram.padding.bottom")), bottomField);
         box.setAlignment(Pos.CENTER_LEFT);
         addRow(category, labelText, tooltipText, box);
     }
@@ -277,10 +277,10 @@ public class SldParametersController extends AbstractDiagramParametersController
     }
 
     private static String label(String param) {
-        return Messages.get("substations.sldParameters.param." + param + ".label");
+        return Messages.get("parameters.sld.param." + param + ".label");
     }
 
     private static String tooltip(String param) {
-        return Messages.get("substations.sldParameters.param." + param + ".tooltip");
+        return Messages.get("parameters.sld.param." + param + ".tooltip");
     }
 }

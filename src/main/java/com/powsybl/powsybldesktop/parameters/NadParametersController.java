@@ -5,7 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.network;
+package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.nad.NadParameters;
 import com.powsybl.nad.layout.LayoutParameters;
@@ -24,9 +24,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Popup form for {@link NadParameters}, covering every field of its {@link SvgParameters} and
+ * Parameters-view tab form for {@link NadParameters}, covering every field of its {@link SvgParameters} and
  * {@link LayoutParameters} except {@code svgWidthAndHeightAdded} (forced by the app, see
- * {@link NetworkAreaDiagramRenderer}) and {@code maxSteps} (excluded per the plan) - see
+ * {@link com.powsybl.powsybldesktop.network.NetworkAreaDiagramRenderer}) and {@code maxSteps} (excluded per the plan) - see
  * {@link AbstractDiagramParametersController} for the shared shape.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -50,18 +50,18 @@ public class NadParametersController extends AbstractDiagramParametersController
 
     private static Map<String, String> buildCategoryTitles() {
         Map<String, String> titles = new LinkedHashMap<>();
-        titles.put(CAT_SIZING, Messages.get("substations.nadParameters.category.sizing"));
-        titles.put(CAT_TEXT_META, Messages.get("substations.nadParameters.category.textMeta"));
-        titles.put(CAT_SVG_OUTPUT, Messages.get("substations.nadParameters.category.svgOutput"));
-        titles.put(CAT_ARROWS, Messages.get("substations.nadParameters.category.arrows"));
-        titles.put(CAT_NODE_GEOMETRY, Messages.get("substations.nadParameters.category.nodeGeometry"));
-        titles.put(CAT_EDGES, Messages.get("substations.nadParameters.category.edges"));
-        titles.put(CAT_LOOPS, Messages.get("substations.nadParameters.category.loops"));
-        titles.put(CAT_INJECTIONS, Messages.get("substations.nadParameters.category.injections"));
-        titles.put(CAT_LEGENDS, Messages.get("substations.nadParameters.category.legends"));
-        titles.put(CAT_LOCALIZATION, Messages.get("substations.nadParameters.category.localization"));
-        titles.put(CAT_DEBUG, Messages.get("substations.nadParameters.category.debug"));
-        titles.put(CAT_LAYOUT, Messages.get("substations.nadParameters.category.layout"));
+        titles.put(CAT_SIZING, Messages.get("parameters.nad.category.sizing"));
+        titles.put(CAT_TEXT_META, Messages.get("parameters.nad.category.textMeta"));
+        titles.put(CAT_SVG_OUTPUT, Messages.get("parameters.nad.category.svgOutput"));
+        titles.put(CAT_ARROWS, Messages.get("parameters.nad.category.arrows"));
+        titles.put(CAT_NODE_GEOMETRY, Messages.get("parameters.nad.category.nodeGeometry"));
+        titles.put(CAT_EDGES, Messages.get("parameters.nad.category.edges"));
+        titles.put(CAT_LOOPS, Messages.get("parameters.nad.category.loops"));
+        titles.put(CAT_INJECTIONS, Messages.get("parameters.nad.category.injections"));
+        titles.put(CAT_LEGENDS, Messages.get("parameters.nad.category.legends"));
+        titles.put(CAT_LOCALIZATION, Messages.get("parameters.nad.category.localization"));
+        titles.put(CAT_DEBUG, Messages.get("parameters.nad.category.debug"));
+        titles.put(CAT_LAYOUT, Messages.get("parameters.nad.category.layout"));
         return titles;
     }
 
@@ -92,7 +92,7 @@ public class NadParametersController extends AbstractDiagramParametersController
     }
 
     // NAD's Padding is a separate mutable class (own get/set per side), unlike SLD's immutable record,
-    // but is still exposed here as four numeric fields for symmetry with the SLD popup.
+    // but is still exposed here as four numeric fields for symmetry with the SLD form.
     private void addPaddingField() {
         TextField leftField = new TextField();
         TextField topField = new TextField();
@@ -123,10 +123,10 @@ public class NadParametersController extends AbstractDiagramParametersController
         bindCommit(rightField, commit);
         bindCommit(bottomField, commit);
         HBox box = new HBox(5,
-                new Label(Messages.get("substations.diagram.padding.left")), leftField,
-                new Label(Messages.get("substations.diagram.padding.top")), topField,
-                new Label(Messages.get("substations.diagram.padding.right")), rightField,
-                new Label(Messages.get("substations.diagram.padding.bottom")), bottomField);
+                new Label(Messages.get("parameters.diagram.padding.left")), leftField,
+                new Label(Messages.get("parameters.diagram.padding.top")), topField,
+                new Label(Messages.get("parameters.diagram.padding.right")), rightField,
+                new Label(Messages.get("parameters.diagram.padding.bottom")), bottomField);
         box.setAlignment(Pos.CENTER_LEFT);
         addRow(CAT_SIZING, label("diagramPadding"), tooltip("diagramPadding"), box);
     }
@@ -195,9 +195,9 @@ public class NadParametersController extends AbstractDiagramParametersController
         });
 
         HBox box = new HBox(5, modeChoiceBox,
-                new Label(Messages.get("substations.nadParameters.param.fixedWidth.label")), widthField,
-                new Label(Messages.get("substations.nadParameters.param.fixedHeight.label")), heightField,
-                new Label(Messages.get("substations.nadParameters.param.fixedScale.label")), scaleField);
+                new Label(Messages.get("parameters.nad.param.fixedWidth.label")), widthField,
+                new Label(Messages.get("parameters.nad.param.fixedHeight.label")), heightField,
+                new Label(Messages.get("parameters.nad.param.fixedScale.label")), scaleField);
         box.setAlignment(Pos.CENTER_LEFT);
         addRow(CAT_SIZING, label("sizeConstraint"), tooltip("sizeConstraint"), box);
     }
@@ -349,10 +349,10 @@ public class NadParametersController extends AbstractDiagramParametersController
     }
 
     private static String label(String param) {
-        return Messages.get("substations.nadParameters.param." + param + ".label");
+        return Messages.get("parameters.nad.param." + param + ".label");
     }
 
     private static String tooltip(String param) {
-        return Messages.get("substations.nadParameters.param." + param + ".tooltip");
+        return Messages.get("parameters.nad.param." + param + ".tooltip");
     }
 }

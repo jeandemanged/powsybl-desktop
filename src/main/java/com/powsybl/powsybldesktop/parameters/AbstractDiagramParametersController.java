@@ -5,7 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.network;
+package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import javafx.beans.property.ObjectProperty;
@@ -38,7 +38,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
- * Category-list + detail-grid popup shape, factored out of {@link com.powsybl.powsybldesktop.loadflow.parameters.LoadFlowParametersController}'s
+ * Category-list + detail-grid form shape, factored out of {@link com.powsybl.powsybldesktop.parameters.LoadFlowParametersController}'s
  * pattern and generalized over the parameters type {@code T}, since {@link SldParametersController} and
  * {@link NadParametersController} need it identically. Field edits write straight into {@code T} (mutated
  * in place, no Apply/OK button - same as {@code LoadFlowParametersController}) and, unlike load flow

@@ -36,7 +36,6 @@ import javafx.fxml.FXML;
 import javafx.geometry.Orientation;
 import javafx.scene.control.*;
 import netscape.javascript.JSObject;
-import org.kordamp.ikonli.javafx.FontIcon;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -472,7 +471,6 @@ public class SubstationsController extends AbstractDisposableController {
         nadPaneController.setDiagramFileNameSupplier(this::selectedContainerName);
 
         initializeAreaDiagramDepthControl();
-        initializeDiagramParametersControls();
 
         equipmentTabs = List.of(
                 new EquipmentTab(ContainerNavigationState.ContainerTab.SWITCHES, switchesTab, switchesEmbeddedController),
@@ -520,23 +518,6 @@ public class SubstationsController extends AbstractDisposableController {
         });
         nadPaneController.getToolBar().getItems().addAll(
                 new Separator(Orientation.VERTICAL), new Label(Messages.get("substations.diagram.depth")), nadDepthSlider);
-    }
-
-    // one parameters button per diagram type, since SLD and NAD parameters are unrelated PowSyBl objects
-    private void initializeDiagramParametersControls() {
-        Button sldParametersButton = new Button();
-        sldParametersButton.setGraphic(new FontIcon("mdi2c-cog"));
-        sldParametersButton.setTooltip(new Tooltip(Messages.get("substations.diagram.sldParameters.tooltip")));
-        sldParametersButton.setOnAction(event -> SldParametersDialog.show(
-                sldPaneController.getToolBar().getScene().getWindow(), mainModel, this::update));
-        sldPaneController.getToolBar().getItems().addAll(new Separator(Orientation.VERTICAL), sldParametersButton);
-
-        Button nadParametersButton = new Button();
-        nadParametersButton.setGraphic(new FontIcon("mdi2c-cog"));
-        nadParametersButton.setTooltip(new Tooltip(Messages.get("substations.diagram.nadParameters.tooltip")));
-        nadParametersButton.setOnAction(event -> NadParametersDialog.show(
-                nadPaneController.getToolBar().getScene().getWindow(), mainModel, this::renderAreaDiagram));
-        nadPaneController.getToolBar().getItems().addAll(new Separator(Orientation.VERTICAL), nadParametersButton);
     }
 
     // name of the substation/voltage level currently selected in the tree, used as the default export filename

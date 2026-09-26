@@ -15,22 +15,32 @@
     <tabs>
         <Tab text="%parameters.tab.networkImport">
             <content>
-                <fx:include fx:id="networkImportEmbedded" source="../network/network-format-parameters.fxml"/>
+                <fx:include fx:id="networkImportEmbedded" source="network-format-parameters.fxml"/>
             </content>
         </Tab>
         <Tab text="%parameters.tab.networkExport">
             <content>
-                <fx:include fx:id="networkExportEmbedded" source="../network/network-format-parameters.fxml"/>
+                <fx:include fx:id="networkExportEmbedded" source="network-format-parameters.fxml"/>
+            </content>
+        </Tab>
+        <Tab text="%parameters.tab.sld">
+            <content>
+                <fx:include fx:id="sldEmbedded" source="sld-parameters.fxml"/>
+            </content>
+        </Tab>
+        <Tab text="%parameters.tab.nad">
+            <content>
+                <fx:include fx:id="nadEmbedded" source="nad-parameters.fxml"/>
             </content>
         </Tab>
         <Tab text="%parameters.tab.loadFlow">
             <content>
-                <fx:include fx:id="loadFlowEmbedded" source="../loadflow/lf-parameters.fxml"/>
+                <fx:include fx:id="loadFlowEmbedded" source="lf-parameters.fxml"/>
             </content>
         </Tab>
         <Tab text="%parameters.tab.securityAnalysis">
             <content>
-                <fx:include fx:id="securityAnalysisEmbedded" source="../security/parameters/sa-parameters.fxml"/>
+                <fx:include fx:id="securityAnalysisEmbedded" source="sa-parameters.fxml"/>
             </content>
         </Tab>
     </tabs>

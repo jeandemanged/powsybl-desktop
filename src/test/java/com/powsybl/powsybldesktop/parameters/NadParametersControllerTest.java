@@ -5,7 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.network;
+package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.nad.NadParameters;
 import com.powsybl.nad.svg.SvgParameters;
@@ -50,7 +50,7 @@ class NadParametersControllerTest extends AbstractHeadlessApplicationTest {
     @Override
     public void start(Stage stage) throws IOException {
         FXMLLoader loader = new FXMLLoader(getClass().getResource(
-                "/com/powsybl/powsybldesktop/network/nad-parameters.fxml"), Messages.bundle());
+                "/com/powsybl/powsybldesktop/parameters/nad-parameters.fxml"), Messages.bundle());
         Parent root = loader.load();
         controller = loader.getController();
 
@@ -108,8 +108,8 @@ class NadParametersControllerTest extends AbstractHeadlessApplicationTest {
 
     @Test
     void toggleHighlightGraphUpdatesModelAndNotifiesChange() {
-        GridPane grid = selectCategory(Messages.get("substations.nadParameters.category.debug"));
-        CheckBox checkBox = (CheckBox) controlForLabel(grid, Messages.get("substations.nadParameters.param.highlightGraph.label"));
+        GridPane grid = selectCategory(Messages.get("parameters.nad.category.debug"));
+        CheckBox checkBox = (CheckBox) controlForLabel(grid, Messages.get("parameters.nad.param.highlightGraph.label"));
         boolean before = params.get().getSvgParameters().isHighlightGraph();
 
         clickOn(checkBox);
@@ -122,8 +122,8 @@ class NadParametersControllerTest extends AbstractHeadlessApplicationTest {
     // must both apply that value and re-sync the mode dropdown's displayed value.
     @Test
     void committingFixedWidthSwitchesSizeConstraintModeAndNotifiesChange() {
-        GridPane grid = selectCategory(Messages.get("substations.nadParameters.category.sizing"));
-        HBox box = (HBox) nodeForLabel(grid, Messages.get("substations.nadParameters.param.sizeConstraint.label"));
+        GridPane grid = selectCategory(Messages.get("parameters.nad.category.sizing"));
+        HBox box = (HBox) nodeForLabel(grid, Messages.get("parameters.nad.param.sizeConstraint.label"));
         @SuppressWarnings("unchecked")
         ChoiceBox<SvgParameters.SizeConstraint> modeChoiceBox = (ChoiceBox<SvgParameters.SizeConstraint>) box.getChildren().get(0);
         TextField widthField = (TextField) box.getChildren().get(2);

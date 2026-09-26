@@ -53,6 +53,7 @@ import com.powsybl.powsybldesktop.navigation.NetworkNavigationState;
 import com.powsybl.powsybldesktop.navigation.ReportNavigationState;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
+import com.powsybl.powsybldesktop.parameters.NetworkFormatParametersController;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.FileChooserPreferences;
 import com.powsybl.powsybldesktop.utils.Labels;

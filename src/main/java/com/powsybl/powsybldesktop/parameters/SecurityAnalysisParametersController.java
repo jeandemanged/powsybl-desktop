@@ -5,7 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.security.parameters;
+package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.openloadflow.sa.ContingencyActivePowerLossDistribution;
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
@@ -49,7 +49,7 @@ import java.util.function.ToIntFunction;
 
 /**
  * Edits {@link SecurityAnalysisParameters} plus its {@link OpenSecurityAnalysisParameters} extension, hand-wired
- * field by field like {@link com.powsybl.powsybldesktop.loadflow.parameters.LoadFlowParametersController}'s base
+ * field by field like {@link com.powsybl.powsybldesktop.parameters.LoadFlowParametersController}'s base
  * fields (no {@code Parameter} metadata is exposed here to drive fields generically). The embedded
  * {@link SecurityAnalysisParameters#getLoadFlowParameters()} is not shown - {@code MainModel} keeps it wired to
  * the app's single {@code LoadFlowParameters} instance, edited from the Load Flow tab instead.

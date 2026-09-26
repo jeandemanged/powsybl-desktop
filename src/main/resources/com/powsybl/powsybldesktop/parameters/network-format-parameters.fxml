@@ -11,7 +11,7 @@
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.network.NetworkFormatParametersController">
+<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.parameters.NetworkFormatParametersController">
     <children>
         <SplitPane fx:id="splitPane" VBox.vgrow="ALWAYS">
             <VBox.margin>

@@ -59,13 +59,15 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
-    void hostsNetworkImportExportLoadFlowAndSecurityAnalysisTabsInOrder() {
+    void hostsParametersTabsInOrder() {
         List<Tab> tabs = tabPane.getTabs();
-        assertEquals(4, tabs.size());
+        assertEquals(6, tabs.size());
         assertEquals("Network Import", tabs.get(0).getText());
         assertEquals("Network Export", tabs.get(1).getText());
-        assertEquals("Load Flow", tabs.get(2).getText());
-        assertEquals("Security Analysis", tabs.get(3).getText());
+        assertEquals("Single Line Diagram", tabs.get(2).getText());
+        assertEquals("Network Area Diagram", tabs.get(3).getText());
+        assertEquals("Load Flow", tabs.get(4).getText());
+        assertEquals("Security Analysis", tabs.get(5).getText());
     }
 
     @Test

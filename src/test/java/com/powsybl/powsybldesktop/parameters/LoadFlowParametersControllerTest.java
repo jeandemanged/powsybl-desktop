@@ -5,7 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.loadflow.parameters;
+package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.iidm.network.Country;
 import com.powsybl.loadflow.LoadFlowParameters;
@@ -54,7 +54,7 @@ class LoadFlowParametersControllerTest extends AbstractHeadlessApplicationTest {
     @Override
     public void start(Stage stage) throws IOException {
         FXMLLoader loader = new FXMLLoader(getClass().getResource(
-                "/com/powsybl/powsybldesktop/loadflow/lf-parameters.fxml"), Messages.bundle());
+                "/com/powsybl/powsybldesktop/parameters/lf-parameters.fxml"), Messages.bundle());
         Parent root = loader.load();
         controller = loader.getController();
 

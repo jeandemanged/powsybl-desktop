@@ -140,8 +140,7 @@ public class MainModel {
                         .setPercentageValuePrecision(1)
                         .setBusesLegendAdded(true)
                         .setTooltipEnabled(true))
-                .setLayoutParameters(new LayoutParameters()
-                        .setComponentsOnBusbars(Collections.emptyList()));
+                .setLayoutParameters(new LayoutParameters());
     }
 
     public void addNetwork(Network network) {

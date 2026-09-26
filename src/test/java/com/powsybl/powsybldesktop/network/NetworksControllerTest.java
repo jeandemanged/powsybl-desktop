@@ -21,6 +21,7 @@ import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.network.NetworksController.ImportChoice;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationStatus;
+import com.powsybl.powsybldesktop.parameters.NetworkFormatParametersController;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;

@@ -5,7 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.security.parameters;
+package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
@@ -52,7 +52,7 @@ class SecurityAnalysisParametersControllerTest extends AbstractHeadlessApplicati
     @Override
     public void start(Stage stage) throws IOException {
         FXMLLoader loader = new FXMLLoader(getClass().getResource(
-                "/com/powsybl/powsybldesktop/security/parameters/sa-parameters.fxml"), Messages.bundle());
+                "/com/powsybl/powsybldesktop/parameters/sa-parameters.fxml"), Messages.bundle());
         Parent root = loader.load();
         controller = loader.getController();
 

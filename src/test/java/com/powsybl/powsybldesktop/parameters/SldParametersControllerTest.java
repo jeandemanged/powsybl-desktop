@@ -5,7 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.network;
+package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -48,7 +48,7 @@ class SldParametersControllerTest extends AbstractHeadlessApplicationTest {
     @Override
     public void start(Stage stage) throws IOException {
         FXMLLoader loader = new FXMLLoader(getClass().getResource(
-                "/com/powsybl/powsybldesktop/network/sld-parameters.fxml"), Messages.bundle());
+                "/com/powsybl/powsybldesktop/parameters/sld-parameters.fxml"), Messages.bundle());
         Parent root = loader.load();
         controller = loader.getController();
 
@@ -106,8 +106,8 @@ class SldParametersControllerTest extends AbstractHeadlessApplicationTest {
 
     @Test
     void toggleUseNameUpdatesModelAndNotifiesChange() {
-        GridPane grid = selectCategory(Messages.get("substations.sldParameters.category.labels"));
-        CheckBox checkBox = (CheckBox) controlForLabel(grid, Messages.get("substations.sldParameters.param.useName.label"));
+        GridPane grid = selectCategory(Messages.get("parameters.sld.category.labels"));
+        CheckBox checkBox = (CheckBox) controlForLabel(grid, Messages.get("parameters.sld.param.useName.label"));
         boolean before = params.get().getSvgParameters().isUseName();
 
         clickOn(checkBox);
@@ -118,9 +118,9 @@ class SldParametersControllerTest extends AbstractHeadlessApplicationTest {
 
     @Test
     void diagramPaddingFourFieldsCommitTogether() {
-        GridPane grid = selectCategory(Messages.get("substations.sldParameters.category.padding"));
+        GridPane grid = selectCategory(Messages.get("parameters.sld.category.padding"));
         // the padding row is a composite HBox of four TextFields, not a single Control
-        HBox box = (HBox) nodeForLabel(grid, Messages.get("substations.sldParameters.param.diagramPadding.label"));
+        HBox box = (HBox) nodeForLabel(grid, Messages.get("parameters.sld.param.diagramPadding.label"));
         TextField leftField = (TextField) box.getChildren().get(1);
 
         clickOn(leftField);
