@@ -119,8 +119,10 @@ public class DiagramPaneController {
     private Runnable onEngineLoaded;
     private Supplier<String> fileNameSupplier = () -> null;
     private boolean panning;
-    private double lastPanScreenX;
-    private double lastPanScreenY;
+    private double panStartScreenX;
+    private double panStartScreenY;
+    private double panStartScrollX;
+    private double panStartScrollY;
 
     @FXML
     private void initialize() {
@@ -313,21 +315,28 @@ public class DiagramPaneController {
 
     private void onScroll(ScrollEvent e) {
         double deltaY = e.getDeltaY();
-        double zoomValue = webView.getZoom();
+        double oldZoom = webView.getZoom();
+        double newZoom = oldZoom;
         if (deltaY < 0) {
-            zoomValue /= ZOOM_STEP_FACTOR;
+            newZoom /= ZOOM_STEP_FACTOR;
         } else if (deltaY > 0) {
-            zoomValue *= ZOOM_STEP_FACTOR;
+            newZoom *= ZOOM_STEP_FACTOR;
         }
-        setZoom(zoomValue, true);
+        // keep the document point under the pointer at the same viewport position across the zoom change
+        double pointerX = scrollOffset("left") + e.getX() / oldZoom;
+        double pointerY = scrollOffset("top") + e.getY() / oldZoom;
+        setZoom(newZoom, true);
+        scrollTo(pointerX - e.getX() / newZoom, pointerY - e.getY() / newZoom);
         e.consume();
     }
 
     private void onMousePressed(MouseEvent e) {
         if (e.getButton() == MouseButton.MIDDLE) {
             panning = true;
-            lastPanScreenX = e.getScreenX();
-            lastPanScreenY = e.getScreenY();
+            panStartScreenX = e.getScreenX();
+            panStartScreenY = e.getScreenY();
+            panStartScrollX = scrollOffset("left");
+            panStartScrollY = scrollOffset("top");
             webView.setCursor(Cursor.MOVE);
             e.consume();
         }
@@ -335,13 +344,40 @@ public class DiagramPaneController {
 
     private void onMouseDragged(MouseEvent e) {
         if (panning) {
-            double deltaX = e.getScreenX() - lastPanScreenX;
-            double deltaY = e.getScreenY() - lastPanScreenY;
-            lastPanScreenX = e.getScreenX();
-            lastPanScreenY = e.getScreenY();
-            webView.getEngine().executeScript("window.scrollBy(" + (-deltaX) + ", " + (-deltaY) + ")");
+            // relative to the drag start rather than incremental scrollBy() calls, so that the per-event
+            // rounding of scrollTo() (see below) doesn't accumulate or swallow sub-pixel moves
+            double zoomValue = webView.getZoom();
+            scrollTo(panStartScrollX - (e.getScreenX() - panStartScreenX) / zoomValue,
+                    panStartScrollY - (e.getScreenY() - panStartScreenY) / zoomValue);
             e.consume();
         }
+    }
+
+    // Scroll offsets are in document (CSS) pixels, which the WebView zoom scales. window.scrollX/Y
+    // round the actual offset (a whole number of device pixels) to whole CSS pixels, whereas the root
+    // element's bounding rect reports it exactly.
+    private double scrollOffset(String side) {
+        return -((Number) webView.getEngine().executeScript(
+                "document.documentElement.getBoundingClientRect()." + side)).doubleValue();
+    }
+
+    // window.scrollTo() truncates its arguments to whole CSS pixels, then floors the result to whole
+    // device pixels: pick the whole CSS pixel offset that lands closest to the target.
+    private void scrollTo(double x, double y) {
+        double zoomValue = webView.getZoom();
+        webView.getEngine().executeScript("window.scrollTo(" + closestScrollArgument(x, zoomValue) + ", "
+                + closestScrollArgument(y, zoomValue) + ")");
+    }
+
+    private static long closestScrollArgument(double target, double zoomValue) {
+        long best = Math.round(target);
+        for (long candidate = best - 1; candidate <= best + 1; candidate++) {
+            if (Math.abs(Math.floor(candidate * zoomValue) / zoomValue - target)
+                    < Math.abs(Math.floor(best * zoomValue) / zoomValue - target)) {
+                best = candidate;
+            }
+        }
+        return best;
     }
 
     private void onMouseReleased(MouseEvent e) {
