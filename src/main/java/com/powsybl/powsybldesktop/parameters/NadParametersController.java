@@ -14,7 +14,6 @@ import com.powsybl.nad.svg.SvgParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
-import javafx.geometry.Pos;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -122,12 +121,10 @@ public class NadParametersController extends AbstractDiagramParametersController
         bindCommit(topField, commit);
         bindCommit(rightField, commit);
         bindCommit(bottomField, commit);
-        HBox box = new HBox(5,
-                new Label(Messages.get("parameters.diagram.padding.left")), leftField,
+        HBox box = fieldGroup(new Label(Messages.get("parameters.diagram.padding.left")), leftField,
                 new Label(Messages.get("parameters.diagram.padding.top")), topField,
                 new Label(Messages.get("parameters.diagram.padding.right")), rightField,
                 new Label(Messages.get("parameters.diagram.padding.bottom")), bottomField);
-        box.setAlignment(Pos.CENTER_LEFT);
         addRow(CAT_SIZING, label("diagramPadding"), tooltip("diagramPadding"), box);
     }
 
@@ -194,11 +191,10 @@ public class NadParametersController extends AbstractDiagramParametersController
             notifyChange();
         });
 
-        HBox box = new HBox(5, modeChoiceBox,
+        HBox box = fieldGroup(modeChoiceBox,
                 new Label(Messages.get("parameters.nad.param.fixedWidth.label")), widthField,
                 new Label(Messages.get("parameters.nad.param.fixedHeight.label")), heightField,
                 new Label(Messages.get("parameters.nad.param.fixedScale.label")), scaleField);
-        box.setAlignment(Pos.CENTER_LEFT);
         addRow(CAT_SIZING, label("sizeConstraint"), tooltip("sizeConstraint"), box);
     }
 
@@ -343,8 +339,7 @@ public class NadParametersController extends AbstractDiagramParametersController
         };
         bindCommit(xField, commit);
         bindCommit(yField, commit);
-        HBox box = new HBox(5, new Label("X:"), xField, new Label("Y:"), yField);
-        box.setAlignment(Pos.CENTER_LEFT);
+        HBox box = fieldGroup(new Label("X:"), xField, new Label("Y:"), yField);
         addRow(CAT_LAYOUT, label("textNodeFixedShift"), tooltip("textNodeFixedShift"), box);
     }
 

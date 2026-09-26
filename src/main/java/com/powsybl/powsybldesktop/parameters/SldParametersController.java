@@ -13,7 +13,6 @@ import com.powsybl.sld.layout.LayoutParameters;
 import com.powsybl.sld.library.SldComponentTypeName;
 import com.powsybl.sld.svg.SvgParameters;
 import javafx.fxml.FXML;
-import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
@@ -258,12 +257,10 @@ public class SldParametersController extends AbstractDiagramParametersController
         bindCommit(topField, commit);
         bindCommit(rightField, commit);
         bindCommit(bottomField, commit);
-        HBox box = new HBox(5,
-                new Label(Messages.get("parameters.diagram.padding.left")), leftField,
+        HBox box = fieldGroup(new Label(Messages.get("parameters.diagram.padding.left")), leftField,
                 new Label(Messages.get("parameters.diagram.padding.top")), topField,
                 new Label(Messages.get("parameters.diagram.padding.right")), rightField,
                 new Label(Messages.get("parameters.diagram.padding.bottom")), bottomField);
-        box.setAlignment(Pos.CENTER_LEFT);
         addRow(category, labelText, tooltipText, box);
     }
 

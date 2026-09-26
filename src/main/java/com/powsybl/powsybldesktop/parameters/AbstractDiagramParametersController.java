@@ -13,6 +13,7 @@ import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
@@ -24,7 +25,9 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 
 import java.util.ArrayList;
@@ -143,6 +146,22 @@ public abstract class AbstractDiagramParametersController<T> extends AbstractDis
             Tooltip.install(control, tooltip);
         }
         grid.addRow(grid.getRowCount(), label, control);
+    }
+
+    // Several default-width text fields in one row would exceed the control column's width and make the
+    // grid squeeze (and over-wrap) the label column instead, so the fields start narrow and share the leftover space.
+    protected static HBox fieldGroup(Node... nodes) {
+        HBox box = new HBox(5, nodes);
+        box.setAlignment(Pos.CENTER_LEFT);
+        for (Node node : nodes) {
+            if (node instanceof TextField textField) {
+                textField.setPrefColumnCount(4);
+                HBox.setHgrow(textField, Priority.ALWAYS);
+            } else if (node instanceof Region region) {
+                region.setMinWidth(Region.USE_PREF_SIZE);
+            }
+        }
+        return box;
     }
 
     protected static void bindCommit(TextField textField, Runnable commit) {
