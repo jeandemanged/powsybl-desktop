@@ -17,6 +17,7 @@ import com.powsybl.nad.NadParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
 import com.powsybl.powsybldesktop.logs.LogsModel;
+import com.powsybl.powsybldesktop.map.MapController;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.network.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.notification.Notification;
@@ -97,6 +98,7 @@ public class MainModel {
     private final BooleanProperty diagramFitToScreen = new SimpleBooleanProperty(false);
     private final IntegerProperty diagramAreaDepth = new SimpleIntegerProperty(1);
     private final ObservableSet<String> mapHiddenBaseVoltages = FXCollections.observableSet();
+    private MapController.Basemap mapBasemap = MapController.Basemap.OFFLINE;
 
     public MainModel() {
         loadFlowParameters.setValue(new LoadFlowParameters());
@@ -467,6 +469,14 @@ public class MainModel {
 
     public void setDiagramAreaDepth(int depth) {
         diagramAreaDepth.set(depth);
+    }
+
+    public MapController.Basemap getMapBasemap() {
+        return mapBasemap;
+    }
+
+    public void setMapBasemap(MapController.Basemap basemap) {
+        mapBasemap = Objects.requireNonNull(basemap);
     }
 
     /**

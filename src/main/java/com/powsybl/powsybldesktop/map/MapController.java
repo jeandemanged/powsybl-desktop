@@ -130,7 +130,7 @@ public class MapController extends AbstractDisposableController {
     /** One core is left to the FX thread. */
     private static final int TILE_THREADS = Math.max(1, Runtime.getRuntime().availableProcessors() - 1);
 
-    private enum Basemap {
+    public enum Basemap {
         OFFLINE("offline", "map.basemap.offline"),
         OPEN_STREET_MAP("osm", "map.basemap.openStreetMap");
 
@@ -230,8 +230,6 @@ public class MapController extends AbstractDisposableController {
                 return null;
             }
         });
-        basemapComboBox.setValue(Basemap.OFFLINE);
-        basemapComboBox.valueProperty().addListener((observable, oldValue, newValue) -> applyBasemap());
         basemapUnreachableLabel.managedProperty().bind(basemapUnreachableLabel.visibleProperty());
 
         String html = HTML_SHELL.formatted(readResource("leaflet.css"), readResource("leaflet.js"), readResource("map.js"));
@@ -311,6 +309,11 @@ public class MapController extends AbstractDisposableController {
     public void setMainModel(MainModel mainModel) {
         this.mainModel = Objects.requireNonNull(mainModel);
         hiddenBaseVoltages = Set.copyOf(mainModel.getMapHiddenBaseVoltages());
+        basemapComboBox.setValue(mainModel.getMapBasemap());
+        basemapComboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+            mainModel.setMapBasemap(newValue);
+            applyBasemap();
+        });
         listenerManager.listen(mainModel.networkProperty(), (observable, oldValue, newValue) -> refresh());
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
         createBaseVoltageCheckBoxes();
