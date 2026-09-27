@@ -10,13 +10,25 @@ package com.powsybl.powsybldesktop.logs;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
+import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.utils.TableAutoFitLimiter;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.fxml.FXML;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.Tooltip;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.text.Text;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -24,6 +36,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.SignStyle;
+import java.util.Comparator;
 import java.util.Locale;
 
 import static java.time.temporal.ChronoField.*;
@@ -40,8 +53,25 @@ public class LogsViewController extends AbstractDisposableController {
     public TableColumn<ILoggingEvent, String> messageColumn;
     @FXML
     public TableView<ILoggingEvent> tableView;
+    @FXML
+    public ToggleGroup levelToggleGroup;
+    @FXML
+    public ToggleButton infoToggleButton;
+    @FXML
+    public ToggleButton warnToggleButton;
+    @FXML
+    public ToggleButton errorToggleButton;
+    @FXML
+    public ToggleGroup orderToggleGroup;
+    @FXML
+    public ToggleButton newestOnTopToggleButton;
+    @FXML
+    public ToggleButton newestOnBottomToggleButton;
 
     private LogsModel logsModel;
+
+    private static final Comparator<ILoggingEvent> NEWEST_FIRST =
+            Comparator.comparingLong(ILoggingEvent::getSequenceNumber).reversed();
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = new DateTimeFormatterBuilder()
             .parseCaseInsensitive()
@@ -63,10 +93,28 @@ public class LogsViewController extends AbstractDisposableController {
 
     public void setLogsModel(LogsModel logsModel) {
         this.logsModel = logsModel;
-        tableView.setItems(logsModel.getLogs());
+        FilteredList<ILoggingEvent> filteredLogs = new FilteredList<>(logsModel.getLogs(), this::isLevelShown);
+        SortedList<ILoggingEvent> sortedLogs = new SortedList<>(filteredLogs, NEWEST_FIRST);
+        tableView.setItems(sortedLogs);
         TableAutoFitLimiter.install(tableView);
-        listenerManager.listen(logsModel.getLogs(), change -> Platform.runLater(this::scrollToBottom));
-        scrollToBottom();
+
+        keepOneSelected(levelToggleGroup);
+        levelToggleGroup.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
+            if (newToggle != null) {
+                filteredLogs.setPredicate(this::isLevelShown);
+                scrollToNewest();
+            }
+        });
+        keepOneSelected(orderToggleGroup);
+        orderToggleGroup.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
+            if (newToggle != null) {
+                sortedLogs.setComparator(newToggle == newestOnTopToggleButton ? NEWEST_FIRST : null);
+                scrollToNewest();
+            }
+        });
+
+        listenerManager.listen(logsModel.getLogs(), change -> Platform.runLater(this::scrollToNewest));
+        scrollToNewest();
         timeColumn.setCellValueFactory(cellData -> {
             Instant instant = Instant.ofEpochMilli(cellData.getValue().getTimeStamp());
 
@@ -78,25 +126,29 @@ public class LogsViewController extends AbstractDisposableController {
                 new SimpleStringProperty(cellData.getValue().getLevel().toString()));
         messageColumn.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getFormattedMessage()));
-        tableView.setRowFactory(tv -> new TableRow<>() {
-            @Override
-            protected void updateItem(ILoggingEvent item, boolean empty) {
-                super.updateItem(item, empty);
+        messageColumn.setCellFactory(column -> new MessageCell());
+        tableView.setRowFactory(tv -> new LogRow());
+    }
 
-                getStyleClass().removeAll("row-warn", "row-error");
-
-                if (item == null || empty) {
-                    return;
-                }
-
-                String levelStr = item.getLevel().levelStr;
-                if (Level.WARN.levelStr.equals(levelStr)) {
-                    getStyleClass().add("row-warn");
-                } else if (Level.ERROR.levelStr.equals(levelStr)) {
-                    getStyleClass().add("row-error");
-                }
+    // clicking the selected toggle would otherwise leave none selected
+    private static void keepOneSelected(ToggleGroup group) {
+        group.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
+            if (newToggle == null) {
+                oldToggle.setSelected(true);
             }
         });
+    }
+
+    private boolean isLevelShown(ILoggingEvent event) {
+        Level minLevel;
+        if (errorToggleButton.isSelected()) {
+            minLevel = Level.ERROR;
+        } else if (warnToggleButton.isSelected()) {
+            minLevel = Level.WARN;
+        } else {
+            minLevel = Level.INFO;
+        }
+        return event.getLevel().isGreaterOrEqual(minLevel);
     }
 
     @FXML
@@ -104,9 +156,84 @@ public class LogsViewController extends AbstractDisposableController {
         logsModel.clearLogs();
     }
 
-    private void scrollToBottom() {
-        if (!tableView.getItems().isEmpty()) {
-            tableView.scrollTo(tableView.getItems().size() - 1);
+    private void scrollToNewest() {
+        if (tableView.getItems().isEmpty()) {
+            return;
+        }
+        tableView.scrollTo(newestOnTopToggleButton.isSelected() ? 0 : tableView.getItems().size() - 1);
+    }
+
+    private static final class LogRow extends TableRow<ILoggingEvent> {
+        private final ContextMenu contextMenu;
+
+        private LogRow() {
+            MenuItem copyMessageItem = new MenuItem(Messages.get("logs.contextMenu.copyMessage"));
+            copyMessageItem.setOnAction(event -> {
+                ClipboardContent content = new ClipboardContent();
+                content.putString(getItem().getFormattedMessage());
+                Clipboard.getSystemClipboard().setContent(content);
+            });
+            contextMenu = new ContextMenu(copyMessageItem);
+        }
+
+        @Override
+        protected void updateItem(ILoggingEvent item, boolean empty) {
+            super.updateItem(item, empty);
+
+            getStyleClass().removeAll("row-warn", "row-error");
+
+            if (item == null || empty) {
+                setContextMenu(null);
+                return;
+            }
+            setContextMenu(contextMenu);
+
+            String levelStr = item.getLevel().levelStr;
+            if (Level.WARN.levelStr.equals(levelStr)) {
+                getStyleClass().add("row-warn");
+            } else if (Level.ERROR.levelStr.equals(levelStr)) {
+                getStyleClass().add("row-error");
+            }
+        }
+    }
+
+    /**
+     * Never wraps: multi-line messages (e.g. load flow parameter tables) keep one row line per message
+     * line, each overflowing line being ellipsized, the full message being shown in a tooltip when so.
+     */
+    static final class MessageCell extends TableCell<ILoggingEvent, String> {
+        private final Tooltip tooltip = new Tooltip();
+
+        MessageCell() {
+            tooltip.setWrapText(true);
+            tooltip.setMaxWidth(1200);
+            // keeps multi-line tables aligned, as in the cell
+            tooltip.setStyle("-fx-font-family: monospace;");
+        }
+
+        @Override
+        protected void updateItem(String message, boolean empty) {
+            super.updateItem(message, empty);
+            if (empty || message == null) {
+                setText(null);
+                setTooltip(null);
+                return;
+            }
+            setText(message);
+            tooltip.setText(message);
+        }
+
+        @Override
+        protected void layoutChildren() {
+            super.layoutChildren();
+            if (isEmpty() || getItem() == null) {
+                return;
+            }
+            // the skin renders the ellipsized string in a child Text node, while getText() keeps the full one
+            boolean ellipsized = getChildrenUnmodifiable().stream()
+                    .filter(Text.class::isInstance)
+                    .anyMatch(node -> !((Text) node).getText().equals(getText()));
+            setTooltip(ellipsized ? tooltip : null);
         }
     }
 }

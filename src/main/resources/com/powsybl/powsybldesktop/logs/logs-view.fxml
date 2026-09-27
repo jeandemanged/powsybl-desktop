@@ -25,13 +25,61 @@
                         <Tooltip text="%logs.clearAll"/>
                     </tooltip>
                 </Button>
+                <Separator orientation="VERTICAL"/>
+                <fx:define>
+                    <ToggleGroup fx:id="levelToggleGroup"/>
+                </fx:define>
+                <ToggleButton fx:id="infoToggleButton" mnemonicParsing="false" selected="true" toggleGroup="$levelToggleGroup">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2i-information-outline" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%logs.filter.info"/>
+                    </tooltip>
+                </ToggleButton>
+                <ToggleButton fx:id="warnToggleButton" mnemonicParsing="false" toggleGroup="$levelToggleGroup">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2a-alert-outline" iconSize="16" iconColor="darkorange"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%logs.filter.warn"/>
+                    </tooltip>
+                </ToggleButton>
+                <ToggleButton fx:id="errorToggleButton" mnemonicParsing="false" toggleGroup="$levelToggleGroup">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2a-alert-circle-outline" iconSize="16" iconColor="red"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%logs.filter.error"/>
+                    </tooltip>
+                </ToggleButton>
+                <Separator orientation="VERTICAL"/>
+                <fx:define>
+                    <ToggleGroup fx:id="orderToggleGroup"/>
+                </fx:define>
+                <ToggleButton fx:id="newestOnTopToggleButton" mnemonicParsing="false" selected="true" toggleGroup="$orderToggleGroup">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2s-sort-clock-descending-outline" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%logs.order.newestOnTop"/>
+                    </tooltip>
+                </ToggleButton>
+                <ToggleButton fx:id="newestOnBottomToggleButton" mnemonicParsing="false" toggleGroup="$orderToggleGroup">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2s-sort-clock-ascending-outline" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%logs.order.newestOnBottom"/>
+                    </tooltip>
+                </ToggleButton>
             </items>
         </ToolBar>
     </top>
     <center>
         <TableView fx:id="tableView" BorderPane.alignment="CENTER">
             <columns>
-                <TableColumn fx:id="timeColumn" editable="false" maxWidth="200.0" minWidth="200.0" prefWidth="200.0" resizable="false" sortable="false" text="%logs.column.time" />
+                <TableColumn fx:id="timeColumn" editable="false" maxWidth="240.0" minWidth="240.0" prefWidth="240.0" resizable="false" sortable="false" text="%logs.column.time" />
                 <TableColumn fx:id="levelColumn" styleClass="centered-column" editable="false" maxWidth="750.0" minWidth="75.0" prefWidth="75.0" resizable="false" sortable="false" text="%logs.column.severity" />
                 <TableColumn fx:id="messageColumn" editable="false" minWidth="300.0" prefWidth="300.0" sortable="false" text="%logs.column.message" />
             </columns>

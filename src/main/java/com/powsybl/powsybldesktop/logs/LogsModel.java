@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.logs;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
+import ch.qos.logback.core.spi.BasicSequenceNumberGenerator;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -37,6 +38,10 @@ public class LogsModel {
         Appender appender = new Appender();
         ch.qos.logback.classic.Logger logbackLogger =
                 (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+        // timestamps are only millisecond-precise, so ordering views (e.g. newest on top) sort on this instead
+        if (logbackLogger.getLoggerContext().getSequenceNumberGenerator() == null) {
+            logbackLogger.getLoggerContext().setSequenceNumberGenerator(new BasicSequenceNumberGenerator());
+        }
         logbackLogger.addAppender(appender);
         appender.start();
 
