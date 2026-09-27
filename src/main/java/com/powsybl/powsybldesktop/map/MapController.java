@@ -266,6 +266,7 @@ public class MapController extends AbstractDisposableController {
                 jsWindow.setMember("controller", this);
                 engineLoaded = true;
                 jsWindow.call("addNetworkLayer");
+                jsWindow.call("addFitToNetworkControl", Messages.get("map.fitToNetwork"));
                 applyBasemap();
                 invalidateMapSize();
                 refresh();
@@ -302,13 +303,6 @@ public class MapController extends AbstractDisposableController {
     private void invalidateMapSize() {
         if (engineLoaded) {
             webView.getEngine().executeScript("if (window.map) { window.map.invalidateSize({animate: false, pan: false}); }");
-        }
-    }
-
-    @FXML
-    private void onFitToNetwork() {
-        if (engineLoaded) {
-            webView.getEngine().executeScript("fitToNetwork()");
         }
     }
 

@@ -134,6 +134,41 @@ var AnimatedZoomControl = L.Control.Zoom.extend({
 });
 new AnimatedZoomControl().addTo(map);
 
+// Below the zoom buttons, in their style. The icon is Material Design's fit-to-page-outline, as the diagrams' fit to
+// screen button's.
+var FitToNetworkControl = L.Control.extend({
+    onAdd: function () {
+        var bar = L.DomUtil.create('div', 'leaflet-bar');
+        var link = L.DomUtil.create('a', '', bar);
+        link.href = '#';
+        link.title = this.options.title;
+        link.style.display = 'flex';
+        link.style.alignItems = 'center';
+        link.style.justifyContent = 'center';
+        link.setAttribute('role', 'button');
+        link.setAttribute('aria-label', this.options.title);
+        link.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24">'
+            + '<path fill="currentColor" d="M20.02 2.02L3.98 2.02Q3.19 2.02 2.59 2.61Q2.02 3.19 2.02 3.98L2.02 20.02'
+            + 'Q2.02 20.81 2.59 21.39Q3.19 21.98 3.98 21.98L20.02 21.98Q20.81 21.98 21.39 21.39Q21.98 20.81 21.98 20.02'
+            + 'L21.98 3.98Q21.98 3.19 21.39 2.61Q20.81 2.02 20.02 2.02ZM20.02 20.02L3.98 20.02L3.98 3.98L20.02 3.98'
+            + 'L20.02 20.02ZM12.98 8.02L12.98 9.98L11.02 9.98L11.02 8.02L9 8.02L12 5.02L15 8.02L12.98 8.02Z'
+            + 'M15.98 15L15.98 12.98L14.02 12.98L14.02 11.02L15.98 11.02L15.98 9L18.98 12L15.98 15Z'
+            + 'M9.98 12.98L8.02 12.98L8.02 15L5.02 12L8.02 9L8.02 11.02L9.98 11.02L9.98 12.98Z'
+            + 'M15 15.98L12 18.98L9 15.98L11.02 15.98L11.02 14.02L12.98 14.02L12.98 15.98L15 15.98Z"/></svg>';
+        L.DomEvent.disableClickPropagation(link);
+        L.DomEvent.on(link, 'click', function (e) {
+            L.DomEvent.preventDefault(e);
+            fitToNetwork();
+        });
+        return bar;
+    }
+});
+
+// Called by MapController once loaded, with the button's localized tooltip
+function addFitToNetworkControl(title) {
+    new FitToNetworkControl({position: 'topleft', title: title}).addTo(map);
+}
+
 // the attribution's links would otherwise navigate the WebView itself away from the map
 L.DomEvent.on(map.attributionControl.getContainer(), 'click', function (e) {
     var link = e.target.closest('a');
@@ -376,7 +411,7 @@ map.on('dragstart', takeOverView);
 // Leaflet's keyboard panning and zooming
 map.on('keydown', takeOverView);
 
-// Called by MapController's fit to network button. The fitted view is reported to MapController like one the user
+// Called by the fit to network button. The fitted view is reported to MapController like one the user
 // moved to, and fitted again on resize until the user pans or zooms, like the one the network was first rendered at.
 function fitToNetwork() {
     fitTo(renderedBounds);
