@@ -244,16 +244,20 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         assertTrue(ratedU1Field.isVisible());
         assertEquals(doubleText(transformer.getRatedU1()), ratedU1Field.getText());
 
+        // The success flash is removed by a 200ms PauseTransition, which a slow CI runner can outlast between
+        // interact() returning and the assertion - so check it in the same FX pulse as the commit.
+        boolean[] flashed = new boolean[1];
         interact(() -> {
             ratedU1Field.setText("123.45");
             ratedU1Field.getOnAction().handle(new ActionEvent());
+            flashed[0] = ratedU1Label.getStyleClass().contains("edit-success");
         });
 
         assertEquals(123.45, transformer.getRatedU1());
         assertTrue(ratedU1Label.isVisible());
         assertFalse(ratedU1Field.isVisible());
         assertEquals("123.45", ratedU1Label.getText());
-        assertTrue(ratedU1Label.getStyleClass().contains("edit-success"));
+        assertTrue(flashed[0]);
     }
 
     // ratedS may be unset (NaN, displayed as "-"), unlike ratedU - "NaN" is how the user clears it back.
