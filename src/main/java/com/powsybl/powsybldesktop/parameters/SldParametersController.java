@@ -9,17 +9,9 @@ package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.sld.SldParameters;
-import com.powsybl.sld.layout.HorizontalSubstationLayoutFactory;
 import com.powsybl.sld.layout.LayoutParameters;
-import com.powsybl.sld.layout.VerticalSubstationLayoutFactory;
-import com.powsybl.sld.library.ConvergenceComponentLibrary;
-import com.powsybl.sld.library.FlatDesignLibrary;
 import com.powsybl.sld.library.SldComponentTypeName;
 import com.powsybl.sld.svg.SvgParameters;
-import com.powsybl.sld.svg.styles.BusHighlightStyleProviderFactory;
-import com.powsybl.sld.svg.styles.DefaultStyleProviderFactory;
-import com.powsybl.sld.svg.styles.NominalVoltageStyleProviderFactory;
-import com.powsybl.sld.svg.styles.StyleProviderFactory;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -42,22 +34,6 @@ import java.util.function.Function;
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 public class SldParametersController extends AbstractDiagramParametersController<DesktopSldParameters> {
-
-    private enum ComponentLibraryChoice {
-        CONVERGENCE,
-        FLAT_DESIGN
-    }
-
-    private enum StyleChoice {
-        TOPOLOGICAL,
-        BUS_HIGHLIGHT,
-        NOMINAL_VOLTAGE
-    }
-
-    private enum SubstationLayoutChoice {
-        HORIZONTAL,
-        VERTICAL
-    }
 
     private static final String CAT_LAYOUT_ALGORITHMS = "layoutAlgorithms";
     private static final String CAT_COMPONENTS_STYLE = "componentsStyle";
@@ -123,9 +99,8 @@ public class SldParametersController extends AbstractDiagramParametersController
     }
 
     private void addLayoutAlgorithmsFields() {
-        addEnumField(CAT_LAYOUT_ALGORITHMS, label("substationLayout"), tooltip("substationLayout"), SubstationLayoutChoice.class,
-                p -> p.getSubstationLayoutFactory() instanceof VerticalSubstationLayoutFactory ? SubstationLayoutChoice.VERTICAL : SubstationLayoutChoice.HORIZONTAL,
-                (p, v) -> p.setSubstationLayoutFactory(v == SubstationLayoutChoice.VERTICAL ? new VerticalSubstationLayoutFactory() : new HorizontalSubstationLayoutFactory()));
+        addEnumField(CAT_LAYOUT_ALGORITHMS, label("substationLayout"), tooltip("substationLayout"), DesktopSldParameters.SubstationLayoutChoice.class,
+                DesktopSldParameters::getSubstationLayoutChoice, DesktopSldParameters::setSubstationLayoutChoice);
         addEnumField(CAT_LAYOUT_ALGORITHMS, label("voltageLevelLayout"), tooltip("voltageLevelLayout"), DesktopSldParameters.VoltageLevelLayout.class,
                 DesktopSldParameters::getVoltageLevelLayout, DesktopSldParameters::setVoltageLevelLayout);
         addBooleanField(CAT_LAYOUT_ALGORITHMS, label("feederStacked"), tooltip("feederStacked"),
@@ -147,29 +122,10 @@ public class SldParametersController extends AbstractDiagramParametersController
     }
 
     private void addComponentsStyleFields() {
-        addEnumField(CAT_COMPONENTS_STYLE, label("componentLibrary"), tooltip("componentLibrary"), ComponentLibraryChoice.class,
-                p -> p.getComponentLibrary() instanceof FlatDesignLibrary ? ComponentLibraryChoice.FLAT_DESIGN : ComponentLibraryChoice.CONVERGENCE,
-                (p, v) -> p.setComponentLibrary(v == ComponentLibraryChoice.FLAT_DESIGN ? new FlatDesignLibrary() : new ConvergenceComponentLibrary()));
-        addEnumField(CAT_COMPONENTS_STYLE, label("styleProvider"), tooltip("styleProvider"), StyleChoice.class,
-                p -> styleChoiceOf(p.getStyleProviderFactory()), (p, v) -> p.setStyleProviderFactory(styleProviderFactoryOf(v)));
-    }
-
-    private static StyleChoice styleChoiceOf(StyleProviderFactory factory) {
-        if (factory instanceof BusHighlightStyleProviderFactory) {
-            return StyleChoice.BUS_HIGHLIGHT;
-        }
-        if (factory instanceof NominalVoltageStyleProviderFactory) {
-            return StyleChoice.NOMINAL_VOLTAGE;
-        }
-        return StyleChoice.TOPOLOGICAL;
-    }
-
-    private static StyleProviderFactory styleProviderFactoryOf(StyleChoice choice) {
-        return switch (choice) {
-            case TOPOLOGICAL -> new DefaultStyleProviderFactory();
-            case BUS_HIGHLIGHT -> new BusHighlightStyleProviderFactory();
-            case NOMINAL_VOLTAGE -> new NominalVoltageStyleProviderFactory();
-        };
+        addEnumField(CAT_COMPONENTS_STYLE, label("componentLibrary"), tooltip("componentLibrary"), DesktopSldParameters.ComponentLibraryChoice.class,
+                DesktopSldParameters::getComponentLibraryChoice, DesktopSldParameters::setComponentLibraryChoice);
+        addEnumField(CAT_COMPONENTS_STYLE, label("styleProvider"), tooltip("styleProvider"), DesktopSldParameters.StyleChoice.class,
+                DesktopSldParameters::getStyleChoice, DesktopSldParameters::setStyleChoice);
     }
 
     private void addIdentificationFields() {

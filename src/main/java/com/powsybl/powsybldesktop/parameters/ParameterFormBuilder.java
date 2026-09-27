@@ -37,7 +37,7 @@ final class ParameterFormBuilder {
     private ParameterFormBuilder() {
     }
 
-    static GridPane build(List<Parameter> parameters, Properties properties) {
+    static GridPane build(List<Parameter> parameters, Properties properties, Runnable onChange) {
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(8);
@@ -52,7 +52,7 @@ final class ParameterFormBuilder {
         grid.getColumnConstraints().addAll(labelColumn, controlColumn);
 
         for (Parameter parameter : parameters) {
-            Control control = buildControl(parameter, properties);
+            Control control = buildControl(parameter, properties, onChange);
             Label label = new Label(parameter.getDescription());
             label.setWrapText(true);
             Tooltip tooltip = new Tooltip(parameter.getDescription()
@@ -64,43 +64,55 @@ final class ParameterFormBuilder {
         return grid;
     }
 
-    private static Control buildControl(Parameter parameter, Properties properties) {
+    private static Control buildControl(Parameter parameter, Properties properties, Runnable onChange) {
         String value = properties.getProperty(parameter.getName(), formatValue(parameter.getDefaultValue()));
         return switch (parameter.getType()) {
             case BOOLEAN -> {
                 CheckBox checkBox = new CheckBox();
                 checkBox.setSelected(Boolean.parseBoolean(value));
-                checkBox.selectedProperty().addListener((observable, oldValue, newValue) ->
-                        properties.setProperty(parameter.getName(), String.valueOf(newValue)));
+                checkBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
+                    setValue(parameter, properties, String.valueOf(newValue));
+                    onChange.run();
+                });
                 yield checkBox;
             }
-            case STRING -> parameter.getPossibleValues() != null ? buildChoiceControl(parameter, value, properties) : buildTextControl(parameter, value, properties);
-            case INTEGER, DOUBLE, STRING_LIST -> buildTextControl(parameter, value, properties);
+            case STRING -> parameter.getPossibleValues() != null
+                    ? buildChoiceControl(parameter, value, properties, onChange)
+                    : buildTextControl(parameter, value, properties, onChange);
+            case INTEGER, DOUBLE, STRING_LIST -> buildTextControl(parameter, value, properties, onChange);
         };
     }
 
-    private static ChoiceBox<String> buildChoiceControl(Parameter parameter, String value, Properties properties) {
+    private static ChoiceBox<String> buildChoiceControl(Parameter parameter, String value, Properties properties, Runnable onChange) {
         ChoiceBox<String> choiceBox = new ChoiceBox<>();
         parameter.getPossibleValues().stream().map(Object::toString).forEach(choiceBox.getItems()::add);
         choiceBox.setValue(value.isEmpty() ? null : value);
         choiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue != null) {
-                properties.setProperty(parameter.getName(), newValue);
+                setValue(parameter, properties, newValue);
+                onChange.run();
             }
         });
         return choiceBox;
     }
 
-    private static TextField buildTextControl(Parameter parameter, String value, Properties properties) {
+    private static TextField buildTextControl(Parameter parameter, String value, Properties properties, Runnable onChange) {
         TextField textField = new TextField(value);
         textField.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue.isBlank()) {
-                properties.remove(parameter.getName());
-            } else {
-                properties.setProperty(parameter.getName(), newValue);
-            }
+            setValue(parameter, properties, newValue);
+            onChange.run();
         });
         return textField;
+    }
+
+    // only edited values are kept, so the importer/exporter falls back to its own default otherwise and a value
+    // edited back to its default doesn't make the parameters differ from the saved ones
+    private static void setValue(Parameter parameter, Properties properties, String value) {
+        if (value.isBlank() || value.equals(formatValue(parameter.getDefaultValue()))) {
+            properties.remove(parameter.getName());
+        } else {
+            properties.setProperty(parameter.getName(), value);
+        }
     }
 
     private static String formatValue(Object value) {

@@ -43,6 +43,8 @@ public class NetworkFormatParametersController extends AbstractDisposableControl
     @FXML
     public SplitPane splitPane;
 
+    private Runnable refresher = () -> { };
+
     /**
      * Import formats in menu order, XIIDM/BIIDM/JIIDM grouped under a single "IIDM" entry since the importer
      * is picked from the file content at import time.
@@ -78,25 +80,32 @@ public class NetworkFormatParametersController extends AbstractDisposableControl
     public void setImportParameters(MainModel mainModel) {
         Map<String, List<Parameter>> parameters = new LinkedHashMap<>();
         importFormats().forEach((format, importers) -> parameters.put(format, importers.getFirst().getParameters()));
-        build(parameters, mainModel::getNetworkImportParameters);
+        build(parameters, mainModel::getNetworkImportParameters, mainModel::parametersChanged);
     }
 
     public void setExportParameters(MainModel mainModel) {
         Map<String, List<Parameter>> parameters = new LinkedHashMap<>();
         exportFormats().forEach(format -> parameters.putIfAbsent(exportParametersKey(format), Exporter.find(format).getParameters()));
-        build(parameters, mainModel::getNetworkExportParameters);
+        build(parameters, mainModel::getNetworkExportParameters, mainModel::parametersChanged);
     }
 
-    private void build(Map<String, List<Parameter>> formatParameters, Function<String, Properties> properties) {
+    // the detail form writes into the Properties it was built from: rebuilt once MainModel's are replaced
+    public void refresh() {
+        refresher.run();
+    }
+
+    private void build(Map<String, List<Parameter>> formatParameters, Function<String, Properties> properties, Runnable onChange) {
         ListView<String> formatListView = new ListView<>();
         formatListView.getItems().addAll(formatParameters.keySet());
 
         StackPane detailPane = new StackPane();
-        formatListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue != null) {
-                detailPane.getChildren().setAll(buildDetail(formatParameters.get(newValue), properties.apply(newValue)));
+        refresher = () -> {
+            String format = formatListView.getSelectionModel().getSelectedItem();
+            if (format != null) {
+                detailPane.getChildren().setAll(buildDetail(formatParameters.get(format), properties.apply(format), onChange));
             }
-        });
+        };
+        formatListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> refresher.run());
         formatListView.setPrefWidth(220);
         formatListView.getSelectionModel().selectFirst();
 
@@ -104,11 +113,11 @@ public class NetworkFormatParametersController extends AbstractDisposableControl
         splitPane.setDividerPositions(0.18);
     }
 
-    private static Node buildDetail(List<Parameter> parameters, Properties properties) {
+    private static Node buildDetail(List<Parameter> parameters, Properties properties, Runnable onChange) {
         if (parameters.isEmpty()) {
             return new Label(Messages.get("parameters.networkFormat.noParameters"));
         }
-        ScrollPane scrollPane = new ScrollPane(ParameterFormBuilder.build(parameters, properties));
+        ScrollPane scrollPane = new ScrollPane(ParameterFormBuilder.build(parameters, properties, onChange));
         scrollPane.setFitToWidth(true);
         return scrollPane;
     }

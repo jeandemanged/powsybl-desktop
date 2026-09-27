@@ -7,21 +7,48 @@
  */
 package com.powsybl.powsybldesktop.parameters;
 
+import com.powsybl.commons.PowsyblException;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
+import com.powsybl.powsybldesktop.utils.FileChooserPreferences;
+import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.Tooltip;
+import javafx.stage.FileChooser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.util.Objects;
 
 /**
  * Tab host for the app's parameter screens: network import/export parameters per format
  * ({@link NetworkFormatParametersController}), single line and network area diagram parameters
  * ({@link SldParametersController}, {@link NadParametersController}), load flow parameters (existing
  * {@link LoadFlowParametersController}, embedded unchanged) and security analysis parameters
- * ({@link SecurityAnalysisParametersController}).
+ * ({@link SecurityAnalysisParametersController}). Its toolbar saves all of them to the configuration file restored
+ * on startup ({@link ParametersConfigFile}), resets them to defaults, or imports/exports them from/to any JSON file.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 public class ParametersController extends AbstractDisposableController {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ParametersController.class);
+
+    @FXML
+    private Button saveButton;
+    @FXML
+    private Tooltip saveTooltip;
+    @FXML
+    private TabPane tabPane;
     @FXML
     private NetworkFormatParametersController networkImportEmbeddedController;
     @FXML
@@ -35,7 +62,11 @@ public class ParametersController extends AbstractDisposableController {
     @FXML
     private SecurityAnalysisParametersController securityAnalysisEmbeddedController;
 
+    private MainModel mainModel;
+    private Path configPath = ParametersConfigFile.defaultPath();
+
     public void setMainModel(MainModel mainModel) {
+        this.mainModel = Objects.requireNonNull(mainModel);
         networkImportEmbeddedController.setImportParameters(mainModel);
         networkExportEmbeddedController.setExportParameters(mainModel);
         sldEmbeddedController.setParametersProperty(mainModel.sldParametersProperty());
@@ -43,7 +74,100 @@ public class ParametersController extends AbstractDisposableController {
         nadEmbeddedController.setParametersProperty(mainModel.nadParametersProperty());
         nadEmbeddedController.setOnChange(mainModel::nadParametersChanged);
         loadFlowEmbeddedController.setLoadFlowParametersProperty(mainModel.loadFlowParametersProperty());
+        loadFlowEmbeddedController.setOnChange(mainModel::parametersChanged);
         securityAnalysisEmbeddedController.setSecurityAnalysisParametersProperty(mainModel.securityAnalysisParametersProperty());
+        securityAnalysisEmbeddedController.setOnChange(mainModel::parametersChanged);
+        listenerManager.listen(mainModel.parametersRevisionProperty(), (observable, oldValue, newValue) -> updateSaveButton());
+        setConfigPath(configPath);
+    }
+
+    void setConfigPath(Path configPath) {
+        this.configPath = Objects.requireNonNull(configPath);
+        saveTooltip.setText(Messages.get("parameters.toolbar.save", configPath));
+        updateSaveButton();
+    }
+
+    private void updateSaveButton() {
+        saveButton.setDisable(ParametersConfigFile.isSaved(mainModel));
+    }
+
+    @FXML
+    private void onSave() {
+        Instant start = Instant.now();
+        try {
+            ParametersConfigFile.save(mainModel, configPath);
+        } catch (PowsyblException | UncheckedIOException e) {
+            LOGGER.error("Failed to save parameters to {}", configPath, e);
+            mainModel.addNotification(Notification.createError(start, "parameters.config.saveFailed").withMessageArgs(configPath));
+        }
+        updateSaveButton();
+    }
+
+    @FXML
+    private void onReset() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION, Messages.get("parameters.reset.confirm"), ButtonType.YES, ButtonType.NO);
+        alert.initOwner(tabPane.getScene().getWindow());
+        alert.setHeaderText(null);
+        if (alert.showAndWait().filter(ButtonType.YES::equals).isPresent()) {
+            setParameters(DesktopParameters.createDefault());
+        }
+    }
+
+    @FXML
+    private void onImport() {
+        File file = createFileChooser().showOpenDialog(tabPane.getScene().getWindow());
+        if (file != null) {
+            FileChooserPreferences.saveLastDirectory(file);
+            importFrom(file.toPath());
+        }
+    }
+
+    @FXML
+    private void onExport() {
+        File file = createFileChooser().showSaveDialog(tabPane.getScene().getWindow());
+        if (file != null) {
+            FileChooserPreferences.saveLastDirectory(file);
+            exportTo(file.toPath());
+        }
+    }
+
+    // all or nothing: a file that fails to read leaves the current parameters untouched
+    void importFrom(Path path) {
+        Instant start = Instant.now();
+        DesktopParameters parameters;
+        try {
+            parameters = DesktopParametersJson.read(path);
+        } catch (PowsyblException | UncheckedIOException e) {
+            LOGGER.error("Failed to import parameters from {}", path, e);
+            mainModel.addNotification(Notification.createError(start, "parameters.import.failed").withMessageArgs(path));
+            return;
+        }
+        setParameters(parameters);
+    }
+
+    void exportTo(Path path) {
+        Instant start = Instant.now();
+        try {
+            DesktopParametersJson.write(mainModel.getParameters(), path);
+        } catch (PowsyblException | UncheckedIOException e) {
+            LOGGER.error("Failed to export parameters to {}", path, e);
+            mainModel.addNotification(Notification.createError(start, "parameters.export.failed").withMessageArgs(path));
+        }
+    }
+
+    private void setParameters(DesktopParameters parameters) {
+        mainModel.setParameters(parameters);
+        networkImportEmbeddedController.refresh();
+        networkExportEmbeddedController.refresh();
+    }
+
+    private static FileChooser createFileChooser() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(
+                Messages.get("networks.file.supportedFiles", "json"), "*.json"));
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(Messages.get("networks.file.allFiles"), "*.*"));
+        FileChooserPreferences.applyLastDirectory(fileChooser);
+        return fileChooser;
     }
 
     @Override

@@ -13,13 +13,8 @@ import com.powsybl.nad.NadParameters;
 import com.powsybl.nad.layout.LayoutParameters;
 import com.powsybl.nad.svg.EdgeInfoEnum;
 import com.powsybl.nad.svg.EdgeInfoParameters;
-import com.powsybl.nad.svg.LabelProviderParameters;
 import com.powsybl.nad.svg.Padding;
 import com.powsybl.nad.svg.SvgParameters;
-import com.powsybl.nad.svg.iidm.DefaultLabelProviderFactory;
-import com.powsybl.nad.svg.iidm.NominalVoltageStyleProvider;
-import com.powsybl.nad.svg.iidm.StyleProviderFactory;
-import com.powsybl.nad.svg.iidm.TopologicalStyleProvider;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -44,15 +39,6 @@ import java.util.function.Function;
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 public class NadParametersController extends AbstractDiagramParametersController<DesktopNadParameters> {
-
-    private enum StyleChoice {
-        TOPOLOGICAL,
-        NOMINAL_VOLTAGE
-    }
-
-    // NadParameters' default style factory is an anonymous method reference, so the non-default choice is
-    // recognized by identity against this single instance
-    private static final StyleProviderFactory NOMINAL_VOLTAGE_STYLE = NominalVoltageStyleProvider::new;
 
     private static final String CAT_STYLE_LABELS = "styleLabels";
 
@@ -115,19 +101,18 @@ public class NadParametersController extends AbstractDiagramParametersController
     }
 
     private void addStyleLabelsFields() {
-        addEnumField(CAT_STYLE_LABELS, label("styleProvider"), tooltip("styleProvider"), StyleChoice.class,
-                p -> p.getStyleProviderFactory() == NOMINAL_VOLTAGE_STYLE ? StyleChoice.NOMINAL_VOLTAGE : StyleChoice.TOPOLOGICAL,
-                (p, v) -> p.setStyleProviderFactory(v == StyleChoice.NOMINAL_VOLTAGE ? NOMINAL_VOLTAGE_STYLE : TopologicalStyleProvider::new));
+        addEnumField(CAT_STYLE_LABELS, label("styleProvider"), tooltip("styleProvider"), DesktopNadParameters.StyleChoice.class,
+                DesktopNadParameters::getStyleChoice, DesktopNadParameters::setStyleChoice);
         addBooleanField(CAT_STYLE_LABELS, label("busLegend"), tooltip("busLegend"),
-                p -> labelParameters(p).isBusLegend(), (p, v) -> labelParameters(p).setBusLegend(v));
+                p -> p.getLabelParameters().isBusLegend(), (p, v) -> p.getLabelParameters().setBusLegend(v));
         addBooleanField(CAT_STYLE_LABELS, label("voltageLevelDetails"), tooltip("voltageLevelDetails"),
-                p -> labelParameters(p).isVoltageLevelDetails(), (p, v) -> labelParameters(p).setVoltageLevelDetails(v));
+                p -> p.getLabelParameters().isVoltageLevelDetails(), (p, v) -> p.getLabelParameters().setVoltageLevelDetails(v));
         addBooleanField(CAT_STYLE_LABELS, label("substationDescriptionDisplayed"), tooltip("substationDescriptionDisplayed"),
-                p -> labelParameters(p).isSubstationDescriptionDisplayed(), (p, v) -> labelParameters(p).setSubstationDescriptionDisplayed(v));
+                p -> p.getLabelParameters().isSubstationDescriptionDisplayed(), (p, v) -> p.getLabelParameters().setSubstationDescriptionDisplayed(v));
         addBooleanField(CAT_STYLE_LABELS, label("idDisplayed"), tooltip("idDisplayed"),
-                p -> labelParameters(p).isIdDisplayed(), (p, v) -> labelParameters(p).setIdDisplayed(v));
+                p -> p.getLabelParameters().isIdDisplayed(), (p, v) -> p.getLabelParameters().setIdDisplayed(v));
         addBooleanField(CAT_STYLE_LABELS, label("doubleArrowsDisplayed"), tooltip("doubleArrowsDisplayed"),
-                p -> labelParameters(p).isDoubleArrowsDisplayed(), (p, v) -> labelParameters(p).setDoubleArrowsDisplayed(v));
+                p -> p.getLabelParameters().isDoubleArrowsDisplayed(), (p, v) -> p.getLabelParameters().setDoubleArrowsDisplayed(v));
         addEdgeInfoField("infoSideExternal", EdgeInfoParameters::infoSideExternal,
                 (e, v) -> new EdgeInfoParameters(v, e.infoMiddleSide1(), e.infoMiddleSide2(), e.infoSideInternal()));
         addEdgeInfoField("infoMiddleSide1", EdgeInfoParameters::infoMiddleSide1,
@@ -142,13 +127,8 @@ public class NadParametersController extends AbstractDiagramParametersController
     private void addEdgeInfoField(String param, Function<EdgeInfoParameters, EdgeInfoEnum> getter,
                                   BiFunction<EdgeInfoParameters, EdgeInfoEnum, EdgeInfoParameters> with) {
         addEnumField(CAT_STYLE_LABELS, label(param), tooltip(param), EdgeInfoEnum.class,
-                p -> getter.apply(labelParameters(p).getEdgeInfoParameters()),
-                (p, v) -> labelParameters(p).setEdgeInfoParameters(with.apply(labelParameters(p).getEdgeInfoParameters(), v)));
-    }
-
-    // the app never replaces NadParameters' default label provider factory, whose parameters are mutable in place
-    private static LabelProviderParameters labelParameters(NadParameters parameters) {
-        return ((DefaultLabelProviderFactory) parameters.getLabelProviderFactory()).getParameters();
+                p -> getter.apply(p.getLabelParameters().getEdgeInfoParameters()),
+                (p, v) -> p.getLabelParameters().setEdgeInfoParameters(with.apply(p.getLabelParameters().getEdgeInfoParameters(), v)));
     }
 
     private void addSizingFields() {
@@ -413,12 +393,12 @@ public class NadParametersController extends AbstractDiagramParametersController
 
     private void addForceLayoutFields() {
         addIntField(CAT_FORCE_LAYOUT, label("atlas2MaxSteps"), tooltip("atlas2MaxSteps"), p -> p.getAtlas2Parameters().getMaxSteps(),
-                (p, v) -> p.setAtlas2Parameters(atlas2Builder(p.getAtlas2Parameters()).withMaxSteps(v).build()));
+                (p, v) -> p.updateAtlas2Parameters(b -> b.withMaxSteps(v)));
         addAtlas2Field("atlas2RepulsionIntensity", Atlas2Parameters::getRepulsionIntensity, Atlas2Parameters.Builder::withRepulsionIntensity);
         addAtlas2Field("atlas2EdgeAttractionIntensity", Atlas2Parameters::getEdgeAttractionIntensity, Atlas2Parameters.Builder::withEdgeAttractionIntensity);
         addBooleanField(CAT_FORCE_LAYOUT, label("atlas2AttractToCenterEnabled"), tooltip("atlas2AttractToCenterEnabled"),
                 p -> p.getAtlas2Parameters().isAttractToCenterEnabled(),
-                (p, v) -> p.setAtlas2Parameters(atlas2Builder(p.getAtlas2Parameters()).withAttractToCenterEnabled(v).build()));
+                (p, v) -> p.updateAtlas2Parameters(b -> b.withAttractToCenterEnabled(v)));
         addAtlas2Field("atlas2AttractToCenterIntensity", Atlas2Parameters::getAttractToCenterIntensity, Atlas2Parameters.Builder::withAttractToCenterIntensity);
         addAtlas2Field("atlas2SpeedFactor", Atlas2Parameters::getSpeedFactor, Atlas2Parameters.Builder::withSpeedFactor);
         addAtlas2Field("atlas2MaxSpeedFactor", Atlas2Parameters::getMaxSpeedFactor, Atlas2Parameters.Builder::withMaxSpeedFactor);
@@ -427,7 +407,7 @@ public class NadParametersController extends AbstractDiagramParametersController
         addAtlas2Field("atlas2BarnesHutTheta", Atlas2Parameters::getBarnesHutTheta, Atlas2Parameters.Builder::withBarnesHutTheta);
         addIntField(CAT_FORCE_LAYOUT, label("atlas2QuadtreeCalculationIncrement"), tooltip("atlas2QuadtreeCalculationIncrement"),
                 p -> p.getAtlas2Parameters().getQuadtreeCalculationIncrement(),
-                (p, v) -> p.setAtlas2Parameters(atlas2Builder(p.getAtlas2Parameters()).withQuadtreeCalculationIncrement(v).build()));
+                (p, v) -> p.updateAtlas2Parameters(b -> b.withQuadtreeCalculationIncrement(v)));
 
         addOverlapField("overlapPointSizeScale", OverlapPreventionPostProcessingParameters::getPointSizeScale,
                 OverlapPreventionPostProcessingParameters.Builder::withPointSizeScale);
@@ -448,44 +428,16 @@ public class NadParametersController extends AbstractDiagramParametersController
                 p -> p.getLayoutParameters().getMaxSteps(), (p, v) -> p.getLayoutParameters().setMaxSteps(v));
     }
 
-    // Atlas2Parameters and OverlapPreventionPostProcessingParameters are immutable, built through builders that can't
-    // be seeded from an existing instance: editing one value rebuilds the whole object with the others copied over
     private void addAtlas2Field(String param, Function<Atlas2Parameters, Double> getter,
                                 BiFunction<Atlas2Parameters.Builder, Double, Atlas2Parameters.Builder> with) {
         addDoubleField(CAT_FORCE_LAYOUT, label(param), tooltip(param), p -> getter.apply(p.getAtlas2Parameters()),
-                (p, v) -> p.setAtlas2Parameters(with.apply(atlas2Builder(p.getAtlas2Parameters()), v).build()));
+                (p, v) -> p.updateAtlas2Parameters(b -> with.apply(b, v)));
     }
 
     private void addOverlapField(String param, Function<OverlapPreventionPostProcessingParameters, Double> getter,
                                  BiFunction<OverlapPreventionPostProcessingParameters.Builder, Double, OverlapPreventionPostProcessingParameters.Builder> with) {
         addDoubleField(CAT_FORCE_LAYOUT, label(param), tooltip(param), p -> getter.apply(p.getOverlapPreventionParameters()),
-                (p, v) -> p.setOverlapPreventionParameters(with.apply(overlapBuilder(p.getOverlapPreventionParameters()), v).build()));
-    }
-
-    private static Atlas2Parameters.Builder atlas2Builder(Atlas2Parameters parameters) {
-        return new Atlas2Parameters.Builder()
-                .withMaxSteps(parameters.getMaxSteps())
-                .withRepulsionIntensity(parameters.getRepulsionIntensity())
-                .withEdgeAttractionIntensity(parameters.getEdgeAttractionIntensity())
-                .withAttractToCenterIntensity(parameters.getAttractToCenterIntensity())
-                .withSpeedFactor(parameters.getSpeedFactor())
-                .withMaxSpeedFactor(parameters.getMaxSpeedFactor())
-                .withSwingTolerance(parameters.getSwingTolerance())
-                .withMaxGlobalSpeedIncreaseRatio(parameters.getMaxGlobalSpeedIncreaseRatio())
-                .withAttractToCenterEnabled(parameters.isAttractToCenterEnabled())
-                .withBarnesHutTheta(parameters.getBarnesHutTheta())
-                .withQuadtreeCalculationIncrement(parameters.getQuadtreeCalculationIncrement());
-    }
-
-    private static OverlapPreventionPostProcessingParameters.Builder overlapBuilder(OverlapPreventionPostProcessingParameters parameters) {
-        return new OverlapPreventionPostProcessingParameters.Builder()
-                .withPointSizeScale(parameters.getPointSizeScale())
-                .withPointSizeOffset(parameters.getPointSizeOffset())
-                .withEdgeAttractionIntensity(parameters.getEdgeAttractionIntensity())
-                .withRepulsionNoOverlapIntensity(parameters.getRepulsionNoOverlapIntensity())
-                .withRepulsionWithOverlapIntensity(parameters.getRepulsionWithOverlapIntensity())
-                .withRepulsionZoneRatio(parameters.getRepulsionZoneRatio())
-                .withAttractToCenterIntensity(parameters.getAttractToCenterIntensity());
+                (p, v) -> p.updateOverlapPreventionParameters(b -> with.apply(b, v)));
     }
 
     private static String label(String param) {

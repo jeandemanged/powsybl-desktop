@@ -7,6 +7,8 @@
  */
 package com.powsybl.powsybldesktop;
 
+import com.powsybl.powsybldesktop.notification.Notification;
+import com.powsybl.powsybldesktop.parameters.ParametersConfigFile;
 import com.powsybl.powsybldesktop.utils.LanguagePreferences;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.animation.PauseTransition;
@@ -23,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -41,6 +44,10 @@ public class MainApplication extends Application {
     @Override
     public void start(Stage stage) {
         LanguagePreferences.applyPersisted();
+        MainModel mainModel = new MainModel();
+        Optional<Notification> parametersLoadError = ParametersConfigFile.load(mainModel, ParametersConfigFile.defaultPath());
+        // only once the main view listens to notifications, for the error to pop up
+        stage.setOnShown(event -> parametersLoadError.ifPresent(mainModel::addNotification));
 
         SplashScreen splash = new SplashScreen();
         splash.show();
@@ -50,7 +57,7 @@ public class MainApplication extends Application {
             @Override
             protected Parent call() throws Exception {
                 FXMLLoader loader = new FXMLLoader(MainApplication.class.getResource("main-view.fxml"), Messages.bundle());
-                loader.setControllerFactory(type -> new MainController(new MainModel()));
+                loader.setControllerFactory(type -> new MainController(mainModel));
                 return loader.load();
             }
         };

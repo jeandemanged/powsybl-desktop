@@ -14,6 +14,13 @@ import com.powsybl.diagram.util.layout.setup.SquareRandomSetup;
 import com.powsybl.nad.NadParameters;
 import com.powsybl.nad.layout.Atlas2ForceLayout;
 import com.powsybl.nad.layout.BasicForceLayout;
+import com.powsybl.nad.svg.LabelProviderParameters;
+import com.powsybl.nad.svg.iidm.DefaultLabelProviderFactory;
+import com.powsybl.nad.svg.iidm.NominalVoltageStyleProvider;
+import com.powsybl.nad.svg.iidm.StyleProviderFactory;
+import com.powsybl.nad.svg.iidm.TopologicalStyleProvider;
+
+import java.util.function.UnaryOperator;
 
 /**
  * {@link NadParameters}' layout factory is opaque (a {@code LayoutFactory} exposing nothing), so the chosen
@@ -30,6 +37,15 @@ public class DesktopNadParameters extends NadParameters {
         BASIC_FORCE,
         GEOGRAPHICAL
     }
+
+    public enum StyleChoice {
+        TOPOLOGICAL,
+        NOMINAL_VOLTAGE
+    }
+
+    // NadParameters' default style factory is an anonymous method reference, so the non-default choice is
+    // recognized by identity against this single instance
+    private static final StyleProviderFactory NOMINAL_VOLTAGE_STYLE = NominalVoltageStyleProvider::new;
 
     private LayoutAlgorithm layoutAlgorithm = LayoutAlgorithm.ATLAS2_FORCE;
     private Atlas2Parameters atlas2Parameters = new Atlas2Parameters.Builder().build();
@@ -70,6 +86,50 @@ public class DesktopNadParameters extends NadParameters {
 
     public DesktopNadParameters setOverlapPreventionParameters(OverlapPreventionPostProcessingParameters overlapPreventionParameters) {
         this.overlapPreventionParameters = overlapPreventionParameters;
+        return this;
+    }
+
+    public StyleChoice getStyleChoice() {
+        return getStyleProviderFactory() == NOMINAL_VOLTAGE_STYLE ? StyleChoice.NOMINAL_VOLTAGE : StyleChoice.TOPOLOGICAL;
+    }
+
+    public DesktopNadParameters setStyleChoice(StyleChoice choice) {
+        setStyleProviderFactory(choice == StyleChoice.NOMINAL_VOLTAGE ? NOMINAL_VOLTAGE_STYLE : TopologicalStyleProvider::new);
+        return this;
+    }
+
+    // the app never replaces NadParameters' default label provider factory, whose parameters are mutable in place
+    public LabelProviderParameters getLabelParameters() {
+        return ((DefaultLabelProviderFactory) getLabelProviderFactory()).getParameters();
+    }
+
+    // Atlas2Parameters and OverlapPreventionPostProcessingParameters are immutable, built through builders that can't
+    // be seeded from an existing instance: editing one value rebuilds the whole object with the others copied over
+    public DesktopNadParameters updateAtlas2Parameters(UnaryOperator<Atlas2Parameters.Builder> update) {
+        atlas2Parameters = update.apply(new Atlas2Parameters.Builder()
+                .withMaxSteps(atlas2Parameters.getMaxSteps())
+                .withRepulsionIntensity(atlas2Parameters.getRepulsionIntensity())
+                .withEdgeAttractionIntensity(atlas2Parameters.getEdgeAttractionIntensity())
+                .withAttractToCenterIntensity(atlas2Parameters.getAttractToCenterIntensity())
+                .withSpeedFactor(atlas2Parameters.getSpeedFactor())
+                .withMaxSpeedFactor(atlas2Parameters.getMaxSpeedFactor())
+                .withSwingTolerance(atlas2Parameters.getSwingTolerance())
+                .withMaxGlobalSpeedIncreaseRatio(atlas2Parameters.getMaxGlobalSpeedIncreaseRatio())
+                .withAttractToCenterEnabled(atlas2Parameters.isAttractToCenterEnabled())
+                .withBarnesHutTheta(atlas2Parameters.getBarnesHutTheta())
+                .withQuadtreeCalculationIncrement(atlas2Parameters.getQuadtreeCalculationIncrement())).build();
+        return this;
+    }
+
+    public DesktopNadParameters updateOverlapPreventionParameters(UnaryOperator<OverlapPreventionPostProcessingParameters.Builder> update) {
+        overlapPreventionParameters = update.apply(new OverlapPreventionPostProcessingParameters.Builder()
+                .withPointSizeScale(overlapPreventionParameters.getPointSizeScale())
+                .withPointSizeOffset(overlapPreventionParameters.getPointSizeOffset())
+                .withEdgeAttractionIntensity(overlapPreventionParameters.getEdgeAttractionIntensity())
+                .withRepulsionNoOverlapIntensity(overlapPreventionParameters.getRepulsionNoOverlapIntensity())
+                .withRepulsionWithOverlapIntensity(overlapPreventionParameters.getRepulsionWithOverlapIntensity())
+                .withRepulsionZoneRatio(overlapPreventionParameters.getRepulsionZoneRatio())
+                .withAttractToCenterIntensity(overlapPreventionParameters.getAttractToCenterIntensity())).build();
         return this;
     }
 }

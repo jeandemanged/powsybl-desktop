@@ -70,11 +70,16 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
     private final Map<String, GridPane> categoryGrids = new LinkedHashMap<>();
     private final List<Runnable> refreshers = new ArrayList<>();
     private boolean refreshing;
+    private Runnable onChange = () -> { };
 
     public void setSecurityAnalysisParametersProperty(ObjectProperty<SecurityAnalysisParameters> securityAnalysisParametersProperty) {
         this.securityAnalysisParametersProperty = Objects.requireNonNull(securityAnalysisParametersProperty);
         refresh();
         listenerManager.listen(securityAnalysisParametersProperty, (observable, oldValue, newValue) -> refresh());
+    }
+
+    public void setOnChange(Runnable onChange) {
+        this.onChange = Objects.requireNonNull(onChange);
     }
 
     private void refresh() {
@@ -239,6 +244,7 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
         checkBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
             if (!refreshing) {
                 setter.accept(securityAnalysisParametersProperty.getValue(), newValue);
+                onChange.run();
             }
         });
         addRow(category, label, tooltip, checkBox);
@@ -254,6 +260,7 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
             }
             try {
                 setter.accept(securityAnalysisParametersProperty.getValue(), Double.parseDouble(textField.getText()));
+                onChange.run();
             } catch (NumberFormatException e) {
                 refresh();
             }
@@ -272,6 +279,7 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
             }
             try {
                 setter.accept(securityAnalysisParametersProperty.getValue(), Integer.parseInt(textField.getText()));
+                onChange.run();
             } catch (IllegalArgumentException e) {
                 refresh();
             }
@@ -289,6 +297,7 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
             }
             String text = textField.getText();
             securityAnalysisParametersProperty.getValue().setDebugDir(text.isEmpty() ? null : text);
+            onChange.run();
         };
         bindCommit(textField, commit);
         addRow(category, Messages.get("securityAnalysis.param.debugDir.label"), Messages.get("securityAnalysis.param.debugDir.tooltip"), textField);
@@ -301,6 +310,7 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
         choiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
             if (!refreshing && newValue != null) {
                 ext(securityAnalysisParametersProperty.getValue()).setContingencyActivePowerLossDistribution(newValue);
+                onChange.run();
             }
         });
         addRow(category, Messages.get("securityAnalysis.param.contingencyActivePowerLossDistribution.label"),

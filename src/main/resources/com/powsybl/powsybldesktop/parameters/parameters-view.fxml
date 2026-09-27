@@ -7,41 +7,86 @@
   SPDX-License-Identifier: MPL-2.0
 -->
 
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<TabPane xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1"
-         fx:controller="com.powsybl.powsybldesktop.parameters.ParametersController" tabClosingPolicy="UNAVAILABLE">
-    <tabs>
-        <Tab text="%parameters.tab.networkImport">
-            <content>
-                <fx:include fx:id="networkImportEmbedded" source="network-format-parameters.fxml"/>
-            </content>
-        </Tab>
-        <Tab text="%parameters.tab.networkExport">
-            <content>
-                <fx:include fx:id="networkExportEmbedded" source="network-format-parameters.fxml"/>
-            </content>
-        </Tab>
-        <Tab text="%parameters.tab.sld">
-            <content>
-                <fx:include fx:id="sldEmbedded" source="sld-parameters.fxml"/>
-            </content>
-        </Tab>
-        <Tab text="%parameters.tab.nad">
-            <content>
-                <fx:include fx:id="nadEmbedded" source="nad-parameters.fxml"/>
-            </content>
-        </Tab>
-        <Tab text="%parameters.tab.loadFlow">
-            <content>
-                <fx:include fx:id="loadFlowEmbedded" source="lf-parameters.fxml"/>
-            </content>
-        </Tab>
-        <Tab text="%parameters.tab.securityAnalysis">
-            <content>
-                <fx:include fx:id="securityAnalysisEmbedded" source="sa-parameters.fxml"/>
-            </content>
-        </Tab>
-    </tabs>
-</TabPane>
+<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.powsybl.powsybldesktop.parameters.ParametersController">
+    <ToolBar>
+        <items>
+            <Button fx:id="saveButton" mnemonicParsing="false" onAction="#onSave">
+                <graphic>
+                    <FontIcon iconLiteral="mdi2c-content-save" iconSize="16"/>
+                </graphic>
+                <tooltip>
+                    <Tooltip fx:id="saveTooltip"/>
+                </tooltip>
+            </Button>
+            <Button fx:id="resetButton" mnemonicParsing="false" onAction="#onReset">
+                <graphic>
+                    <FontIcon iconLiteral="mdi2r-restore" iconSize="16"/>
+                </graphic>
+                <tooltip>
+                    <Tooltip text="%parameters.toolbar.reset"/>
+                </tooltip>
+            </Button>
+            <Separator orientation="VERTICAL"/>
+            <Button mnemonicParsing="false" onAction="#onImport">
+                <graphic>
+                    <FontIcon iconLiteral="mdi2u-upload" iconSize="16"/>
+                </graphic>
+                <tooltip>
+                    <Tooltip text="%parameters.toolbar.import"/>
+                </tooltip>
+            </Button>
+            <Button mnemonicParsing="false" onAction="#onExport">
+                <graphic>
+                    <FontIcon iconLiteral="mdi2d-download" iconSize="16"/>
+                </graphic>
+                <tooltip>
+                    <Tooltip text="%parameters.toolbar.export"/>
+                </tooltip>
+            </Button>
+        </items>
+    </ToolBar>
+    <TabPane fx:id="tabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+        <tabs>
+            <Tab text="%parameters.tab.networkImport">
+                <content>
+                    <fx:include fx:id="networkImportEmbedded" source="network-format-parameters.fxml"/>
+                </content>
+            </Tab>
+            <Tab text="%parameters.tab.networkExport">
+                <content>
+                    <fx:include fx:id="networkExportEmbedded" source="network-format-parameters.fxml"/>
+                </content>
+            </Tab>
+            <Tab text="%parameters.tab.sld">
+                <content>
+                    <fx:include fx:id="sldEmbedded" source="sld-parameters.fxml"/>
+                </content>
+            </Tab>
+            <Tab text="%parameters.tab.nad">
+                <content>
+                    <fx:include fx:id="nadEmbedded" source="nad-parameters.fxml"/>
+                </content>
+            </Tab>
+            <Tab text="%parameters.tab.loadFlow">
+                <content>
+                    <fx:include fx:id="loadFlowEmbedded" source="lf-parameters.fxml"/>
+                </content>
+            </Tab>
+            <Tab text="%parameters.tab.securityAnalysis">
+                <content>
+                    <fx:include fx:id="securityAnalysisEmbedded" source="sa-parameters.fxml"/>
+                </content>
+            </Tab>
+        </tabs>
+    </TabPane>
+</VBox>

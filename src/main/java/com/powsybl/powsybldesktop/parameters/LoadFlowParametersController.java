@@ -61,6 +61,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
     private final Map<String, GridPane> categoryGrids = new LinkedHashMap<>();
     private final List<Runnable> refreshers = new ArrayList<>();
     private boolean refreshing;
+    private Runnable onChange = () -> { };
 
     static Map<String, String> buildCategoryTitles() {
         Map<String, String> titles = new LinkedHashMap<>();
@@ -92,6 +93,10 @@ public class LoadFlowParametersController extends AbstractDisposableController {
         this.loadFlowParametersProperty = Objects.requireNonNull(loadFlowParametersProperty);
         refresh();
         listenerManager.listen(loadFlowParametersProperty, (observable, oldValue, newValue) -> refresh());
+    }
+
+    public void setOnChange(Runnable onChange) {
+        this.onChange = Objects.requireNonNull(onChange);
     }
 
     private void refresh() {
@@ -243,6 +248,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
         dc.selectedProperty().addListener((observable, oldValue, newValue) -> {
             if (!refreshing) {
                 loadFlowParametersProperty.getValue().setDc(newValue);
+                onChange.run();
             }
         });
         HBox hBox = new HBox(20, ac, dc);
@@ -263,6 +269,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
         checkBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
             if (!refreshing) {
                 setter.accept(loadFlowParametersProperty.getValue(), newValue);
+                onChange.run();
             }
         });
         addRow(category, label, tooltip, checkBox);
@@ -275,6 +282,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
         choiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
             if (!refreshing && newValue != null) {
                 setter.accept(loadFlowParametersProperty.getValue(), newValue);
+                onChange.run();
             }
         });
         addRow(category, label, tooltip, choiceBox);
@@ -295,6 +303,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
                 Set<Country> countries = checkComboBox.getCheckModel().getCheckedItems().stream()
                         .map(Country::valueOf).collect(Collectors.toSet());
                 loadFlowParametersProperty.getValue().setCountriesToBalance(countries);
+                onChange.run();
             }
         });
         addRow(OpenLoadFlowParameters.SLACK_DISTRIBUTION_CATEGORY_KEY, Messages.get("loadflow.param.countriesToBalance.label"),
@@ -333,6 +342,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
                 parameters.setVoltageInitMode(LoadFlowParameters.VoltageInitMode.UNIFORM_VALUES);
                 parametersExt.setVoltageInitModeOverride(mode);
             }
+            onChange.run();
         });
         addRow(OpenLoadFlowParameters.VOLTAGE_INIT_CATEGORY_KEY, Messages.get("loadflow.param.voltageInitMode.label"),
                 Messages.get("loadflow.param.voltageInitMode.tooltip"),
@@ -348,6 +358,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
             }
             try {
                 loadFlowParametersProperty.getValue().setDcPowerFactor(Double.parseDouble(textField.getText()));
+                onChange.run();
             } catch (NumberFormatException e) {
                 refresh();
             }
@@ -366,6 +377,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
             }
             String text = textField.getText();
             loadFlowParametersProperty.getValue().setDebugDir(text.isEmpty() ? null : text);
+            onChange.run();
         };
         bindCommit(textField, commit);
         addRow(OpenLoadFlowParameters.DEBUG_CATEGORY_KEY, Messages.get("loadflow.param.debugDir.label"),
@@ -406,6 +418,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
         Map<String, String> update = new HashMap<>();
         update.put(parameter.getName(), value);
         OpenLoadFlowParameters.get(loadFlowParametersProperty.getValue()).update(update);
+        onChange.run();
     }
 
     private CheckBox buildBooleanControl(Parameter parameter) {

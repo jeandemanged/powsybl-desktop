@@ -13,6 +13,7 @@ import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ListView;
 import javafx.scene.control.Tab;
@@ -20,8 +21,11 @@ import javafx.scene.control.TabPane;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,6 +41,10 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
     private ParametersController controller;
     private TabPane tabPane;
     private MainModel mainModel;
+    private Button saveButton;
+
+    @TempDir
+    Path tempDir;
 
     @Override
     public void start(Stage stage) throws IOException {
@@ -44,13 +52,16 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
                 "/com/powsybl/powsybldesktop/parameters/parameters-view.fxml"), Messages.bundle());
         Parent root = loader.load();
         controller = loader.getController();
-        tabPane = (TabPane) root;
+        tabPane = (TabPane) root.lookup("#tabPane");
 
         mainModel = new MainModel();
         controller.setMainModel(mainModel);
+        controller.setConfigPath(tempDir.resolve("config.json"));
 
         stage.setScene(new Scene(root));
         stage.show();
+        // toolbar items are only in the scene graph once the ToolBar skin is created, on show
+        saveButton = (Button) root.lookup("#saveButton");
     }
 
     @AfterEach
@@ -110,5 +121,47 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
     void embeddedControllersShareMainModelParameters() {
         assertSame(mainModel.loadFlowParametersProperty().get(),
                 mainModel.securityAnalysisParametersProperty().get().getLoadFlowParameters());
+    }
+
+    @Test
+    void saveButtonIsDisabledWhileParametersMatchTheSavedFile() {
+        assertFalse(saveButton.isDisabled());
+        clickOn(saveButton);
+        assertTrue(saveButton.isDisabled());
+        assertTrue(Files.exists(tempDir.resolve("config.json")));
+
+        clickOn(from(tabPane.getTabs().get(0).getContent()).lookup(".check-box").<CheckBox>query());
+        assertFalse(saveButton.isDisabled());
+        clickOn(from(tabPane.getTabs().get(0).getContent()).lookup(".check-box").<CheckBox>query());
+        assertTrue(saveButton.isDisabled());
+    }
+
+    @Test
+    void importReplacesParametersAndRefreshesNetworkFormatForm() {
+        Path path = tempDir.resolve("exported.json");
+        CheckBox checkBox = from(tabPane.getTabs().get(0).getContent()).lookup(".check-box").query();
+        boolean initial = checkBox.isSelected();
+        clickOn(checkBox);
+        mainModel.loadFlowParametersProperty().get().setDc(true);
+        interact(() -> controller.exportTo(path));
+
+        interact(() -> mainModel.setParameters(DesktopParameters.createDefault()));
+        interact(() -> controller.importFrom(path));
+
+        assertTrue(mainModel.loadFlowParametersProperty().get().isDc());
+        CheckBox refreshed = from(tabPane.getTabs().get(0).getContent()).lookup(".check-box").query();
+        assertEquals(!initial, refreshed.isSelected());
+    }
+
+    @Test
+    void importOfInvalidFileKeepsParametersAndNotifies() throws IOException {
+        Path path = tempDir.resolve("invalid.json");
+        Files.writeString(path, "[]");
+        mainModel.loadFlowParametersProperty().get().setDc(true);
+
+        interact(() -> controller.importFrom(path));
+
+        assertTrue(mainModel.loadFlowParametersProperty().get().isDc());
+        assertEquals(1, mainModel.getNotifications().size());
     }
 }
