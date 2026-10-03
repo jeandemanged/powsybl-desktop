@@ -59,7 +59,7 @@ import java.util.stream.Stream;
  * aggregate resolves to, with a validity indicator computed via {@link ContingencyList#getValidContingencies}.
  * <p>
  * All mutations to a network's contingency-list collection go through this controller's own methods (add/remove/
- * form edits), so the right-pane table is refreshed by explicitly calling {@link #refreshComputedTable()} after
+ * form edits), so the right-pane table is refreshed by explicitly calling {@link #refreshInstantiatedTable()} after
  * each one rather than via a {@code ListChangeListener} - {@link com.powsybl.powsybldesktop.utils.ListenerManager}
  * has no way to detach a single listener when switching networks, so listening directly on each network's list
  * would leak a stale listener per network visited.
@@ -89,7 +89,7 @@ public class ContingenciesController extends AbstractDisposableController {
     private StackPane formHost;
 
     @FXML
-    private Label computedTitleLabel;
+    private Label instantiatedTitleLabel;
 
     @FXML
     TableView<Contingency> contingenciesTableView;
@@ -108,7 +108,7 @@ public class ContingenciesController extends AbstractDisposableController {
     private Set<String> validContingencyIds = Set.of();
     // The enabled/disabled flag itself lives in MainModel (contingencyListEnabledProperty), since the security
     // analysis run in MainController needs it too - this just tracks, by identity, which lists this controller
-    // has already attached its refreshComputedTable listener to, so re-fetching the same property (e.g. from
+    // has already attached its refreshInstantiatedTable listener to, so re-fetching the same property (e.g. from
     // the cell factory) doesn't pile up duplicate listeners.
     private final Set<ContingencyList> listenedEnabledLists = Collections.newSetFromMap(new IdentityHashMap<>());
     // Suppresses showForm() re-entering (and tearing down/rebuilding the currently open form) when the
@@ -176,20 +176,20 @@ public class ContingenciesController extends AbstractDisposableController {
         if (hasNetwork) {
             // Leaked on every network visited (ListenerManager can't detach a single listener), but harmless:
             // a stale listener on a since-abandoned network's list just triggers a same-network no-op refresh
-            // here, since refreshComputedTable() always reads mainModel.getContingencyLists(this.network) -
+            // here, since refreshInstantiatedTable() always reads mainModel.getContingencyLists(this.network) -
             // and it's what makes every mutation (add/remove/import/a form's onReplace) redraw the right pane
-            // without each of those call sites needing to remember to call refreshComputedTable() itself.
-            listenerManager.listen(mainModel.getContingencyLists(newNetwork), change -> refreshComputedTable());
+            // without each of those call sites needing to remember to call refreshInstantiatedTable() itself.
+            listenerManager.listen(mainModel.getContingencyLists(newNetwork), change -> refreshInstantiatedTable());
         }
         showForm(null);
-        refreshComputedTable();
+        refreshInstantiatedTable();
     }
 
-    private void refreshComputedTable() {
+    private void refreshInstantiatedTable() {
         if (network == null) {
             validContingencyIds = Set.of();
             contingenciesTableView.setItems(FXCollections.observableArrayList());
-            computedTitleLabel.setText(Messages.get("contingencies.computed.title"));
+            instantiatedTitleLabel.setText(Messages.get("contingencies.instantiated.title"));
             return;
         }
         List<Contingency> contingencies = mainModel.getContingencyLists(network).stream()
@@ -200,13 +200,13 @@ public class ContingenciesController extends AbstractDisposableController {
                 .map(Contingency::getId)
                 .collect(Collectors.toSet());
         contingenciesTableView.setItems(FXCollections.observableArrayList(contingencies));
-        computedTitleLabel.setText(Messages.get("contingencies.computed.title.count", contingencies.size()));
+        instantiatedTitleLabel.setText(Messages.get("contingencies.instantiated.title.count", contingencies.size()));
     }
 
     private BooleanProperty enabledProperty(ContingencyList list) {
         BooleanProperty property = mainModel.contingencyListEnabledProperty(list);
         if (listenedEnabledLists.add(list)) {
-            property.addListener((obs, oldValue, newValue) -> refreshComputedTable());
+            property.addListener((obs, oldValue, newValue) -> refreshInstantiatedTable());
         }
         return property;
     }
