@@ -82,7 +82,7 @@ public class DefaultContingencyListFormController {
         idColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getId()));
         idColumn.setCellFactory(TextFieldTableCell.forTableColumn());
         idColumn.setOnEditCommit(event -> renameContingency(event.getRowValue(), event.getNewValue()));
-        elementsColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(ContingenciesController.elementsSummary(cellData.getValue(), network)));
+        elementsColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(ContingencyNames.elementsSummary(cellData.getValue(), network)));
         removeContingencyButton.disableProperty().bind(contingenciesTableView.getSelectionModel().selectedItemProperty().isNull());
         contingenciesTableView.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> bindElements(newValue));
 

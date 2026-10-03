@@ -15,6 +15,7 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.ThreeSides;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
@@ -64,9 +65,7 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
     @FXML
     TableColumn<ResultRow, ResultRow> statusColumn;
     @FXML
-    TableColumn<ResultRow, ResultRow> subjectIdColumn;
-    @FXML
-    TableColumn<ResultRow, String> subjectNameColumn;
+    TableColumn<ResultRow, ResultRow> subjectColumn;
     @FXML
     TableColumn<ResultRow, LimitViolationType> limitTypeColumn;
     @FXML
@@ -90,17 +89,17 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
 
     private enum RowKind { NOT_CONVERGED, VIOLATION }
 
-    record ResultRow(RowKind kind, String contingencyId, String statusMessageKey, LimitViolation violation) {
-        static ResultRow notConverged(String contingencyId, String statusMessageKey) {
-            return new ResultRow(RowKind.NOT_CONVERGED, contingencyId, statusMessageKey, null);
+    record ResultRow(RowKind kind, String contingencyName, String statusMessageKey, LimitViolation violation) {
+        static ResultRow notConverged(String contingencyName, String statusMessageKey) {
+            return new ResultRow(RowKind.NOT_CONVERGED, contingencyName, statusMessageKey, null);
         }
 
-        static ResultRow violation(String contingencyId, LimitViolation violation) {
-            return new ResultRow(RowKind.VIOLATION, contingencyId, null, violation);
+        static ResultRow violation(String contingencyName, LimitViolation violation) {
+            return new ResultRow(RowKind.VIOLATION, contingencyName, null, violation);
         }
 
         String contingencyLabel() {
-            return contingencyId == null ? Messages.get("securityAnalysisResults.preContingency") : contingencyId;
+            return contingencyName == null ? Messages.get("securityAnalysisResults.preContingency") : contingencyName;
         }
     }
 
@@ -114,8 +113,7 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
         contingencyColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().contingencyLabel()));
 
         configureStatusColumn();
-        configureSubjectIdColumn();
-        TableColumnSupport.configureNullableColumn(subjectNameColumn, row -> row.violation() == null ? null : row.violation().getSubjectName());
+        configureSubjectColumn();
         TableColumnSupport.configureNullableColumn(limitTypeColumn, row -> row.violation() == null ? null : row.violation().getLimitType());
         TableColumnSupport.configureNullableColumn(sideColumn, row -> row.violation() == null ? null : row.violation().getSide());
         TableColumnSupport.configureNullableDoubleColumn(valueColumn, row -> row.violation() == null ? null : row.violation().getValue());
@@ -154,20 +152,25 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
         }
     }
 
-    private void configureSubjectIdColumn() {
-        subjectIdColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        subjectIdColumn.setCellFactory(col -> new TableCell<>() {
+    private void configureSubjectColumn() {
+        subjectColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
+        subjectColumn.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(ResultRow row, boolean empty) {
                 super.updateItem(row, empty);
-                setGraphic(empty || row == null || row.violation() == null ? null : subjectIdNode(row.violation().getSubjectId()));
+                setGraphic(empty || row == null || row.violation() == null ? null : subjectNode(row.violation()));
             }
         });
     }
 
-    private Node subjectIdNode(String subjectId) {
+    private Node subjectNode(LimitViolation violation) {
         Network network = mainModel.getNetwork();
-        Identifiable<?> identifiable = network == null ? null : network.getNetwork().getIdentifiable(subjectId);
+        Identifiable<?> identifiable = network == null ? null : network.getNetwork().getIdentifiable(violation.getSubjectId());
+        // TODO: improve in powsybl-open-loadflow - LimitViolationManager builds its LimitViolations without a
+        // subjectName, so the name is recovered from the current network instead, falling back to subjectName then
+        // subjectId when the subject is gone from the network (or isn't an identifiable, e.g. a voltage angle limit).
+        String subjectName = identifiable != null ? identifiable.getNameOrId()
+                : Objects.requireNonNullElse(violation.getSubjectName(), violation.getSubjectId());
         Container<?> container = null;
         if (identifiable != null) {
             try {
@@ -177,9 +180,9 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
             }
         }
         if (container == null) {
-            return new Label(subjectId);
+            return new Label(subjectName);
         }
-        Hyperlink link = new Hyperlink(subjectId);
+        Hyperlink link = new Hyperlink(subjectName);
         link.getStyleClass().add("container-link");
         Container<?> target = container;
         link.setOnAction(event -> mainModel.addNavigationEvent(
@@ -197,10 +200,10 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
     private void updateResults() {
         Network network = mainModel.getNetwork();
         SecurityAnalysisResult result = network == null ? null : mainModel.getSecurityAnalysisResult(network);
-        resultsData.setAll(result == null ? List.of() : buildRows(result));
+        resultsData.setAll(result == null ? List.of() : buildRows(result, network));
     }
 
-    private static List<ResultRow> buildRows(SecurityAnalysisResult result) {
+    private static List<ResultRow> buildRows(SecurityAnalysisResult result, Network network) {
         List<ResultRow> rows = new ArrayList<>();
         PreContingencyResult preContingencyResult = result.getPreContingencyResult();
         if (preContingencyResult.getStatus() != LoadFlowResult.ComponentResult.Status.CONVERGED) {
@@ -211,12 +214,12 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
             rows.add(ResultRow.violation(null, violation));
         }
         for (PostContingencyResult postContingencyResult : result.getPostContingencyResults()) {
-            String contingencyId = postContingencyResult.getContingency().getId();
+            String contingencyName = ContingencyNames.displayName(postContingencyResult.getContingency(), network);
             if (postContingencyResult.getStatus() != PostContingencyComputationStatus.CONVERGED) {
-                rows.add(ResultRow.notConverged(contingencyId, postContingencyStatusMessageKey(postContingencyResult.getStatus())));
+                rows.add(ResultRow.notConverged(contingencyName, postContingencyStatusMessageKey(postContingencyResult.getStatus())));
             } else {
                 for (LimitViolation violation : postContingencyResult.getLimitViolationsResult().getLimitViolations()) {
-                    rows.add(ResultRow.violation(contingencyId, violation));
+                    rows.add(ResultRow.violation(contingencyName, violation));
                 }
             }
         }

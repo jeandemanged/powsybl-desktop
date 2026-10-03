@@ -87,41 +87,6 @@ class ContingenciesControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
-    void elementsSummaryShowsNamesAndFallsBackToIdWhenMissing() {
-        Line line = network.getLineStream().findFirst().orElseThrow();
-        line.setName("Named line");
-
-        Contingency contingency = Contingency.builder("c").addLine(line.getId()).addLine("does-not-exist").build();
-
-        assertEquals("LINE:Named line, LINE:does-not-exist", ContingenciesController.elementsSummary(contingency, network));
-    }
-
-    @Test
-    void criterionContingencyDisplaysEquipmentNameAndFallsBackToIdOnceRemoved() {
-        Line line = network.getLineStream().findFirst().orElseThrow();
-        line.setName("Named line");
-        Contingency contingency = new LineCriterionContingencyList("all-lines", null, null, List.of(), null)
-                .getContingencies(network).stream()
-                .filter(c -> c.getId().equals(line.getId()))
-                .findFirst().orElseThrow();
-
-        assertEquals("Named line", ContingenciesController.displayName(contingency, network));
-
-        String lineId = line.getId();
-        line.remove();
-        assertEquals(lineId, ContingenciesController.displayName(contingency, network));
-    }
-
-    @Test
-    void explicitContingencyDisplaysOwnNameOrId() {
-        Line line = network.getLineStream().findFirst().orElseThrow();
-        line.setName("Named line");
-
-        assertEquals("c", ContingenciesController.displayName(new Contingency("c", Contingency.line(line.getId()).getElements()), network));
-        assertEquals("My contingency", ContingenciesController.displayName(new Contingency("c", "My contingency", Contingency.line(line.getId()).getElements()), network));
-    }
-
-    @Test
     void removingASubListRecomputesTheTable() {
         interact(() -> mainModel.getContingencyLists(network).add(
                 new DefaultContingencyList("explicit", List.of(Contingency.line("does-not-exist")))));
