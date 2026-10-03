@@ -20,7 +20,10 @@ import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.ListView;
 import javafx.stage.Stage;
+import org.controlsfx.control.CheckComboBox;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -28,6 +31,7 @@ import java.io.IOException;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -61,17 +65,17 @@ class ContingenciesControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
-    void aggregatesContingenciesAcrossAllSubLists() {
+    void aggregatesContingenciesAcrossAllSubListsWithoutDuplicates() {
         Line line = network.getLineStream().findFirst().orElseThrow();
 
         interact(() -> {
             mainModel.getContingencyLists(network).add(
                     new LineCriterionContingencyList("all-lines", null, null, List.of(), null));
             mainModel.getContingencyLists(network).add(
-                    new DefaultContingencyList("explicit", List.of(Contingency.line(line.getId()))));
+                    new DefaultContingencyList("explicit", List.of(Contingency.line(line.getId()), Contingency.line("other"))));
         });
 
-        // one Contingency per network line from the criterion list, plus the one explicit entry
+        // one Contingency per network line from the criterion list, plus the explicit entry that isn't one of them
         assertEquals(network.getLineCount() + 1, controller.contingenciesTableView.getItems().size());
     }
 
@@ -94,5 +98,44 @@ class ContingenciesControllerTest extends AbstractHeadlessApplicationTest {
 
         interact(() -> mainModel.getContingencyLists(network).clear());
         assertTrue(controller.contingenciesTableView.getItems().isEmpty());
+    }
+
+    @Test
+    void editedCriterionListStaysSelectedAndCanBeRemoved() {
+        ListView<ContingencyList> listView = lookup("#contingencyListsListView").query();
+        interact(() -> {
+            ContingencyList created = ContingencyListKind.LINE_CRITERION.createDefault("");
+            mainModel.getContingencyLists(network).add(created);
+            listView.getSelectionModel().select(created);
+        });
+
+        CheckComboBox<?> countries = lookup(node -> node instanceof CheckComboBox).query();
+        interact(() -> countries.getCheckModel().check(0));
+        assertSame(mainModel.getContingencyLists(network).get(0), listView.getSelectionModel().getSelectedItem());
+
+        Button removeButton = lookup("#removeButton").query();
+        interact(removeButton::fire);
+        assertTrue(mainModel.getContingencyLists(network).isEmpty());
+    }
+
+    @Test
+    void removingAListNextToAnEditedCriterionListKeepsTheOtherIntact() {
+        ListView<ContingencyList> listView = lookup("#contingencyListsListView").query();
+        interact(() -> {
+            mainModel.getContingencyLists(network).add(ContingencyListKind.LINE_CRITERION.createDefault(""));
+            mainModel.getContingencyLists(network).add(ContingencyListKind.LINE_CRITERION.createDefault(""));
+            listView.getSelectionModel().select(1);
+        });
+        CheckComboBox<?> countries = lookup(node -> node instanceof CheckComboBox).query();
+        interact(() -> countries.getCheckModel().check(0));
+        ContingencyList edited = mainModel.getContingencyLists(network).get(1);
+
+        // removing the first list re-selects the edited one, whose form then gets rebuilt mid-removal
+        interact(() -> listView.getSelectionModel().select(0));
+        Button removeButton = lookup("#removeButton").query();
+        interact(removeButton::fire);
+
+        assertEquals(List.of(edited), mainModel.getContingencyLists(network));
+        assertSame(edited, listView.getSelectionModel().getSelectedItem());
     }
 }

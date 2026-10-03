@@ -12,7 +12,12 @@ import com.powsybl.contingency.ContingencyElement;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -49,5 +54,34 @@ public final class ContingencyNames {
                     return element.getType() + ":" + (identifiable == null ? element.getId() : identifiable.getNameOrId());
                 })
                 .collect(Collectors.joining(", "));
+    }
+
+    // Enabled lists are independent of each other, so the same contingency can come out of several of them (e.g. a
+    // line both in an explicit list and matched by a criterion list), and two lists can also reuse an id for different
+    // elements - security analysis results are keyed by contingency id, so ids have to be unique. Elements are
+    // compared as a set since their order doesn't change the contingency; generated ids skip any id already in use.
+    public static List<Contingency> deduplicate(List<Contingency> contingencies) {
+        Set<String> usedIds = contingencies.stream().map(Contingency::getId).collect(Collectors.toCollection(HashSet::new));
+        Map<String, List<Set<ContingencyElement>>> elementSetsById = new HashMap<>();
+        List<Contingency> unique = new ArrayList<>();
+        for (Contingency contingency : contingencies) {
+            Set<ContingencyElement> elements = new HashSet<>(contingency.getElements());
+            List<Set<ContingencyElement>> elementSets = elementSetsById.computeIfAbsent(contingency.getId(), id -> new ArrayList<>());
+            if (elementSets.contains(elements)) {
+                continue;
+            }
+            elementSets.add(elements);
+            if (elementSets.size() == 1) {
+                unique.add(contingency);
+            } else {
+                int suffix = elementSets.size() - 1;
+                String id = contingency.getId() + " (" + suffix + ")";
+                while (!usedIds.add(id)) {
+                    id = contingency.getId() + " (" + ++suffix + ")";
+                }
+                unique.add(new Contingency(id, contingency.getName().orElse(null), contingency.getElements()));
+            }
+        }
+        return unique;
     }
 }

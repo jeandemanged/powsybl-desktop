@@ -192,10 +192,10 @@ public class ContingenciesController extends AbstractDisposableController {
             instantiatedTitleLabel.setText(Messages.get("contingencies.instantiated.title"));
             return;
         }
-        List<Contingency> contingencies = mainModel.getContingencyLists(network).stream()
+        List<Contingency> contingencies = ContingencyNames.deduplicate(mainModel.getContingencyLists(network).stream()
                 .filter(list -> enabledProperty(list).get())
                 .flatMap(this::contingenciesOf)
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
         validContingencyIds = ContingencyList.getValidContingencies(contingencies, network).stream()
                 .map(Contingency::getId)
                 .collect(Collectors.toSet());
@@ -267,6 +267,8 @@ public class ContingenciesController extends AbstractDisposableController {
                 applyingReplace = true;
                 try {
                     lists.set(index, replacement);
+                    // a replace change can clear the ListView selection, which would leave Remove disabled
+                    contingencyListsListView.getSelectionModel().select(index);
                 } finally {
                     applyingReplace = false;
                 }

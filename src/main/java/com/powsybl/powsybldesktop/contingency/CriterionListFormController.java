@@ -153,7 +153,6 @@ public class CriterionListFormController {
 
     public void setContingencyList(ContingencyListKind kind, AbstractEquipmentCriterionContingencyList list, Consumer<ContingencyList> onReplace) {
         this.kind = kind;
-        this.onReplace = onReplace;
         nameField.setText(list.getName());
         buildCriteriaControls();
         populateFromList(list);
@@ -167,6 +166,10 @@ public class CriterionListFormController {
             identifiableTypeChoiceBox.getSelectionModel().select(list.getIdentifiableType());
             identifiableTypeChoiceBox.valueProperty().addListener((obs, oldValue, newValue) -> commit());
         }
+        // Populating the country/voltage controls fires their change listeners - committing then would push a
+        // spurious replacement, possibly while the lists are still mid-change (the form is rebuilt from the
+        // selection change triggered by a removal), so commit() stays a no-op until the form is fully loaded.
+        this.onReplace = onReplace;
     }
 
     private void buildCriteriaControls() {

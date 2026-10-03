@@ -17,6 +17,7 @@ import com.powsybl.loadflow.LoadFlow;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.loadflow.LoadFlowRunParameters;
 import com.powsybl.powsybldesktop.contingency.ContingenciesController;
+import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.loadflow.LoadFlowConvergence;
 import com.powsybl.powsybldesktop.loadflow.LoadFlowResultAndReport;
 import com.powsybl.powsybldesktop.logs.LogsViewController;
@@ -385,7 +386,7 @@ public class MainController extends AbstractDisposableController {
                                 .withTimestamp()
                                 .build();
 
-                        List<Contingency> contingencies = contingencyList.getContingencies(network);
+                        List<Contingency> contingencies = ContingencyNames.deduplicate(contingencyList.getContingencies(network));
                         SecurityAnalysisRunParameters runParameters = SecurityAnalysisRunParameters.getDefault()
                                 .setSecurityAnalysisParameters(mainModel.securityAnalysisParametersProperty().getValue())
                                 .setReportNode(reportNode);
