@@ -419,13 +419,8 @@ public class MainController extends AbstractDisposableController {
             mainModel.setSecurityAnalysisResult(network, securityAnalysisResultAndReport.securityAnalysisResult());
             mainModel.setUpdate();
             mainModel.addReport(securityAnalysisResultAndReport.reportNode());
-
-            NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", e ->
-                    mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.REPORTS,
-                            ReportNavigationState.create(securityAnalysisResultAndReport.reportNode()))));
-
             mainModel.replaceNotification(runningNotification,
-                    Notification.createSuccess(runningNotification.startTimestamp(), "main.securityAnalysis.completed", viewReportAction));
+                    securityAnalysisOutcome(runningNotification.startTimestamp(), securityAnalysisResultAndReport));
         });
 
         securityAnalysisService.setOnFailed(event -> {
@@ -446,6 +441,20 @@ public class MainController extends AbstractDisposableController {
         });
         securityAnalysisServices.put(network, securityAnalysisService);
         securityAnalysisService.start();
+    }
+
+    // completing without exception doesn't mean the base case converged - without it, no contingency was simulated
+    private Notification securityAnalysisOutcome(Instant start, SecurityAnalysisResultAndReport securityAnalysisResultAndReport) {
+        NotificationAction viewResultsAction = new NotificationAction("main.securityAnalysis.viewResults", e ->
+                mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS)));
+        NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", e ->
+                mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.REPORTS,
+                        ReportNavigationState.create(securityAnalysisResultAndReport.reportNode()))));
+        if (securityAnalysisResultAndReport.securityAnalysisResult().getPreContingencyResult().getStatus()
+                != LoadFlowResult.ComponentResult.Status.CONVERGED) {
+            return Notification.createError(start, "main.securityAnalysis.preContingencyNotConverged", viewResultsAction, viewReportAction);
+        }
+        return Notification.createSuccess(start, "main.securityAnalysis.completed", viewResultsAction, viewReportAction);
     }
 
     // Builds the search index for a newly-selected network once, in the background - a network already cached
