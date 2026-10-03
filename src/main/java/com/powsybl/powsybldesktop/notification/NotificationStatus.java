@@ -13,6 +13,7 @@ package com.powsybl.powsybldesktop.notification;
 public enum NotificationStatus {
     RUNNING,
     SUCCESS,
+    PARTIAL_SUCCESS,
     ERROR,
     CANCELLED
 }

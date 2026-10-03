@@ -192,6 +192,10 @@
     -fx-background-color: green;
 }
 
+.notification-status-partial_success {
+    -fx-background-color: linear-gradient(from 0% 0% to 100% 100%, green 50%, red 50%);
+}
+
 .notification-status-error {
     -fx-background-color: red;
 }

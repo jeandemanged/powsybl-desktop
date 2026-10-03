@@ -18,7 +18,7 @@ import java.util.List;
  * a string resolved once at creation, so a notification already in {@code MainModel}'s history
  * re-renders in the current UI language instead of staying frozen in whichever language was active
  * when it was created. {@code startTimestamp} is carried over from the running notification into its
- * outcome (see {@link #createSuccess}/{@link #createError}/{@link #createCancelled}) so
+ * outcome (see {@link #createSuccess}/{@link #createPartialSuccess}/{@link #createError}/{@link #createCancelled}) so
  * {@link #duration()} reports how long the operation actually took. The message template gets the elapsed time
  * as {@code {0}}, followed by {@code messageArgs} as {@code {1}}, {@code {2}}...
  *
@@ -33,6 +33,10 @@ public record Notification(Instant startTimestamp, Instant timestamp, Notificati
 
     public static Notification createSuccess(Instant startTimestamp, String messageKey, NotificationAction... actions) {
         return new Notification(startTimestamp, Instant.now(), NotificationStatus.SUCCESS, messageKey, List.of(), List.of(actions), null);
+    }
+
+    public static Notification createPartialSuccess(Instant startTimestamp, String messageKey, NotificationAction... actions) {
+        return new Notification(startTimestamp, Instant.now(), NotificationStatus.PARTIAL_SUCCESS, messageKey, List.of(), List.of(actions), null);
     }
 
     public static Notification createError(Instant startTimestamp, String messageKey, NotificationAction... actions) {

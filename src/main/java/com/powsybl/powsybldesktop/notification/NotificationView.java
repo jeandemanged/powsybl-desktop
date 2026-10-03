@@ -46,7 +46,7 @@ public class NotificationView extends VBox {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM)
             .withZone(ZoneId.systemDefault());
     private static final List<String> STATUS_STYLE_CLASSES = List.of(
-            "notification-status-success", "notification-status-error", "notification-status-cancelled");
+            "notification-status-success", "notification-status-partial_success", "notification-status-error", "notification-status-cancelled");
 
     private final Region statusMarker = new Region();
     private final Arc statusArc = new Arc(5, 5, 5, 5, 90, 270);

@@ -17,6 +17,7 @@ import com.powsybl.loadflow.LoadFlow;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.loadflow.LoadFlowRunParameters;
 import com.powsybl.powsybldesktop.contingency.ContingenciesController;
+import com.powsybl.powsybldesktop.loadflow.LoadFlowConvergence;
 import com.powsybl.powsybldesktop.loadflow.LoadFlowResultAndReport;
 import com.powsybl.powsybldesktop.logs.LogsViewController;
 import com.powsybl.powsybldesktop.map.MapController;
@@ -315,13 +316,8 @@ public class MainController extends AbstractDisposableController {
             mainModel.setLoadFlowResult(network, loadFlowResultAndReport.loadFlowResult());
             mainModel.setUpdate();
             mainModel.addReport(loadFlowResultAndReport.reportNode());
-
-            NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", e ->
-                    mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.REPORTS,
-                            ReportNavigationState.create(loadFlowResultAndReport.reportNode()))));
-
             mainModel.replaceNotification(runningNotification,
-                    Notification.createSuccess(runningNotification.startTimestamp(), "main.loadFlow.completed", viewReportAction));
+                    loadFlowOutcome(runningNotification.startTimestamp(), loadFlowResultAndReport));
         });
 
         loadFlowService.setOnFailed(event -> {
@@ -342,6 +338,20 @@ public class MainController extends AbstractDisposableController {
         });
         loadFlowServices.put(network, loadFlowService);
         loadFlowService.start();
+    }
+
+    // completing without exception doesn't mean converged - the outcome reflects the components' convergence
+    private Notification loadFlowOutcome(Instant start, LoadFlowResultAndReport loadFlowResultAndReport) {
+        NotificationAction viewResultsAction = new NotificationAction("main.loadFlow.viewResults", e ->
+                mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_COMPONENTS)));
+        NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", e ->
+                mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.REPORTS,
+                        ReportNavigationState.create(loadFlowResultAndReport.reportNode()))));
+        return switch (LoadFlowConvergence.of(loadFlowResultAndReport.loadFlowResult())) {
+            case CONVERGED -> Notification.createSuccess(start, "main.loadFlow.completed", viewResultsAction, viewReportAction);
+            case PARTIALLY_CONVERGED -> Notification.createPartialSuccess(start, "main.loadFlow.partiallyConverged", viewResultsAction, viewReportAction);
+            case NOT_CONVERGED -> Notification.createError(start, "main.loadFlow.notConverged", viewResultsAction, viewReportAction);
+        };
     }
 
     @FXML
