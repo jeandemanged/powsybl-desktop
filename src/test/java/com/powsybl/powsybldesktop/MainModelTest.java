@@ -251,7 +251,7 @@ class MainModelTest {
         model.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORKS, NetworkNavigationState.create(subnetwork1)));
         model.setNetwork(subnetwork1);
         ContingencyList list = new DefaultContingencyList("list", List.of());
-        model.getContingencyLists(subnetwork1).add(list);
+        model.getContingencyLists(merged).add(list);
 
         model.detachSubnetworks(List.of(subnetwork1));
 
@@ -260,7 +260,18 @@ class MainModelTest {
         assertNotSame(subnetwork1, detached);
         assertEquals(List.of(merged, detached), model.getNetworks());
         assertTrue(model.getNavigationPast().isEmpty());
-        assertEquals(List.of(list), model.getContingencyLists(detached));
+        assertEquals(List.of(list), model.getContingencyLists(merged), "lists stay with the root network they were edited for");
+        assertTrue(model.getContingencyLists(detached).isEmpty());
+    }
+
+    @Test
+    void contingencyListsAreKeyedByRootNetwork() {
+        Network merged = Network.merge("MERGED",
+                NetworkFactory.findDefault().createNetwork("N1", "test"),
+                NetworkFactory.findDefault().createNetwork("N2", "test"));
+
+        assertSame(model.getContingencyLists(merged), model.getContingencyLists(merged.getSubnetwork("N1")));
+        assertSame(model.getContingencyLists(merged), model.getContingencyLists(merged.getSubnetwork("N2")));
     }
 
     @Test

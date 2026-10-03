@@ -164,14 +164,10 @@ public class MainModel {
         navigationFuture.removeIf(event -> isRelatedToNetwork(event, network));
         loadFlowResults.remove(network);
         securityAnalysisResults.remove(network);
-        // keyed by the selected network, which can be a subnetwork
-        contingencyLists.entrySet().removeIf(entry -> {
-            if (isPartOf(entry.getKey(), network)) {
-                entry.getValue().forEach(contingencyListEnabled::remove);
-                return true;
-            }
-            return false;
-        });
+        ObservableList<ContingencyList> lists = contingencyLists.remove(network);
+        if (lists != null) {
+            lists.forEach(contingencyListEnabled::remove);
+        }
         // the Map view can show a subnetwork too, whose view goes with its root network
         mapViews.keySet().removeIf(n -> n.getNetwork() == network.getNetwork());
         removeSearchIndexes(network);
@@ -234,13 +230,9 @@ public class MainModel {
         cancelServices(searchIndexServices, rootNetwork);
         removeSearchIndexes(rootNetwork);
         mapViews.keySet().removeIf(n -> isPartOf(n, rootNetwork));
+        // contingency lists stay with the root network they were edited for
         for (Network subnetwork : subnetworks) {
-            ObservableList<ContingencyList> lists = contingencyLists.remove(subnetwork);
             Network detached = subnetwork.detach();
-            if (lists != null) {
-                // equipment ids are kept by detach(), so the lists still apply to the detached network
-                contingencyLists.put(detached, lists);
-            }
             networks.add(detached);
             if (subnetwork == subnetworks.getFirst()) {
                 // always a new selection, so that the network listeners run again (e.g. rebuilding a search index)
@@ -315,8 +307,10 @@ public class MainModel {
         return securityAnalysisResults.get(network.getNetwork());
     }
 
+    // Keyed by root network only, like the security analysis results: contingency lists are edited for the root
+    // network the security analysis runs on, never for a subnetwork
     public ObservableList<ContingencyList> getContingencyLists(Network network) {
-        return contingencyLists.computeIfAbsent(network, n -> FXCollections.observableArrayList());
+        return contingencyLists.computeIfAbsent(network.getNetwork(), n -> FXCollections.observableArrayList());
     }
 
     public BooleanProperty contingencyListEnabledProperty(ContingencyList list) {

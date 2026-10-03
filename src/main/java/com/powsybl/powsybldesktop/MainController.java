@@ -362,9 +362,7 @@ public class MainController extends AbstractDisposableController {
         if (mainModel.getSecurityAnalysisServices().containsKey(network)) {
             return;
         }
-        // contingency lists are looked up against whichever network they were defined on (possibly a
-        // subnetwork), but resolved/run against the root - equipment ids are unique across the whole tree
-        List<ContingencyList> enabledContingencyLists = mainModel.getContingencyLists(selectedNetwork).stream()
+        List<ContingencyList> enabledContingencyLists = mainModel.getContingencyLists(network).stream()
                 .filter(list -> mainModel.contingencyListEnabledProperty(list).get())
                 .collect(Collectors.toList());
         ContingencyList contingencyList = new ListOfContingencyLists(network.getNameOrId(), enabledContingencyLists);

@@ -56,7 +56,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Two-pane view: a left list of the current network's {@link ContingencyList} sub-lists (editable via an inline
+ * Two-pane view: a left list of the current root network's {@link ContingencyList} sub-lists (editable via an inline
  * form beneath it) and a right table of the {@link Contingency} instances that {@code ListOfContingencyLists}
  * aggregate resolves to, with a validity indicator computed via {@link ContingencyList#getValidContingencies}.
  * <p>
@@ -168,7 +168,12 @@ public class ContingenciesController extends AbstractDisposableController {
         refreshForNetwork(mainModel.getNetwork());
     }
 
-    private void refreshForNetwork(Network newNetwork) {
+    private void refreshForNetwork(Network selectedNetwork) {
+        // contingency lists belong to the root network (the one a security analysis runs on), never a subnetwork
+        Network newNetwork = selectedNetwork == null ? null : selectedNetwork.getNetwork();
+        if (newNetwork != null && newNetwork == this.network) {
+            return;
+        }
         this.network = newNetwork;
         boolean hasNetwork = newNetwork != null;
         addMenuButton.setDisable(!hasNetwork);
