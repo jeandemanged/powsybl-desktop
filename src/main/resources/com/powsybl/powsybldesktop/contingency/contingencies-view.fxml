@@ -74,7 +74,7 @@
                         <Label fx:id="instantiatedTitleLabel" text="%contingencies.instantiated.title"/>
                         <TableView fx:id="contingenciesTableView" VBox.vgrow="ALWAYS">
                             <columns>
-                                <TableColumn fx:id="idColumn" text="%contingencies.column.id"/>
+                                <TableColumn fx:id="nameColumn" text="%contingencies.column.name"/>
                                 <TableColumn fx:id="elementsColumn" text="%contingencies.column.elements"/>
                                 <TableColumn fx:id="validColumn" text="%contingencies.column.valid"/>
                             </columns>

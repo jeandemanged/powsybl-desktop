@@ -13,6 +13,7 @@ import com.powsybl.contingency.ContingencyElement;
 import com.powsybl.contingency.ContingencyElementType;
 import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.contingency.list.DefaultContingencyList;
+import com.powsybl.iidm.network.Network;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -68,6 +69,7 @@ public class DefaultContingencyListFormController {
     private final ObservableList<Contingency> contingencies = FXCollections.observableArrayList();
     private final ObservableList<ContingencyElementRow> elementRows = FXCollections.observableArrayList();
 
+    private Network network;
     private Consumer<ContingencyList> onReplace;
     // Suppresses the master table's selection listener (bindElements) from resetting elementRows when the
     // selection-index change it's reacting to is this form's own in-place rebuild of the selected row, not a
@@ -80,7 +82,7 @@ public class DefaultContingencyListFormController {
         idColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getId()));
         idColumn.setCellFactory(TextFieldTableCell.forTableColumn());
         idColumn.setOnEditCommit(event -> renameContingency(event.getRowValue(), event.getNewValue()));
-        elementsColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(elementsSummary(cellData.getValue())));
+        elementsColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(ContingenciesController.elementsSummary(cellData.getValue(), network)));
         removeContingencyButton.disableProperty().bind(contingenciesTableView.getSelectionModel().selectedItemProperty().isNull());
         contingenciesTableView.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> bindElements(newValue));
 
@@ -107,7 +109,8 @@ public class DefaultContingencyListFormController {
         });
     }
 
-    public void setContingencyList(DefaultContingencyList list, Consumer<ContingencyList> onReplace) {
+    public void setContingencyList(DefaultContingencyList list, Network network, Consumer<ContingencyList> onReplace) {
+        this.network = network;
         this.onReplace = onReplace;
         nameField.setText(list.getName());
         contingencies.setAll(list.getContingencies());
@@ -129,7 +132,7 @@ public class DefaultContingencyListFormController {
         if (index < 0 || newId == null || newId.isBlank()) {
             return;
         }
-        Contingency rebuilt = new Contingency(newId, row.getElements());
+        Contingency rebuilt = new Contingency(newId, row.getName().orElse(null), row.getElements());
         applyingElementChange = true;
         try {
             contingencies.set(index, rebuilt);
@@ -151,7 +154,7 @@ public class DefaultContingencyListFormController {
         if (index < 0) {
             return;
         }
-        Contingency rebuilt = buildFromRows(selected.getId(), elementRows);
+        Contingency rebuilt = buildFromRows(selected, elementRows);
         applyingElementChange = true;
         try {
             contingencies.set(index, rebuilt);
@@ -212,14 +215,9 @@ public class DefaultContingencyListFormController {
         return candidate;
     }
 
-    private static String elementsSummary(Contingency contingency) {
-        return contingency.getElements().stream()
-                .map(element -> element.getType() + ":" + element.getId())
-                .collect(Collectors.joining(", "));
-    }
-
-    private static Contingency buildFromRows(String id, List<ContingencyElementRow> rows) {
-        ContingencyBuilder builder = Contingency.builder(id);
+    private static Contingency buildFromRows(Contingency original, List<ContingencyElementRow> rows) {
+        ContingencyBuilder builder = Contingency.builder(original.getId());
+        original.getName().ifPresent(builder::addName);
         for (ContingencyElementRow row : rows) {
             addToBuilder(builder, row.getType(), row.getId());
         }
