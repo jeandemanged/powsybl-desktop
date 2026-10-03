@@ -25,7 +25,7 @@ public class BusNavigationState extends NetworkNavigationState {
     }
 
     public static BusNavigationState create(Bus bus) {
-        return new BusNavigationState(bus.getNetwork(), bus);
+        return new BusNavigationState(bus.getParentNetwork(), bus);
     }
 
     public static BusNavigationState createNoBus(Network network) {

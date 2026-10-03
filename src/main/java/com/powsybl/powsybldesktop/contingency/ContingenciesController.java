@@ -7,6 +7,8 @@
  */
 package com.powsybl.powsybldesktop.contingency;
 
+import com.google.re2j.PatternSyntaxException;
+import com.powsybl.commons.PowsyblException;
 import com.powsybl.contingency.Contingency;
 import com.powsybl.contingency.list.AbstractEquipmentCriterionContingencyList;
 import com.powsybl.contingency.list.ContingencyList;
@@ -206,7 +208,8 @@ public class ContingenciesController extends AbstractDisposableController {
     private BooleanProperty enabledProperty(ContingencyList list) {
         BooleanProperty property = mainModel.contingencyListEnabledProperty(list);
         if (listenedEnabledLists.add(list)) {
-            property.addListener((obs, oldValue, newValue) -> refreshInstantiatedTable());
+            // the property is held by MainModel and outlives this view
+            listenerManager.listen(property, (obs, oldValue, newValue) -> refreshInstantiatedTable());
         }
         return property;
     }
@@ -217,9 +220,17 @@ public class ContingenciesController extends AbstractDisposableController {
     // lists can't produce an invalid Contingency by construction (built directly from matching network
     // equipment), so getContingencies(network) is used for those, and for any unsupported imported type.
     private Stream<Contingency> contingenciesOf(ContingencyList list) {
-        return list instanceof DefaultContingencyList defaultList
-                ? defaultList.getContingencies().stream()
-                : list.getContingencies(network).stream();
+        if (list instanceof DefaultContingencyList defaultList) {
+            return defaultList.getContingencies().stream();
+        }
+        try {
+            return list.getContingencies(network).stream();
+        } catch (PowsyblException | IllegalArgumentException | PatternSyntaxException e) {
+            // criteria are only evaluated here: an imported list the form would have rejected (see
+            // CriterionListFormController.checkEvaluable) is skipped rather than leaving the whole table stale
+            LOGGER.warn("Contingency list '{}' could not be evaluated: {}", list.getName(), e.toString());
+            return Stream.empty();
+        }
     }
 
     private void addContingencyList(ContingencyListKind kind) {

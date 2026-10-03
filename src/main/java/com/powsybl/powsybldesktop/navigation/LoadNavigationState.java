@@ -25,7 +25,7 @@ public class LoadNavigationState extends NetworkNavigationState {
     }
 
     public static LoadNavigationState create(Load load) {
-        return new LoadNavigationState(load.getNetwork(), load);
+        return new LoadNavigationState(load.getParentNetwork(), load);
     }
 
     public static LoadNavigationState createNoLoad(Network network) {

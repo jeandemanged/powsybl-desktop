@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop.parameters;
 
+import com.powsybl.commons.PowsyblException;
 import com.powsybl.openloadflow.sa.ContingencyActivePowerLossDistribution;
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
@@ -36,6 +37,7 @@ import javafx.scene.layout.StackPane;
 import javafx.stage.FileChooser;
 
 import java.io.File;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -71,6 +73,7 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
     private final List<Runnable> refreshers = new ArrayList<>();
     private boolean refreshing;
     private Runnable onChange = () -> { };
+    private BiConsumer<Path, RuntimeException> onImportFailed = (path, e) -> { };
 
     public void setSecurityAnalysisParametersProperty(ObjectProperty<SecurityAnalysisParameters> securityAnalysisParametersProperty) {
         this.securityAnalysisParametersProperty = Objects.requireNonNull(securityAnalysisParametersProperty);
@@ -80,6 +83,10 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
 
     public void setOnChange(Runnable onChange) {
         this.onChange = Objects.requireNonNull(onChange);
+    }
+
+    public void setOnImportFailed(BiConsumer<Path, RuntimeException> onImportFailed) {
+        this.onImportFailed = Objects.requireNonNull(onImportFailed);
     }
 
     private void refresh() {
@@ -348,7 +355,18 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
     // the imported parameters' own embedded LoadFlowParameters is immediately overridden by MainModel with the
     // app's single authoritative instance - see MainModel.syncSecurityAnalysisLoadFlowParameters()
     public void importFrom(Path path) {
-        securityAnalysisParametersProperty.setValue(JsonSecurityAnalysisParameters.read(path));
+        SecurityAnalysisParameters parameters;
+        try {
+            parameters = JsonSecurityAnalysisParameters.read(path);
+        } catch (PowsyblException | UncheckedIOException e) {
+            onImportFailed.accept(path, e);
+            return;
+        }
+        // same as DesktopParametersJson: the OLF-specific fields edit this extension in place
+        if (parameters.getExtension(OpenSecurityAnalysisParameters.class) == null) {
+            parameters.addExtension(OpenSecurityAnalysisParameters.class, new OpenSecurityAnalysisParameters());
+        }
+        securityAnalysisParametersProperty.setValue(parameters);
     }
 
     public void exportTo(Path path) {

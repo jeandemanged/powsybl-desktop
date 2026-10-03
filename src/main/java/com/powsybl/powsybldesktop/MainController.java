@@ -45,7 +45,6 @@ import com.powsybl.powsybldesktop.network.tables.VoltageLevelsController;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
 import com.powsybl.powsybldesktop.notification.NotificationOverlay;
-import com.powsybl.powsybldesktop.notification.NotificationStatus;
 import com.powsybl.powsybldesktop.notification.NotificationsController;
 import com.powsybl.powsybldesktop.parameters.ParametersController;
 import com.powsybl.powsybldesktop.report.ReportsController;
@@ -86,10 +85,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -124,12 +121,6 @@ public class MainController extends AbstractDisposableController {
     public ToggleButton notificationsButton;
 
     private final MainModel mainModel;
-
-    private final Map<Network, Service<LoadFlowResultAndReport>> loadFlowServices = new HashMap<>();
-
-    private final Map<Network, Service<SecurityAnalysisResultAndReport>> securityAnalysisServices = new HashMap<>();
-
-    private final Map<Network, Service<NetworkSearchIndex>> searchIndexServices = new HashMap<>();
 
     private DisposableController currentController;
 
@@ -251,6 +242,10 @@ public class MainController extends AbstractDisposableController {
         if (notificationsController != null) {
             notificationsController.dispose();
         }
+        // this overlay stops listening to notifications, so its cards would otherwise stay on screen forever
+        if (notificationOverlay != null) {
+            notificationOverlay.dispose();
+        }
         if (memoryStage != null) {
             memoryStage.close();
         }
@@ -270,7 +265,7 @@ public class MainController extends AbstractDisposableController {
         // whatever ties it to the rest of the merged network (e.g. a tie line straddling two subnetworks)
         Network network = selectedNetwork.getNetwork();
 
-        if (loadFlowServices.containsKey(network)) {
+        if (mainModel.getLoadFlowServices().containsKey(network)) {
             return;
         }
         Service<LoadFlowResultAndReport> loadFlowService = new Service<>() {
@@ -312,7 +307,7 @@ public class MainController extends AbstractDisposableController {
         mainModel.addNotification(runningNotification);
 
         loadFlowService.setOnSucceeded(event -> {
-            loadFlowServices.remove(network);
+            mainModel.getLoadFlowServices().remove(network);
             LoadFlowResultAndReport loadFlowResultAndReport = (LoadFlowResultAndReport) event.getSource().getValue();
             mainModel.setLoadFlowResult(network, loadFlowResultAndReport.loadFlowResult());
             mainModel.setUpdate();
@@ -322,7 +317,7 @@ public class MainController extends AbstractDisposableController {
         });
 
         loadFlowService.setOnFailed(event -> {
-            loadFlowServices.remove(network);
+            mainModel.getLoadFlowServices().remove(network);
             Throwable exception = event.getSource().getException();
             LOGGER.error(exception.toString(), exception);
 
@@ -333,11 +328,11 @@ public class MainController extends AbstractDisposableController {
                     Notification.createError(runningNotification.startTimestamp(), "main.loadFlow.failed", viewLogsAction));
         });
         loadFlowService.setOnCancelled(event -> {
-            loadFlowServices.remove(network);
+            mainModel.getLoadFlowServices().remove(network);
             mainModel.replaceNotification(runningNotification,
                     Notification.createCancelled(runningNotification.startTimestamp(), "main.loadFlow.cancelled"));
         });
-        loadFlowServices.put(network, loadFlowService);
+        mainModel.getLoadFlowServices().put(network, loadFlowService);
         loadFlowService.start();
     }
 
@@ -364,7 +359,7 @@ public class MainController extends AbstractDisposableController {
         // same rationale as onLoadFlow: never run on a subnetwork, only on its root
         Network network = selectedNetwork.getNetwork();
 
-        if (securityAnalysisServices.containsKey(network)) {
+        if (mainModel.getSecurityAnalysisServices().containsKey(network)) {
             return;
         }
         // contingency lists are looked up against whichever network they were defined on (possibly a
@@ -414,7 +409,7 @@ public class MainController extends AbstractDisposableController {
         mainModel.addNotification(runningNotification);
 
         securityAnalysisService.setOnSucceeded(event -> {
-            securityAnalysisServices.remove(network);
+            mainModel.getSecurityAnalysisServices().remove(network);
             SecurityAnalysisResultAndReport securityAnalysisResultAndReport = (SecurityAnalysisResultAndReport) event.getSource().getValue();
             mainModel.setSecurityAnalysisResult(network, securityAnalysisResultAndReport.securityAnalysisResult());
             mainModel.setUpdate();
@@ -424,7 +419,7 @@ public class MainController extends AbstractDisposableController {
         });
 
         securityAnalysisService.setOnFailed(event -> {
-            securityAnalysisServices.remove(network);
+            mainModel.getSecurityAnalysisServices().remove(network);
             Throwable exception = event.getSource().getException();
             LOGGER.error(exception.toString(), exception);
 
@@ -435,11 +430,11 @@ public class MainController extends AbstractDisposableController {
                     Notification.createError(runningNotification.startTimestamp(), "main.securityAnalysis.failed", viewLogsAction));
         });
         securityAnalysisService.setOnCancelled(event -> {
-            securityAnalysisServices.remove(network);
+            mainModel.getSecurityAnalysisServices().remove(network);
             mainModel.replaceNotification(runningNotification,
                     Notification.createCancelled(runningNotification.startTimestamp(), "main.securityAnalysis.cancelled"));
         });
-        securityAnalysisServices.put(network, securityAnalysisService);
+        mainModel.getSecurityAnalysisServices().put(network, securityAnalysisService);
         securityAnalysisService.start();
     }
 
@@ -458,10 +453,10 @@ public class MainController extends AbstractDisposableController {
     }
 
     // Builds the search index for a newly-selected network once, in the background - a network already cached
-    // (or already building) is left alone, and MainModel.setNetwork already reflects the new network's cached
-    // status before this runs, so SearchBoxController sees the right "Indexing..." state immediately.
+    // (or already building) is left alone. MainModel.setNetwork sets the cached status before notifying this
+    // listener, so the BUILDING state set here is not overwritten and SearchBoxController shows "Indexing...".
     private void ensureSearchIndex(Network network) {
-        if (network == null || mainModel.getSearchIndex(network) != null || searchIndexServices.containsKey(network)) {
+        if (network == null || mainModel.getSearchIndex(network) != null || mainModel.getSearchIndexServices().containsKey(network)) {
             return;
         }
         Instant startTimestamp = Instant.now();
@@ -478,9 +473,10 @@ public class MainController extends AbstractDisposableController {
             }
         };
         searchIndexService.setOnSucceeded(event -> {
-            searchIndexServices.remove(network);
+            mainModel.getSearchIndexServices().remove(network);
             NetworkSearchIndex index = (NetworkSearchIndex) event.getSource().getValue();
-            if (mainModel.getNetworks().contains(network)) {
+            // the network can be a subnetwork, while getNetworks() only holds root networks
+            if (mainModel.getNetworks().contains(network.getNetwork())) {
                 mainModel.setSearchIndex(network, index);
             } else {
                 // the network was removed while its index was still building - don't resurrect a cache entry for it
@@ -488,7 +484,7 @@ public class MainController extends AbstractDisposableController {
             }
         });
         searchIndexService.setOnFailed(event -> {
-            searchIndexServices.remove(network);
+            mainModel.getSearchIndexServices().remove(network);
             Throwable exception = event.getSource().getException();
             LOGGER.error(exception.toString(), exception);
             if (network.equals(mainModel.getNetwork())) {
@@ -498,7 +494,9 @@ public class MainController extends AbstractDisposableController {
                     mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.LOGS)));
             mainModel.addNotification(Notification.createError(startTimestamp, "main.search.indexFailed", viewLogsAction));
         });
-        searchIndexServices.put(network, searchIndexService);
+        // cancelled by MainModel.removeNetwork
+        searchIndexService.setOnCancelled(event -> mainModel.getSearchIndexServices().remove(network));
+        mainModel.getSearchIndexServices().put(network, searchIndexService);
         searchIndexService.start();
     }
 
@@ -588,9 +586,9 @@ public class MainController extends AbstractDisposableController {
                         notificationOverlay().replace(previous, current);
                     }
                 } else if (change.wasAdded()) {
-                    change.getAddedSubList().stream()
-                            .filter(notification -> notification.status() == NotificationStatus.RUNNING)
-                            .forEach(notification -> notificationOverlay().show(notification));
+                    // besides RUNNING ones, errors are added directly, and so is the outcome of a run whose
+                    // RUNNING notification was dismissed (see MainModel.replaceNotification)
+                    change.getAddedSubList().forEach(notification -> notificationOverlay().show(notification));
                 } else if (change.wasRemoved() && notificationOverlay != null) {
                     change.getRemoved().forEach(notificationOverlay::remove);
                 }
@@ -653,7 +651,14 @@ public class MainController extends AbstractDisposableController {
     private void onNavigationEvent(NavigationEvent newValue) {
         Objects.requireNonNull(newValue);
         if (newValue.state() != null && newValue.state().getSelectedNetwork() != null) {
-            this.mainModel.setNetwork(newValue.state().getSelectedNetwork());
+            Network target = newValue.state().getSelectedNetwork();
+            // equipment states hold the equipment's own (sub)network: when its root network is selected, which
+            // shows that equipment too, keep it rather than narrowing the view down to the subnetwork
+            boolean rootSelected = !(newValue.state() instanceof NetworkNavigationState)
+                    && mainModel.getNetwork() == target.getNetwork();
+            if (!rootSelected) {
+                this.mainModel.setNetwork(target);
+            }
         }
         if (newValue.navigationType() == NavigationType.LOGS) {
             ensureController(LogsViewController.class, "logs/logs-view.fxml", c -> c.setLogsModel(mainModel.getLogsModel()));

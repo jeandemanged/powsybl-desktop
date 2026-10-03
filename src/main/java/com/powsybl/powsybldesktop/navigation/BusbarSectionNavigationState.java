@@ -25,7 +25,7 @@ public class BusbarSectionNavigationState extends NetworkNavigationState {
     }
 
     public static BusbarSectionNavigationState create(BusbarSection busbarSection) {
-        return new BusbarSectionNavigationState(busbarSection.getNetwork(), busbarSection);
+        return new BusbarSectionNavigationState(busbarSection.getParentNetwork(), busbarSection);
     }
 
     public static BusbarSectionNavigationState createNoBusbarSection(Network network) {

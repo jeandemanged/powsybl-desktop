@@ -25,7 +25,7 @@ public class VoltageLevelNavigationState extends NetworkNavigationState {
     }
 
     public static VoltageLevelNavigationState create(VoltageLevel voltageLevel) {
-        return new VoltageLevelNavigationState(voltageLevel.getNetwork(), voltageLevel);
+        return new VoltageLevelNavigationState(voltageLevel.getParentNetwork(), voltageLevel);
     }
 
     public static VoltageLevelNavigationState createNoVoltageLevel(Network network) {

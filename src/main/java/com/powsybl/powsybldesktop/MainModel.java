@@ -38,6 +38,7 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.ObservableSet;
+import javafx.concurrent.Service;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -46,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -94,6 +96,11 @@ public class MainModel {
     private final Map<Network, NetworkSearchIndex> searchIndexes = new HashMap<>();
     private final Map<Network, ObservableList<ContingencyList>> contingencyLists = new HashMap<>();
     private final Map<Network, MapView> mapViews = new HashMap<>();
+    // Running background operations, kept here rather than in MainController so that a language reload, which
+    // replaces MainController, doesn't forget them and allow a second concurrent run on the same network
+    private final Map<Network, Service<?>> loadFlowServices = new HashMap<>();
+    private final Map<Network, Service<?>> securityAnalysisServices = new HashMap<>();
+    private final Map<Network, Service<?>> searchIndexServices = new HashMap<>();
     // Whether a sublist is included when contingencies are resolved for a security analysis run, keyed by
     // identity since editing a sublist's form replaces it with a brand-new instance (see ContingenciesController's
     // showForm/onReplace) rather than mutating it in place - transferContingencyListEnabled carries the flag
@@ -146,21 +153,99 @@ public class MainModel {
 
     public void removeNetwork(Network network) {
         Objects.requireNonNull(network);
-        boolean wasSelected = network == this.network.get();
+        // the selection and history entries can be a subnetwork of the removed root network
+        boolean wasSelected = isPartOf(this.network.get(), network);
         networks.remove(network);
+        // cancelled first, so that a run finishing afterwards can't store a result for the removed network
+        cancelServices(loadFlowServices, network);
+        cancelServices(securityAnalysisServices, network);
+        cancelServices(searchIndexServices, network);
         navigationPast.removeIf(event -> isRelatedToNetwork(event, network));
         navigationFuture.removeIf(event -> isRelatedToNetwork(event, network));
         loadFlowResults.remove(network);
         securityAnalysisResults.remove(network);
-        contingencyLists.remove(network);
+        // keyed by the selected network, which can be a subnetwork
+        contingencyLists.entrySet().removeIf(entry -> {
+            if (isPartOf(entry.getKey(), network)) {
+                entry.getValue().forEach(contingencyListEnabled::remove);
+                return true;
+            }
+            return false;
+        });
         // the Map view can show a subnetwork too, whose view goes with its root network
         mapViews.keySet().removeIf(n -> n.getNetwork() == network.getNetwork());
-        NetworkSearchIndex index = searchIndexes.remove(network);
-        if (index != null) {
-            index.close();
+        removeSearchIndexes(network);
+        if (isRelatedToNetwork(navigationEvent.get(), network)) {
+            // a language reload re-fires the current event, which would otherwise re-select the removed network
+            navigationEvent.setValue(null);
         }
         if (wasSelected) {
             setNetwork(null);
+        }
+    }
+
+    // Closes the cached search indexes of a root network and of all its subnetworks
+    public void removeSearchIndexes(Network rootNetwork) {
+        searchIndexes.entrySet().removeIf(entry -> {
+            if (isPartOf(entry.getKey(), rootNetwork)) {
+                entry.getValue().close();
+                return true;
+            }
+            return false;
+        });
+    }
+
+    // collected first: cancelling runs the services' onCancelled handlers, which remove them from the map
+    private static void cancelServices(Map<Network, Service<?>> services, Network rootNetwork) {
+        services.entrySet().stream()
+                .filter(entry -> isPartOf(entry.getKey(), rootNetwork))
+                .map(Map.Entry::getValue)
+                .toList()
+                .forEach(Service::cancel);
+    }
+
+    public Map<Network, Service<?>> getLoadFlowServices() {
+        return loadFlowServices;
+    }
+
+    public Map<Network, Service<?>> getSecurityAnalysisServices() {
+        return securityAnalysisServices;
+    }
+
+    public Map<Network, Service<?>> getSearchIndexServices() {
+        return searchIndexServices;
+    }
+
+    private static boolean isPartOf(Network network, Network rootNetwork) {
+        return network != null && network.getNetwork() == rootNetwork;
+    }
+
+    // Subnetwork.detach() moves the equipment into a new network and leaves the subnetwork object empty and
+    // orphaned, so nothing may keep referencing it - and the root's search indexes still hold the moved equipment.
+    public void detachSubnetworks(List<Network> subnetworks) {
+        Network rootNetwork = subnetworks.getFirst().getNetwork();
+        Predicate<NavigationEvent> related = event -> event != null && event.state() != null
+                && subnetworks.contains(event.state().getSelectedNetwork());
+        navigationPast.removeIf(related);
+        navigationFuture.removeIf(related);
+        if (related.test(navigationEvent.get())) {
+            navigationEvent.setValue(null);
+        }
+        cancelServices(searchIndexServices, rootNetwork);
+        removeSearchIndexes(rootNetwork);
+        mapViews.keySet().removeIf(n -> isPartOf(n, rootNetwork));
+        for (Network subnetwork : subnetworks) {
+            ObservableList<ContingencyList> lists = contingencyLists.remove(subnetwork);
+            Network detached = subnetwork.detach();
+            if (lists != null) {
+                // equipment ids are kept by detach(), so the lists still apply to the detached network
+                contingencyLists.put(detached, lists);
+            }
+            networks.add(detached);
+            if (subnetwork == subnetworks.getFirst()) {
+                // always a new selection, so that the network listeners run again (e.g. rebuilding a search index)
+                setNetwork(detached);
+            }
         }
     }
 
@@ -169,13 +254,14 @@ public class MainModel {
     }
 
     private static boolean isRelatedToNetwork(NavigationEvent event, Network network) {
-        return event.state() != null && network.equals(event.state().getSelectedNetwork());
+        return event != null && event.state() != null && isPartOf(event.state().getSelectedNetwork(), network);
     }
 
     public void setNetwork(Network network) {
-        this.network.setValue(network);
+        // set before the network itself: MainController's network listener may then switch it to BUILDING
         NetworkSearchIndex cached = network == null ? null : searchIndexes.get(network);
         searchIndexState.setValue(cached != null ? NetworkSearchIndex.State.READY : NetworkSearchIndex.State.NOT_BUILT);
+        this.network.setValue(network);
     }
 
     public Network getNetwork() {

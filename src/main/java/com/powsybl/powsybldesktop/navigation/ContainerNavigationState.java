@@ -43,7 +43,7 @@ public class ContainerNavigationState extends NetworkNavigationState {
     }
 
     public static ContainerNavigationState create(Container<?> container, ContainerTab tab) {
-        return new ContainerNavigationState(container.getNetwork(), container, tab);
+        return new ContainerNavigationState(container.getParentNetwork(), container, tab);
     }
 
     public static ContainerNavigationState createNoContainer(Network network) {

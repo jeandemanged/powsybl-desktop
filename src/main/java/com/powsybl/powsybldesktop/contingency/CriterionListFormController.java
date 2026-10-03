@@ -7,6 +7,8 @@
  */
 package com.powsybl.powsybldesktop.contingency;
 
+import com.google.re2j.Pattern;
+import com.google.re2j.PatternSyntaxException;
 import com.powsybl.contingency.list.AbstractEquipmentCriterionContingencyList;
 import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.contingency.list.HvdcLineCriterionContingencyList;
@@ -218,13 +220,30 @@ public class CriterionListFormController {
         if (onReplace == null) {
             return;
         }
-        onReplace.accept(rebuild());
+        ContingencyList replacement;
+        try {
+            replacement = rebuild();
+        } catch (IllegalArgumentException e) {
+            // e.g. a voltage interval with its low bound above its high bound, or a criterion checkEvaluable
+            // rejects: keep the last valid list
+            return;
+        }
+        onReplace.accept(replacement);
     }
 
     private ContingencyList rebuild() {
         String name = nameField.getText();
         List<PropertyCriterion> propertyCriteria = propertyRows.stream().map(PropertyCriterionRow::toCriterion).collect(Collectors.toList());
+        propertyCriteria.forEach(this::checkEvaluable);
         RegexCriterion regex = regexField.getText() == null || regexField.getText().isBlank() ? null : new RegexCriterion(regexField.getText());
+        if (regex != null) {
+            try {
+                // only compiled when the list is evaluated otherwise
+                Pattern.compile(regex.getRegex());
+            } catch (PatternSyntaxException e) {
+                throw new IllegalArgumentException(e.getMessage(), e);
+            }
+        }
         return switch (kind) {
             case LINE_CRITERION -> new LineCriterionContingencyList(name, twoCountries(), twoVoltage(), propertyCriteria, regex);
             case TIE_LINE_CRITERION -> new TieLineCriterionContingencyList(name, twoCountries(), singleVoltage(), propertyCriteria, regex);
@@ -237,6 +256,25 @@ public class CriterionListFormController {
             case HVDC_LINE_CRITERION -> new HvdcLineCriterionContingencyList(name, twoCountries(), twoVoltage(), propertyCriteria, regex);
             case DEFAULT -> throw new IllegalStateException("DEFAULT lists are edited by DefaultContingencyListFormController");
         };
+    }
+
+    // Combinations that PropertyCriterion.filter only rejects when the list is evaluated (throwing out of the
+    // contingencies table refresh and the security analysis run): a voltage level/substation check needs a side
+    // on branches (ONE or BOTH only on two-sided ones), and isn't implemented at all for tie lines.
+    private void checkEvaluable(PropertyCriterion criterion) {
+        if (criterion.getEquipmentToCheck() == EquipmentToCheck.SELF) {
+            return;
+        }
+        SideToCheck side = criterion.getSideToCheck();
+        boolean valid = switch (kind) {
+            case TIE_LINE_CRITERION -> false;
+            case LINE_CRITERION, TWO_WINDINGS_TRANSFORMER_CRITERION, HVDC_LINE_CRITERION -> side == SideToCheck.ONE || side == SideToCheck.BOTH;
+            case THREE_WINDINGS_TRANSFORMER_CRITERION -> side != null;
+            case INJECTION_CRITERION, DEFAULT -> true;
+        };
+        if (!valid) {
+            throw new IllegalArgumentException("Property criterion on " + criterion.getEquipmentToCheck() + " with side " + side + " can't be evaluated for " + kind);
+        }
     }
 
     private SingleCountryCriterion singleCountry() {

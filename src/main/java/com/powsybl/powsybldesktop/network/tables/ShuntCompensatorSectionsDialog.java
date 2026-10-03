@@ -161,7 +161,7 @@ final class ShuntCompensatorSectionsDialog {
         private final Map<Integer, String> flashStyles;
 
         EditableSectionCell(Predicate<Integer> editablePredicate, Map<Integer, String> flashStyles) {
-            super(VALUE_FORMAT);
+            super(TableColumnSupport.lenient(VALUE_FORMAT));
             this.editablePredicate = editablePredicate;
             this.flashStyles = flashStyles;
         }
@@ -182,6 +182,10 @@ final class ShuntCompensatorSectionsDialog {
         // directly to "this", the same fix as TableColumnSupport's connected-column flash.
         @Override
         public void commitEdit(Double newValue) {
+            if (newValue == null) {
+                cancelEdit();
+                return;
+            }
             Integer section = getTableRow() == null ? null : getTableRow().getItem();
             try {
                 super.commitEdit(newValue);

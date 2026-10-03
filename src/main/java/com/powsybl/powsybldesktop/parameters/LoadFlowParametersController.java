@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop.parameters;
 
+import com.powsybl.commons.PowsyblException;
 import com.powsybl.commons.parameters.Parameter;
 import com.powsybl.commons.parameters.ParameterType;
 import com.powsybl.iidm.network.Country;
@@ -33,6 +34,7 @@ import javafx.stage.FileChooser;
 import org.controlsfx.control.CheckComboBox;
 
 import java.io.File;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.BiConsumer;
@@ -62,6 +64,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
     private final List<Runnable> refreshers = new ArrayList<>();
     private boolean refreshing;
     private Runnable onChange = () -> { };
+    private BiConsumer<Path, RuntimeException> onImportFailed = (path, e) -> { };
 
     static Map<String, String> buildCategoryTitles() {
         Map<String, String> titles = new LinkedHashMap<>();
@@ -97,6 +100,10 @@ public class LoadFlowParametersController extends AbstractDisposableController {
 
     public void setOnChange(Runnable onChange) {
         this.onChange = Objects.requireNonNull(onChange);
+    }
+
+    public void setOnImportFailed(BiConsumer<Path, RuntimeException> onImportFailed) {
+        this.onImportFailed = Objects.requireNonNull(onImportFailed);
     }
 
     private void refresh() {
@@ -417,7 +424,13 @@ public class LoadFlowParametersController extends AbstractDisposableController {
     private void applySpecificUpdate(Parameter parameter, String value) {
         Map<String, String> update = new HashMap<>();
         update.put(parameter.getName(), value);
-        OpenLoadFlowParameters.get(loadFlowParametersProperty.getValue()).update(update);
+        try {
+            OpenLoadFlowParameters.get(loadFlowParametersProperty.getValue()).update(update);
+        } catch (IllegalArgumentException e) {
+            // OLF rejects out-of-range values (e.g. maxNewtonRaphsonIterations < 1): revert to the last valid one
+            refresh();
+            return;
+        }
         onChange.run();
     }
 
@@ -550,7 +563,18 @@ public class LoadFlowParametersController extends AbstractDisposableController {
     }
 
     public void importFrom(Path path) {
-        loadFlowParametersProperty.setValue(JsonLoadFlowParameters.read(path));
+        LoadFlowParameters parameters;
+        try {
+            parameters = JsonLoadFlowParameters.read(path);
+        } catch (PowsyblException | UncheckedIOException e) {
+            onImportFailed.accept(path, e);
+            return;
+        }
+        // without it, OpenLoadFlowParameters.get() returns a detached instance and the OLF-specific fields' edits are lost
+        if (parameters.getExtension(OpenLoadFlowParameters.class) == null) {
+            OpenLoadFlowParameters.create(parameters);
+        }
+        loadFlowParametersProperty.setValue(parameters);
     }
 
     public void exportTo(Path path) {

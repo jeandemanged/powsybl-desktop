@@ -73,8 +73,13 @@ public final class ParametersConfigFile {
             LOGGER.error("Failed to read parameters from {}, moving it to {} and restoring defaults", path, backup, e);
             try {
                 Files.move(path, backup);
+            } catch (IOException ex) {
+                LOGGER.error("Failed to move {} to {}", path, backup, ex);
+                return Optional.of(Notification.createError(start, "parameters.config.loadFailedNotMoved").withMessageArgs(path));
+            }
+            try {
                 save(mainModel, path);
-            } catch (IOException | UncheckedIOException ex) {
+            } catch (UncheckedIOException ex) {
                 LOGGER.error("Failed to replace {} by default parameters", path, ex);
             }
             return Optional.of(Notification.createError(start, "parameters.config.loadFailed").withMessageArgs(backup));

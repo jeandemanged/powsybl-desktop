@@ -35,8 +35,9 @@ public class ReportNodeViewController {
         treeView.setCellFactory(tv -> new ReportNodeTreeCell());
     }
 
+    // null clears the view, e.g. once the selected report is cleared
     public void setRootReportNode(ReportNode reportNode) {
-        this.rootReportNode = Objects.requireNonNull(reportNode);
+        this.rootReportNode = reportNode;
         refresh();
     }
 

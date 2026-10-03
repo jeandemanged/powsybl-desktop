@@ -25,7 +25,7 @@ public class TieLineNavigationState extends NetworkNavigationState {
     }
 
     public static TieLineNavigationState create(TieLine tieLine) {
-        return new TieLineNavigationState(tieLine.getNetwork(), tieLine);
+        return new TieLineNavigationState(tieLine.getParentNetwork(), tieLine);
     }
 
     public static TieLineNavigationState createNoTieLine(Network network) {

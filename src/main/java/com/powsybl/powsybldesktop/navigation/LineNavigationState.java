@@ -25,7 +25,7 @@ public class LineNavigationState extends NetworkNavigationState {
     }
 
     public static LineNavigationState create(Line line) {
-        return new LineNavigationState(line.getNetwork(), line);
+        return new LineNavigationState(line.getParentNetwork(), line);
     }
 
     public static LineNavigationState createNoLine(Network network) {

@@ -28,7 +28,7 @@ public class TransformerNavigationState extends NetworkNavigationState {
     }
 
     public static TransformerNavigationState create(Identifiable<?> transformer) {
-        return new TransformerNavigationState(transformer.getNetwork(), transformer);
+        return new TransformerNavigationState(transformer.getParentNetwork(), transformer);
     }
 
     public static TransformerNavigationState createNoTransformer(Network network) {

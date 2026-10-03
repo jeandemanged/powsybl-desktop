@@ -116,6 +116,27 @@ final class TableColumnSupport {
         };
     }
 
+    // TextFieldTableCell commits converter.fromString(text) straight from its text field's key handler, so an
+    // unparsable entry (e.g. "1,5", or the "-" shown for a missing value) would throw out of it and leave the cell
+    // stuck in edit mode: mapped to null instead, which the editable double cells treat as a cancelled edit.
+    static StringConverter<Double> lenient(StringConverter<Double> format) {
+        return new StringConverter<>() {
+            @Override
+            public String toString(Double value) {
+                return format.toString(value);
+            }
+
+            @Override
+            public Double fromString(String text) {
+                try {
+                    return format.fromString(text);
+                } catch (NumberFormatException e) {
+                    return null;
+                }
+            }
+        };
+    }
+
     private static final StringConverter<String> STRING_FORMAT = new StringConverter<>() {
         @Override
         public String toString(String value) {
@@ -281,12 +302,16 @@ final class TableColumnSupport {
         private final Map<S, String> flashStyles;
 
         EditableDoubleTableCell(StringConverter<Double> format, Map<S, String> flashStyles) {
-            super(format);
+            super(lenient(format));
             this.flashStyles = flashStyles;
         }
 
         @Override
         public void commitEdit(Double newValue) {
+            if (newValue == null) {
+                cancelEdit();
+                return;
+            }
             S row = getTableRow() == null ? null : getTableRow().getItem();
             try {
                 super.commitEdit(newValue);
@@ -350,7 +375,7 @@ final class TableColumnSupport {
 
     private static final class NullableEditableDoubleTableCell<S> extends TextFieldTableCell<S, Double> {
         NullableEditableDoubleTableCell() {
-            super(DOUBLE_FORMAT);
+            super(lenient(DOUBLE_FORMAT));
         }
 
         @Override
@@ -363,6 +388,10 @@ final class TableColumnSupport {
 
         @Override
         public void commitEdit(Double newValue) {
+            if (newValue == null) {
+                cancelEdit();
+                return;
+            }
             try {
                 super.commitEdit(newValue);
                 flashEditSuccess(this);
@@ -1031,6 +1060,11 @@ final class TableColumnSupport {
             infoButton.setOnAction(event -> {
                 if (current != null) {
                     onInfoClick.accept(infoButton.getScene().getWindow(), current);
+                    // like the tap changer info button: the (modal) dialog can change what other columns show,
+                    // e.g. a shunt's sections' B sign decides its capacitor/reactor type
+                    if (getTableView() != null) {
+                        getTableView().refresh();
+                    }
                 }
             });
             box = new HBox(4, infoButton, label);
@@ -1421,11 +1455,11 @@ final class TableColumnSupport {
         pause.play();
     }
 
+    // connect()/disconnect() report a no-op (e.g. no switch that can be operated) by returning false, not throwing
     private static void toggleConnection(Terminal terminal) {
-        if (terminal.isConnected()) {
-            terminal.disconnect();
-        } else {
-            terminal.connect();
+        boolean changed = terminal.isConnected() ? terminal.disconnect() : terminal.connect();
+        if (!changed) {
+            throw new PowsyblException(Messages.get("common.editError.connectionUnchanged"));
         }
     }
 }

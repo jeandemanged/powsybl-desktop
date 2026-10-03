@@ -14,13 +14,15 @@ import javafx.stage.Window;
 import javafx.util.Duration;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
  * Corner popup stacking one card per currently-relevant notification: every {@link NotificationStatus#RUNNING}
- * one stays until it completes, then its card shows the outcome for 5s. Each card is a
+ * one stays until it completes, then its card shows the outcome for 5s; a notification added already completed
+ * (e.g. an error) is shown for 5s too. Each card is a
  * {@link NotificationView} - the same component used in the notifications history list - so a
  * notification looks identical in both places.
  *
@@ -94,6 +96,10 @@ public class NotificationOverlay {
 
     public void remove(Notification notification) {
         detach(notification);
+    }
+
+    public void dispose() {
+        List.copyOf(entries.keySet()).forEach(this::detach);
     }
 
     private void wire(Entry entry, Notification notification) {

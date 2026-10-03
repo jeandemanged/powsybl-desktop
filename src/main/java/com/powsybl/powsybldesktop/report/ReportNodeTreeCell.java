@@ -10,6 +10,7 @@ package com.powsybl.powsybldesktop.report;
 import com.powsybl.commons.report.ReportConstants;
 import com.powsybl.commons.report.ReportNode;
 import com.powsybl.commons.report.TypedValue;
+import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.geometry.Pos;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
@@ -80,7 +81,7 @@ public class ReportNodeTreeCell extends TreeCell<ReportNode> {
     private void fillContextMenu(ReportNode item) {
         contextMenu.getItems().clear();
 
-        MenuItem copyMessage = new MenuItem("Copy message");
+        MenuItem copyMessage = new MenuItem(Messages.get("reports.copyMessage"));
         copyMessage.setOnAction(e -> copyToClipboard(item.getMessage()));
         contextMenu.getItems().add(copyMessage);
 
@@ -90,7 +91,7 @@ public class ReportNodeTreeCell extends TreeCell<ReportNode> {
             for (Map.Entry<String, TypedValue> entry : values.entrySet()) {
                 String key = entry.getKey();
                 String value = valueAsString(entry.getValue());
-                MenuItem copyValue = new MenuItem("Copy " + key + " = " + value);
+                MenuItem copyValue = new MenuItem(Messages.get("reports.copyValue", key, value));
                 copyValue.setOnAction(e -> copyToClipboard(value));
                 contextMenu.getItems().add(copyValue);
             }

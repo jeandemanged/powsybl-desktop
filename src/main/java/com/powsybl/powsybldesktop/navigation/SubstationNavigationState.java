@@ -25,7 +25,7 @@ public class SubstationNavigationState extends NetworkNavigationState {
     }
 
     public static SubstationNavigationState create(Substation substation) {
-        return new SubstationNavigationState(substation.getNetwork(), substation);
+        return new SubstationNavigationState(substation.getParentNetwork(), substation);
     }
 
     public static SubstationNavigationState createNoSubstation(Network network) {

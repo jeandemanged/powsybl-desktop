@@ -75,8 +75,10 @@ public class ParametersController extends AbstractDisposableController {
         nadEmbeddedController.setOnChange(mainModel::nadParametersChanged);
         loadFlowEmbeddedController.setLoadFlowParametersProperty(mainModel.loadFlowParametersProperty());
         loadFlowEmbeddedController.setOnChange(mainModel::parametersChanged);
+        loadFlowEmbeddedController.setOnImportFailed((path, e) -> importFailed(Instant.now(), path, e));
         securityAnalysisEmbeddedController.setSecurityAnalysisParametersProperty(mainModel.securityAnalysisParametersProperty());
         securityAnalysisEmbeddedController.setOnChange(mainModel::parametersChanged);
+        securityAnalysisEmbeddedController.setOnImportFailed((path, e) -> importFailed(Instant.now(), path, e));
         listenerManager.listen(mainModel.parametersRevisionProperty(), (observable, oldValue, newValue) -> updateSaveButton());
         setConfigPath(configPath);
     }
@@ -138,11 +140,15 @@ public class ParametersController extends AbstractDisposableController {
         try {
             parameters = DesktopParametersJson.read(path);
         } catch (PowsyblException | UncheckedIOException e) {
-            LOGGER.error("Failed to import parameters from {}", path, e);
-            mainModel.addNotification(Notification.createError(start, "parameters.import.failed").withMessageArgs(path));
+            importFailed(start, path, e);
             return;
         }
         setParameters(parameters);
+    }
+
+    private void importFailed(Instant start, Path path, RuntimeException e) {
+        LOGGER.error("Failed to import parameters from {}", path, e);
+        mainModel.addNotification(Notification.createError(start, "parameters.import.failed").withMessageArgs(path));
     }
 
     void exportTo(Path path) {

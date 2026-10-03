@@ -208,7 +208,12 @@ public abstract class AbstractDiagramParametersController<T> extends AbstractDis
                 return;
             }
             try {
-                setter.accept(parametersProperty.getValue(), Double.parseDouble(textField.getText()));
+                double value = Double.parseDouble(textField.getText());
+                // parseDouble accepts "NaN"/"Infinity", which DesktopParametersJson can't read back from the config file
+                if (!Double.isFinite(value)) {
+                    throw new IllegalArgumentException("Non-finite value: " + value);
+                }
+                setter.accept(parametersProperty.getValue(), value);
                 notifyChange();
             } catch (IllegalArgumentException e) { // NumberFormatException, or a value rejected by a parameters builder
                 refresh();

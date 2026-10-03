@@ -25,7 +25,7 @@ public class GeneratorNavigationState extends NetworkNavigationState {
     }
 
     public static GeneratorNavigationState create(Generator generator) {
-        return new GeneratorNavigationState(generator.getNetwork(), generator);
+        return new GeneratorNavigationState(generator.getParentNetwork(), generator);
     }
 
     public static GeneratorNavigationState createNoGenerator(Network network) {

@@ -30,6 +30,7 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TablePosition;
 import javafx.scene.control.TableView;
+import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -169,6 +170,17 @@ class LoadsControllerTest extends AbstractHeadlessApplicationTest {
 
         interact(() -> fireEditCommit(controller.loadsTableView, controller.q0Column, row, 45.0));
         assertEquals(45.0, load.getQ0());
+    }
+
+    @Test
+    void unparsableEditTextIsMappedToNullInsteadOfThrowing() {
+        @SuppressWarnings("unchecked")
+        TextFieldTableCell<Load, Double> cell = (TextFieldTableCell<Load, Double>) controller.p0Column.getCellFactory().call(controller.p0Column);
+
+        // thrown from TextFieldTableCell's key handler before commitEdit, the exception left the cell stuck in edit mode
+        assertNull(cell.getConverter().fromString("1,5"));
+        assertNull(cell.getConverter().fromString("-"));
+        assertEquals(12.5, cell.getConverter().fromString(" 12.5 "));
     }
 
     @Test

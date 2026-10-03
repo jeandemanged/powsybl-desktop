@@ -25,7 +25,7 @@ public class ShuntCompensatorNavigationState extends NetworkNavigationState {
     }
 
     public static ShuntCompensatorNavigationState create(ShuntCompensator shuntCompensator) {
-        return new ShuntCompensatorNavigationState(shuntCompensator.getNetwork(), shuntCompensator);
+        return new ShuntCompensatorNavigationState(shuntCompensator.getParentNetwork(), shuntCompensator);
     }
 
     public static ShuntCompensatorNavigationState createNoShuntCompensator(Network network) {

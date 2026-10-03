@@ -179,12 +179,16 @@ final class TapChangerStepsDialog {
         private final Map<Integer, String> flashStyles;
 
         EditableStepCell(StringConverter<Double> format, Map<Integer, String> flashStyles) {
-            super(format);
+            super(TableColumnSupport.lenient(format));
             this.flashStyles = flashStyles;
         }
 
         @Override
         public void commitEdit(Double newValue) {
+            if (newValue == null) {
+                cancelEdit();
+                return;
+            }
             Integer position = getTableRow() == null ? null : getTableRow().getItem();
             try {
                 super.commitEdit(newValue);

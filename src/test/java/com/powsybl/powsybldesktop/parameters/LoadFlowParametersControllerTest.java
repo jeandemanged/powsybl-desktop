@@ -7,8 +7,10 @@
  */
 package com.powsybl.powsybldesktop.parameters;
 
+import com.powsybl.commons.parameters.Parameter;
 import com.powsybl.iidm.network.Country;
 import com.powsybl.loadflow.LoadFlowParameters;
+import com.powsybl.loadflow.json.JsonLoadFlowParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -36,11 +38,14 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -166,5 +171,50 @@ class LoadFlowParametersControllerTest extends AbstractHeadlessApplicationTest {
         });
 
         assertTrue(params.get().isDc());
+    }
+
+    @Test
+    void importWithoutOpenLoadFlowExtensionAddsIt(@TempDir Path tempDir) {
+        Path file = tempDir.resolve("lf-plain.json");
+        JsonLoadFlowParameters.write(new LoadFlowParameters(), file);
+
+        interact(() -> controller.importFrom(file));
+
+        assertNotNull(params.get().getExtension(OpenLoadFlowParameters.class),
+                "without the extension, edits to the OLF-specific fields go to a detached instance and are lost");
+    }
+
+    @Test
+    void importOfUnreadableFileIsReportedAndKeepsParameters(@TempDir Path tempDir) throws IOException {
+        Path file = tempDir.resolve("broken.json");
+        Files.writeString(file, "{ not json");
+        LoadFlowParameters before = params.get();
+        List<Path> failures = new ArrayList<>();
+
+        interact(() -> {
+            controller.setOnImportFailed((path, e) -> failures.add(path));
+            controller.importFrom(file);
+        });
+
+        assertEquals(List.of(file), failures);
+        assertSame(before, params.get());
+    }
+
+    @Test
+    void outOfRangeSpecificValueIsReverted() {
+        Parameter parameter = OpenLoadFlowParameters.SPECIFIC_PARAMETERS.stream()
+                .filter(p -> p.getName().equals(OpenLoadFlowParameters.MAX_NEWTON_RAPHSON_ITERATIONS_PARAM_NAME))
+                .findFirst()
+                .orElseThrow();
+        GridPane grid = selectCategory(LoadFlowParametersController.buildCategoryTitles().get(parameter.getCategoryKey()));
+        TextField field = (TextField) controlForLabel(grid, parameter.getDescription());
+        int before = OpenLoadFlowParameters.get(params.get()).getMaxNewtonRaphsonIterations();
+
+        clickOn(field);
+        interact(() -> field.setText("0"));
+        push(KeyCode.ENTER);
+
+        assertEquals(before, OpenLoadFlowParameters.get(params.get()).getMaxNewtonRaphsonIterations());
+        assertEquals(String.valueOf(before), field.getText());
     }
 }

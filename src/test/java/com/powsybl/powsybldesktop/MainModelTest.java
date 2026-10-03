@@ -8,6 +8,8 @@
 package com.powsybl.powsybldesktop;
 
 import com.powsybl.commons.report.ReportNode;
+import com.powsybl.contingency.list.ContingencyList;
+import com.powsybl.contingency.list.DefaultContingencyList;
 import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.NetworkFactory;
@@ -18,6 +20,7 @@ import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.NetworkNavigationState;
+import com.powsybl.powsybldesktop.network.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.security.SecurityAnalysisParameters;
 import javafx.application.Platform;
@@ -30,6 +33,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -206,6 +210,57 @@ class MainModelTest {
 
         assertSame(result, model.getLoadFlowResult(merged));
         assertSame(result, model.getLoadFlowResult(subnetwork1));
+    }
+
+    @Test
+    void removeRootNetworkClearsSelectedSubnetworkAndItsNavigation() {
+        Network merged = Network.merge("MERGED",
+                NetworkFactory.findDefault().createNetwork("N1", "test"),
+                NetworkFactory.findDefault().createNetwork("N2", "test"));
+        Network subnetwork1 = merged.getSubnetwork("N1");
+        model.addNetwork(merged);
+        model.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORKS, NetworkNavigationState.create(subnetwork1)));
+        model.setNetwork(subnetwork1);
+
+        model.removeNetwork(merged);
+
+        assertNull(model.getNetwork());
+        assertTrue(model.getNavigationPast().isEmpty());
+        assertNull(model.navigationEventProperty().get(), "a language reload re-fires the current event, which would re-select it");
+    }
+
+    @Test
+    void setNetworkSetsSearchIndexStateBeforeNotifyingNetworkListeners() {
+        Network network = IeeeCdfNetworkFactory.create14();
+        // what MainController.ensureSearchIndex does when the selected network has no index yet
+        model.networkProperty().addListener((observable, oldValue, newValue) ->
+                model.searchIndexStateProperty().setValue(NetworkSearchIndex.State.BUILDING));
+
+        model.setNetwork(network);
+
+        assertEquals(NetworkSearchIndex.State.BUILDING, model.searchIndexStateProperty().get());
+    }
+
+    @Test
+    void detachSubnetworkSelectsDetachedNetworkAndDropsReferencesToTheOldSubnetwork() {
+        Network merged = Network.merge("MERGED",
+                NetworkFactory.findDefault().createNetwork("N1", "test"),
+                NetworkFactory.findDefault().createNetwork("N2", "test"));
+        Network subnetwork1 = merged.getSubnetwork("N1");
+        model.addNetwork(merged);
+        model.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORKS, NetworkNavigationState.create(subnetwork1)));
+        model.setNetwork(subnetwork1);
+        ContingencyList list = new DefaultContingencyList("list", List.of());
+        model.getContingencyLists(subnetwork1).add(list);
+
+        model.detachSubnetworks(List.of(subnetwork1));
+
+        Network detached = model.getNetwork();
+        assertEquals("N1", detached.getId());
+        assertNotSame(subnetwork1, detached);
+        assertEquals(List.of(merged, detached), model.getNetworks());
+        assertTrue(model.getNavigationPast().isEmpty());
+        assertEquals(List.of(list), model.getContingencyLists(detached));
     }
 
     @Test

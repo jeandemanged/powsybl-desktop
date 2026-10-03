@@ -45,8 +45,10 @@ public class BusesBusViewController extends AbstractBusesController {
         return currentItems.stream().filter(bus -> bus.getId().equals(busId)).findFirst().orElse(null);
     }
 
+    // matched by id: a topology change recomputes the bus view, so a bus kept in the navigation history is
+    // no longer the same object as the table's
     public void goToBus(Bus bus) {
-        goToItem(bus);
+        goToItem(bus == null ? null : busById(bus.getId()));
     }
 
     @Override

@@ -25,7 +25,7 @@ public class BoundaryLineNavigationState extends NetworkNavigationState {
     }
 
     public static BoundaryLineNavigationState create(BoundaryLine boundaryLine) {
-        return new BoundaryLineNavigationState(boundaryLine.getNetwork(), boundaryLine);
+        return new BoundaryLineNavigationState(boundaryLine.getParentNetwork(), boundaryLine);
     }
 
     public static BoundaryLineNavigationState createNoBoundaryLine(Network network) {

@@ -8,6 +8,7 @@
 package com.powsybl.powsybldesktop.parameters;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.MissingNode;
@@ -536,8 +537,12 @@ public final class DesktopParametersJson {
                 ObjectNode merged = MAPPER.valueToTree(getter.get());
                 merged.setAll((ObjectNode) value);
                 try {
-                    setter.accept(MAPPER.treeToValue(merged, type));
-                } catch (JsonProcessingException e) {
+                    // a field the bean doesn't know (e.g. written by another powsybl-diagram version) is ignored,
+                    // like everywhere else in this document, rather than failing the whole read
+                    setter.accept(MAPPER.readerFor(type)
+                            .without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                            .readValue(merged));
+                } catch (IOException e) {
                     throw new PowsyblException("Invalid parameters JSON: unexpected value for '" + path(name) + "'", e);
                 }
             }

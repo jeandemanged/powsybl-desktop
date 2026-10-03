@@ -25,7 +25,7 @@ public class StaticVarCompensatorNavigationState extends NetworkNavigationState 
     }
 
     public static StaticVarCompensatorNavigationState create(StaticVarCompensator staticVarCompensator) {
-        return new StaticVarCompensatorNavigationState(staticVarCompensator.getNetwork(), staticVarCompensator);
+        return new StaticVarCompensatorNavigationState(staticVarCompensator.getParentNetwork(), staticVarCompensator);
     }
 
     public static StaticVarCompensatorNavigationState createNoStaticVarCompensator(Network network) {

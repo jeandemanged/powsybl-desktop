@@ -36,6 +36,7 @@ import javafx.scene.input.ScrollEvent;
 import javafx.scene.web.WebView;
 import javafx.stage.FileChooser;
 import javafx.util.StringConverter;
+import netscape.javascript.JSObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -227,6 +228,8 @@ public class DiagramPaneController {
         programmaticZoomChange = true;
         try {
             fitToScreenToggleButton.setSelected(fitToScreenValue);
+            // kept in sync with the toggle, or a later untick wouldn't change the property nor notify listeners
+            fitToScreen.set(fitToScreenValue);
         } finally {
             programmaticZoomChange = false;
         }
@@ -255,8 +258,11 @@ public class DiagramPaneController {
         }
     }
 
+    // set as a JS value rather than spliced into script source, where backslashes, backticks or "${" in
+    // equipment names would be interpreted as JavaScript
     private void inject(String content) {
-        webView.getEngine().executeScript("document.getElementById('svgContainer').innerHTML = `" + content + "`;");
+        JSObject container = (JSObject) webView.getEngine().executeScript("document.getElementById('svgContainer')");
+        container.setMember("innerHTML", content);
     }
 
     @FXML

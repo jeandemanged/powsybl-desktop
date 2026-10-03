@@ -1056,7 +1056,7 @@ public class NetworksController extends AbstractDisposableController {
         List<Network> subnetworksToDetach = selectedNetworks.size() == 1 && isParentNetwork(selectedNetworks.getFirst())
                 ? List.copyOf(selectedNetworks.getFirst().getSubnetworks())
                 : selectedNetworks;
-        subnetworksToDetach.forEach(subnetwork -> mainModel.addNetwork(subnetwork.detach()));
+        mainModel.detachSubnetworks(subnetworksToDetach);
     }
 
     private void exportNetwork(Network network, String format) {
