@@ -190,6 +190,18 @@ class MainModelTest {
     }
 
     @Test
+    void clearNotificationsKeepsRunningOnes() {
+        Notification running = Notification.createRunning("loading", () -> { });
+        Notification done = Notification.createSuccess(Instant.now(), "done");
+        model.addNotification(running);
+        model.addNotification(done);
+
+        model.clearNotifications();
+
+        assertEquals(List.of(running), model.getNotifications(), "a running notification carries the only Cancel button");
+    }
+
+    @Test
     void replaceNotificationAddsWhenOldNotificationIsMissing() {
         Notification success = Notification.createSuccess(Instant.now(), "done");
 

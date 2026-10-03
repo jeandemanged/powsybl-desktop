@@ -19,6 +19,7 @@ import com.powsybl.powsybldesktop.map.MapController;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.network.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.notification.Notification;
+import com.powsybl.powsybldesktop.notification.NotificationStatus;
 import com.powsybl.powsybldesktop.parameters.DesktopNadParameters;
 import com.powsybl.powsybldesktop.parameters.DesktopParameters;
 import com.powsybl.powsybldesktop.parameters.DesktopSldParameters;
@@ -546,8 +547,9 @@ public class MainModel {
         }
     }
 
+    // running ones are kept: they carry the only way to cancel their operation, and are replaced by its outcome
     public void clearNotifications() {
-        notifications.clear();
+        notifications.removeIf(notification -> notification.status() != NotificationStatus.RUNNING);
     }
 
     public ObservableList<Notification> getNotifications() {

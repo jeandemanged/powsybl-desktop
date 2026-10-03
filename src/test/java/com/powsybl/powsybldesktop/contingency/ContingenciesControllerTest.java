@@ -22,6 +22,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ListView;
+import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import org.controlsfx.control.CheckComboBox;
 import org.junit.jupiter.api.AfterEach;
@@ -137,5 +138,25 @@ class ContingenciesControllerTest extends AbstractHeadlessApplicationTest {
 
         assertEquals(List.of(edited), mainModel.getContingencyLists(network));
         assertSame(edited, listView.getSelectionModel().getSelectedItem());
+    }
+
+    @Test
+    void selectingAnotherListWithAPendingNameEditKeepsTheNewListSelected() {
+        ListView<ContingencyList> listView = lookup("#contingencyListsListView").query();
+        interact(() -> {
+            mainModel.getContingencyLists(network).add(ContingencyListKind.LINE_CRITERION.createDefault("first"));
+            mainModel.getContingencyLists(network).add(ContingencyListKind.LINE_CRITERION.createDefault("second"));
+            listView.getSelectionModel().select(0);
+        });
+        TextField nameField = lookup("#nameField").query();
+        clickOn(nameField);
+        interact(() -> nameField.setText("renamed"));
+
+        // the name field still has focus as its form is torn down for the newly selected list, and commits then
+        interact(() -> listView.getSelectionModel().select(1));
+
+        assertEquals("renamed", mainModel.getContingencyLists(network).get(0).getName());
+        assertSame(mainModel.getContingencyLists(network).get(1), listView.getSelectionModel().getSelectedItem());
+        assertEquals("second", lookup("#nameField").<TextField>query().getText());
     }
 }

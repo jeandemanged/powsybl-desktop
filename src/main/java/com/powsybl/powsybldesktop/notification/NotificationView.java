@@ -105,6 +105,8 @@ public class NotificationView extends VBox {
         statusMarker.setManaged(!running);
         statusArc.setVisible(running);
         statusArc.setManaged(running);
+        // dismissing a running notification would also drop its Cancel button, leaving the operation uncancellable
+        closeIcon.setVisible(!running);
         if (running) {
             if (statusArcRotation.getStatus() != Animation.Status.RUNNING) {
                 statusArcRotation.playFromStart();

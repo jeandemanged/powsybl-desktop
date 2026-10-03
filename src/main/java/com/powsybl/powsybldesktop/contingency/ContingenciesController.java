@@ -273,21 +273,7 @@ public class ContingenciesController extends AbstractDisposableController {
         }
         ContingencyList[] current = {selected};
         Consumer<ContingencyList> onReplace = replacement -> {
-            List<ContingencyList> lists = mainModel.getContingencyLists(network);
-            int index = lists.indexOf(current[0]);
-            if (index >= 0) {
-                mainModel.transferContingencyListEnabled(current[0], replacement);
-                if (listenedEnabledLists.remove(current[0])) {
-                    listenedEnabledLists.add(replacement);
-                }
-                applyingReplace = true;
-                try {
-                    lists.set(index, replacement);
-                    // a replace change can clear the ListView selection, which would leave Remove disabled
-                    contingencyListsListView.getSelectionModel().select(index);
-                } finally {
-                    applyingReplace = false;
-                }
+            if (replace(current[0], replacement)) {
                 current[0] = replacement;
             }
         };
@@ -303,6 +289,32 @@ public class ContingenciesController extends AbstractDisposableController {
         } else {
             formHost.getChildren().add(unsupportedLabel(selected));
         }
+    }
+
+    private boolean replace(ContingencyList previous, ContingencyList replacement) {
+        List<ContingencyList> lists = mainModel.getContingencyLists(network);
+        int index = lists.indexOf(previous);
+        if (index < 0) {
+            return false;
+        }
+        mainModel.transferContingencyListEnabled(previous, replacement);
+        if (listenedEnabledLists.remove(previous)) {
+            listenedEnabledLists.add(replacement);
+        }
+        // not when another list was selected meanwhile: a form's pending edit is committed when its field
+        // loses focus, which happens as the form is torn down for the newly selected list
+        boolean wasSelected = contingencyListsListView.getSelectionModel().getSelectedItem() == previous;
+        applyingReplace = true;
+        try {
+            lists.set(index, replacement);
+            // a replace change can clear the ListView selection, which would leave Remove disabled
+            if (wasSelected) {
+                contingencyListsListView.getSelectionModel().select(index);
+            }
+        } finally {
+            applyingReplace = false;
+        }
+        return true;
     }
 
     private Node loadDefaultForm(DefaultContingencyList list, Consumer<ContingencyList> onReplace) {
