@@ -12,7 +12,6 @@ import com.powsybl.contingency.violations.LimitViolationType;
 import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
-import com.powsybl.iidm.network.ThreeSides;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.contingency.ContingencyNames;
@@ -69,7 +68,7 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
     @FXML
     TableColumn<ResultRow, LimitViolationType> limitTypeColumn;
     @FXML
-    TableColumn<ResultRow, ThreeSides> sideColumn;
+    TableColumn<ResultRow, Integer> sideColumn;
     @FXML
     TableColumn<ResultRow, Double> valueColumn;
     @FXML
@@ -115,7 +114,7 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
         configureStatusColumn();
         configureSubjectColumn();
         TableColumnSupport.configureNullableColumn(limitTypeColumn, row -> row.violation() == null ? null : row.violation().getLimitType());
-        TableColumnSupport.configureNullableColumn(sideColumn, row -> row.violation() == null ? null : row.violation().getSide());
+        TableColumnSupport.configureNullableIntColumn(sideColumn, row -> row.violation() == null || row.violation().getSide() == null ? null : row.violation().getSide().getNum());
         TableColumnSupport.configureNullableDoubleColumn(valueColumn, row -> row.violation() == null ? null : row.violation().getValue());
         TableColumnSupport.configureNullableDoubleColumn(limitColumn, row -> row.violation() == null ? null : row.violation().getLimit());
         TableColumnSupport.configureNullableDoubleColumn(limitReductionColumn, row -> row.violation() == null ? null : row.violation().getLimitReduction());
