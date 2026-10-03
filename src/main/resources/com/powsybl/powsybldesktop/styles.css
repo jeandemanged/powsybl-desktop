@@ -229,6 +229,7 @@
     -fx-border-color: derive(-fx-base, -20%);
     -fx-border-radius: 4px;
     -fx-background-radius: 4px;
+    -fx-padding: 8px 12px;
     -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 8, 0, 0, 2);
 }
 
