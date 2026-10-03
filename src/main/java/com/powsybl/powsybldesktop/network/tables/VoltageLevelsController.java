@@ -102,6 +102,8 @@ public class VoltageLevelsController extends AbstractDisposableController {
 
     public void setMainModel(MainModel mainModel) {
         this.mainModel = Objects.requireNonNull(mainModel);
+        // see AbstractEquipmentTableController.setMainModel
+        voltageLevelsTableView.editableProperty().bind(mainModel.networkBusyProperty().not());
         updateVoltageLevels();
         listenerManager.listen(this.mainModel.networkProperty(), (observable, oldValue, newValue) -> updateVoltageLevels());
         listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> updateVoltageLevels());

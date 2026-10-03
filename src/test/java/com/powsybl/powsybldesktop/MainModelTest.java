@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -187,6 +188,28 @@ class MainModelTest {
 
         model.removeNotification(success);
         assertTrue(model.getNotifications().isEmpty());
+    }
+
+    @Test
+    void networkStaysBusyUntilEveryJobReleasesIt() {
+        Network merged = Network.merge("MERGED",
+                NetworkFactory.findDefault().createNetwork("N1", "test"),
+                NetworkFactory.findDefault().createNetwork("N2", "test"));
+        Network subnetwork1 = merged.getSubnetwork("N1");
+        model.addNetwork(merged);
+        model.setNetwork(subnetwork1);
+
+        Runnable release1 = model.markBusy(merged);
+        Runnable release2 = model.markBusy(merged.getSubnetwork("N2"));
+        assertTrue(model.isBusy(subnetwork1), "busy is tracked per root network");
+        assertTrue(model.networkBusyProperty().get());
+
+        release1.run();
+        release1.run();
+        assertTrue(model.networkBusyProperty().get(), "a release is idempotent, and the other job still runs");
+
+        release2.run();
+        assertFalse(model.networkBusyProperty().get());
     }
 
     @Test

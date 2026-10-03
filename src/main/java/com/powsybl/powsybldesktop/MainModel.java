@@ -30,6 +30,7 @@ import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.LongProperty;
 import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.ReadOnlyLongProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -102,6 +103,10 @@ public class MainModel {
     private final Map<Network, Service<?>> loadFlowServices = new HashMap<>();
     private final Map<Network, Service<?>> securityAnalysisServices = new HashMap<>();
     private final Map<Network, Service<?>> searchIndexServices = new HashMap<>();
+    // Background jobs (computations, search index/map builds, diagram renders) currently reading or writing each
+    // root network: IIDM isn't thread-safe, so the UI doesn't edit a network while any of them runs
+    private final Map<Network, Integer> busyCounts = new HashMap<>();
+    private final BooleanProperty networkBusy = new SimpleBooleanProperty();
     // Whether a sublist is included when contingencies are resolved for a security analysis run, keyed by
     // identity since editing a sublist's form replaces it with a brand-new instance (see ContingenciesController's
     // showForm/onReplace) rather than mutating it in place - transferContingencyListEnabled carries the flag
@@ -161,6 +166,7 @@ public class MainModel {
         cancelServices(loadFlowServices, network);
         cancelServices(securityAnalysisServices, network);
         cancelServices(searchIndexServices, network);
+        busyCounts.remove(network);
         navigationPast.removeIf(event -> isRelatedToNetwork(event, network));
         navigationFuture.removeIf(event -> isRelatedToNetwork(event, network));
         loadFlowResults.remove(network);
@@ -254,7 +260,37 @@ public class MainModel {
         // set before the network itself: MainController's network listener may then switch it to BUILDING
         NetworkSearchIndex cached = network == null ? null : searchIndexes.get(network);
         searchIndexState.setValue(cached != null ? NetworkSearchIndex.State.READY : NetworkSearchIndex.State.NOT_BUILT);
+        networkBusy.set(isBusy(network));
         this.network.setValue(network);
+    }
+
+    /**
+     * Marks {@code network}'s root network as read or written by a background job, until the returned action
+     * (idempotent) is run. FX thread only.
+     */
+    public Runnable markBusy(Network network) {
+        Network rootNetwork = network.getNetwork();
+        busyCounts.merge(rootNetwork, 1, Integer::sum);
+        networkBusy.set(isBusy(this.network.get()));
+        boolean[] released = {false};
+        return () -> {
+            if (!released[0]) {
+                released[0] = true;
+                busyCounts.computeIfPresent(rootNetwork, (n, count) -> count == 1 ? null : count - 1);
+                networkBusy.set(isBusy(this.network.get()));
+            }
+        };
+    }
+
+    public boolean isBusy(Network network) {
+        return network != null && busyCounts.containsKey(network.getNetwork());
+    }
+
+    /**
+     * Whether the selected network is busy (see {@link #markBusy}): the UI must not edit it meanwhile.
+     */
+    public ReadOnlyBooleanProperty networkBusyProperty() {
+        return networkBusy;
     }
 
     public Network getNetwork() {

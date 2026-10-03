@@ -8,6 +8,7 @@
 package com.powsybl.powsybldesktop.notification;
 
 import javafx.animation.PauseTransition;
+import javafx.beans.InvalidationListener;
 import javafx.scene.layout.VBox;
 import javafx.stage.Popup;
 import javafx.stage.Window;
@@ -38,6 +39,11 @@ public class NotificationOverlay {
     private final Popup popup = new Popup();
     private final VBox stack = new VBox(8);
     private final Map<Notification, Entry> entries = new LinkedHashMap<>();
+    private final InvalidationListener followOwner = observable -> {
+        if (popup.isShowing()) {
+            reposition();
+        }
+    };
 
     private record Entry(NotificationView view, PauseTransition autoHide) {
     }
@@ -58,6 +64,12 @@ public class NotificationOverlay {
                 reposition();
             }
         });
+
+        // a popup doesn't follow its owner window by itself
+        owner.xProperty().addListener(followOwner);
+        owner.yProperty().addListener(followOwner);
+        owner.widthProperty().addListener(followOwner);
+        owner.heightProperty().addListener(followOwner);
 
         popup.getContent().add(stack);
         popup.setAutoHide(false);
@@ -100,6 +112,11 @@ public class NotificationOverlay {
 
     public void dispose() {
         List.copyOf(entries.keySet()).forEach(this::detach);
+        // the owner window outlives this overlay across a language reload
+        owner.xProperty().removeListener(followOwner);
+        owner.yProperty().removeListener(followOwner);
+        owner.widthProperty().removeListener(followOwner);
+        owner.heightProperty().removeListener(followOwner);
     }
 
     private void wire(Entry entry, Notification notification) {

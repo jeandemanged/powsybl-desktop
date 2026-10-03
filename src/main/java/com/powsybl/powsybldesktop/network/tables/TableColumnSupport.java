@@ -39,6 +39,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Window;
+import javafx.util.Callback;
 import javafx.util.Duration;
 import javafx.util.StringConverter;
 import org.controlsfx.control.Notifications;
@@ -207,6 +208,7 @@ final class TableColumnSupport {
                 }
             }
         });
+        disableUnlessTableEditable(column);
     }
 
     static <S> void configureTwoSidedConnectedColumn(TableColumn<S, S> column, Function<S, Terminal> terminal1Getter,
@@ -230,6 +232,7 @@ final class TableColumnSupport {
                 }
             }
         });
+        disableUnlessTableEditable(column);
     }
 
     static <S> void configureComponentColumn(TableColumn<S, Integer> column, Function<S, Bus> busGetter,
@@ -286,11 +289,30 @@ final class TableColumnSupport {
         Map<S, String> flashStyles = new HashMap<>();
         column.setCellFactory(col -> {
             TableCell<S, Double> cell = new EditableDoubleTableCell<>(format, flashStyles);
+            // also used for read-only values, in columns made non-editable
             if (col.isEditable()) {
                 cell.getStyleClass().add(EDITABLE_CELL_STYLE_CLASS);
+                disableUnlessTableEditable(cell);
             }
             return cell;
         });
+    }
+
+    // An editing cell is disabled (greyed, inert) while its table isn't editable, which a table is made while its
+    // network is busy with a background job (see AbstractEquipmentTableController.setMainModel) - so that custom
+    // editors (check boxes, steppers, ...), whose columns aren't editable in TableView's sense, follow the same rule
+    // TextFieldTableCell already does.
+    static <S, T> void disableUnlessTableEditable(TableColumn<S, T> column) {
+        Callback<TableColumn<S, T>, TableCell<S, T>> factory = column.getCellFactory();
+        column.setCellFactory(col -> disableUnlessTableEditable(factory.call(col)));
+    }
+
+    private static <S, T> TableCell<S, T> disableUnlessTableEditable(TableCell<S, T> cell) {
+        cell.disableProperty().bind(cell.tableViewProperty()
+                .flatMap(TableView::editableProperty)
+                .map(editable -> !editable)
+                .orElse(false));
+        return cell;
     }
 
     // Same rendering as TextFieldTableCell.forTableColumn(DOUBLE_FORMAT), but catches a setter exception thrown
@@ -341,6 +363,7 @@ final class TableColumnSupport {
             TableCell<S, String> cell = new EditableStringTableCell<>();
             if (col.isEditable()) {
                 cell.getStyleClass().add(EDITABLE_CELL_STYLE_CLASS);
+                disableUnlessTableEditable(cell);
             }
             return cell;
         });
@@ -369,6 +392,7 @@ final class TableColumnSupport {
                                                             BiConsumer<S, Double> setter) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
         column.setCellFactory(col -> new NullableEditableDoubleTableCell<>());
+        disableUnlessTableEditable(column);
         column.setOnEditCommit(event -> setter.accept(event.getRowValue(), event.getNewValue()));
         column.setComparator(missingLast(column, TableColumnSupport::isMissing));
     }
@@ -434,6 +458,7 @@ final class TableColumnSupport {
                 }
             }
         });
+        disableUnlessTableEditable(column);
         column.setComparator(missingLast(column, Objects::isNull));
     }
 
@@ -629,6 +654,7 @@ final class TableColumnSupport {
                 }
             }
         });
+        disableUnlessTableEditable(column);
     }
 
     static <S> void configureMultiSidedComponentColumn(TableColumn<S, S> column, Function<S, List<Bus>> busesGetter,
@@ -710,6 +736,7 @@ final class TableColumnSupport {
                 setGraphic(sidedBox(fields, Pos.CENTER_RIGHT));
             }
         });
+        disableUnlessTableEditable(column);
     }
 
     // A StackPane holding a Label (shown at rest) and a TextField (shown while editing) swapped in place, so the
@@ -812,6 +839,7 @@ final class TableColumnSupport {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
         column.setCellFactory(col -> new MultiSidedTapChangerTableCell<>(nameGetter, tapChangersGetter));
+        disableUnlessTableEditable(column);
     }
 
     private static final class MultiSidedTapChangerTableCell<S> extends TableCell<S, S> {
@@ -932,6 +960,7 @@ final class TableColumnSupport {
                 setGraphic(sidedBox(nodes, Pos.CENTER));
             }
         });
+        disableUnlessTableEditable(column);
     }
 
     static <S> void configureMultiSidedTapChangerDoubleColumn(TableColumn<S, S> column,
@@ -956,6 +985,7 @@ final class TableColumnSupport {
                 setGraphic(sidedBox(nodes, Pos.CENTER_RIGHT));
             }
         });
+        disableUnlessTableEditable(column);
     }
 
     static <S> void configureMultiSidedTapChangerNullableIntColumn(TableColumn<S, S> column,
@@ -1002,6 +1032,7 @@ final class TableColumnSupport {
                 setGraphic(sidedBox(nodes, Pos.CENTER));
             }
         });
+        disableUnlessTableEditable(column);
     }
 
     // A plain ChoiceBox rather than editableDoubleField's double-click-to-edit Label/TextField swap - a dropdown
@@ -1040,6 +1071,8 @@ final class TableColumnSupport {
                                                String tooltipKey, BiConsumer<Window, S> onInfoClick) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
         column.setCellFactory(col -> new InfoButtonTableCell<>(textGetter, tooltipKey, onInfoClick));
+        // the info button opens an editing dialog
+        disableUnlessTableEditable(column);
         // The cell value is the row item itself (S isn't Comparable), so sorting needs an explicit comparator
         // rather than the column's default cast-to-Comparable one - sort by the same text the cell displays.
         column.setComparator(Comparator.comparing(textGetter));
@@ -1091,6 +1124,7 @@ final class TableColumnSupport {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
         column.setCellFactory(col -> new SpinnerTableCell<>(valueGetter, maxGetter, setter));
+        disableUnlessTableEditable(column);
     }
 
     private static final class SpinnerTableCell<S> extends TableCell<S, S> {
@@ -1256,6 +1290,7 @@ final class TableColumnSupport {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
         Map<S, String> flashStyles = new HashMap<>();
         column.setCellFactory(col -> new EditableBooleanTableCell<>(setter, editable, flashStyles));
+        disableUnlessTableEditable(column);
     }
 
     private static final class EditableBooleanTableCell<S> extends TableCell<S, Boolean> {
@@ -1307,6 +1342,7 @@ final class TableColumnSupport {
             cell.getStyleClass().add(EDITABLE_CELL_STYLE_CLASS);
             return cell;
         });
+        disableUnlessTableEditable(column);
         column.setOnEditCommit(event -> setter.accept(event.getRowValue(), event.getNewValue()));
     }
 

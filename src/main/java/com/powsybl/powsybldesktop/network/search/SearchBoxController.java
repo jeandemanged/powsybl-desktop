@@ -80,7 +80,8 @@ public class SearchBoxController {
     private void initialize() {
         searchDebounce.setOnFinished(event -> runSearch(searchField.getText()));
         searchField.textProperty().addListener((observable, oldValue, newValue) -> searchDebounce.playFromStart());
-        searchService.setOnSucceeded(event -> onSearchResult(searchService.getValue()));
+        // resolved here, on the FX thread, since resolving reads the network (see NetworkSearchIndex.Candidates)
+        searchService.setOnSucceeded(event -> onSearchResult(searchService.getValue().resolve()));
         searchService.setOnFailed(event -> onSearchResult(new NetworkSearchIndex.Result(List.of(), false)));
     }
 
@@ -286,7 +287,7 @@ public class SearchBoxController {
         };
     }
 
-    private final class SearchService extends Service<NetworkSearchIndex.Result> {
+    private final class SearchService extends Service<NetworkSearchIndex.Candidates> {
         private String query;
         private NetworkSearchIndex index;
 
@@ -299,14 +300,14 @@ public class SearchBoxController {
         }
 
         @Override
-        protected Task<NetworkSearchIndex.Result> createTask() {
+        protected Task<NetworkSearchIndex.Candidates> createTask() {
             String currentQuery = query;
             NetworkSearchIndex currentIndex = index;
             Set<NetworkSearch.Kind> currentKinds = kinds;
             return new Task<>() {
                 @Override
-                protected NetworkSearchIndex.Result call() {
-                    return currentIndex.search(currentQuery, currentKinds);
+                protected NetworkSearchIndex.Candidates call() {
+                    return currentIndex.searchCandidates(currentQuery, currentKinds);
                 }
             };
         }

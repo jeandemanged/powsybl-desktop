@@ -109,10 +109,14 @@ public class SubstationsTableController extends AbstractDisposableController {
         geographicalTagsColumn.setSortable(false);
         geographicalTagsColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
         geographicalTagsColumn.setCellFactory(col -> new GeographicalTagsCell());
+        // its button opens a dialog adding tags
+        TableColumnSupport.disableUnlessTableEditable(geographicalTagsColumn);
     }
 
     public void setMainModel(MainModel mainModel) {
         this.mainModel = Objects.requireNonNull(mainModel);
+        // see AbstractEquipmentTableController.setMainModel
+        substationsTableView.editableProperty().bind(mainModel.networkBusyProperty().not());
         updateSubstations();
         listenerManager.listen(this.mainModel.networkProperty(), (observable, oldValue, newValue) -> updateSubstations());
         listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> updateSubstations());

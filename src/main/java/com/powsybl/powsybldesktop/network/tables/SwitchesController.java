@@ -87,6 +87,8 @@ public class SwitchesController extends AbstractDisposableController implements 
     @Override
     public void setMainModel(MainModel mainModel) {
         this.mainModel = Objects.requireNonNull(mainModel);
+        // see AbstractEquipmentTableController.setMainModel
+        switchesTableView.editableProperty().bind(mainModel.networkBusyProperty().not());
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
     }
 

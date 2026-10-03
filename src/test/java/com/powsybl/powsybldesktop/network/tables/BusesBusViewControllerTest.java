@@ -38,6 +38,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -125,6 +126,30 @@ class BusesBusViewControllerTest extends AbstractHeadlessApplicationTest {
 
         Hyperlink substationLink = (Hyperlink) cellGraphic(controller.substationColumn, row);
         assertEquals(voltageLevel.getSubstation().orElseThrow().getNameOrId(), substationLink.getText());
+    }
+
+    @Test
+    void fictitiousP0AndQ0AreLockedWhileTheNetworkIsBusy() {
+        int row = rowOf(bus("VL2"));
+        Runnable[] release = new Runnable[1];
+        interact(() -> release[0] = mainModel.markBusy(network));
+
+        assertFalse(controller.busesTableView.isEditable());
+        assertTrue(cell(controller.fictitiousP0Column, row).isDisabled());
+        assertTrue(cell(controller.fictitiousQ0Column, row).isDisabled());
+        assertFalse(cell(controller.vColumn, row).isDisabled(), "a read-only value isn't greyed");
+
+        interact(release[0]);
+        assertTrue(controller.busesTableView.isEditable());
+        assertFalse(cell(controller.fictitiousP0Column, row).isDisabled());
+    }
+
+    private <T> TableCell<Bus, T> cell(TableColumn<Bus, T> column, int row) {
+        TableCell<Bus, T> cell = (TableCell<Bus, T>) column.getCellFactory().call(column);
+        cell.updateTableView(controller.busesTableView);
+        cell.updateTableColumn(column);
+        cell.updateIndex(row);
+        return cell;
     }
 
     @Test

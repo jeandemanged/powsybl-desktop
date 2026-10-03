@@ -14,6 +14,7 @@ import com.powsybl.contingency.list.ListOfContingencyLists;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.loadflow.LoadFlow;
+import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.loadflow.LoadFlowRunParameters;
 import com.powsybl.powsybldesktop.contingency.ContingenciesController;
@@ -54,13 +55,16 @@ import com.powsybl.powsybldesktop.utils.DisposableController;
 import com.powsybl.powsybldesktop.utils.LanguagePreferences;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.security.SecurityAnalysis;
+import com.powsybl.security.SecurityAnalysisParameters;
 import com.powsybl.security.SecurityAnalysisReport;
 import com.powsybl.security.SecurityAnalysisRunParameters;
+import com.powsybl.security.json.JsonSecurityAnalysisParameters;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.collections.ListChangeListener;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
+import javafx.concurrent.Worker;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -82,11 +86,14 @@ import javafx.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -265,15 +272,16 @@ public class MainController extends AbstractDisposableController {
         // whatever ties it to the rest of the merged network (e.g. a tie line straddling two subnetworks)
         Network network = selectedNetwork.getNetwork();
 
-        if (mainModel.getLoadFlowServices().containsKey(network)) {
+        if (refuseIfBusy(network)) {
             return;
         }
+        LoadFlowParameters parameters = copyParameters(mainModel.loadFlowParametersProperty().getValue());
         Service<LoadFlowResultAndReport> loadFlowService = new Service<>() {
             @Override
             protected Task<LoadFlowResultAndReport> createTask() {
-                return new Task<>() {
+                return new AbstractNetworkTask<>(mainModel, network) {
                     @Override
-                    protected LoadFlowResultAndReport call() throws Exception {
+                    protected LoadFlowResultAndReport compute() throws Exception {
                         ReportNode reportNode = ReportNode.newRootReportNode()
                                 .withAllResourceBundlesFromClasspath()
                                 .withMessageTemplate("powsybl.desktop.loadflow")
@@ -281,7 +289,7 @@ public class MainController extends AbstractDisposableController {
                                 .build();
 
                         LoadFlowRunParameters runParameters = LoadFlowRunParameters.getDefault()
-                                .setParameters(mainModel.loadFlowParametersProperty().getValue())
+                                .setParameters(parameters)
                                 .setReportNode(reportNode);
                         // LoadFlow.run() blocks on CompletableFuture.join(), which ignores thread interruption,
                         // so cancelling this task wouldn't stop the underlying computation - runAsync()+get() honors it
@@ -307,7 +315,6 @@ public class MainController extends AbstractDisposableController {
         mainModel.addNotification(runningNotification);
 
         loadFlowService.setOnSucceeded(event -> {
-            mainModel.getLoadFlowServices().remove(network);
             LoadFlowResultAndReport loadFlowResultAndReport = (LoadFlowResultAndReport) event.getSource().getValue();
             mainModel.setLoadFlowResult(network, loadFlowResultAndReport.loadFlowResult());
             mainModel.setUpdate();
@@ -317,7 +324,6 @@ public class MainController extends AbstractDisposableController {
         });
 
         loadFlowService.setOnFailed(event -> {
-            mainModel.getLoadFlowServices().remove(network);
             Throwable exception = event.getSource().getException();
             LOGGER.error(exception.toString(), exception);
 
@@ -327,13 +333,33 @@ public class MainController extends AbstractDisposableController {
             mainModel.replaceNotification(runningNotification,
                     Notification.createError(runningNotification.startTimestamp(), "main.loadFlow.failed", viewLogsAction));
         });
-        loadFlowService.setOnCancelled(event -> {
-            mainModel.getLoadFlowServices().remove(network);
-            mainModel.replaceNotification(runningNotification,
-                    Notification.createCancelled(runningNotification.startTimestamp(), "main.loadFlow.cancelled"));
-        });
-        mainModel.getLoadFlowServices().put(network, loadFlowService);
+        loadFlowService.setOnCancelled(event -> mainModel.replaceNotification(runningNotification,
+                Notification.createCancelled(runningNotification.startTimestamp(), "main.loadFlow.cancelled")));
+        track(mainModel.getLoadFlowServices(), network, loadFlowService);
         loadFlowService.start();
+    }
+
+    // A load flow writes the network, which every other background job reads (including a cancelled computation
+    // still winding down): a computation only starts on a network no other job uses
+    private boolean refuseIfBusy(Network rootNetwork) {
+        if (mainModel.isBusy(rootNetwork)) {
+            mainModel.addNotification(Notification.createError(Instant.now(), "main.networkBusy"));
+            return true;
+        }
+        return false;
+    }
+
+    // Snapshots taken on the FX thread: a run must not see the parameters window's in-place edits made meanwhile
+    private static LoadFlowParameters copyParameters(LoadFlowParameters parameters) {
+        return parameters.copy();
+    }
+
+    private static SecurityAnalysisParameters copyParameters(SecurityAnalysisParameters parameters) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        JsonSecurityAnalysisParameters.write(parameters, out);
+        SecurityAnalysisParameters copy = JsonSecurityAnalysisParameters.read(new ByteArrayInputStream(out.toByteArray()));
+        copy.setLoadFlowParameters(parameters.getLoadFlowParameters().copy());
+        return copy;
     }
 
     // completing without exception doesn't mean converged - the outcome reflects the components' convergence
@@ -359,9 +385,10 @@ public class MainController extends AbstractDisposableController {
         // same rationale as onLoadFlow: never run on a subnetwork, only on its root
         Network network = selectedNetwork.getNetwork();
 
-        if (mainModel.getSecurityAnalysisServices().containsKey(network)) {
+        if (refuseIfBusy(network)) {
             return;
         }
+        SecurityAnalysisParameters parameters = copyParameters(mainModel.securityAnalysisParametersProperty().getValue());
         List<ContingencyList> enabledContingencyLists = mainModel.getContingencyLists(network).stream()
                 .filter(list -> mainModel.contingencyListEnabledProperty(list).get())
                 .collect(Collectors.toList());
@@ -370,9 +397,9 @@ public class MainController extends AbstractDisposableController {
         Service<SecurityAnalysisResultAndReport> securityAnalysisService = new Service<>() {
             @Override
             protected Task<SecurityAnalysisResultAndReport> createTask() {
-                return new Task<>() {
+                return new AbstractNetworkTask<>(mainModel, network) {
                     @Override
-                    protected SecurityAnalysisResultAndReport call() throws Exception {
+                    protected SecurityAnalysisResultAndReport compute() throws Exception {
                         ReportNode reportNode = ReportNode.newRootReportNode()
                                 .withAllResourceBundlesFromClasspath()
                                 .withMessageTemplate("powsybl.desktop.securityanalysis")
@@ -381,7 +408,7 @@ public class MainController extends AbstractDisposableController {
 
                         List<Contingency> contingencies = ContingencyNames.deduplicate(contingencyList.getContingencies(network));
                         SecurityAnalysisRunParameters runParameters = SecurityAnalysisRunParameters.getDefault()
-                                .setSecurityAnalysisParameters(mainModel.securityAnalysisParametersProperty().getValue())
+                                .setSecurityAnalysisParameters(parameters)
                                 .setReportNode(reportNode);
                         // SecurityAnalysis.run() blocks on CompletableFuture.join(), which ignores thread interruption,
                         // so cancelling this task wouldn't stop the underlying computation - runAsync()+get() honors it
@@ -407,7 +434,6 @@ public class MainController extends AbstractDisposableController {
         mainModel.addNotification(runningNotification);
 
         securityAnalysisService.setOnSucceeded(event -> {
-            mainModel.getSecurityAnalysisServices().remove(network);
             SecurityAnalysisResultAndReport securityAnalysisResultAndReport = (SecurityAnalysisResultAndReport) event.getSource().getValue();
             mainModel.setSecurityAnalysisResult(network, securityAnalysisResultAndReport.securityAnalysisResult());
             mainModel.setUpdate();
@@ -417,7 +443,6 @@ public class MainController extends AbstractDisposableController {
         });
 
         securityAnalysisService.setOnFailed(event -> {
-            mainModel.getSecurityAnalysisServices().remove(network);
             Throwable exception = event.getSource().getException();
             LOGGER.error(exception.toString(), exception);
 
@@ -427,12 +452,9 @@ public class MainController extends AbstractDisposableController {
             mainModel.replaceNotification(runningNotification,
                     Notification.createError(runningNotification.startTimestamp(), "main.securityAnalysis.failed", viewLogsAction));
         });
-        securityAnalysisService.setOnCancelled(event -> {
-            mainModel.getSecurityAnalysisServices().remove(network);
-            mainModel.replaceNotification(runningNotification,
-                    Notification.createCancelled(runningNotification.startTimestamp(), "main.securityAnalysis.cancelled"));
-        });
-        mainModel.getSecurityAnalysisServices().put(network, securityAnalysisService);
+        securityAnalysisService.setOnCancelled(event -> mainModel.replaceNotification(runningNotification,
+                Notification.createCancelled(runningNotification.startTimestamp(), "main.securityAnalysis.cancelled")));
+        track(mainModel.getSecurityAnalysisServices(), network, securityAnalysisService);
         securityAnalysisService.start();
     }
 
@@ -462,16 +484,15 @@ public class MainController extends AbstractDisposableController {
         Service<NetworkSearchIndex> searchIndexService = new Service<>() {
             @Override
             protected Task<NetworkSearchIndex> createTask() {
-                return new Task<>() {
+                return new AbstractNetworkTask<>(mainModel, network) {
                     @Override
-                    protected NetworkSearchIndex call() {
+                    protected NetworkSearchIndex compute() {
                         return NetworkSearchIndex.build(network);
                     }
                 };
             }
         };
         searchIndexService.setOnSucceeded(event -> {
-            mainModel.getSearchIndexServices().remove(network);
             NetworkSearchIndex index = (NetworkSearchIndex) event.getSource().getValue();
             // the network can be a subnetwork, while getNetworks() only holds root networks
             if (mainModel.getNetworks().contains(network.getNetwork())) {
@@ -482,7 +503,6 @@ public class MainController extends AbstractDisposableController {
             }
         });
         searchIndexService.setOnFailed(event -> {
-            mainModel.getSearchIndexServices().remove(network);
             Throwable exception = event.getSource().getException();
             LOGGER.error(exception.toString(), exception);
             if (network.equals(mainModel.getNetwork())) {
@@ -492,10 +512,18 @@ public class MainController extends AbstractDisposableController {
                     mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.LOGS)));
             mainModel.addNotification(Notification.createError(startTimestamp, "main.search.indexFailed", viewLogsAction));
         });
-        // cancelled by MainModel.removeNetwork
-        searchIndexService.setOnCancelled(event -> mainModel.getSearchIndexServices().remove(network));
-        mainModel.getSearchIndexServices().put(network, searchIndexService);
+        track(mainModel.getSearchIndexServices(), network, searchIndexService);
         searchIndexService.start();
+    }
+
+    // Registered in services until it ends, whatever the outcome (it can also be cancelled by MainModel.removeNetwork)
+    private static void track(Map<Network, Service<?>> services, Network network, Service<?> service) {
+        services.put(network, service);
+        service.stateProperty().addListener((observable, oldState, newState) -> {
+            if (newState == Worker.State.SUCCEEDED || newState == Worker.State.FAILED || newState == Worker.State.CANCELLED) {
+                services.remove(network);
+            }
+        });
     }
 
     // Bus-view merged buses are recalculated on every topology change (switch open/close, terminal
@@ -615,13 +643,11 @@ public class MainController extends AbstractDisposableController {
         });
 
         // at initialize() time the scene/stage don't exist yet (see MainApplication / reloadShell), so the
-        // title for the very first navigation event is applied once the scene is attached
+        // title for the very first navigation event is applied once the scene is attached to its window
         borderPane.sceneProperty().addListener((observable, oldScene, newScene) -> {
             if (newScene != null) {
-                NavigationEvent current = mainModel.navigationEventProperty().getValue();
-                if (current != null) {
-                    updateStageTitle(current);
-                }
+                listenerManager.listen(newScene.windowProperty(), (o, oldWindow, newWindow) -> updateCurrentStageTitle());
+                updateCurrentStageTitle();
             }
         });
 
@@ -789,6 +815,13 @@ public class MainController extends AbstractDisposableController {
             if (newValue.state() instanceof ReportNavigationState state) {
                 controller.selectReport(state.getReportNode());
             }
+        }
+    }
+
+    private void updateCurrentStageTitle() {
+        NavigationEvent current = mainModel.navigationEventProperty().getValue();
+        if (current != null) {
+            updateStageTitle(current);
         }
     }
 

@@ -173,6 +173,29 @@ class LoadsControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
+    void editingIsLockedWhileTheNetworkIsBusy() {
+        Load load = load("B2-L");
+        Runnable[] release = new Runnable[1];
+        interact(() -> release[0] = mainModel.markBusy(network));
+        TableCell<Load, Load> connectedCell = connectedCell(rowOf(load));
+
+        assertFalse(controller.loadsTableView.isEditable());
+        assertTrue(connectedCell.isDisabled(), "custom editors, e.g. the connected check box, follow the table's editable state");
+
+        interact(release[0]);
+        assertTrue(controller.loadsTableView.isEditable());
+        assertFalse(connectedCell.isDisabled());
+    }
+
+    private TableCell<Load, Load> connectedCell(int row) {
+        TableCell<Load, Load> cell = (TableCell<Load, Load>) controller.connectedColumn.getCellFactory().call(controller.connectedColumn);
+        cell.updateTableView(controller.loadsTableView);
+        cell.updateTableColumn(controller.connectedColumn);
+        cell.updateIndex(row);
+        return cell;
+    }
+
+    @Test
     void unparsableEditTextIsMappedToNullInsteadOfThrowing() {
         @SuppressWarnings("unchecked")
         TextFieldTableCell<Load, Double> cell = (TextFieldTableCell<Load, Double>) controller.p0Column.getCellFactory().call(controller.p0Column);

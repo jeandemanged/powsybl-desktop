@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.network;
 
 import com.google.common.io.ByteStreams;
 import com.powsybl.iidm.network.*;
+import com.powsybl.powsybldesktop.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.diagram.DiagramPaneController;
 import com.powsybl.powsybldesktop.navigation.*;
@@ -27,19 +28,28 @@ import com.powsybl.powsybldesktop.network.tables.StaticVarCompensatorsController
 import com.powsybl.powsybldesktop.network.tables.SwitchesController;
 import com.powsybl.powsybldesktop.network.tables.TieLinesController;
 import com.powsybl.powsybldesktop.network.tables.TransformersController;
+import com.powsybl.powsybldesktop.notification.Notification;
+import com.powsybl.powsybldesktop.parameters.DesktopNadParameters;
+import com.powsybl.powsybldesktop.parameters.DesktopParametersJson;
+import com.powsybl.powsybldesktop.parameters.DesktopSldParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.utils.TreeItems;
 import com.powsybl.sld.svg.GraphMetadata;
+import javafx.animation.PauseTransition;
+import javafx.concurrent.Service;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.geometry.Orientation;
 import javafx.scene.control.*;
+import javafx.util.Duration;
 import netscape.javascript.JSObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -153,9 +163,41 @@ public class SubstationsController extends AbstractDisposableController {
     private GraphMetadata sldMetadata;
     // the tree selection, kept regardless of which tab is active
     private Container<?> currentContainer;
-    // area diagram is rendered lazily (only while its tab is showing): set whenever the selection or
-    // depth changes, cleared once renderAreaDiagram() has run
+    // both diagrams are rendered lazily (only while their tab is showing): set whenever what they show changes,
+    // cleared once their render is requested
+    private boolean sldStale;
     private boolean nadStale;
+
+    // Diagrams are rendered off the FX thread, latest wins: restarting a service drops its previous render's result.
+    // Everything a render reads is captured on the FX thread in createTask.
+    private final Service<SubstationDiagramRenderer.DiagramRender> sldRenderService = new Service<>() {
+        @Override
+        protected Task<SubstationDiagramRenderer.DiagramRender> createTask() {
+            Container<?> container = currentContainer;
+            DesktopSldParameters parameters = DesktopParametersJson.copy(mainModel.sldParametersProperty().getValue());
+            return new AbstractNetworkTask<>(mainModel, container.getNetwork()) {
+                @Override
+                protected SubstationDiagramRenderer.DiagramRender compute() throws IOException {
+                    return SubstationDiagramRenderer.render(container, parameters);
+                }
+            };
+        }
+    };
+
+    private final Service<String> nadRenderService = new Service<>() {
+        @Override
+        protected Task<String> createTask() {
+            Container<?> container = currentContainer;
+            int depth = nadDepth;
+            DesktopNadParameters parameters = DesktopParametersJson.copy(mainModel.nadParametersProperty().getValue());
+            return new AbstractNetworkTask<>(mainModel, container.getNetwork()) {
+                @Override
+                protected String compute() throws IOException {
+                    return NetworkAreaDiagramRenderer.render(container, depth, parameters);
+                }
+            };
+        }
+    };
 
     /**
      * Top-level tree grouping criterion, selectable via {@link #groupingMenuButton}.
@@ -228,7 +270,7 @@ public class SubstationsController extends AbstractDisposableController {
         // stale, possibly-invalidated data
         equipmentTabs.forEach(equipmentTab -> equipmentTab.controller().setMainModel(mainModel));
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> this.update());
-        listenerManager.listen(mainModel.sldParametersRevisionProperty(), (observable, oldValue, newValue) -> renderSingleLineDiagram());
+        listenerManager.listen(mainModel.sldParametersRevisionProperty(), (observable, oldValue, newValue) -> updateSingleLineDiagram());
         listenerManager.listen(mainModel.nadParametersRevisionProperty(), (observable, oldValue, newValue) -> updateAreaDiagram());
 
         sldPaneController.loadShell(SLD_HTML_SHELL.replace("%__JS__%", js));
@@ -489,10 +531,20 @@ public class SubstationsController extends AbstractDisposableController {
                 new EquipmentTab(ContainerNavigationState.ContainerTab.BUSES_BUS_BREAKER_VIEW, busesBusBreakerViewTab, busesBusBreakerViewEmbeddedController));
 
         diagramTabPane.getSelectionModel().selectedItemProperty().addListener((observable, oldTab, newTab) -> {
-            if (newTab == areaDiagramTab && nadStale) {
+            if (newTab == singleLineDiagramTab && sldStale) {
+                renderSingleLineDiagram();
+            } else if (newTab == areaDiagramTab && nadStale) {
                 renderAreaDiagram();
             }
         });
+        sldRenderService.setOnSucceeded(event -> {
+            SubstationDiagramRenderer.DiagramRender render = sldRenderService.getValue();
+            sldMetadata = render.metadata();
+            sldPaneController.showDiagram(render.svg());
+        });
+        sldRenderService.setOnFailed(event -> LOGGER.error(sldRenderService.getException().getMessage(), sldRenderService.getException()));
+        nadRenderService.setOnSucceeded(event -> nadPaneController.showDiagram(nadRenderService.getValue()));
+        nadRenderService.setOnFailed(event -> LOGGER.error(nadRenderService.getException().getMessage(), nadRenderService.getException()));
 
         initializeTreeViews();
         initializeListeners();
@@ -510,12 +562,16 @@ public class SubstationsController extends AbstractDisposableController {
         nadDepthSlider.setShowTickLabels(true);
         nadDepthSlider.setPrefWidth(120);
         nadDepthSlider.setTooltip(new Tooltip(Messages.get("substations.diagram.depth")));
+        // debounced: dragging the slider across several depths would otherwise start a render per depth, each
+        // running to completion in the background even once superseded (see AbstractNetworkTask)
+        PauseTransition depthDebounce = new PauseTransition(Duration.millis(300));
+        depthDebounce.setOnFinished(event -> renderAreaDiagram());
         nadDepthSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
             int depth = newValue.intValue();
             if (depth != nadDepth) {
                 nadDepth = depth;
                 mainModel.setDiagramAreaDepth(depth);
-                renderAreaDiagram();
+                depthDebounce.playFromStart();
             }
         });
         nadPaneController.getToolBar().getItems().addAll(
@@ -554,6 +610,8 @@ public class SubstationsController extends AbstractDisposableController {
 
     @Override
     public void dispose() {
+        sldRenderService.cancel();
+        nadRenderService.cancel();
         searchBoxController.dispose();
         equipmentTabs.forEach(equipmentTab -> equipmentTab.controller().dispose());
         super.dispose();
@@ -577,10 +635,12 @@ public class SubstationsController extends AbstractDisposableController {
             mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.SUBSTATIONS,
                     ContainerNavigationState.create(currentContainer, selectedTab())), false);
             if (Objects.nonNull(node.getNextVId())) {
+                // re-renders through navigateTo
                 mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.SUBSTATIONS,
                         ContainerNavigationState.create(this.mainModel.getNetwork().getNetwork().getVoltageLevel(node.getNextVId()))));
+            } else {
+                update();
             }
-            update();
             Identifiable<?> equipment = this.mainModel.getNetwork().getNetwork().getIdentifiable(node.getEquipmentId());
             if (equipment instanceof Generator generator) {
                 selectTab(ContainerNavigationState.ContainerTab.GENERATORS);
@@ -603,14 +663,20 @@ public class SubstationsController extends AbstractDisposableController {
     @SuppressWarnings("unused") // used by JS
     public void onSwitchClick(String id) {
         Objects.requireNonNull(id);
+        // not while a background job uses the network (see MainModel.markBusy), e.g. this diagram's re-render
+        // after a previous click
+        if (mainModel.isBusy(mainModel.getNetwork())) {
+            mainModel.addNotification(Notification.createError(Instant.now(), "main.networkBusy"));
+            return;
+        }
         GraphMetadata.NodeMetadata nodeMetadata = sldMetadata.getNodeMetadata(id);
         Objects.requireNonNull(nodeMetadata);
         String switchId = nodeMetadata.getEquipmentId();
         Switch aSwitch = mainModel.getNetwork().getSwitch(switchId);
         Objects.requireNonNull(aSwitch);
         aSwitch.setOpen(!aSwitch.isOpen());
+        // re-renders through this view's updateProperty listener
         mainModel.setUpdate(aSwitch.getVoltageLevel());
-        update();
     }
 
     private void initializeTreeViews() {
@@ -710,22 +776,27 @@ public class SubstationsController extends AbstractDisposableController {
         Container<?> container = selectedItem != null && selectedItem.getValue() instanceof Container<?> c
                 && (c instanceof VoltageLevel || c instanceof Substation) ? c : null;
         currentContainer = container;
-        renderSingleLineDiagram();
+        updateSingleLineDiagram();
         updateAreaDiagram();
         updateEquipmentTabs(container);
     }
 
+    // rendered lazily: only while the single line diagram tab is showing, so that editing in an equipment tab
+    // doesn't keep the network busy re-rendering a hidden diagram (see MainModel.markBusy)
+    private void updateSingleLineDiagram() {
+        sldStale = true;
+        if (diagramTabPane.getSelectionModel().getSelectedItem() == singleLineDiagramTab) {
+            renderSingleLineDiagram();
+        }
+    }
+
     private void renderSingleLineDiagram() {
+        sldStale = false;
         if (currentContainer != null) {
-            try {
-                SubstationDiagramRenderer.DiagramRender render = SubstationDiagramRenderer.render(currentContainer, mainModel.sldParametersProperty().getValue());
-                sldMetadata = render.metadata();
-                sldPaneController.showDiagram(render.svg());
-            } catch (IOException e) {
-                LOGGER.error(e.getMessage(), e);
-            }
+            sldRenderService.restart();
         } else {
             // nothing selected, or a group node (country/subnetwork/area, or one of their "no X" placeholders)
+            sldRenderService.cancel();
             sldMetadata = null;
             sldPaneController.showNoSelection();
         }
@@ -741,15 +812,12 @@ public class SubstationsController extends AbstractDisposableController {
     }
 
     private void renderAreaDiagram() {
-        if (currentContainer == null) {
+        nadStale = false;
+        if (currentContainer != null) {
+            nadRenderService.restart();
+        } else {
+            nadRenderService.cancel();
             nadPaneController.showNoSelection();
-            return;
-        }
-        try {
-            nadPaneController.showDiagram(NetworkAreaDiagramRenderer.render(currentContainer, nadDepth, mainModel.nadParametersProperty().getValue()));
-            nadStale = false;
-        } catch (IOException e) {
-            LOGGER.error(e.getMessage(), e);
         }
     }
 

@@ -45,6 +45,7 @@ import com.powsybl.iidm.network.test.SvcTestCaseFactory;
 import com.powsybl.iidm.network.test.ThreeWindingsTransformerNetworkFactory;
 import com.powsybl.iidm.network.test.TwoVoltageLevelNetworkFactory;
 import com.powsybl.iidm.serde.test.MetrixTutorialSixBusesFactory;
+import com.powsybl.powsybldesktop.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.map.MapTestNetworkFactory;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
@@ -191,6 +192,14 @@ public class NetworksController extends AbstractDisposableController {
         listenerManager.listen(mainModel.getNetworks(), c -> updateNetworkList());
         listenerManager.listen(mainModel.networkProperty(), (obs, oldNetwork, newNetwork) -> updateNetworkInfo(newNetwork));
         listenerManager.listen(networksTreeView.getSelectionModel().getSelectedItems(), c -> updateSelectionState());
+        listenerManager.listen(mainModel.networkBusyProperty(), (obs, wasBusy, isBusy) -> updateMergeDetachButtons(getSelectedNetworks()));
+        // the selected network's name, like its tables (see AbstractEquipmentTableController.setMainModel)
+        nameField.disableProperty().bind(mainModel.networkBusyProperty());
+    }
+
+    private void updateMergeDetachButtons(List<Network> selectedNetworks) {
+        mergeButton.setDisable(!canMerge(selectedNetworks));
+        detachButton.setDisable(!canDetach(selectedNetworks));
     }
 
     private List<Network> getSelectedNetworks() {
@@ -218,17 +227,16 @@ public class NetworksController extends AbstractDisposableController {
             }
             updateNetworkInfo(network);
         }
-        mergeButton.setDisable(!canMerge(selectedNetworks));
-        detachButton.setDisable(!canDetach(selectedNetworks));
+        updateMergeDetachButtons(selectedNetworks);
     }
 
     private boolean canMerge(List<Network> selectedNetworks) {
-        return selectedNetworks.size() > 1
+        return selectedNetworks.size() > 1 && noneBusy(selectedNetworks)
                 && selectedNetworks.stream().allMatch(network -> isParentNetwork(network) && network.getSubnetworks().isEmpty());
     }
 
     private boolean canDetach(List<Network> selectedNetworks) {
-        if (selectedNetworks.isEmpty()) {
+        if (selectedNetworks.isEmpty() || !noneBusy(selectedNetworks)) {
             return false;
         }
         if (selectedNetworks.size() == 1) {
@@ -236,6 +244,11 @@ public class NetworksController extends AbstractDisposableController {
             return !isParentNetwork(network) || !network.getSubnetworks().isEmpty();
         }
         return selectedNetworks.stream().noneMatch(this::isParentNetwork);
+    }
+
+    // merging and detaching move a network's content: not while a background job uses it (see MainModel.markBusy)
+    private boolean noneBusy(List<Network> networks) {
+        return networks.stream().noneMatch(mainModel::isBusy);
     }
 
     private boolean canCloseAll(List<Network> selectedNetworks) {
@@ -1044,6 +1057,9 @@ public class NetworksController extends AbstractDisposableController {
     @FXML
     private void onMerge() {
         List<Network> selectedNetworks = getSelectedNetworks();
+        if (!noneBusy(selectedNetworks)) {
+            return;
+        }
         Network merged = Network.merge(selectedNetworks.toArray(new Network[0]));
         selectedNetworks.forEach(mainModel::removeNetwork);
         mainModel.addNetwork(merged);
@@ -1052,6 +1068,9 @@ public class NetworksController extends AbstractDisposableController {
     @FXML
     private void onDetach() {
         List<Network> selectedNetworks = getSelectedNetworks();
+        if (!noneBusy(selectedNetworks)) {
+            return;
+        }
         // network.getSubnetworks() is emptied as it's iterated over by detach(), so snapshot it first
         List<Network> subnetworksToDetach = selectedNetworks.size() == 1 && isParentNetwork(selectedNetworks.getFirst())
                 ? List.copyOf(selectedNetworks.getFirst().getSubnetworks())
@@ -1088,9 +1107,9 @@ public class NetworksController extends AbstractDisposableController {
         Service<Void> exportService = new Service<>() {
             @Override
             protected Task<Void> createTask() {
-                return new Task<>() {
+                return new AbstractNetworkTask<>(mainModel, network) {
                     @Override
-                    protected Void call() {
+                    protected Void compute() {
                         DataSource dataSource = Exporters.createDataSource(outputPath);
                         exporter.export(network, parameters, dataSource, reportNode);
                         return null;

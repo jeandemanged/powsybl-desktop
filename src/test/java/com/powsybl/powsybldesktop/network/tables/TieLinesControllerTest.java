@@ -171,6 +171,26 @@ class TieLinesControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
+    void connectedCheckBoxesAreLockedOnlyWhileTheNetworkIsBusy() {
+        TieLine tieLine = network.getTieLineStream().findFirst().orElseThrow();
+        // also checks this table is editable when idle, which the lock relies on
+        assertFalse(connectedCellDisabled(rowOf(tieLine)));
+
+        Runnable[] release = new Runnable[1];
+        interact(() -> release[0] = mainModel.markBusy(network));
+        assertTrue(connectedCellDisabled(rowOf(tieLine)));
+
+        interact(release[0]);
+        assertFalse(connectedCellDisabled(rowOf(tieLine)));
+    }
+
+    private boolean connectedCellDisabled(int row) {
+        TableCell<TieLine, TieLine> cell = (TableCell<TieLine, TieLine>) controller.connectedColumn.getCellFactory().call(controller.connectedColumn);
+        cell.updateTableView(controller.tieLinesTableView);
+        return cell.isDisabled();
+    }
+
+    @Test
     void componentAndPowerColumnsShowBothTerminals() {
         TieLine tieLine = network.getTieLineStream().findFirst().orElseThrow();
         int row = rowOf(tieLine);

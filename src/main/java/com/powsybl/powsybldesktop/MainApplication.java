@@ -14,7 +14,6 @@ import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.concurrent.Task;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -24,6 +23,8 @@ import javafx.util.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -53,24 +54,12 @@ public class MainApplication extends Application {
         splash.show();
         long splashShownAt = System.currentTimeMillis();
 
-        Task<Parent> loadMainView = new Task<>() {
-            @Override
-            protected Parent call() throws Exception {
-                FXMLLoader loader = new FXMLLoader(MainApplication.class.getResource("main-view.fxml"), Messages.bundle());
-                loader.setControllerFactory(type -> new MainController(mainModel));
-                return loader.load();
-            }
-        };
-        loadMainView.setOnSucceeded(event -> {
-            Runnable showMainView = () -> {
-                Scene scene = new Scene(loadMainView.getValue(), 900, 600);
-                scene.getStylesheets().add(MainApplication.class.getResource("styles.css").toExternalForm());
-                stage.setTitle(APP_TITLE);
-                stage.getIcons().add(new Image(Objects.requireNonNull(MainApplication.class.getResourceAsStream("logo.png"))));
-                stage.setScene(scene);
-                stage.show();
-                splash.close();
-            };
+        // Loaded on the FX thread, since MainController.initialize() builds controls and drives the first navigation;
+        // the short pause lets the splash screen be painted first, as this blocks the FX thread while loading.
+        PauseTransition splashPainted = new PauseTransition(Duration.millis(50));
+        splashPainted.setOnFinished(event -> {
+            Parent mainView = loadMainView(mainModel, splash);
+            Runnable showMainView = () -> showMainView(stage, mainView, splash);
             Duration elapsed = Duration.millis(System.currentTimeMillis() - splashShownAt);
             Duration remaining = MIN_SPLASH_DURATION.subtract(elapsed);
             if (remaining.greaterThan(Duration.ZERO)) {
@@ -81,14 +70,35 @@ public class MainApplication extends Application {
                 showMainView.run();
             }
         });
-        loadMainView.setOnFailed(event -> {
-            LOGGER.error("Failed to load main view", loadMainView.getException());
-            splash.close();
-            Platform.exit();
-        });
+        splashPainted.play();
+    }
 
-        Thread thread = new Thread(loadMainView, "main-view-loader");
-        thread.setDaemon(true);
-        thread.start();
+    private static void showMainView(Stage stage, Parent mainView, SplashScreen splash) {
+        Scene scene = new Scene(mainView, 900, 600);
+        scene.getStylesheets().add(MainApplication.class.getResource("styles.css").toExternalForm());
+        stage.setTitle(APP_TITLE);
+        stage.getIcons().add(new Image(Objects.requireNonNull(MainApplication.class.getResourceAsStream("logo.png"))));
+        stage.setScene(scene);
+        stage.show();
+        splash.close();
+    }
+
+    private static Parent loadMainView(MainModel mainModel, SplashScreen splash) {
+        Parent root = null;
+        try {
+            FXMLLoader loader = new FXMLLoader(MainApplication.class.getResource("main-view.fxml"), Messages.bundle());
+            loader.setControllerFactory(type -> new MainController(mainModel));
+            root = loader.load();
+            return root;
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        } finally {
+            // whatever the failure, don't leave the splash screen up forever
+            if (root == null) {
+                LOGGER.error("Failed to load main view");
+                splash.close();
+                Platform.exit();
+            }
+        }
     }
 }

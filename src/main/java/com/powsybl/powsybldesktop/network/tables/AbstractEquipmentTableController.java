@@ -121,6 +121,10 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
     @Override
     public void setMainModel(MainModel mainModel) {
         this.mainModel = Objects.requireNonNull(mainModel);
+        // a table with editable columns stops editing while a background job uses its network (see MainModel.markBusy)
+        if (tableView().isEditable()) {
+            tableView().editableProperty().bind(mainModel.networkBusyProperty().not());
+        }
         refreshAll();
         listenerManager.listen(this.mainModel.networkProperty(), (observable, oldValue, newValue) -> refreshAll());
         listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> refreshAll());
@@ -129,9 +133,14 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
 
     @Override
     public void setContainer(Container<?> container) {
+        searchBox().hide();
+        // already refreshed for this container by this table's own network/update listeners, which SubstationsController
+        // registers before its own (that calls this method)
+        if (filtering && container == scopeContainer) {
+            return;
+        }
         filtering = true;
         scopeContainer = container;
-        searchBox().hide();
         refreshFiltered();
     }
 
@@ -158,7 +167,8 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
 
     private void refreshAll() {
         Network network = mainModel.getNetwork();
-        allSorted = network == null ? List.of() : networkItems(network)
+        // embedded: only the container's items are sorted, not the whole network's, on every update
+        allSorted = network == null || filtering ? List.of() : networkItems(network)
                 .sorted(Comparator.comparing(Identifiable::getNameOrId))
                 .toList();
         refreshFiltered();
@@ -166,9 +176,13 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
 
     // not filtering (standalone): everything. Filtering with no container selected: nothing.
     private void refreshFiltered() {
+        Network network = mainModel.getNetwork();
         currentItems = !filtering ? allSorted
-                : scopeContainer == null ? List.of()
-                : allSorted.stream().filter(item -> belongsTo(item, scopeContainer)).toList();
+                : scopeContainer == null || network == null ? List.of()
+                : networkItems(network)
+                        .filter(item -> belongsTo(item, scopeContainer))
+                        .sorted(Comparator.comparing(Identifiable::getNameOrId))
+                        .toList();
         data.setAll(currentItems);
     }
 

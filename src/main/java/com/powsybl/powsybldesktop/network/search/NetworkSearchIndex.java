@@ -22,7 +22,6 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.StoredFields;
@@ -36,6 +35,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.TermInSetQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.WildcardQuery;
@@ -105,18 +105,19 @@ public final class NetworkSearchIndex implements Closeable {
     private final Directory directory;
     // Kept open for the life of the index (not just during build()) so refreshBuses() can write to it later.
     private final IndexWriter writer;
-    // Reassigned by refreshBuses() after a commit, so a concurrent search() always sees a consistent, fully-open
-    // reader/searcher pair - never a separate reader field that could be swapped out of step with it.
-    private volatile IndexSearcher searcher;
+    // Refreshed by refreshBuses() after a commit. Reference-counted: a reader replaced while a background search()
+    // still uses it is only closed once that search releases it.
+    private final SearcherManager searcherManager;
 
     private NetworkSearchIndex(Map<String, Identifiable<?>> byId, Map<String, Set<String>> busIdsByVoltageLevel,
-                                Analyzer analyzer, Directory directory, IndexWriter writer, DirectoryReader reader) {
-        this.byId = byId;
+                                Analyzer analyzer, Directory directory, IndexWriter writer) throws IOException {
+        // concurrent: refreshBuses() (FX thread) updates it while a background search() reads it
+        this.byId = new ConcurrentHashMap<>(byId);
         this.busIdsByVoltageLevel = busIdsByVoltageLevel;
         this.analyzer = analyzer;
         this.directory = directory;
         this.writer = writer;
-        this.searcher = new IndexSearcher(reader);
+        this.searcherManager = new SearcherManager(writer, null);
     }
 
     /**
@@ -146,7 +147,7 @@ public final class NetworkSearchIndex implements Closeable {
             throw new UncheckedIOException(e);
         }
         try {
-            return new NetworkSearchIndex(byId, busIdsByVoltageLevel, analyzer, directory, writer, DirectoryReader.open(writer));
+            return new NetworkSearchIndex(byId, busIdsByVoltageLevel, analyzer, directory, writer);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -210,9 +211,7 @@ public final class NetworkSearchIndex implements Closeable {
 
     private void commitAndRefreshSearcher() throws IOException {
         writer.commit();
-        IndexSearcher oldSearcher = searcher;
-        searcher = new IndexSearcher(DirectoryReader.open(writer));
-        oldSearcher.getIndexReader().close();
+        searcherManager.maybeRefreshBlocking();
     }
 
     private static Stream<Identifiable<?>> streamOf(Network network, NetworkSearch.Kind kind) {
@@ -270,22 +269,69 @@ public final class NetworkSearchIndex implements Closeable {
      * {@link NetworkSearch}).
      */
     public Result search(String query, Set<NetworkSearch.Kind> kinds) {
+        return searchCandidates(query, kinds).resolve();
+    }
+
+    /**
+     * The raw hits of {@link #search}'s precise and fuzzy passes, before the substation/voltage level filtering:
+     * that filtering reads the network, so it's left to {@link #resolve()}, on the FX thread, while
+     * {@link #searchCandidates} only reads this index and can run off it.
+     */
+    public record Candidates(List<Identifiable<?>> precise, List<Identifiable<?>> fuzzy, Set<NetworkSearch.Kind> kinds) {
+        public Result resolve() {
+            List<Identifiable<?>> preciseMatches = usefulMatches(precise, kinds);
+            if (!preciseMatches.isEmpty()) {
+                return new Result(preciseMatches, false);
+            }
+            List<Identifiable<?>> fuzzyMatches = usefulMatches(fuzzy, kinds);
+            return new Result(fuzzyMatches, !fuzzyMatches.isEmpty());
+        }
+    }
+
+    public Candidates searchCandidates(String query, Set<NetworkSearch.Kind> kinds) {
         if (query == null || query.isBlank()) {
-            return new Result(List.of(), false);
+            return new Candidates(List.of(), List.of(), kinds);
         }
         List<String> tokens = tokenize(query);
         if (tokens.isEmpty()) {
-            return new Result(List.of(), false);
+            return new Candidates(List.of(), List.of(), kinds);
         }
-        // read the volatile field once so a concurrent refreshBuses() swap mid-call can't mix an old searcher
-        // with a doc count from the new one (or vice versa)
-        IndexSearcher searcher = this.searcher;
-        List<Identifiable<?>> preciseMatches = runQuery(searcher, buildQuery(tokens, kinds, false), kinds);
-        if (!preciseMatches.isEmpty()) {
-            return new Result(preciseMatches, false);
+        // one searcher for both queries, so a concurrent refreshBuses() can't mix an old searcher with a doc count
+        // from the new one (or vice versa)
+        IndexSearcher searcher = acquireSearcher();
+        try {
+            List<Identifiable<?>> precise = runQuery(searcher, buildQuery(tokens, kinds, false));
+            // the fuzzy pass is only needed if resolve() could filter every precise hit out
+            boolean preciseMayResolveEmpty = precise.stream().allMatch(NetworkSearchIndex::isContainer);
+            List<Identifiable<?>> fuzzy = preciseMayResolveEmpty ? runQuery(searcher, buildQuery(tokens, kinds, true)) : List.of();
+            return new Candidates(precise, fuzzy, kinds);
+        } finally {
+            releaseSearcher(searcher);
         }
-        List<Identifiable<?>> fuzzyMatches = runQuery(searcher, buildQuery(tokens, kinds, true), kinds);
-        return new Result(fuzzyMatches, !fuzzyMatches.isEmpty());
+    }
+
+    private static boolean isContainer(Identifiable<?> identifiable) {
+        return identifiable instanceof Substation || identifiable instanceof VoltageLevel;
+    }
+
+    private static List<Identifiable<?>> usefulMatches(List<Identifiable<?>> candidates, Set<NetworkSearch.Kind> kinds) {
+        return candidates.stream().filter(identifiable -> isUsefulMatch(identifiable, kinds)).toList();
+    }
+
+    private IndexSearcher acquireSearcher() {
+        try {
+            return searcherManager.acquire();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private void releaseSearcher(IndexSearcher searcher) {
+        try {
+            searcherManager.release(searcher);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private static Query buildQuery(List<String> tokens, Set<NetworkSearch.Kind> kinds, boolean fuzzy) {
@@ -312,7 +358,7 @@ public final class NetworkSearchIndex implements Closeable {
                 new FuzzyQuery(new Term(FIELD_NAME, token), maxEdits)), 0f);
     }
 
-    private List<Identifiable<?>> runQuery(IndexSearcher searcher, Query query, Set<NetworkSearch.Kind> kinds) {
+    private List<Identifiable<?>> runQuery(IndexSearcher searcher, Query query) {
         try {
             TopDocs topDocs = searcher.search(query, Math.max(1, searcher.getIndexReader().numDocs()));
             StoredFields storedFields = searcher.storedFields();
@@ -320,7 +366,7 @@ public final class NetworkSearchIndex implements Closeable {
             for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
                 String id = storedFields.document(scoreDoc.doc).get(FIELD_ID);
                 Identifiable<?> identifiable = byId.get(id);
-                if (identifiable != null && isUsefulMatch(identifiable, kinds)) {
+                if (identifiable != null) {
                     result.add(identifiable);
                 }
             }
@@ -372,7 +418,7 @@ public final class NetworkSearchIndex implements Closeable {
     @Override
     public void close() {
         try {
-            searcher.getIndexReader().close();
+            searcherManager.close();
             writer.close();
             directory.close();
             analyzer.close();

@@ -22,6 +22,7 @@ import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.LinePosition;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
+import com.powsybl.powsybldesktop.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.navigation.BoundaryLineNavigationState;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
@@ -212,9 +213,9 @@ public class MapController extends AbstractDisposableController {
         protected Task<MapNetworkData> createTask() {
             Network network = mainModel.getNetwork();
             buildingNetwork = network;
-            return new Task<>() {
+            return new AbstractNetworkTask<>(mainModel, network) {
                 @Override
-                protected MapNetworkData call() {
+                protected MapNetworkData compute() {
                     return MapNetworkData.build(network, MapController.this::baseVoltageName, MapController.this::color);
                 }
             };

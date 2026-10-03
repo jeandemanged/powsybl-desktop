@@ -92,6 +92,24 @@ public final class DesktopParametersJson {
                 root.has("securityAnalysis") ? securityAnalysisFromJson(root.get("securityAnalysis")) : defaults.securityAnalysis());
     }
 
+    // Independent copies, e.g. for a background diagram render: it must neither see the parameters window's in-place
+    // edits made meanwhile, nor make its own (the renderers adjust a few fields) visible to it
+    public static DesktopSldParameters copy(DesktopSldParameters parameters) {
+        ObjectNode node = MAPPER.createObjectNode();
+        sld(new Writer(node), parameters);
+        DesktopSldParameters copy = DesktopParameters.defaultSldParameters();
+        sld(new Reader(node, "singleLineDiagram"), copy);
+        return copy;
+    }
+
+    public static DesktopNadParameters copy(DesktopNadParameters parameters) {
+        ObjectNode node = MAPPER.createObjectNode();
+        nad(new Writer(node), parameters);
+        DesktopNadParameters copy = new DesktopNadParameters();
+        nad(new Reader(node, "networkAreaDiagram"), copy);
+        return copy;
+    }
+
     public static void write(DesktopParameters parameters, Path path) {
         write(toJson(parameters), path);
     }

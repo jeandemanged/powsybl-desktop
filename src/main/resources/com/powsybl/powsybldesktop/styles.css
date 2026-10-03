@@ -55,6 +55,12 @@
     -fx-border-width: 0;
 }
 
+/* not editable while disabled, e.g. while its network is busy with a background job (also matches an editable-cell
+   node inside a disabled cell, which inherits the disabled state) */
+.table-view .editable-cell:disabled {
+    -fx-border-width: 0;
+}
+
 /* Brief flash applied after an edit, removed automatically after TableColumnSupport's
    EDIT_FLASH_DURATION: red when the edit was rejected (e.g. an IIDM validation exception), green when applied. */
 .table-view .edit-error {
