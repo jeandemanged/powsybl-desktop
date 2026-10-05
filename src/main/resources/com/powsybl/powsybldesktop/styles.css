@@ -56,9 +56,11 @@
 }
 
 /* not editable while disabled, e.g. while its network is busy with a background job (also matches an editable-cell
-   node inside a disabled cell, which inherits the disabled state) */
+   node inside a disabled cell, which inherits the disabled state). Greyed like modena's disabled controls, which
+   doesn't dim plain-text cells and labels itself. */
 .table-view .editable-cell:disabled {
     -fx-border-width: 0;
+    -fx-opacity: 0.4;
 }
 
 /* Brief flash applied after an edit, removed automatically after TableColumnSupport's
