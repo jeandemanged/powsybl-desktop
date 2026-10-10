@@ -143,9 +143,9 @@ public class SubstationsTableController extends AbstractDisposableController {
         Hyperlink link = new Hyperlink(container.getNameOrId());
         link.getStyleClass().add("container-link");
         link.setOnAction(event -> {
-            mainModel.addNavigationEvent(NavigationEvent.create(
+            mainModel.getNavigationHistory().navigate(NavigationEvent.create(
                     NavigationType.NETWORK_TABLE_SUBSTATIONS, SubstationNavigationState.create(item)), false);
-            mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(container)));
+            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(container)));
         });
         return link;
     }

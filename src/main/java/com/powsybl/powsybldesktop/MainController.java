@@ -64,7 +64,6 @@ import javafx.beans.binding.Bindings;
 import javafx.collections.ListChangeListener;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
-import javafx.concurrent.Worker;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -93,7 +92,6 @@ import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -275,7 +273,7 @@ public class MainController extends AbstractDisposableController {
         if (refuseIfBusy(network)) {
             return;
         }
-        LoadFlowParameters parameters = copyParameters(mainModel.loadFlowParametersProperty().getValue());
+        LoadFlowParameters parameters = copyParameters(mainModel.getParametersModel().loadFlowParametersProperty().getValue());
         Service<LoadFlowResultAndReport> loadFlowService = new Service<>() {
             @Override
             protected Task<LoadFlowResultAndReport> createTask() {
@@ -312,14 +310,14 @@ public class MainController extends AbstractDisposableController {
             }
         };
         Notification runningNotification = Notification.createRunning("main.loadFlow.running", loadFlowService::cancel);
-        mainModel.addNotification(runningNotification);
+        mainModel.getNotificationsModel().add(runningNotification);
 
         loadFlowService.setOnSucceeded(event -> {
             LoadFlowResultAndReport loadFlowResultAndReport = (LoadFlowResultAndReport) event.getSource().getValue();
-            mainModel.setLoadFlowResult(network, loadFlowResultAndReport.loadFlowResult());
+            mainModel.getStudy(network).setLoadFlowResult(loadFlowResultAndReport.loadFlowResult());
             mainModel.setUpdate();
             mainModel.addReport(loadFlowResultAndReport.reportNode());
-            mainModel.replaceNotification(runningNotification,
+            mainModel.getNotificationsModel().replace(runningNotification,
                     loadFlowOutcome(runningNotification.startTimestamp(), loadFlowResultAndReport));
         });
 
@@ -328,14 +326,14 @@ public class MainController extends AbstractDisposableController {
             LOGGER.error(exception.toString(), exception);
 
             NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", e ->
-                    mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.LOGS)));
+                    mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS)));
 
-            mainModel.replaceNotification(runningNotification,
+            mainModel.getNotificationsModel().replace(runningNotification,
                     Notification.createError(runningNotification.startTimestamp(), "main.loadFlow.failed", viewLogsAction));
         });
-        loadFlowService.setOnCancelled(event -> mainModel.replaceNotification(runningNotification,
+        loadFlowService.setOnCancelled(event -> mainModel.getNotificationsModel().replace(runningNotification,
                 Notification.createCancelled(runningNotification.startTimestamp(), "main.loadFlow.cancelled")));
-        track(mainModel.getLoadFlowServices(), network, loadFlowService);
+        mainModel.getStudy(network).trackComputation(loadFlowService);
         loadFlowService.start();
     }
 
@@ -343,7 +341,7 @@ public class MainController extends AbstractDisposableController {
     // still winding down): a computation only starts on a network no other job uses
     private boolean refuseIfBusy(Network rootNetwork) {
         if (mainModel.isBusy(rootNetwork)) {
-            mainModel.addNotification(Notification.createError(Instant.now(), "main.networkBusy"));
+            mainModel.getNotificationsModel().add(Notification.createError(Instant.now(), "main.networkBusy"));
             return true;
         }
         return false;
@@ -365,9 +363,9 @@ public class MainController extends AbstractDisposableController {
     // completing without exception doesn't mean converged - the outcome reflects the components' convergence
     private Notification loadFlowOutcome(Instant start, LoadFlowResultAndReport loadFlowResultAndReport) {
         NotificationAction viewResultsAction = new NotificationAction("main.loadFlow.viewResults", e ->
-                mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_COMPONENTS)));
+                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_COMPONENTS)));
         NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", e ->
-                mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.REPORTS,
+                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.REPORTS,
                         ReportNavigationState.create(loadFlowResultAndReport.reportNode()))));
         return switch (LoadFlowConvergence.of(loadFlowResultAndReport.loadFlowResult())) {
             case CONVERGED -> Notification.createSuccess(start, "main.loadFlow.completed", viewResultsAction, viewReportAction);
@@ -388,9 +386,9 @@ public class MainController extends AbstractDisposableController {
         if (refuseIfBusy(network)) {
             return;
         }
-        SecurityAnalysisParameters parameters = copyParameters(mainModel.securityAnalysisParametersProperty().getValue());
-        List<ContingencyList> enabledContingencyLists = mainModel.getContingencyLists(network).stream()
-                .filter(list -> mainModel.contingencyListEnabledProperty(list).get())
+        SecurityAnalysisParameters parameters = copyParameters(mainModel.getParametersModel().securityAnalysisParametersProperty().getValue());
+        List<ContingencyList> enabledContingencyLists = mainModel.getStudy(network).getContingencyLists().stream()
+                .filter(list -> mainModel.getStudy(network).contingencyListEnabledProperty(list).get())
                 .collect(Collectors.toList());
         ContingencyList contingencyList = new ListOfContingencyLists(network.getNameOrId(), enabledContingencyLists);
 
@@ -431,14 +429,14 @@ public class MainController extends AbstractDisposableController {
             }
         };
         Notification runningNotification = Notification.createRunning("main.securityAnalysis.running", securityAnalysisService::cancel);
-        mainModel.addNotification(runningNotification);
+        mainModel.getNotificationsModel().add(runningNotification);
 
         securityAnalysisService.setOnSucceeded(event -> {
             SecurityAnalysisResultAndReport securityAnalysisResultAndReport = (SecurityAnalysisResultAndReport) event.getSource().getValue();
-            mainModel.setSecurityAnalysisResult(network, securityAnalysisResultAndReport.securityAnalysisResult());
+            mainModel.getStudy(network).setSecurityAnalysisResult(securityAnalysisResultAndReport.securityAnalysisResult());
             mainModel.setUpdate();
             mainModel.addReport(securityAnalysisResultAndReport.reportNode());
-            mainModel.replaceNotification(runningNotification,
+            mainModel.getNotificationsModel().replace(runningNotification,
                     securityAnalysisOutcome(runningNotification.startTimestamp(), securityAnalysisResultAndReport));
         });
 
@@ -447,23 +445,23 @@ public class MainController extends AbstractDisposableController {
             LOGGER.error(exception.toString(), exception);
 
             NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", e ->
-                    mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.LOGS)));
+                    mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS)));
 
-            mainModel.replaceNotification(runningNotification,
+            mainModel.getNotificationsModel().replace(runningNotification,
                     Notification.createError(runningNotification.startTimestamp(), "main.securityAnalysis.failed", viewLogsAction));
         });
-        securityAnalysisService.setOnCancelled(event -> mainModel.replaceNotification(runningNotification,
+        securityAnalysisService.setOnCancelled(event -> mainModel.getNotificationsModel().replace(runningNotification,
                 Notification.createCancelled(runningNotification.startTimestamp(), "main.securityAnalysis.cancelled")));
-        track(mainModel.getSecurityAnalysisServices(), network, securityAnalysisService);
+        mainModel.getStudy(network).trackComputation(securityAnalysisService);
         securityAnalysisService.start();
     }
 
     // completing without exception doesn't mean the base case converged - without it, no contingency was simulated
     private Notification securityAnalysisOutcome(Instant start, SecurityAnalysisResultAndReport securityAnalysisResultAndReport) {
         NotificationAction viewResultsAction = new NotificationAction("main.securityAnalysis.viewResults", e ->
-                mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS)));
+                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS)));
         NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", e ->
-                mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.REPORTS,
+                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.REPORTS,
                         ReportNavigationState.create(securityAnalysisResultAndReport.reportNode()))));
         if (securityAnalysisResultAndReport.securityAnalysisResult().getPreContingencyResult().getStatus()
                 != LoadFlowResult.ComponentResult.Status.CONVERGED) {
@@ -476,7 +474,11 @@ public class MainController extends AbstractDisposableController {
     // (or already building) is left alone. MainModel.setNetwork sets the cached status before notifying this
     // listener, so the BUILDING state set here is not overwritten and SearchBoxController shows "Indexing...".
     private void ensureSearchIndex(Network network) {
-        if (network == null || mainModel.getSearchIndex(network) != null || mainModel.getSearchIndexServices().containsKey(network)) {
+        if (network == null) {
+            return;
+        }
+        NetworkStudy study = mainModel.getStudy(network);
+        if (study.getSearchIndex(network) != null || study.isSearchIndexBuilding(network)) {
             return;
         }
         Instant startTimestamp = Instant.now();
@@ -509,21 +511,11 @@ public class MainController extends AbstractDisposableController {
                 mainModel.searchIndexStateProperty().setValue(NetworkSearchIndex.State.FAILED);
             }
             NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", e ->
-                    mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.LOGS)));
-            mainModel.addNotification(Notification.createError(startTimestamp, "main.search.indexFailed", viewLogsAction));
+                    mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS)));
+            mainModel.getNotificationsModel().add(Notification.createError(startTimestamp, "main.search.indexFailed", viewLogsAction));
         });
-        track(mainModel.getSearchIndexServices(), network, searchIndexService);
+        study.trackSearchIndexBuild(network, searchIndexService);
         searchIndexService.start();
-    }
-
-    // Registered in services until it ends, whatever the outcome (it can also be cancelled by MainModel.removeNetwork)
-    private static void track(Map<Network, Service<?>> services, Network network, Service<?> service) {
-        services.put(network, service);
-        service.stateProperty().addListener((observable, oldState, newState) -> {
-            if (newState == Worker.State.SUCCEEDED || newState == Worker.State.FAILED || newState == Worker.State.CANCELLED) {
-                services.remove(network);
-            }
-        });
     }
 
     // Bus-view merged buses are recalculated on every topology change (switch open/close, terminal
@@ -538,7 +530,7 @@ public class MainController extends AbstractDisposableController {
         if (network == null) {
             return;
         }
-        NetworkSearchIndex index = mainModel.getSearchIndex(network);
+        NetworkSearchIndex index = mainModel.getStudy(network).getSearchIndex(network);
         if (index == null) {
             return;
         }
@@ -579,7 +571,7 @@ public class MainController extends AbstractDisposableController {
     private void initialize() {
         // MainModel briefly sets this property to null before every real dispatch, to force the listener
         // to fire even when navigating to a content-equal NavigationEvent - ignore that transient value
-        listenerManager.listen(mainModel.navigationEventProperty(), (observable, oldValue, newValue) -> {
+        listenerManager.listen(mainModel.getNavigationHistory().currentEventProperty(), (observable, oldValue, newValue) -> {
             if (newValue != null) {
                 onNavigationEvent(newValue);
             }
@@ -600,20 +592,20 @@ public class MainController extends AbstractDisposableController {
         notificationsController = notificationsLoader.getController();
         notificationsController.setMainModel(mainModel);
 
-        notificationsButton.setSelected(mainModel.isNotificationsPanelOpen());
-        borderPane.setRight(mainModel.isNotificationsPanelOpen() ? notificationsView : null);
+        notificationsButton.setSelected(mainModel.getNotificationsModel().isPanelOpen());
+        borderPane.setRight(mainModel.getNotificationsModel().isPanelOpen() ? notificationsView : null);
 
-        listenerManager.listen(mainModel.getNotifications(), (ListChangeListener<Notification>) change -> {
+        listenerManager.listen(mainModel.getNotificationsModel().getNotifications(), (ListChangeListener<Notification>) change -> {
             while (change.next()) {
                 if (change.wasReplaced()) {
                     for (int i = 0; i < change.getRemovedSize(); i++) {
                         Notification previous = change.getRemoved().get(i);
-                        Notification current = mainModel.getNotifications().get(change.getFrom() + i);
+                        Notification current = mainModel.getNotificationsModel().getNotifications().get(change.getFrom() + i);
                         notificationOverlay().replace(previous, current);
                     }
                 } else if (change.wasAdded()) {
                     // besides RUNNING ones, errors are added directly, and so is the outcome of a run whose
-                    // RUNNING notification was dismissed (see MainModel.replaceNotification)
+                    // RUNNING notification was dismissed (see NotificationsModel.replace)
                     change.getAddedSubList().forEach(notification -> notificationOverlay().show(notification));
                 } else if (change.wasRemoved() && notificationOverlay != null) {
                     change.getRemoved().forEach(notificationOverlay::remove);
@@ -632,13 +624,13 @@ public class MainController extends AbstractDisposableController {
         // navigationPast changes on every move through history - including a tree selection (e.g. NetworksController,
         // SubstationsController) that records history with notify=false to avoid re-triggering the view swap below -
         // so, unlike onNavigationEvent, this is the one place that catches every case the title needs refreshing.
-        listenerManager.listen(mainModel.getNavigationPast(), (ListChangeListener<NavigationEvent>) change -> {
+        listenerManager.listen(mainModel.getNavigationHistory().getPast(), (ListChangeListener<NavigationEvent>) change -> {
             while (change.next()) {
                 // consumed only to satisfy the Change cursor contract - the title is derived from the list's
                 // current tail below, regardless of what kind of change (add/remove/permutation) occurred
             }
-            if (!mainModel.getNavigationPast().isEmpty()) {
-                updateStageTitle(mainModel.getNavigationPast().getLast());
+            if (!mainModel.getNavigationHistory().getPast().isEmpty()) {
+                updateStageTitle(mainModel.getNavigationHistory().getPast().getLast());
             }
         });
 
@@ -653,8 +645,8 @@ public class MainController extends AbstractDisposableController {
 
         backwardButton.setOnContextMenuRequested(event -> showNavigationHistoryMenu(backwardButton, event, true));
         forwardButton.setOnContextMenuRequested(event -> showNavigationHistoryMenu(forwardButton, event, false));
-        backwardButton.disableProperty().bind(Bindings.size(mainModel.getNavigationPast()).lessThanOrEqualTo(1));
-        forwardButton.disableProperty().bind(Bindings.isEmpty(mainModel.getNavigationFuture()));
+        backwardButton.disableProperty().bind(Bindings.size(mainModel.getNavigationHistory().getPast()).lessThanOrEqualTo(1));
+        forwardButton.disableProperty().bind(Bindings.isEmpty(mainModel.getNavigationHistory().getFuture()));
 
         if ("fr".equals(Locale.getDefault().getLanguage())) {
             languageFrenchItem.setSelected(true);
@@ -662,7 +654,7 @@ public class MainController extends AbstractDisposableController {
             languageEnglishItem.setSelected(true);
         }
 
-        NavigationEvent current = mainModel.navigationEventProperty().getValue();
+        NavigationEvent current = mainModel.getNavigationHistory().currentEventProperty().getValue();
         if (current == null) {
             // first launch: no navigation history yet, default initial view
             onNetworks();
@@ -819,7 +811,7 @@ public class MainController extends AbstractDisposableController {
     }
 
     private void updateCurrentStageTitle() {
-        NavigationEvent current = mainModel.navigationEventProperty().getValue();
+        NavigationEvent current = mainModel.getNavigationHistory().currentEventProperty().getValue();
         if (current != null) {
             updateStageTitle(current);
         }
@@ -839,7 +831,7 @@ public class MainController extends AbstractDisposableController {
     private NotificationOverlay notificationOverlay() {
         // Created lazily: at initialize() time the scene/stage don't exist yet (see MainApplication).
         if (notificationOverlay == null) {
-            notificationOverlay = new NotificationOverlay(borderPane.getScene().getWindow(), mainModel::removeNotification);
+            notificationOverlay = new NotificationOverlay(borderPane.getScene().getWindow(), mainModel.getNotificationsModel()::remove);
         }
         return notificationOverlay;
     }
@@ -858,19 +850,19 @@ public class MainController extends AbstractDisposableController {
     }
 
     public void onNetworks() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORKS, NetworkNavigationState.create(mainModel.getNetwork())));
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORKS, NetworkNavigationState.create(mainModel.getNetwork())));
     }
 
     public void onSubstations() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.createNoContainer(mainModel.getNetwork())));
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.createNoContainer(mainModel.getNetwork())));
     }
 
     public void onMap() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.MAP, NetworkNavigationState.create(mainModel.getNetwork())));
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.MAP, NetworkNavigationState.create(mainModel.getNetwork())));
     }
 
     public void onContingencies() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.CONTINGENCIES, NetworkNavigationState.create(mainModel.getNetwork())));
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.CONTINGENCIES, NetworkNavigationState.create(mainModel.getNetwork())));
     }
 
     // a separate non-modal window rather than a center view, so parameters can be edited while the main
@@ -908,91 +900,91 @@ public class MainController extends AbstractDisposableController {
     }
 
     public void onLogs() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.LOGS));
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS));
     }
 
     public void onSubstationsTable() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_SUBSTATIONS, SubstationNavigationState.createNoSubstation(mainModel.getNetwork())));
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_SUBSTATIONS, SubstationNavigationState.createNoSubstation(mainModel.getNetwork())));
     }
 
     public void onVoltageLevelsTable() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_VOLTAGE_LEVELS, VoltageLevelNavigationState.createNoVoltageLevel(mainModel.getNetwork())));
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_VOLTAGE_LEVELS, VoltageLevelNavigationState.createNoVoltageLevel(mainModel.getNetwork())));
     }
 
     public void onBusbarSectionsTable() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_BUSBAR_SECTIONS,
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_BUSBAR_SECTIONS,
                 BusbarSectionNavigationState.createNoBusbarSection(mainModel.getNetwork())));
     }
 
     public void onBusesBusView() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_BUSES_BUS_VIEW, BusNavigationState.createNoBus(mainModel.getNetwork())));
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_BUSES_BUS_VIEW, BusNavigationState.createNoBus(mainModel.getNetwork())));
     }
 
     public void onBusesBusBreakerView() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_BUSES_BUS_BREAKER_VIEW));
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_BUSES_BUS_BREAKER_VIEW));
     }
 
     public void onGenerators() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_GENERATORS, GeneratorNavigationState.createNoGenerator(mainModel.getNetwork())));
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_GENERATORS, GeneratorNavigationState.createNoGenerator(mainModel.getNetwork())));
     }
 
     public void onShuntCompensators() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_SHUNT_COMPENSATORS,
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_SHUNT_COMPENSATORS,
                 ShuntCompensatorNavigationState.createNoShuntCompensator(mainModel.getNetwork())));
     }
 
     public void onStaticVarCompensators() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_STATIC_VAR_COMPENSATORS,
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_STATIC_VAR_COMPENSATORS,
                 StaticVarCompensatorNavigationState.createNoStaticVarCompensator(mainModel.getNetwork())));
     }
 
     public void onLoads() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_LOADS, LoadNavigationState.createNoLoad(mainModel.getNetwork())));
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_LOADS, LoadNavigationState.createNoLoad(mainModel.getNetwork())));
     }
 
     public void onLines() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_LINES, LineNavigationState.createNoLine(mainModel.getNetwork())));
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_LINES, LineNavigationState.createNoLine(mainModel.getNetwork())));
     }
 
     public void onTransformers() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_TRANSFORMERS, TransformerNavigationState.createNoTransformer(mainModel.getNetwork())));
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_TRANSFORMERS, TransformerNavigationState.createNoTransformer(mainModel.getNetwork())));
     }
 
     public void onTieLines() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_TIE_LINES, TieLineNavigationState.createNoTieLine(mainModel.getNetwork())));
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_TIE_LINES, TieLineNavigationState.createNoTieLine(mainModel.getNetwork())));
     }
 
     public void onBoundaryLines() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_BOUNDARY_LINES, BoundaryLineNavigationState.createNoBoundaryLine(mainModel.getNetwork())));
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_BOUNDARY_LINES, BoundaryLineNavigationState.createNoBoundaryLine(mainModel.getNetwork())));
     }
 
     public void onComponents() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_COMPONENTS));
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_COMPONENTS));
     }
 
     public void onSecurityAnalysisResults() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS));
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS));
     }
 
     public void onReports() {
-        mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.REPORTS));
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.REPORTS));
     }
 
     public void onNotifications() {
-        mainModel.setNotificationsPanelOpen(notificationsButton.isSelected());
+        mainModel.getNotificationsModel().setPanelOpen(notificationsButton.isSelected());
         borderPane.setRight(notificationsButton.isSelected() ? notificationsView : null);
     }
 
     public void onNavigateBackward() {
-        mainModel.navigateBackward();
+        mainModel.getNavigationHistory().navigateBackward();
     }
 
     public void onNavigateForward() {
-        mainModel.navigateForward();
+        mainModel.getNavigationHistory().navigateForward();
     }
 
     private void showNavigationHistoryMenu(Button anchor, ContextMenuEvent event, boolean backward) {
-        var events = backward ? mainModel.getNavigationPast() : mainModel.getNavigationFuture();
+        var events = backward ? mainModel.getNavigationHistory().getPast() : mainModel.getNavigationHistory().getFuture();
         int lastIndex = backward ? events.size() - 2 : events.size() - 1;
         if (lastIndex < 0) {
             return;
@@ -1003,9 +995,9 @@ public class MainController extends AbstractDisposableController {
             MenuItem item = new MenuItem(events.get(i).describe());
             item.setOnAction(e -> {
                 if (backward) {
-                    mainModel.navigateBackwardToIndex(index);
+                    mainModel.getNavigationHistory().navigateBackwardToIndex(index);
                 } else {
-                    mainModel.navigateForwardToIndex(index);
+                    mainModel.getNavigationHistory().navigateForwardToIndex(index);
                 }
             });
             contextMenu.getItems().add(item);

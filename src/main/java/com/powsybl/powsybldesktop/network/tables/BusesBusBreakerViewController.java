@@ -63,11 +63,11 @@ public class BusesBusBreakerViewController extends AbstractBusesController {
             link.getStyleClass().add("container-link");
             link.setOnAction(event -> {
                 if (isEmbedded()) {
-                    mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.SUBSTATIONS,
+                    mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
                             ContainerNavigationState.create(busViewBus.getVoltageLevel(), ContainerNavigationState.ContainerTab.BUSES_BUS_VIEW)));
                 } else {
-                    mainModel.addNavigationEvent(ownNavigationEvent(bus), false);
-                    mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_BUSES_BUS_VIEW, BusNavigationState.create(busViewBus)));
+                    mainModel.getNavigationHistory().navigate(ownNavigationEvent(bus), false);
+                    mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_BUSES_BUS_VIEW, BusNavigationState.create(busViewBus)));
                 }
             });
             return link;

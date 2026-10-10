@@ -138,7 +138,7 @@ class TieLinesControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals(tieLine.getBoundaryLine2().getNameOrId(), link2.getText());
 
         interact(link1::fire);
-        NavigationEvent event = mainModel.navigationEventProperty().getValue();
+        NavigationEvent event = mainModel.getNavigationHistory().currentEventProperty().getValue();
         assertEquals(NavigationType.NETWORK_TABLE_BOUNDARY_LINES, event.navigationType());
         assertEquals(tieLine.getBoundaryLine1(), ((BoundaryLineNavigationState) event.state()).getBoundaryLine());
     }
@@ -309,7 +309,7 @@ class TieLinesControllerTest extends AbstractHeadlessApplicationTest {
 
         interact(link::fire);
 
-        NavigationEvent event = mainModel.navigationEventProperty().getValue();
+        NavigationEvent event = mainModel.getNavigationHistory().currentEventProperty().getValue();
         assertEquals(NavigationType.SUBSTATIONS, event.navigationType());
         assertEquals(voltageLevel1, ((ContainerNavigationState) event.state()).getContainer());
     }
@@ -322,7 +322,7 @@ class TieLinesControllerTest extends AbstractHeadlessApplicationTest {
 
         interact(link::fire);
 
-        NavigationEvent event = mainModel.navigationEventProperty().getValue();
+        NavigationEvent event = mainModel.getNavigationHistory().currentEventProperty().getValue();
         assertEquals(NavigationType.SUBSTATIONS, event.navigationType());
         assertEquals(substation1, ((ContainerNavigationState) event.state()).getContainer());
     }
@@ -349,7 +349,10 @@ class TieLinesControllerTest extends AbstractHeadlessApplicationTest {
         TieLine straddlingTieLine = merged.getTieLineStream().findFirst().orElseThrow();
         Network subnetwork1 = merged.getSubnetwork("N1");
 
-        interact(() -> mainModel.setNetwork(subnetwork1));
+        interact(() -> {
+            mainModel.addNetwork(merged);
+            mainModel.setNetwork(subnetwork1);
+        });
 
         assertTrue(controller.currentItems.contains(straddlingTieLine));
     }

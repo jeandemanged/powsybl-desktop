@@ -174,7 +174,7 @@ public class SubstationsController extends AbstractDisposableController {
         @Override
         protected Task<SubstationDiagramRenderer.DiagramRender> createTask() {
             Container<?> container = currentContainer;
-            DesktopSldParameters parameters = DesktopParametersJson.copy(mainModel.sldParametersProperty().getValue());
+            DesktopSldParameters parameters = DesktopParametersJson.copy(mainModel.getParametersModel().sldParametersProperty().getValue());
             return new AbstractNetworkTask<>(mainModel, container.getNetwork()) {
                 @Override
                 protected SubstationDiagramRenderer.DiagramRender compute() throws IOException {
@@ -189,7 +189,7 @@ public class SubstationsController extends AbstractDisposableController {
         protected Task<String> createTask() {
             Container<?> container = currentContainer;
             int depth = nadDepth;
-            DesktopNadParameters parameters = DesktopParametersJson.copy(mainModel.nadParametersProperty().getValue());
+            DesktopNadParameters parameters = DesktopParametersJson.copy(mainModel.getParametersModel().nadParametersProperty().getValue());
             return new AbstractNetworkTask<>(mainModel, container.getNetwork()) {
                 @Override
                 protected String compute() throws IOException {
@@ -270,8 +270,8 @@ public class SubstationsController extends AbstractDisposableController {
         // stale, possibly-invalidated data
         equipmentTabs.forEach(equipmentTab -> equipmentTab.controller().setMainModel(mainModel));
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> this.update());
-        listenerManager.listen(mainModel.sldParametersRevisionProperty(), (observable, oldValue, newValue) -> updateSingleLineDiagram());
-        listenerManager.listen(mainModel.nadParametersRevisionProperty(), (observable, oldValue, newValue) -> updateAreaDiagram());
+        listenerManager.listen(mainModel.getParametersModel().sldParametersRevisionProperty(), (observable, oldValue, newValue) -> updateSingleLineDiagram());
+        listenerManager.listen(mainModel.getParametersModel().nadParametersRevisionProperty(), (observable, oldValue, newValue) -> updateAreaDiagram());
 
         sldPaneController.loadShell(SLD_HTML_SHELL.replace("%__JS__%", js));
         // the single line diagram's zoom/fit-to-screen state is remembered across navigation/views (see
@@ -632,11 +632,11 @@ public class SubstationsController extends AbstractDisposableController {
             // the click only ever happens from the single line diagram tab, but this state isn't
             // guaranteed to already be in history (e.g. reached via search, which doesn't push one) -
             // record it explicitly so navigating back from the equipment tab below lands back on it
-            mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.SUBSTATIONS,
+            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
                     ContainerNavigationState.create(currentContainer, selectedTab())), false);
             if (Objects.nonNull(node.getNextVId())) {
                 // re-renders through navigateTo
-                mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.SUBSTATIONS,
+                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
                         ContainerNavigationState.create(this.mainModel.getNetwork().getNetwork().getVoltageLevel(node.getNextVId()))));
             } else {
                 update();
@@ -666,7 +666,7 @@ public class SubstationsController extends AbstractDisposableController {
         // not while a background job uses the network (see MainModel.markBusy), e.g. this diagram's re-render
         // after a previous click
         if (mainModel.isBusy(mainModel.getNetwork())) {
-            mainModel.addNotification(Notification.createError(Instant.now(), "main.networkBusy"));
+            mainModel.getNotificationsModel().add(Notification.createError(Instant.now(), "main.networkBusy"));
             return;
         }
         GraphMetadata.NodeMetadata nodeMetadata = sldMetadata.getNodeMetadata(id);
@@ -728,7 +728,7 @@ public class SubstationsController extends AbstractDisposableController {
             // exist on the new one) - selectedTab() below must reflect that, not the pre-switch tab
             update();
             if (newItem != null && newItem.getValue() instanceof Container<?> container) {
-                mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.SUBSTATIONS,
+                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
                         ContainerNavigationState.create(container, selectedTab())), false);
             }
         });
@@ -738,7 +738,7 @@ public class SubstationsController extends AbstractDisposableController {
             if (programmaticSelection || currentContainer == null) {
                 return;
             }
-            mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.SUBSTATIONS,
+            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
                     ContainerNavigationState.create(currentContainer, selectedTab())), false);
         });
     }

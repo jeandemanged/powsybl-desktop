@@ -184,7 +184,7 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
         Hyperlink link = new Hyperlink(subjectName);
         link.getStyleClass().add("container-link");
         Container<?> target = container;
-        link.setOnAction(event -> mainModel.addNavigationEvent(
+        link.setOnAction(event -> mainModel.getNavigationHistory().navigate(
                 NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(target))));
         return link;
     }
@@ -198,7 +198,7 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
 
     private void updateResults() {
         Network network = mainModel.getNetwork();
-        SecurityAnalysisResult result = network == null ? null : mainModel.getSecurityAnalysisResult(network);
+        SecurityAnalysisResult result = network == null ? null : mainModel.getStudy(network).getSecurityAnalysisResult();
         resultsData.setAll(result == null ? List.of() : buildRows(result, network));
     }
 

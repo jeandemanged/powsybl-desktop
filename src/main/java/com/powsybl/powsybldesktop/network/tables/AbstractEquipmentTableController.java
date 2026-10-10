@@ -94,7 +94,7 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
 
     /**
      * This table's own navigation event for {@code item}'s row, pushed (without notifying, see
-     * {@link MainModel#addNavigationEvent(NavigationEvent, boolean)}) just before a container link
+     * {@link com.powsybl.powsybldesktop.navigation.NavigationHistory#navigate(NavigationEvent, boolean)}) just before a container link
      * navigates away from it (see {@link #containerCell}) - so that navigating back restores this exact
      * row instead of the table's default (unselected) state.
      */
@@ -226,9 +226,9 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
             // table's own row selection in history is meaningless for an embedded instance, which has no
             // navigation history entry of its own to update
             if (!filtering) {
-                mainModel.addNavigationEvent(ownNavigationEvent(item), false);
+                mainModel.getNavigationHistory().navigate(ownNavigationEvent(item), false);
             }
-            mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(container)));
+            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(container)));
         });
         return link;
     }

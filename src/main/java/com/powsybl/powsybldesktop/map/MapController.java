@@ -24,6 +24,7 @@ import com.powsybl.iidm.network.extensions.LinePosition;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
 import com.powsybl.powsybldesktop.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.NetworkStudy;
 import com.powsybl.powsybldesktop.navigation.BoundaryLineNavigationState;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.LineNavigationState;
@@ -277,7 +278,7 @@ public class MapController extends AbstractDisposableController {
             networkData = networkDataService.getValue();
             displayedNetwork = buildingNetwork;
             loadingPane.setVisible(false);
-            MainModel.MapView mapView = displayedNetwork == null ? null : mainModel.getMapView(displayedNetwork);
+            NetworkStudy.MapView mapView = displayedNetwork == null ? null : mainModel.getStudy(displayedNetwork).getMapView(displayedNetwork);
             try {
                 // passed as JS string arguments rather than spliced into a script, so they need no escaping
                 jsWindow.call("renderNetwork", objectMapper.writeValueAsString(networkData.latLngBounds()),
@@ -545,7 +546,7 @@ public class MapController extends AbstractDisposableController {
     @SuppressWarnings("unused") // called from map.js
     public void onViewChanged(double latitude, double longitude, double zoom) {
         if (displayedNetwork != null) {
-            mainModel.setMapView(displayedNetwork, new MainModel.MapView(latitude, longitude, zoom));
+            mainModel.getStudy(displayedNetwork).setMapView(displayedNetwork, new NetworkStudy.MapView(latitude, longitude, zoom));
         }
     }
 
@@ -558,13 +559,13 @@ public class MapController extends AbstractDisposableController {
         }
         Identifiable<?> identifiable = network.getIdentifiable(hit.id());
         if (identifiable instanceof Substation substation) {
-            mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(substation)));
+            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(substation)));
         } else if (identifiable instanceof Line line) {
-            mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_LINES, LineNavigationState.create(line)));
+            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_LINES, LineNavigationState.create(line)));
         } else if (identifiable instanceof TieLine tieLine) {
-            mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_TIE_LINES, TieLineNavigationState.create(tieLine)));
+            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_TIE_LINES, TieLineNavigationState.create(tieLine)));
         } else if (identifiable instanceof BoundaryLine boundaryLine) {
-            mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_BOUNDARY_LINES, BoundaryLineNavigationState.create(boundaryLine)));
+            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_BOUNDARY_LINES, BoundaryLineNavigationState.create(boundaryLine)));
         }
     }
 

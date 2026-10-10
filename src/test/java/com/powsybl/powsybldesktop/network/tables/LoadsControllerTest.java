@@ -246,7 +246,7 @@ class LoadsControllerTest extends AbstractHeadlessApplicationTest {
 
         interact(link::fire);
 
-        NavigationEvent event = mainModel.navigationEventProperty().getValue();
+        NavigationEvent event = mainModel.getNavigationHistory().currentEventProperty().getValue();
         assertEquals(NavigationType.SUBSTATIONS, event.navigationType());
         assertEquals(voltageLevel, ((ContainerNavigationState) event.state()).getContainer());
     }
@@ -259,7 +259,7 @@ class LoadsControllerTest extends AbstractHeadlessApplicationTest {
 
         interact(link::fire);
 
-        NavigationEvent event = mainModel.navigationEventProperty().getValue();
+        NavigationEvent event = mainModel.getNavigationHistory().currentEventProperty().getValue();
         assertEquals(NavigationType.SUBSTATIONS, event.navigationType());
         assertEquals(substation, ((ContainerNavigationState) event.state()).getContainer());
     }

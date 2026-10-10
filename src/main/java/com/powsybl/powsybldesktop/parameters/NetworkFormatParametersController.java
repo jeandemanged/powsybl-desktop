@@ -80,13 +80,13 @@ public class NetworkFormatParametersController extends AbstractDisposableControl
     public void setImportParameters(MainModel mainModel) {
         Map<String, List<Parameter>> parameters = new LinkedHashMap<>();
         importFormats().forEach((format, importers) -> parameters.put(format, importers.getFirst().getParameters()));
-        build(parameters, mainModel::getNetworkImportParameters, mainModel::parametersChanged);
+        build(parameters, mainModel.getParametersModel()::getNetworkImportParameters, mainModel.getParametersModel()::parametersChanged);
     }
 
     public void setExportParameters(MainModel mainModel) {
         Map<String, List<Parameter>> parameters = new LinkedHashMap<>();
         exportFormats().forEach(format -> parameters.putIfAbsent(exportParametersKey(format), Exporter.find(format).getParameters()));
-        build(parameters, mainModel::getNetworkExportParameters, mainModel::parametersChanged);
+        build(parameters, mainModel.getParametersModel()::getNetworkExportParameters, mainModel.getParametersModel()::parametersChanged);
     }
 
     // the detail form writes into the Properties it was built from: rebuilt once MainModel's are replaced

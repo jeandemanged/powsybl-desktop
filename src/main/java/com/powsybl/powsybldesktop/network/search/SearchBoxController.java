@@ -8,6 +8,7 @@
 package com.powsybl.powsybldesktop.network.search;
 
 import com.powsybl.iidm.network.Identifiable;
+import com.powsybl.iidm.network.Network;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.animation.PauseTransition;
@@ -204,7 +205,8 @@ public class SearchBoxController {
             onSearchResult(new NetworkSearchIndex.Result(List.of(), false));
             return;
         }
-        NetworkSearchIndex index = mainModel.getSearchIndex(mainModel.getNetwork());
+        Network network = mainModel.getNetwork();
+        NetworkSearchIndex index = network == null ? null : mainModel.getStudy(network).getSearchIndex(network);
         if (index == null) {
             onSearchResult(new NetworkSearchIndex.Result(List.of(), false));
             return;

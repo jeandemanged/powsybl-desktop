@@ -70,9 +70,9 @@ class ContingenciesControllerTest extends AbstractHeadlessApplicationTest {
         Line line = network.getLineStream().findFirst().orElseThrow();
 
         interact(() -> {
-            mainModel.getContingencyLists(network).add(
+            mainModel.getStudy(network).getContingencyLists().add(
                     new LineCriterionContingencyList("all-lines", null, null, List.of(), null));
-            mainModel.getContingencyLists(network).add(
+            mainModel.getStudy(network).getContingencyLists().add(
                     new DefaultContingencyList("explicit", List.of(Contingency.line(line.getId()), Contingency.line("other"))));
         });
 
@@ -82,7 +82,7 @@ class ContingenciesControllerTest extends AbstractHeadlessApplicationTest {
 
     @Test
     void invalidExplicitContingencyIsShownButNotValid() {
-        interact(() -> mainModel.getContingencyLists(network).add(
+        interact(() -> mainModel.getStudy(network).getContingencyLists().add(
                 new DefaultContingencyList("explicit", List.of(Contingency.line("does-not-exist")))));
 
         List<Contingency> shown = controller.contingenciesTableView.getItems();
@@ -93,11 +93,11 @@ class ContingenciesControllerTest extends AbstractHeadlessApplicationTest {
 
     @Test
     void removingASubListRecomputesTheTable() {
-        interact(() -> mainModel.getContingencyLists(network).add(
+        interact(() -> mainModel.getStudy(network).getContingencyLists().add(
                 new DefaultContingencyList("explicit", List.of(Contingency.line("does-not-exist")))));
         assertEquals(1, controller.contingenciesTableView.getItems().size());
 
-        interact(() -> mainModel.getContingencyLists(network).clear());
+        interact(() -> mainModel.getStudy(network).getContingencyLists().clear());
         assertTrue(controller.contingenciesTableView.getItems().isEmpty());
     }
 
@@ -106,37 +106,37 @@ class ContingenciesControllerTest extends AbstractHeadlessApplicationTest {
         ListView<ContingencyList> listView = lookup("#contingencyListsListView").query();
         interact(() -> {
             ContingencyList created = ContingencyListKind.LINE_CRITERION.createDefault("");
-            mainModel.getContingencyLists(network).add(created);
+            mainModel.getStudy(network).getContingencyLists().add(created);
             listView.getSelectionModel().select(created);
         });
 
         CheckComboBox<?> countries = lookup(node -> node instanceof CheckComboBox).query();
         interact(() -> countries.getCheckModel().check(0));
-        assertSame(mainModel.getContingencyLists(network).get(0), listView.getSelectionModel().getSelectedItem());
+        assertSame(mainModel.getStudy(network).getContingencyLists().get(0), listView.getSelectionModel().getSelectedItem());
 
         Button removeButton = lookup("#removeButton").query();
         interact(removeButton::fire);
-        assertTrue(mainModel.getContingencyLists(network).isEmpty());
+        assertTrue(mainModel.getStudy(network).getContingencyLists().isEmpty());
     }
 
     @Test
     void removingAListNextToAnEditedCriterionListKeepsTheOtherIntact() {
         ListView<ContingencyList> listView = lookup("#contingencyListsListView").query();
         interact(() -> {
-            mainModel.getContingencyLists(network).add(ContingencyListKind.LINE_CRITERION.createDefault(""));
-            mainModel.getContingencyLists(network).add(ContingencyListKind.LINE_CRITERION.createDefault(""));
+            mainModel.getStudy(network).getContingencyLists().add(ContingencyListKind.LINE_CRITERION.createDefault(""));
+            mainModel.getStudy(network).getContingencyLists().add(ContingencyListKind.LINE_CRITERION.createDefault(""));
             listView.getSelectionModel().select(1);
         });
         CheckComboBox<?> countries = lookup(node -> node instanceof CheckComboBox).query();
         interact(() -> countries.getCheckModel().check(0));
-        ContingencyList edited = mainModel.getContingencyLists(network).get(1);
+        ContingencyList edited = mainModel.getStudy(network).getContingencyLists().get(1);
 
         // removing the first list re-selects the edited one, whose form then gets rebuilt mid-removal
         interact(() -> listView.getSelectionModel().select(0));
         Button removeButton = lookup("#removeButton").query();
         interact(removeButton::fire);
 
-        assertEquals(List.of(edited), mainModel.getContingencyLists(network));
+        assertEquals(List.of(edited), mainModel.getStudy(network).getContingencyLists());
         assertSame(edited, listView.getSelectionModel().getSelectedItem());
     }
 
@@ -144,8 +144,8 @@ class ContingenciesControllerTest extends AbstractHeadlessApplicationTest {
     void selectingAnotherListWithAPendingNameEditKeepsTheNewListSelected() {
         ListView<ContingencyList> listView = lookup("#contingencyListsListView").query();
         interact(() -> {
-            mainModel.getContingencyLists(network).add(ContingencyListKind.LINE_CRITERION.createDefault("first"));
-            mainModel.getContingencyLists(network).add(ContingencyListKind.LINE_CRITERION.createDefault("second"));
+            mainModel.getStudy(network).getContingencyLists().add(ContingencyListKind.LINE_CRITERION.createDefault("first"));
+            mainModel.getStudy(network).getContingencyLists().add(ContingencyListKind.LINE_CRITERION.createDefault("second"));
             listView.getSelectionModel().select(0);
         });
         TextField nameField = lookup("#nameField").query();
@@ -155,8 +155,8 @@ class ContingenciesControllerTest extends AbstractHeadlessApplicationTest {
         // the name field still has focus as its form is torn down for the newly selected list, and commits then
         interact(() -> listView.getSelectionModel().select(1));
 
-        assertEquals("renamed", mainModel.getContingencyLists(network).get(0).getName());
-        assertSame(mainModel.getContingencyLists(network).get(1), listView.getSelectionModel().getSelectedItem());
+        assertEquals("renamed", mainModel.getStudy(network).getContingencyLists().get(0).getName());
+        assertSame(mainModel.getStudy(network).getContingencyLists().get(1), listView.getSelectionModel().getSelectedItem());
         assertEquals("second", lookup("#nameField").<TextField>query().getText());
     }
 }

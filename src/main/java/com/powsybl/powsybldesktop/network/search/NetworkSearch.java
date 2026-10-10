@@ -44,7 +44,7 @@ import java.util.Set;
  * searchable.
  * <p>
  * This entry point builds an uncached, throwaway {@link NetworkSearchIndex} per call; {@link SearchBoxController}
- * queries a shared, per-network cached index instead (see {@code MainModel.getSearchIndex}) so repeated searches
+ * queries a shared, per-network cached index instead (see {@code NetworkStudy.getSearchIndex}) so repeated searches
  * don't rebuild it.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}

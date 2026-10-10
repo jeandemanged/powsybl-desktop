@@ -37,15 +37,15 @@ public class NotificationsController extends AbstractDisposableController {
 
     public void setMainModel(MainModel mainModel) {
         this.mainModel = Objects.requireNonNull(mainModel);
-        notificationsListView.setItems(mainModel.getNotifications());
-        noNotificationsLabel.setVisible(mainModel.getNotifications().isEmpty());
-        listenerManager.listen(mainModel.getNotifications(), (ListChangeListener<Notification>) change ->
-                noNotificationsLabel.setVisible(mainModel.getNotifications().isEmpty()));
+        notificationsListView.setItems(mainModel.getNotificationsModel().getNotifications());
+        noNotificationsLabel.setVisible(mainModel.getNotificationsModel().getNotifications().isEmpty());
+        listenerManager.listen(mainModel.getNotificationsModel().getNotifications(), (ListChangeListener<Notification>) change ->
+                noNotificationsLabel.setVisible(mainModel.getNotificationsModel().getNotifications().isEmpty()));
     }
 
     @FXML
     private void onClearAll() {
-        mainModel.clearNotifications();
+        mainModel.getNotificationsModel().clear();
     }
 
     private final class NotificationCell extends ListCell<Notification> {
@@ -59,7 +59,7 @@ public class NotificationsController extends AbstractDisposableController {
                 setGraphic(null);
                 return;
             }
-            view.update(item, mainModel::removeNotification);
+            view.update(item, mainModel.getNotificationsModel()::remove);
             setGraphic(view);
             setText(null);
         }

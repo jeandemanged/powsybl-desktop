@@ -46,9 +46,9 @@ public class MainApplication extends Application {
     public void start(Stage stage) {
         LanguagePreferences.applyPersisted();
         MainModel mainModel = new MainModel();
-        Optional<Notification> parametersLoadError = ParametersConfigFile.load(mainModel, ParametersConfigFile.defaultPath());
+        Optional<Notification> parametersLoadError = ParametersConfigFile.load(mainModel.getParametersModel(), ParametersConfigFile.defaultPath());
         // only once the main view listens to notifications, for the error to pop up
-        stage.setOnShown(event -> parametersLoadError.ifPresent(mainModel::addNotification));
+        stage.setOnShown(event -> parametersLoadError.ifPresent(mainModel.getNotificationsModel()::add));
 
         SplashScreen splash = new SplashScreen();
         splash.show();

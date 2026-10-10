@@ -177,7 +177,7 @@ class ComponentsControllerTest extends AbstractHeadlessApplicationTest {
         LoadFlowResult.ComponentResult isolatedResult = new LoadFlowResultImpl.ComponentResultImpl(
                 isolatedCc, isolatedSc, LoadFlowResult.ComponentResult.Status.NO_CALCULATION, "Not computed", Map.of(),
                 0, "UNKNOWN_BUS", List.of(new LoadFlowResultImpl.SlackBusResultImpl(isolatedBus.getId(), 0.0)), 0.0);
-        mainModel.setLoadFlowResult(network, new LoadFlowResultImpl(true, Map.of(), "", List.of(mainResult, isolatedResult)));
+        mainModel.getStudy(network).setLoadFlowResult(new LoadFlowResultImpl(true, Map.of(), "", List.of(mainResult, isolatedResult)));
         interact(() -> mainModel.setUpdate());
 
         int mainRow = rowOf(mainCc, mainSc);
@@ -192,7 +192,7 @@ class ComponentsControllerTest extends AbstractHeadlessApplicationTest {
         Hyperlink referenceBusLink = assertInstanceOf(Hyperlink.class, graphicOf(controller.referenceBusIdColumn, mainRow));
         assertEquals(mainBus.getId(), referenceBusLink.getText());
         interact(referenceBusLink::fire);
-        NavigationEvent navigationEvent = mainModel.navigationEventProperty().getValue();
+        NavigationEvent navigationEvent = mainModel.getNavigationHistory().currentEventProperty().getValue();
         assertEquals(NavigationType.SUBSTATIONS, navigationEvent.navigationType());
         assertEquals(mainBus.getVoltageLevel(), ((ContainerNavigationState) navigationEvent.state()).getContainer());
 
@@ -228,7 +228,7 @@ class ComponentsControllerTest extends AbstractHeadlessApplicationTest {
         LoadFlowResult.ComponentResult maxIterationResult = new LoadFlowResultImpl.ComponentResultImpl(
                 isolatedBus.getConnectedComponent().getNum(), isolatedBus.getSynchronousComponent().getNum(),
                 LoadFlowResult.ComponentResult.Status.MAX_ITERATION_REACHED, "Max iteration reached", Map.of(), 15, null, List.of(), 0.0);
-        mainModel.setLoadFlowResult(network, new LoadFlowResultImpl(false, Map.of(), "", List.of(failedResult, maxIterationResult)));
+        mainModel.getStudy(network).setLoadFlowResult(new LoadFlowResultImpl(false, Map.of(), "", List.of(failedResult, maxIterationResult)));
         interact(() -> mainModel.setUpdate());
 
         int failedRow = rowOf(mainBus.getConnectedComponent().getNum(), mainBus.getSynchronousComponent().getNum());

@@ -7,7 +7,6 @@
  */
 package com.powsybl.powsybldesktop.parameters;
 
-import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationStatus;
 import org.junit.jupiter.api.Test;
@@ -35,14 +34,14 @@ class ParametersConfigFileTest {
     @Test
     void savedParametersAreRestoredOnLoad() {
         Path path = tempDir.resolve("sub").resolve("config.json");
-        MainModel saving = new MainModel();
+        ParametersModel saving = new ParametersModel();
         saving.loadFlowParametersProperty().get().setDc(true);
         saving.getNetworkImportParameters("IIDM").setProperty("some.param", "value");
         assertFalse(ParametersConfigFile.isSaved(saving));
         ParametersConfigFile.save(saving, path);
         assertTrue(ParametersConfigFile.isSaved(saving));
 
-        MainModel loading = new MainModel();
+        ParametersModel loading = new ParametersModel();
         assertTrue(ParametersConfigFile.load(loading, path).isEmpty());
         assertTrue(loading.loadFlowParametersProperty().get().isDc());
         assertEquals("value", loading.getNetworkImportParameters("IIDM").getProperty("some.param"));
@@ -54,18 +53,18 @@ class ParametersConfigFileTest {
 
     @Test
     void missingFileKeepsDefaults() {
-        MainModel mainModel = new MainModel();
-        assertTrue(ParametersConfigFile.load(mainModel, tempDir.resolve("config.json")).isEmpty());
-        assertFalse(ParametersConfigFile.isSaved(mainModel));
+        ParametersModel parametersModel = new ParametersModel();
+        assertTrue(ParametersConfigFile.load(parametersModel, tempDir.resolve("config.json")).isEmpty());
+        assertFalse(ParametersConfigFile.isSaved(parametersModel));
     }
 
     @Test
     void corruptedFileIsBackedUpAndReplacedByDefaults() throws IOException {
         Path path = tempDir.resolve("config.json");
         Files.writeString(path, "{ not json");
-        MainModel mainModel = new MainModel();
+        ParametersModel parametersModel = new ParametersModel();
 
-        Optional<Notification> notification = ParametersConfigFile.load(mainModel, path);
+        Optional<Notification> notification = ParametersConfigFile.load(parametersModel, path);
 
         assertTrue(notification.isPresent());
         assertEquals(NotificationStatus.ERROR, notification.get().status());
@@ -76,6 +75,6 @@ class ParametersConfigFileTest {
         assertEquals(1, backups.size());
         assertEquals("{ not json", Files.readString(backups.getFirst()));
         assertEquals(DesktopParametersJson.toJson(DesktopParameters.createDefault()), DesktopParametersJson.readTree(path));
-        assertTrue(ParametersConfigFile.isSaved(mainModel));
+        assertTrue(ParametersConfigFile.isSaved(parametersModel));
     }
 }

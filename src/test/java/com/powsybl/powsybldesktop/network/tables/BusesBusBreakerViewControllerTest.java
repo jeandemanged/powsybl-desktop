@@ -192,7 +192,7 @@ class BusesBusBreakerViewControllerTest extends AbstractHeadlessApplicationTest 
 
         interact(link::fire);
 
-        NavigationEvent event = mainModel.navigationEventProperty().getValue();
+        NavigationEvent event = mainModel.getNavigationHistory().currentEventProperty().getValue();
         assertEquals(NavigationType.SUBSTATIONS, event.navigationType());
         assertEquals(voltageLevel, ((ContainerNavigationState) event.state()).getContainer());
     }
@@ -205,7 +205,7 @@ class BusesBusBreakerViewControllerTest extends AbstractHeadlessApplicationTest 
 
         interact(link::fire);
 
-        NavigationEvent event = mainModel.navigationEventProperty().getValue();
+        NavigationEvent event = mainModel.getNavigationHistory().currentEventProperty().getValue();
         assertEquals(NavigationType.SUBSTATIONS, event.navigationType());
         assertEquals(substation, ((ContainerNavigationState) event.state()).getContainer());
     }
@@ -219,7 +219,7 @@ class BusesBusBreakerViewControllerTest extends AbstractHeadlessApplicationTest 
 
         interact(link::fire);
 
-        NavigationEvent event = mainModel.navigationEventProperty().getValue();
+        NavigationEvent event = mainModel.getNavigationHistory().currentEventProperty().getValue();
         assertEquals(NavigationType.NETWORK_TABLE_BUSES_BUS_VIEW, event.navigationType());
         assertEquals(mergedBus, ((BusNavigationState) event.state()).getBus());
     }

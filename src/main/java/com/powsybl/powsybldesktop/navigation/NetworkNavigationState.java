@@ -32,7 +32,7 @@ public class NetworkNavigationState implements NavigationState {
     }
 
     // identity-based, like the underlying PowSyBl objects: used to collapse duplicate consecutive
-    // navigation history entries (see MainModel.addNavigationEvent)
+    // navigation history entries (see NavigationHistory.navigate)
     @Override
     public boolean equals(Object o) {
         return o != null && getClass() == o.getClass()

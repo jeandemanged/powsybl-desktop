@@ -108,7 +108,7 @@ public class ContingenciesController extends AbstractDisposableController {
     private MainModel mainModel;
     private Network network;
     private Set<String> validContingencyIds = Set.of();
-    // The enabled/disabled flag itself lives in MainModel (contingencyListEnabledProperty), since the security
+    // The enabled/disabled flag itself lives in NetworkStudy (contingencyListEnabledProperty), since the security
     // analysis run in MainController needs it too - this just tracks, by identity, which lists this controller
     // has already attached its refreshInstantiatedTable listener to, so re-fetching the same property (e.g. from
     // the cell factory) doesn't pile up duplicate listeners.
@@ -179,14 +179,14 @@ public class ContingenciesController extends AbstractDisposableController {
         addMenuButton.setDisable(!hasNetwork);
         importButton.setDisable(!hasNetwork);
         exportButton.setDisable(!hasNetwork);
-        contingencyListsListView.setItems(hasNetwork ? mainModel.getContingencyLists(newNetwork) : FXCollections.observableArrayList());
+        contingencyListsListView.setItems(hasNetwork ? mainModel.getStudy(newNetwork).getContingencyLists() : FXCollections.observableArrayList());
         if (hasNetwork) {
             // Leaked on every network visited (ListenerManager can't detach a single listener), but harmless:
             // a stale listener on a since-abandoned network's list just triggers a same-network no-op refresh
-            // here, since refreshInstantiatedTable() always reads mainModel.getContingencyLists(this.network) -
+            // here, since refreshInstantiatedTable() always reads mainModel.getStudy(this.network).getContingencyLists() -
             // and it's what makes every mutation (add/remove/import/a form's onReplace) redraw the right pane
             // without each of those call sites needing to remember to call refreshInstantiatedTable() itself.
-            listenerManager.listen(mainModel.getContingencyLists(newNetwork), change -> refreshInstantiatedTable());
+            listenerManager.listen(mainModel.getStudy(newNetwork).getContingencyLists(), change -> refreshInstantiatedTable());
         }
         showForm(null);
         refreshInstantiatedTable();
@@ -199,7 +199,7 @@ public class ContingenciesController extends AbstractDisposableController {
             instantiatedTitleLabel.setText(Messages.get("contingencies.instantiated.title"));
             return;
         }
-        List<Contingency> contingencies = ContingencyNames.deduplicate(mainModel.getContingencyLists(network).stream()
+        List<Contingency> contingencies = ContingencyNames.deduplicate(mainModel.getStudy(network).getContingencyLists().stream()
                 .filter(list -> enabledProperty(list).get())
                 .flatMap(this::contingenciesOf)
                 .collect(Collectors.toList()));
@@ -211,9 +211,9 @@ public class ContingenciesController extends AbstractDisposableController {
     }
 
     private BooleanProperty enabledProperty(ContingencyList list) {
-        BooleanProperty property = mainModel.contingencyListEnabledProperty(list);
+        BooleanProperty property = mainModel.getStudy(network).contingencyListEnabledProperty(list);
         if (listenedEnabledLists.add(list)) {
-            // the property is held by MainModel and outlives this view
+            // the property is held by NetworkStudy and outlives this view
             listenerManager.listen(property, (obs, oldValue, newValue) -> refreshInstantiatedTable());
         }
         return property;
@@ -243,7 +243,7 @@ public class ContingenciesController extends AbstractDisposableController {
             return;
         }
         ContingencyList created = kind.createDefault("");
-        mainModel.getContingencyLists(network).add(created);
+        mainModel.getStudy(network).getContingencyLists().add(created);
         contingencyListsListView.getSelectionModel().select(created);
     }
 
@@ -253,7 +253,7 @@ public class ContingenciesController extends AbstractDisposableController {
         if (selected == null || network == null) {
             return;
         }
-        mainModel.getContingencyLists(network).remove(selected);
+        mainModel.getStudy(network).getContingencyLists().remove(selected);
         listenedEnabledLists.remove(selected);
     }
 
@@ -292,12 +292,12 @@ public class ContingenciesController extends AbstractDisposableController {
     }
 
     private boolean replace(ContingencyList previous, ContingencyList replacement) {
-        List<ContingencyList> lists = mainModel.getContingencyLists(network);
+        List<ContingencyList> lists = mainModel.getStudy(network).getContingencyLists();
         int index = lists.indexOf(previous);
         if (index < 0) {
             return false;
         }
-        mainModel.transferContingencyListEnabled(previous, replacement);
+        mainModel.getStudy(network).transferContingencyListEnabled(previous, replacement);
         if (listenedEnabledLists.remove(previous)) {
             listenedEnabledLists.add(replacement);
         }
@@ -367,7 +367,7 @@ public class ContingenciesController extends AbstractDisposableController {
         FileChooserPreferences.saveLastDirectory(selectedFile);
         try {
             ContingencyList loaded = ContingencyListsIO.read(selectedFile.toPath());
-            ObservableList<ContingencyList> target = mainModel.getContingencyLists(network);
+            ObservableList<ContingencyList> target = mainModel.getStudy(network).getContingencyLists();
             if (loaded instanceof ListOfContingencyLists listOfLists) {
                 target.addAll(listOfLists.getContingencyLists());
             } else {
@@ -392,7 +392,7 @@ public class ContingenciesController extends AbstractDisposableController {
         }
         FileChooserPreferences.saveLastDirectory(selectedFile);
         try {
-            ContingencyListsIO.write(new ListOfContingencyLists(network.getNameOrId(), mainModel.getContingencyLists(network)), selectedFile.toPath());
+            ContingencyListsIO.write(new ListOfContingencyLists(network.getNameOrId(), mainModel.getStudy(network).getContingencyLists()), selectedFile.toPath());
         } catch (IOException e) {
             LOGGER.error(e.toString(), e);
         }

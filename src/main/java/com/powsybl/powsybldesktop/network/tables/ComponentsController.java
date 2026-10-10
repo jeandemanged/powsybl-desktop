@@ -206,7 +206,7 @@ public class ComponentsController extends AbstractDisposableController {
         }
         Hyperlink link = new Hyperlink(busId);
         link.getStyleClass().add("container-link");
-        link.setOnAction(event -> mainModel.addNavigationEvent(
+        link.setOnAction(event -> mainModel.getNavigationHistory().navigate(
                 NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(bus.getVoltageLevel()))));
         return link;
     }
@@ -223,7 +223,7 @@ public class ComponentsController extends AbstractDisposableController {
         if (network == null) {
             currentComponents = List.of();
         } else {
-            LoadFlowResult loadFlowResult = mainModel.getLoadFlowResult(network);
+            LoadFlowResult loadFlowResult = mainModel.getStudy(network).getLoadFlowResult();
             Map<ComponentKey, Long> busCountsByComponent = network.getBusView().getBusStream()
                     .filter(bus -> bus.getConnectedComponent() != null && bus.getSynchronousComponent() != null)
                     .collect(Collectors.groupingBy(

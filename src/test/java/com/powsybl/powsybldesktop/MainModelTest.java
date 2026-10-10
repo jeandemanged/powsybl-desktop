@@ -81,15 +81,15 @@ class MainModelTest {
         Network network2 = IeeeCdfNetworkFactory.create14();
         model.addNetwork(network1);
         model.addNetwork(network2);
-        model.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORKS, NetworkNavigationState.create(network1)));
-        model.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORKS, NetworkNavigationState.create(network2)));
+        model.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORKS, NetworkNavigationState.create(network1)));
+        model.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORKS, NetworkNavigationState.create(network2)));
 
         model.removeNetwork(network1);
 
         assertNull(model.getNetwork());
         assertEquals(List.of(network2), model.getNetworks());
-        assertEquals(1, model.getNavigationPast().size());
-        assertEquals(network2, model.getNavigationPast().get(0).state().getSelectedNetwork());
+        assertEquals(1, model.getNavigationHistory().getPast().size());
+        assertEquals(network2, model.getNavigationHistory().getPast().get(0).state().getSelectedNetwork());
     }
 
     @Test
@@ -120,15 +120,15 @@ class MainModelTest {
     void navigationPastIsCappedAndFutureClearedOnNewEvent() {
         // alternate event types so no two consecutive entries are equal (see duplicateConsecutiveEventIsNotAdded)
         for (int i = 0; i < 35; i++) {
-            model.addNavigationEvent(i % 2 == 0 ? NavigationEvent.create(NavigationType.NETWORKS) : NavigationEvent.create(NavigationType.SUBSTATIONS));
+            model.getNavigationHistory().navigate(i % 2 == 0 ? NavigationEvent.create(NavigationType.NETWORKS) : NavigationEvent.create(NavigationType.SUBSTATIONS));
         }
-        assertEquals(30, model.getNavigationPast().size());
+        assertEquals(30, model.getNavigationHistory().getPast().size());
 
-        model.navigateBackward();
-        assertEquals(1, model.getNavigationFuture().size());
+        model.getNavigationHistory().navigateBackward();
+        assertEquals(1, model.getNavigationHistory().getFuture().size());
 
-        model.addNavigationEvent(NavigationEvent.create(NavigationType.LOGS));
-        assertTrue(model.getNavigationFuture().isEmpty());
+        model.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS));
+        assertTrue(model.getNavigationHistory().getFuture().isEmpty());
     }
 
     @Test
@@ -136,58 +136,58 @@ class MainModelTest {
         NavigationEvent first = NavigationEvent.create(NavigationType.NETWORKS);
         NavigationEvent second = NavigationEvent.create(NavigationType.LOGS);
         NavigationEvent third = NavigationEvent.create(NavigationType.REPORTS);
-        model.addNavigationEvent(first);
-        model.addNavigationEvent(second);
-        model.addNavigationEvent(third);
+        model.getNavigationHistory().navigate(first);
+        model.getNavigationHistory().navigate(second);
+        model.getNavigationHistory().navigate(third);
 
-        model.navigateBackward();
-        assertEquals(second, model.navigationEventProperty().get());
-        model.navigateBackward();
-        assertEquals(first, model.navigationEventProperty().get());
-        model.navigateBackward();
-        assertEquals(first, model.navigationEventProperty().get(), "no more past entries to go back to");
+        model.getNavigationHistory().navigateBackward();
+        assertEquals(second, model.getNavigationHistory().currentEventProperty().get());
+        model.getNavigationHistory().navigateBackward();
+        assertEquals(first, model.getNavigationHistory().currentEventProperty().get());
+        model.getNavigationHistory().navigateBackward();
+        assertEquals(first, model.getNavigationHistory().currentEventProperty().get(), "no more past entries to go back to");
 
-        model.navigateForward();
-        assertEquals(second, model.navigationEventProperty().get());
-        model.navigateForward();
-        assertEquals(third, model.navigationEventProperty().get());
-        model.navigateForward();
-        assertEquals(third, model.navigationEventProperty().get(), "no more future entries to go forward to");
+        model.getNavigationHistory().navigateForward();
+        assertEquals(second, model.getNavigationHistory().currentEventProperty().get());
+        model.getNavigationHistory().navigateForward();
+        assertEquals(third, model.getNavigationHistory().currentEventProperty().get());
+        model.getNavigationHistory().navigateForward();
+        assertEquals(third, model.getNavigationHistory().currentEventProperty().get(), "no more future entries to go forward to");
     }
 
     @Test
     void duplicateConsecutiveEventIsNotAdded() {
-        model.addNavigationEvent(NavigationEvent.create(NavigationType.LOGS));
-        model.addNavigationEvent(NavigationEvent.create(NavigationType.LOGS));
-        model.addNavigationEvent(NavigationEvent.create(NavigationType.LOGS));
+        model.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS));
+        model.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS));
+        model.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS));
 
-        assertEquals(1, model.getNavigationPast().size());
+        assertEquals(1, model.getNavigationHistory().getPast().size());
     }
 
     @Test
     void navigateBackwardToIndexIgnoresOutOfBoundsIndex() {
-        model.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORKS));
-        model.addNavigationEvent(NavigationEvent.create(NavigationType.LOGS));
+        model.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORKS));
+        model.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS));
 
-        model.navigateBackwardToIndex(-1);
-        model.navigateBackwardToIndex(5);
+        model.getNavigationHistory().navigateBackwardToIndex(-1);
+        model.getNavigationHistory().navigateBackwardToIndex(5);
 
-        assertEquals(2, model.getNavigationPast().size());
-        assertTrue(model.getNavigationFuture().isEmpty());
+        assertEquals(2, model.getNavigationHistory().getPast().size());
+        assertTrue(model.getNavigationHistory().getFuture().isEmpty());
     }
 
     @Test
     void notificationLifecycle() {
         Notification running = Notification.createRunning("loading", null);
-        model.addNotification(running);
-        assertEquals(List.of(running), model.getNotifications());
+        model.getNotificationsModel().add(running);
+        assertEquals(List.of(running), model.getNotificationsModel().getNotifications());
 
         Notification success = Notification.createSuccess(running.startTimestamp(), "done");
-        model.replaceNotification(running, success);
-        assertEquals(List.of(success), model.getNotifications());
+        model.getNotificationsModel().replace(running, success);
+        assertEquals(List.of(success), model.getNotificationsModel().getNotifications());
 
-        model.removeNotification(success);
-        assertTrue(model.getNotifications().isEmpty());
+        model.getNotificationsModel().remove(success);
+        assertTrue(model.getNotificationsModel().getNotifications().isEmpty());
     }
 
     @Test
@@ -216,21 +216,21 @@ class MainModelTest {
     void clearNotificationsKeepsRunningOnes() {
         Notification running = Notification.createRunning("loading", () -> { });
         Notification done = Notification.createSuccess(Instant.now(), "done");
-        model.addNotification(running);
-        model.addNotification(done);
+        model.getNotificationsModel().add(running);
+        model.getNotificationsModel().add(done);
 
-        model.clearNotifications();
+        model.getNotificationsModel().clear();
 
-        assertEquals(List.of(running), model.getNotifications(), "a running notification carries the only Cancel button");
+        assertEquals(List.of(running), model.getNotificationsModel().getNotifications(), "a running notification carries the only Cancel button");
     }
 
     @Test
     void replaceNotificationAddsWhenOldNotificationIsMissing() {
         Notification success = Notification.createSuccess(Instant.now(), "done");
 
-        model.replaceNotification(Notification.createRunning("loading", null), success);
+        model.getNotificationsModel().replace(Notification.createRunning("loading", null), success);
 
-        assertEquals(List.of(success), model.getNotifications());
+        assertEquals(List.of(success), model.getNotificationsModel().getNotifications());
     }
 
     @Test
@@ -240,11 +240,12 @@ class MainModelTest {
         Network merged = Network.merge("MERGED", network1, network2);
         Network subnetwork1 = merged.getSubnetwork("N1");
         LoadFlowResult result = new LoadFlowResultImpl(true, Map.of(), null);
+        model.addNetwork(merged);
 
-        model.setLoadFlowResult(merged, result);
+        model.getStudy(merged).setLoadFlowResult(result);
 
-        assertSame(result, model.getLoadFlowResult(merged));
-        assertSame(result, model.getLoadFlowResult(subnetwork1));
+        assertSame(result, model.getStudy(merged).getLoadFlowResult());
+        assertSame(result, model.getStudy(subnetwork1).getLoadFlowResult());
     }
 
     @Test
@@ -254,14 +255,14 @@ class MainModelTest {
                 NetworkFactory.findDefault().createNetwork("N2", "test"));
         Network subnetwork1 = merged.getSubnetwork("N1");
         model.addNetwork(merged);
-        model.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORKS, NetworkNavigationState.create(subnetwork1)));
+        model.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORKS, NetworkNavigationState.create(subnetwork1)));
         model.setNetwork(subnetwork1);
 
         model.removeNetwork(merged);
 
         assertNull(model.getNetwork());
-        assertTrue(model.getNavigationPast().isEmpty());
-        assertNull(model.navigationEventProperty().get(), "a language reload re-fires the current event, which would re-select it");
+        assertTrue(model.getNavigationHistory().getPast().isEmpty());
+        assertNull(model.getNavigationHistory().currentEventProperty().get(), "a language reload re-fires the current event, which would re-select it");
     }
 
     @Test
@@ -271,7 +272,7 @@ class MainModelTest {
         model.networkProperty().addListener((observable, oldValue, newValue) ->
                 model.searchIndexStateProperty().setValue(NetworkSearchIndex.State.BUILDING));
 
-        model.setNetwork(network);
+        model.addNetwork(network);
 
         assertEquals(NetworkSearchIndex.State.BUILDING, model.searchIndexStateProperty().get());
     }
@@ -283,10 +284,10 @@ class MainModelTest {
                 NetworkFactory.findDefault().createNetwork("N2", "test"));
         Network subnetwork1 = merged.getSubnetwork("N1");
         model.addNetwork(merged);
-        model.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORKS, NetworkNavigationState.create(subnetwork1)));
+        model.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORKS, NetworkNavigationState.create(subnetwork1)));
         model.setNetwork(subnetwork1);
         ContingencyList list = new DefaultContingencyList("list", List.of());
-        model.getContingencyLists(merged).add(list);
+        model.getStudy(merged).getContingencyLists().add(list);
 
         model.detachSubnetworks(List.of(subnetwork1));
 
@@ -294,9 +295,9 @@ class MainModelTest {
         assertEquals("N1", detached.getId());
         assertNotSame(subnetwork1, detached);
         assertEquals(List.of(merged, detached), model.getNetworks());
-        assertTrue(model.getNavigationPast().isEmpty());
-        assertEquals(List.of(list), model.getContingencyLists(merged), "lists stay with the root network they were edited for");
-        assertTrue(model.getContingencyLists(detached).isEmpty());
+        assertTrue(model.getNavigationHistory().getPast().isEmpty());
+        assertEquals(List.of(list), model.getStudy(merged).getContingencyLists(), "lists stay with the root network they were edited for");
+        assertTrue(model.getStudy(detached).getContingencyLists().isEmpty());
     }
 
     @Test
@@ -304,24 +305,25 @@ class MainModelTest {
         Network merged = Network.merge("MERGED",
                 NetworkFactory.findDefault().createNetwork("N1", "test"),
                 NetworkFactory.findDefault().createNetwork("N2", "test"));
+        model.addNetwork(merged);
 
-        assertSame(model.getContingencyLists(merged), model.getContingencyLists(merged.getSubnetwork("N1")));
-        assertSame(model.getContingencyLists(merged), model.getContingencyLists(merged.getSubnetwork("N2")));
+        assertSame(model.getStudy(merged).getContingencyLists(), model.getStudy(merged.getSubnetwork("N1")).getContingencyLists());
+        assertSame(model.getStudy(merged).getContingencyLists(), model.getStudy(merged.getSubnetwork("N2")).getContingencyLists());
     }
 
     @Test
     void securityAnalysisParametersStartsWiredToTheSameLoadFlowParametersInstance() {
-        assertNotNull(model.securityAnalysisParametersProperty().get().getExtension(OpenSecurityAnalysisParameters.class));
-        assertSame(model.loadFlowParametersProperty().get(), model.securityAnalysisParametersProperty().get().getLoadFlowParameters());
+        assertNotNull(model.getParametersModel().securityAnalysisParametersProperty().get().getExtension(OpenSecurityAnalysisParameters.class));
+        assertSame(model.getParametersModel().loadFlowParametersProperty().get(), model.getParametersModel().securityAnalysisParametersProperty().get().getLoadFlowParameters());
     }
 
     @Test
     void replacingLoadFlowParametersRewiresSecurityAnalysisParameters() {
         LoadFlowParameters replacement = new LoadFlowParameters();
 
-        model.loadFlowParametersProperty().setValue(replacement);
+        model.getParametersModel().loadFlowParametersProperty().setValue(replacement);
 
-        assertSame(replacement, model.securityAnalysisParametersProperty().get().getLoadFlowParameters());
+        assertSame(replacement, model.getParametersModel().securityAnalysisParametersProperty().get().getLoadFlowParameters());
     }
 
     @Test
@@ -329,9 +331,9 @@ class MainModelTest {
         SecurityAnalysisParameters imported = new SecurityAnalysisParameters();
         imported.setLoadFlowParameters(new LoadFlowParameters().setDc(true)); // stale, from e.g. an imported JSON file
 
-        model.securityAnalysisParametersProperty().setValue(imported);
+        model.getParametersModel().securityAnalysisParametersProperty().setValue(imported);
 
-        assertSame(model.loadFlowParametersProperty().get(), imported.getLoadFlowParameters());
+        assertSame(model.getParametersModel().loadFlowParametersProperty().get(), imported.getLoadFlowParameters());
     }
 
     @Test

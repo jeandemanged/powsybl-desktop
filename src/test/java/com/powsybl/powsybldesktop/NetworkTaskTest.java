@@ -43,6 +43,7 @@ class NetworkTaskTest {
     @Test
     void cancelledTaskKeepsTheNetworkBusyUntilItsWorkReturns() throws Exception {
         MainModel model = new MainModel();
+        model.addNetwork(network);
         CountDownLatch computing = new CountDownLatch(1);
         CountDownLatch finish = new CountDownLatch(1);
         AbstractNetworkTask<Void>[] task = new AbstractNetworkTask[1];
@@ -73,6 +74,7 @@ class NetworkTaskTest {
     @Test
     void taskCancelledBeforeRunningReleasesTheNetwork() throws Exception {
         MainModel model = new MainModel();
+        model.addNetwork(network);
         WaitForAsyncUtils.asyncFx(() -> {
             AbstractNetworkTask<Void> task = new AbstractNetworkTask<>(model, network) {
                 @Override

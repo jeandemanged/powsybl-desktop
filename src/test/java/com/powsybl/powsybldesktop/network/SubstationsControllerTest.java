@@ -129,7 +129,7 @@ class SubstationsControllerTest extends AbstractHeadlessApplicationTest {
 
         // tab selection is recorded in history (like the tree selection above) without becoming the
         // "current" navigation event, since it doesn't need to re-trigger MainController's view swap
-        NavigationEvent event = mainModel.getNavigationPast().get(mainModel.getNavigationPast().size() - 1);
+        NavigationEvent event = mainModel.getNavigationHistory().getPast().get(mainModel.getNavigationHistory().getPast().size() - 1);
         assertEquals(NavigationType.SUBSTATIONS, event.navigationType());
         ContainerNavigationState state = (ContainerNavigationState) event.state();
         assertEquals(vl1, state.getContainer());

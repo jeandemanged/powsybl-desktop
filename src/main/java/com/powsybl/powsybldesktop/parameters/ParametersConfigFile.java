@@ -9,7 +9,6 @@ package com.powsybl.powsybldesktop.parameters;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.powsybl.commons.PowsyblException;
-import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.notification.Notification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,16 +56,16 @@ public final class ParametersConfigFile {
      * Restores the parameters saved in {@code path}, if any. An unreadable file is moved aside to a timestamped
      * {@code .bak} and replaced by one holding the defaults, the returned notification telling the user so.
      */
-    public static Optional<Notification> load(MainModel mainModel, Path path) {
+    public static Optional<Notification> load(ParametersModel parametersModel, Path path) {
         if (!Files.exists(path)) {
             return Optional.empty();
         }
         Instant start = Instant.now();
         try {
-            mainModel.setParameters(DesktopParametersJson.read(path));
+            parametersModel.setParameters(DesktopParametersJson.read(path));
             // snapshot of what was actually applied rather than the file's raw content, so a file missing fields
             // or written by another PowSyBl version doesn't show as modified right away
-            mainModel.setSavedParameters(DesktopParametersJson.toJson(mainModel.getParameters()));
+            parametersModel.setSavedParameters(DesktopParametersJson.toJson(parametersModel.getParameters()));
             return Optional.empty();
         } catch (PowsyblException | UncheckedIOException e) {
             Path backup = path.resolveSibling(path.getFileName() + "." + LocalDateTime.now().format(BACKUP_TIMESTAMP) + ".bak");
@@ -78,7 +77,7 @@ public final class ParametersConfigFile {
                 return Optional.of(Notification.createError(start, "parameters.config.loadFailedNotMoved").withMessageArgs(path));
             }
             try {
-                save(mainModel, path);
+                save(parametersModel, path);
             } catch (UncheckedIOException ex) {
                 LOGGER.error("Failed to replace {} by default parameters", path, ex);
             }
@@ -86,13 +85,13 @@ public final class ParametersConfigFile {
         }
     }
 
-    public static void save(MainModel mainModel, Path path) {
-        JsonNode json = DesktopParametersJson.toJson(mainModel.getParameters());
+    public static void save(ParametersModel parametersModel, Path path) {
+        JsonNode json = DesktopParametersJson.toJson(parametersModel.getParameters());
         DesktopParametersJson.write(json, path);
-        mainModel.setSavedParameters(json);
+        parametersModel.setSavedParameters(json);
     }
 
-    public static boolean isSaved(MainModel mainModel) {
-        return DesktopParametersJson.toJson(mainModel.getParameters()).equals(mainModel.getSavedParameters());
+    public static boolean isSaved(ParametersModel parametersModel) {
+        return DesktopParametersJson.toJson(parametersModel.getParameters()).equals(parametersModel.getSavedParameters());
     }
 }

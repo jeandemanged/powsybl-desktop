@@ -163,11 +163,11 @@ public class TieLinesController extends AbstractEquipmentTableController<TieLine
         link.getStyleClass().add("container-link");
         link.setOnAction(event -> {
             if (isEmbedded()) {
-                mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.SUBSTATIONS,
+                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
                         ContainerNavigationState.create(boundaryLine.getTerminal().getVoltageLevel(), ContainerNavigationState.ContainerTab.BOUNDARY_LINES)));
             } else {
-                mainModel.addNavigationEvent(ownNavigationEvent(item), false);
-                mainModel.addNavigationEvent(NavigationEvent.create(NavigationType.NETWORK_TABLE_BOUNDARY_LINES, BoundaryLineNavigationState.create(boundaryLine)));
+                mainModel.getNavigationHistory().navigate(ownNavigationEvent(item), false);
+                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_BOUNDARY_LINES, BoundaryLineNavigationState.create(boundaryLine)));
             }
         });
         return link;

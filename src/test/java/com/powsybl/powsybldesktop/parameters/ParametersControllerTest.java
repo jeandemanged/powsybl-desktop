@@ -102,25 +102,25 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
         CheckBox checkBox = from(tabPane.getTabs().get(0).getContent()).lookup(".check-box").query();
         boolean initial = checkBox.isSelected();
         clickOn(checkBox);
-        assertEquals(String.valueOf(!initial), mainModel.getNetworkImportParameters("IIDM").values().iterator().next());
+        assertEquals(String.valueOf(!initial), mainModel.getParametersModel().getNetworkImportParameters("IIDM").values().iterator().next());
     }
 
     @Test
     void editingDiagramParametersBumpsMainModelRevisions() {
         interact(() -> tabPane.getSelectionModel().select(2));
         clickOn(from(tabPane.getTabs().get(2).getContent()).lookup(".check-box").<CheckBox>query());
-        assertEquals(1, mainModel.sldParametersRevisionProperty().get());
-        assertEquals(0, mainModel.nadParametersRevisionProperty().get());
+        assertEquals(1, mainModel.getParametersModel().sldParametersRevisionProperty().get());
+        assertEquals(0, mainModel.getParametersModel().nadParametersRevisionProperty().get());
 
         interact(() -> tabPane.getSelectionModel().select(3));
         clickOn(from(tabPane.getTabs().get(3).getContent()).lookup(".check-box").<CheckBox>query());
-        assertEquals(1, mainModel.nadParametersRevisionProperty().get());
+        assertEquals(1, mainModel.getParametersModel().nadParametersRevisionProperty().get());
     }
 
     @Test
     void embeddedControllersShareMainModelParameters() {
-        assertSame(mainModel.loadFlowParametersProperty().get(),
-                mainModel.securityAnalysisParametersProperty().get().getLoadFlowParameters());
+        assertSame(mainModel.getParametersModel().loadFlowParametersProperty().get(),
+                mainModel.getParametersModel().securityAnalysisParametersProperty().get().getLoadFlowParameters());
     }
 
     @Test
@@ -142,13 +142,13 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
         CheckBox checkBox = from(tabPane.getTabs().get(0).getContent()).lookup(".check-box").query();
         boolean initial = checkBox.isSelected();
         clickOn(checkBox);
-        mainModel.loadFlowParametersProperty().get().setDc(true);
+        mainModel.getParametersModel().loadFlowParametersProperty().get().setDc(true);
         interact(() -> controller.exportTo(path));
 
-        interact(() -> mainModel.setParameters(DesktopParameters.createDefault()));
+        interact(() -> mainModel.getParametersModel().setParameters(DesktopParameters.createDefault()));
         interact(() -> controller.importFrom(path));
 
-        assertTrue(mainModel.loadFlowParametersProperty().get().isDc());
+        assertTrue(mainModel.getParametersModel().loadFlowParametersProperty().get().isDc());
         CheckBox refreshed = from(tabPane.getTabs().get(0).getContent()).lookup(".check-box").query();
         assertEquals(!initial, refreshed.isSelected());
     }
@@ -157,11 +157,11 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
     void importOfInvalidFileKeepsParametersAndNotifies() throws IOException {
         Path path = tempDir.resolve("invalid.json");
         Files.writeString(path, "[]");
-        mainModel.loadFlowParametersProperty().get().setDc(true);
+        mainModel.getParametersModel().loadFlowParametersProperty().get().setDc(true);
 
         interact(() -> controller.importFrom(path));
 
-        assertTrue(mainModel.loadFlowParametersProperty().get().isDc());
-        assertEquals(1, mainModel.getNotifications().size());
+        assertTrue(mainModel.getParametersModel().loadFlowParametersProperty().get().isDc());
+        assertEquals(1, mainModel.getNotificationsModel().getNotifications().size());
     }
 }

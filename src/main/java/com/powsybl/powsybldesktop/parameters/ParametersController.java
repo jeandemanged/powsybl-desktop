@@ -69,17 +69,17 @@ public class ParametersController extends AbstractDisposableController {
         this.mainModel = Objects.requireNonNull(mainModel);
         networkImportEmbeddedController.setImportParameters(mainModel);
         networkExportEmbeddedController.setExportParameters(mainModel);
-        sldEmbeddedController.setParametersProperty(mainModel.sldParametersProperty());
-        sldEmbeddedController.setOnChange(mainModel::sldParametersChanged);
-        nadEmbeddedController.setParametersProperty(mainModel.nadParametersProperty());
-        nadEmbeddedController.setOnChange(mainModel::nadParametersChanged);
-        loadFlowEmbeddedController.setLoadFlowParametersProperty(mainModel.loadFlowParametersProperty());
-        loadFlowEmbeddedController.setOnChange(mainModel::parametersChanged);
+        sldEmbeddedController.setParametersProperty(mainModel.getParametersModel().sldParametersProperty());
+        sldEmbeddedController.setOnChange(mainModel.getParametersModel()::sldParametersChanged);
+        nadEmbeddedController.setParametersProperty(mainModel.getParametersModel().nadParametersProperty());
+        nadEmbeddedController.setOnChange(mainModel.getParametersModel()::nadParametersChanged);
+        loadFlowEmbeddedController.setLoadFlowParametersProperty(mainModel.getParametersModel().loadFlowParametersProperty());
+        loadFlowEmbeddedController.setOnChange(mainModel.getParametersModel()::parametersChanged);
         loadFlowEmbeddedController.setOnImportFailed((path, e) -> importFailed(Instant.now(), path, e));
-        securityAnalysisEmbeddedController.setSecurityAnalysisParametersProperty(mainModel.securityAnalysisParametersProperty());
-        securityAnalysisEmbeddedController.setOnChange(mainModel::parametersChanged);
+        securityAnalysisEmbeddedController.setSecurityAnalysisParametersProperty(mainModel.getParametersModel().securityAnalysisParametersProperty());
+        securityAnalysisEmbeddedController.setOnChange(mainModel.getParametersModel()::parametersChanged);
         securityAnalysisEmbeddedController.setOnImportFailed((path, e) -> importFailed(Instant.now(), path, e));
-        listenerManager.listen(mainModel.parametersRevisionProperty(), (observable, oldValue, newValue) -> updateSaveButton());
+        listenerManager.listen(mainModel.getParametersModel().parametersRevisionProperty(), (observable, oldValue, newValue) -> updateSaveButton());
         setConfigPath(configPath);
     }
 
@@ -90,17 +90,17 @@ public class ParametersController extends AbstractDisposableController {
     }
 
     private void updateSaveButton() {
-        saveButton.setDisable(ParametersConfigFile.isSaved(mainModel));
+        saveButton.setDisable(ParametersConfigFile.isSaved(mainModel.getParametersModel()));
     }
 
     @FXML
     private void onSave() {
         Instant start = Instant.now();
         try {
-            ParametersConfigFile.save(mainModel, configPath);
+            ParametersConfigFile.save(mainModel.getParametersModel(), configPath);
         } catch (PowsyblException | UncheckedIOException e) {
             LOGGER.error("Failed to save parameters to {}", configPath, e);
-            mainModel.addNotification(Notification.createError(start, "parameters.config.saveFailed").withMessageArgs(configPath));
+            mainModel.getNotificationsModel().add(Notification.createError(start, "parameters.config.saveFailed").withMessageArgs(configPath));
         }
         updateSaveButton();
     }
@@ -148,21 +148,21 @@ public class ParametersController extends AbstractDisposableController {
 
     private void importFailed(Instant start, Path path, RuntimeException e) {
         LOGGER.error("Failed to import parameters from {}", path, e);
-        mainModel.addNotification(Notification.createError(start, "parameters.import.failed").withMessageArgs(path));
+        mainModel.getNotificationsModel().add(Notification.createError(start, "parameters.import.failed").withMessageArgs(path));
     }
 
     void exportTo(Path path) {
         Instant start = Instant.now();
         try {
-            DesktopParametersJson.write(mainModel.getParameters(), path);
+            DesktopParametersJson.write(mainModel.getParametersModel().getParameters(), path);
         } catch (PowsyblException | UncheckedIOException e) {
             LOGGER.error("Failed to export parameters to {}", path, e);
-            mainModel.addNotification(Notification.createError(start, "parameters.export.failed").withMessageArgs(path));
+            mainModel.getNotificationsModel().add(Notification.createError(start, "parameters.export.failed").withMessageArgs(path));
         }
     }
 
     private void setParameters(DesktopParameters parameters) {
-        mainModel.setParameters(parameters);
+        mainModel.getParametersModel().setParameters(parameters);
         networkImportEmbeddedController.refresh();
         networkExportEmbeddedController.refresh();
     }

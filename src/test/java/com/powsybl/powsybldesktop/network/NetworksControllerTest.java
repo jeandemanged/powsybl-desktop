@@ -381,8 +381,8 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
 
     private Notification importAllAndWait(List<ImportChoice> choices) throws TimeoutException {
         interact(() -> controller.importAll(choices));
-        WaitForAsyncUtils.waitFor(30, TimeUnit.SECONDS, () -> mainModel.getNotifications().getLast().status() != NotificationStatus.RUNNING);
-        return mainModel.getNotifications().getLast();
+        WaitForAsyncUtils.waitFor(30, TimeUnit.SECONDS, () -> mainModel.getNotificationsModel().getNotifications().getLast().status() != NotificationStatus.RUNNING);
+        return mainModel.getNotificationsModel().getNotifications().getLast();
     }
 
     private static ImportChoice xiidmChoice(Path path) {
