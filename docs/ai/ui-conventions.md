@@ -31,6 +31,21 @@ resources package.
 - English text uses **American English** spelling (`canceled`, `color`, `toward`, `-ize`, `analyze`, `center`),
   not British (`cancelled`, `colour`, `towards`, `-ise`, `analyse`, `centre`). Key names may keep PowSyBl/JavaFX
   spellings (e.g. `*.cancelled` mirrors `Worker.State.CANCELLED`).
+- Power-system vocabulary must match the PowSyBl dependencies' own translations, so that the UI and the PowSyBl
+  reports shown in it use the same words. Before adding or changing a key whose text is not purely about
+  powsybl-desktop itself (equipment, electrical quantities, computations, parameters), look up the term in the
+  report bundles shipped by the dependencies: `com/powsybl/commons/reports_fr.properties` (powsybl-commons, covers
+  `core.*` for all powsybl-core modules) and `com/powsybl/openloadflow/reports_fr.properties` (powsybl-open-loadflow),
+  e.g. `unzip -p ~/.m2/repository/com/powsybl/powsybl-commons/<version>/powsybl-commons-<version>.jar com/powsybl/commons/reports_fr.properties`.
+  Re-check when bumping dependency versions or adding a PowSyBl dependency that ships `reports*.properties`.
+  Established French terms: substation **site**, voltage level **poste**, bus **nœud électrique**, busbar section
+  **section de jeu de barres**, generator **groupe**, shunt compensator **moyen de compensation statique**, static VAR
+  compensator **compensateur statique de puissance réactive**, switch **organe de coupure**, tie line
+  **interconnexion**, boundary line **ligne frontière**, HVDC line **ligne HVDC**, converter station **station de
+  conversion**, branch **quadripôle**, phase/ratio tap changer **déphaseur**/**régleur**, pairing key **clé de
+  correspondance**, target **consigne**, target deadband **bande morte cible**, load flow **calcul de répartition**,
+  slack bus **nœud bilan**, slack distribution **compensation**, contingency **aléa**, operator strategy **parade**,
+  synchronous component **SC** (as in OLF reports). We keep correct French typography (`nœud`, not `noeud`).
 - In FXML: `text="%key"`. In Java: `Messages.get("key")` / `Messages.get("key", args...)` (`MessageFormat`
   syntax — escape single quotes as `''`). For a `Label: value` line use `Messages.labelValue(labelKey, value)`
   rather than a dedicated `"Xxx: {0}"` key.

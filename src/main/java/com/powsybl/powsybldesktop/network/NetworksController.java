@@ -915,7 +915,7 @@ public class NetworksController extends AbstractDisposableController {
     private static NetworkAndReport doImport(List<Importer> importers, Path inputPath, Properties parameters) {
         ReportNode reportNode = ReportNode.newRootReportNode()
                 .withAllResourceBundlesFromClasspath()
-                .withMessageTemplate("powsybl.desktop.network.import")
+                .withMessageTemplate("desktop.networkImport")
                 .withTimestamp()
                 .build();
         ReadOnlyDataSource dataSource = Exporters.createDataSource(inputPath);
@@ -1101,7 +1101,7 @@ public class NetworksController extends AbstractDisposableController {
     private void runExport(Network network, Exporter exporter, Path outputPath, Properties parameters) {
         ReportNode reportNode = ReportNode.newRootReportNode()
                 .withAllResourceBundlesFromClasspath()
-                .withMessageTemplate("powsybl.desktop.network.export")
+                .withMessageTemplate("desktop.networkExport")
                 .withTimestamp()
                 .build();
         Service<Void> exportService = new Service<>() {

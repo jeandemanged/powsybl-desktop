@@ -282,7 +282,7 @@ public class MainController extends AbstractDisposableController {
                     protected LoadFlowResultAndReport compute() throws Exception {
                         ReportNode reportNode = ReportNode.newRootReportNode()
                                 .withAllResourceBundlesFromClasspath()
-                                .withMessageTemplate("powsybl.desktop.loadflow")
+                                .withMessageTemplate("desktop.loadFlow")
                                 .withTimestamp()
                                 .build();
 
@@ -400,7 +400,7 @@ public class MainController extends AbstractDisposableController {
                     protected SecurityAnalysisResultAndReport compute() throws Exception {
                         ReportNode reportNode = ReportNode.newRootReportNode()
                                 .withAllResourceBundlesFromClasspath()
-                                .withMessageTemplate("powsybl.desktop.securityanalysis")
+                                .withMessageTemplate("desktop.securityAnalysis")
                                 .withTimestamp()
                                 .build();
 

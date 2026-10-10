@@ -42,7 +42,7 @@ class ReportsControllerTest extends AbstractHeadlessApplicationTest {
         mainModel = new MainModel();
         mainModel.addReport(ReportNode.newRootReportNode()
                 .withAllResourceBundlesFromClasspath()
-                .withMessageTemplate("powsybl.desktop.loadflow")
+                .withMessageTemplate("desktop.loadFlow")
                 .build());
         controller.setMainModel(mainModel);
 

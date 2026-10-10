@@ -338,7 +338,7 @@ class MainModelTest {
 
     @Test
     void reportsAccumulateAndClear() {
-        ReportNode report = ReportNode.newRootReportNode().withAllResourceBundlesFromClasspath().withMessageTemplate("powsybl.desktop.loadflow").build();
+        ReportNode report = ReportNode.newRootReportNode().withAllResourceBundlesFromClasspath().withMessageTemplate("desktop.loadFlow").build();
 
         model.addReport(report);
         assertEquals(List.of(report), model.getReports());

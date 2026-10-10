@@ -77,7 +77,7 @@ class NavigationEventTest {
 
     @Test
     void describeWithReportAppendsReportMessage() {
-        ReportNode reportNode = ReportNode.newRootReportNode().withAllResourceBundlesFromClasspath().withMessageTemplate("powsybl.desktop.loadflow").build();
+        ReportNode reportNode = ReportNode.newRootReportNode().withAllResourceBundlesFromClasspath().withMessageTemplate("desktop.loadFlow").build();
         NavigationEvent event = NavigationEvent.create(NavigationType.REPORTS, ReportNavigationState.create(reportNode));
 
         assertEquals("Reports - " + reportNode.getMessage(), event.describe());

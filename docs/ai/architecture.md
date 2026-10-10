@@ -118,10 +118,12 @@ Canonical example: `MainController.onLoadFlow` (lines ~175–286) and `NetworksC
 
 ## Reports and logs
 
-- PowSyBl `ReportNode`s are created with `ReportNode.newRootReportNode().withAllResourceBundlesFromClasspath().withMessageTemplate("powsybl.desktop....")`,
+- PowSyBl `ReportNode`s are created with `ReportNode.newRootReportNode().withAllResourceBundlesFromClasspath().withMessageTemplate("desktop.xxx")`,
   templates defined in `reports.properties` and `reports_fr.properties` (registered by
   `reports/PowsyblDesktopReportResourceBundle.java` via `@AutoService`). Completed reports go to
   `mainModel.addReport(...)` and are shown by `ReportsController`.
-- The `reports` bundle is separate from the UI `i18n/messages` bundle; do not merge them.
+- The `reports` bundle is separate from the UI `i18n/messages` bundle; do not merge them. Report keys are global
+  across all PowSyBl report bundles on the classpath, hence one prefix per library, as PowSyBl does (`core.*`,
+  `olf.*`): ours is `desktop.<camelCaseName>`.
 - Logging uses SLF4J (`LoggerFactory.getLogger(X.class)`), backed by Logback (`src/main/resources/logback.xml`).
   `LogsModel` captures root-logger events (capped at 20,000) for the Logs view.
