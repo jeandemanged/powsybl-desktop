@@ -1,7 +1,19 @@
 # PowSyBl Desktop
 
-A JavaFX desktop client for [PowSyBl](https://www.powsybl.org/) — load/browse power networks,
-inspect substations via single-line diagrams, run load flow, and view results/logs.
+A JavaFX desktop client for [PowSyBl](https://www.powsybl.org/), to explore, edit and simulate power networks:
+
+- **Networks**: import any PowSyBl-supported format (file chooser or drag and drop), export, merge networks and
+  detach subnetworks; import/export parameters per format.
+- **Substations**: substation/voltage-level tree with interactive single-line diagrams (switch operation, click to
+  navigate), network-area diagrams, and the equipment of the selected container; PNG/SVG export.
+- **Equipment tables**: substations, voltage levels, busbar sections, buses (bus and bus/breaker views), generators,
+  loads, lines, tie lines, boundary lines, transformers, shunt and static var compensators — with in-place editing
+  validated by PowSyBl.
+- **Map**: substations and lines drawn on a basemap from the network's geographical positions.
+- **Search**: fuzzy search by id or name across the network's equipment.
+- **Simulation**: load flow (OpenLoadFlow) and security analysis with editable contingency lists, with results tables.
+- **Reports, logs and notifications** for every operation; parameters saved to a per-user configuration file;
+  English and French UI.
 
 ## Build & run from source
 
@@ -109,7 +121,9 @@ the Linux app-image. Windows needs `packaging/icons/app.ico` and macOS needs
 converter, or macOS's `iconutil`) and drop it at that path — the scripts pick it up automatically
 if present, and fall back to jpackage's default icon otherwise.
 
-### Verified so far
+### Continuous integration and releases
 
-The Windows pipeline has been run end-to-end and the resulting app-image launches correctly. The
-Linux and macOS scripts follow the identical pattern but haven't been run on those platforms yet.
+All three scripts are run on GitHub Actions by `.github/workflows/package-release.yml` (manual dispatch, publishes
+from branch `init`): it tags the commit, packages the app-image on Windows, Linux and macOS (Apple Silicon) runners
+with the downloaded JavaFX jmods, archives each one and publishes them as a GitHub release. Every push is also built
+and tested on the same three platforms by `.github/workflows/ci.yml`.
