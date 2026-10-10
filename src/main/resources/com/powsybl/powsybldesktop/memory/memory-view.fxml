@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="8.0" xmlns="http://javafx.com/javafx/17.0.12"
+      xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.memory.MemoryController">
+    <padding>
+        <Insets bottom="16.0" left="16.0" right="16.0" top="16.0"/>
+    </padding>
+    <children>
+        <GridPane hgap="8.0" vgap="4.0">
+            <columnConstraints>
+                <ColumnConstraints/>
+                <ColumnConstraints halignment="RIGHT"/>
+            </columnConstraints>
+            <children>
+                <Label text="%memory.max" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                <Label fx:id="maxValueLabel" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                <Label text="%memory.used" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                <Label fx:id="usedValueLabel" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                <Label text="%memory.percent" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                <Label fx:id="percentValueLabel" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+            </children>
+        </GridPane>
+        <ProgressBar fx:id="usageBar" maxWidth="Infinity" prefHeight="14.0" progress="0.0" styleClass="memory-usage-bar"/>
+        <Button mnemonicParsing="false" onAction="#onForceGc" text="%memory.forceGc"/>
+    </children>
+</VBox>

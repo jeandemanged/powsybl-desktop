@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox alignment="CENTER" spacing="12.0" xmlns="http://javafx.com/javafx/17.0.12"
+      xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.about.AboutController">
+    <padding>
+        <Insets bottom="16.0" left="16.0" right="16.0" top="16.0"/>
+    </padding>
+    <children>
+        <ImageView fitWidth="400.0" preserveRatio="true">
+            <image>
+                <Image url="@../logo_lfe_powsybl.png"/>
+            </image>
+        </ImageView>
+        <VBox alignment="CENTER_LEFT" spacing="4.0">
+            <children>
+                <HBox alignment="CENTER_LEFT" spacing="6.0">
+                    <children>
+                        <FontIcon iconLiteral="mdi2w-web" iconSize="16"/>
+                        <Hyperlink fx:id="websiteLink" text="https://www.powsybl.org/"/>
+                    </children>
+                </HBox>
+                <HBox alignment="CENTER_LEFT" spacing="6.0">
+                    <children>
+                        <FontIcon iconLiteral="mdi2b-bookshelf" iconSize="16"/>
+                        <Hyperlink fx:id="documentationLink" text="https://powsybl.readthedocs.io/en/latest/"/>
+                    </children>
+                </HBox>
+                <HBox alignment="CENTER_LEFT" spacing="6.0">
+                    <children>
+                        <FontIcon iconLiteral="mdi2g-github" iconSize="16"/>
+                        <Hyperlink fx:id="githubLink" text="https://github.com/powsybl/"/>
+                    </children>
+                </HBox>
+            </children>
+        </VBox>
+        <TableView fx:id="versionsTableView" prefHeight="165.0" prefWidth="660.0" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="moduleNameColumn" prefWidth="200.0" text="%about.column.moduleName"/>
+                <TableColumn fx:id="versionColumn" prefWidth="140.0" text="%about.column.version"/>
+                <TableColumn fx:id="commitColumn" prefWidth="90.0" text="%about.column.commit"/>
+                <TableColumn fx:id="buildTimestampColumn" prefWidth="230.0" text="%about.column.buildTimestamp"/>
+            </columns>
+            <columnResizePolicy>
+                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+            </columnResizePolicy>
+        </TableView>
+    </children>
+</VBox>

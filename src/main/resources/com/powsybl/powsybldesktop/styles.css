@@ -1,0 +1,335 @@
+/**
+ * Copyright (c) 2026, Artelys (https://www.artelys.com)
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
+/* The single application stylesheet: added to the main scene, to secondary windows' roots (MainController), to the
+   notification overlay (NotificationOverlay) and to the splash screen. Dialogs owned by the main window and popups
+   (tooltips, context menus) inherit it from their owner's scene. Prefer a style class here over inline setStyle(...)
+   or FXML style="...".
+
+   Sections: generic classes, then table cells, then status markers, then one section per view. */
+
+/* ===== Generic ===== */
+
+/* Bold heading label above a group of controls (notifications panel, map base voltages box, drop import dialog
+   columns). */
+.section-title {
+    -fx-font-weight: bold;
+}
+
+/* Warning text and icon next to a value (TableColumnSupport voltage violations, map's unreachable basemap label). */
+.alert-label {
+    -fx-text-fill: darkorange;
+}
+
+.alert-icon {
+    -fx-icon-color: darkorange;
+}
+
+/* Button meant to show only its icon graphic (e.g. a pencil edit affordance in a table cell),
+   without the default raised background/border a plain Button gets outside a ToolBar. */
+.icon-button {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+    -fx-padding: 2px;
+    -fx-cursor: hand;
+}
+
+.icon-button:hover {
+    -fx-background-color: derive(-fx-base, -10%);
+    -fx-background-radius: 3px;
+}
+
+/* Hyperlink navigating to an equipment's container (substation, voltage level, component...) from a table cell:
+   link-colored without the Hyperlink padding/border, so it lines up with plain-text cells. */
+.container-link {
+    -fx-text-fill: #0000EE;
+    -fx-underline: true;
+    -fx-padding: 0;
+    -fx-border-width: 0;
+}
+
+/* Search box field (SearchBoxController) when the query matches nothing. */
+.text-field:no-match {
+    -fx-border-color: red;
+    -fx-focus-color: red;
+}
+
+/* ===== Tables ===== */
+
+/* JavaFX's -fx-font-family does not fall back through a comma list like web CSS: an
+   unresolvable name resolves straight to the default UI font, it never tries the next
+   entry. "monospace" alone is the one value guaranteed to resolve on every platform,
+   via JavaFX's built-in logical "Monospaced" font family. */
+.table-view .table-cell {
+    -fx-font-family: monospace;
+    -fx-font-size: 13px;
+}
+
+/* The row cell itself too, so anything a row renders outside its table cells uses the same font. */
+.table-view .table-row-cell {
+    -fx-font-family: monospace;
+}
+
+/* The JavaFX default table-cell alignment is TOP-LEFT (not modena's old CENTER-LEFT), which left a
+   single-line cell's text/link pinned to the top of a row a multi-value sibling column (e.g. a two- or
+   three-sided column) has made taller. Single-class specificity so .centered-column/.right-aligned-column
+   below still win their horizontal override via declaration order. */
+.table-cell {
+    -fx-alignment: CENTER-LEFT;
+}
+
+/* Set on a TableColumn in FXML (styleClass="..."), applied to all its cells. */
+.centered-column {
+    -fx-alignment: CENTER;
+}
+
+.right-aligned-column {
+    -fx-alignment: CENTER-RIGHT;
+}
+
+/* Key/value table without a header row (networks view's network information table). */
+.no-header-table .column-header-background {
+    -fx-max-height: 0;
+    -fx-pref-height: 0;
+    -fx-min-height: 0;
+    visibility: hidden;
+}
+
+/* Logs table rows (LogsViewController) by event level. */
+.table-row-cell.row-warn .table-cell {
+    -fx-text-fill: darkorange;
+    -fx-font-weight: bold;
+}
+
+.table-row-cell.row-error .table-cell {
+    -fx-text-fill: red;
+    -fx-font-weight: bold;
+}
+
+/* Visual affordance for cells the user can edit (TextField/ChoiceBox-backed columns), which
+   otherwise render as plain text indistinguishable from read-only cells: an inset outline
+   rather than a filled background, so it doesn't paint the whole column. Not scoped to
+   .table-cell: a multi-sided editable double column (e.g. Transformers' RatedU/RatedS) applies
+   this class to a per-side Label nested inside the cell rather than to the cell itself. Set by
+   TableColumnSupport and by the shunt sections / tap changer steps dialogs. */
+.table-view .editable-cell {
+    -fx-border-color: derive(-fx-accent, 20%);
+    -fx-border-width: 1px;
+    -fx-border-insets: 3px;
+    -fx-border-radius: 2px;
+}
+
+.table-view .table-cell.editable-cell:empty {
+    -fx-border-width: 0;
+}
+
+/* not editable while disabled, e.g. while its network is busy with a background job (also matches an editable-cell
+   node inside a disabled cell, which inherits the disabled state). Greyed like modena's disabled controls, which
+   doesn't dim plain-text cells and labels itself. */
+.table-view .editable-cell:disabled {
+    -fx-border-width: 0;
+    -fx-opacity: 0.4;
+}
+
+/* Brief flash applied after an edit, removed automatically after TableColumnSupport's EDIT_ERROR_FLASH_DURATION /
+   EDIT_SUCCESS_FLASH_DURATION: red when the edit was rejected (e.g. an IIDM validation exception), green when applied. */
+.table-view .edit-error {
+    -fx-background-color: derive(red, 60%);
+}
+
+.table-view .edit-success {
+    -fx-background-color: derive(green, 60%);
+}
+
+/* IntStepperField's increment/decrement pair (TableColumnSupport): stacked to about half the height of the
+   sibling Label each, so together they don't grow the row taller than a plain editable Label cell (e.g.
+   RatedU/RatedS) would. */
+.stepper-button {
+    -fx-padding: 0;
+    -fx-min-width: 12px;
+    -fx-max-width: 12px;
+    -fx-min-height: 9px;
+    -fx-max-height: 9px;
+    -fx-pref-height: 9px;
+    -fx-background-radius: 0;
+}
+
+/* ===== Status markers =====
+   10px colored dots, one family per view; the color comes from the matching modifier class. */
+
+.severity-marker,
+.notification-status,
+.component-status {
+    -fx-min-width: 10px;
+    -fx-max-width: 10px;
+    -fx-min-height: 10px;
+    -fx-max-height: 10px;
+    -fx-background-radius: 5px;
+}
+
+/* Report tree (ReportNodeTreeCell), by report node severity. */
+.severity-marker.severity-trace {
+    -fx-background-color: gray;
+}
+
+.severity-marker.severity-debug {
+    -fx-background-color: slategray;
+}
+
+.severity-marker.severity-info {
+    -fx-background-color: steelblue;
+}
+
+.severity-marker.severity-detail {
+    -fx-background-color: dimgray;
+}
+
+.severity-marker.severity-warn {
+    -fx-background-color: darkorange;
+}
+
+.severity-marker.severity-error {
+    -fx-background-color: red;
+}
+
+/* Notifications (NotificationView), by notification status; a RUNNING one shows the spinning arc instead. */
+.notification-status-arc {
+    -fx-fill: transparent;
+    -fx-stroke: gray;
+    -fx-stroke-width: 2px;
+    -fx-stroke-line-cap: round;
+}
+
+.notification-status-success {
+    -fx-background-color: green;
+}
+
+.notification-status-partial_success {
+    -fx-background-color: linear-gradient(from 0% 0% to 100% 100%, green 50%, red 50%);
+}
+
+.notification-status-error {
+    -fx-background-color: red;
+}
+
+.notification-status-cancelled {
+    -fx-background-color: #f0ad4e;
+}
+
+/* Components table (ComponentsController) by load flow status; security analysis results
+   (SecurityAnalysisResultsController) always use -other. */
+.component-status-converged {
+    -fx-background-color: green;
+}
+
+.component-status-no-calculation {
+    -fx-background-color: gray;
+}
+
+.component-status-other {
+    -fx-background-color: red;
+}
+
+/* ===== Notifications (NotificationView, NotificationOverlay) ===== */
+
+.notification-timestamp {
+    -fx-text-fill: gray;
+    -fx-font-size: 11px;
+}
+
+.notification-close {
+    -fx-text-fill: gray;
+    -fx-cursor: hand;
+}
+
+.notification-close:hover {
+    -fx-text-fill: -fx-text-base-color;
+}
+
+/* Popup card shown over the main window's bottom-right corner. */
+.notification-overlay {
+    -fx-background-color: derive(-fx-base, 20%);
+    -fx-border-color: derive(-fx-base, -20%);
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-padding: 8px 12px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 8, 0, 0, 2);
+}
+
+/* ===== Networks view (networks-view.fxml, DropImportDialog) ===== */
+
+.networks-empty-state-icon {
+    -fx-icon-color: gray;
+}
+
+.networks-empty-state-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.networks-empty-state-hint {
+    -fx-text-fill: gray;
+}
+
+/* Shown over the networks list while files are dragged over it. */
+.networks-drop-overlay {
+    -fx-border-color: -fx-accent;
+    -fx-border-width: 2px;
+    -fx-border-style: dashed;
+    -fx-border-insets: 4px;
+    -fx-background-color: rgba(0, 150, 201, 0.12);
+    -fx-background-insets: 4px;
+}
+
+/* Replaces the network information pane when no network, or several, are selected. */
+.networks-selection-placeholder {
+    -fx-background-color: derive(-fx-base, 10%);
+}
+
+/* Dropped file or folder that no importer recognizes, and will be skipped. */
+.drop-import-unsupported {
+    -fx-text-fill: gray;
+    -fx-font-style: italic;
+}
+
+/* ===== Substations view (SubstationsController) ===== */
+
+/* Catch-all tree group ("no area", "no substation", "no subnetwork"), as opposed to an actual area/subnetwork. */
+.substations-tree-group-placeholder {
+    -fx-text-fill: gray;
+}
+
+/* ===== Map view (map-view.fxml) ===== */
+
+/* Panel floating over the Leaflet map (search box, basemap warning, base voltages, loading indicator), opaque so
+   it stays readable over any basemap. Padding is set per panel in the FXML. */
+.map-overlay {
+    -fx-background-color: white;
+    -fx-background-radius: 4px;
+}
+
+/* ===== Logs view (LogsViewController) ===== */
+
+/* Full message tooltip of an ellipsized log cell: monospace like the cell, so multi-line tables (e.g. load flow
+   parameters) stay aligned. A popup inherits its owner scene's stylesheet. */
+.log-message-tooltip {
+    -fx-font-family: monospace;
+}
+
+/* ===== Memory window (memory-view.fxml) ===== */
+
+.memory-usage-bar .bar {
+    -fx-background-color: green;
+}
+
+/* ===== Splash screen (SplashScreen) ===== */
+
+.splash-screen {
+    -fx-background-color: white;
+    -fx-padding: 20px;
+}

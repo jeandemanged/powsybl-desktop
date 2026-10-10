@@ -1,0 +1,163 @@
+/**
+ * Copyright (c) 2026, Artelys (https://www.artelys.com)
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * SPDX-License-Identifier: MPL-2.0
+ */
+package com.powsybl.powsybldesktop.contingency;
+
+import com.powsybl.contingency.Contingency;
+import com.powsybl.contingency.list.ContingencyList;
+import com.powsybl.contingency.list.DefaultContingencyList;
+import com.powsybl.contingency.list.LineCriterionContingencyList;
+import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
+import com.powsybl.iidm.network.Line;
+import com.powsybl.iidm.network.Network;
+import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
+import com.powsybl.powsybldesktop.utils.Messages;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.ListView;
+import javafx.scene.control.TextField;
+import javafx.stage.Stage;
+import org.controlsfx.control.CheckComboBox;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
+ */
+class ContingenciesControllerTest extends AbstractHeadlessApplicationTest {
+
+    private final Network network = IeeeCdfNetworkFactory.create14();
+    private ContingenciesController controller;
+    private MainModel mainModel;
+
+    @Override
+    public void start(Stage stage) throws IOException {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource(
+                "/com/powsybl/powsybldesktop/contingency/contingencies-view.fxml"), Messages.bundle());
+        Parent root = loader.load();
+        controller = loader.getController();
+
+        mainModel = new MainModel();
+        mainModel.addNetwork(network);
+        mainModel.setNetwork(network);
+        controller.setSceneModel(SceneModel.main(mainModel));
+
+        stage.setScene(new Scene(root));
+        stage.show();
+    }
+
+    @AfterEach
+    void tearDown() {
+        interact(controller::dispose);
+    }
+
+    @Test
+    void aggregatesContingenciesAcrossAllSubListsWithoutDuplicates() {
+        Line line = network.getLineStream().findFirst().orElseThrow();
+
+        interact(() -> {
+            mainModel.getStudy(network).getContingencyLists().add(
+                    new LineCriterionContingencyList("all-lines", null, null, List.of(), null));
+            mainModel.getStudy(network).getContingencyLists().add(
+                    new DefaultContingencyList("explicit", List.of(Contingency.line(line.getId()), Contingency.line("other"))));
+        });
+
+        // one Contingency per network line from the criterion list, plus the explicit entry that isn't one of them
+        assertEquals(network.getLineCount() + 1, controller.contingenciesTableView.getItems().size());
+    }
+
+    @Test
+    void invalidExplicitContingencyIsShownButNotValid() {
+        interact(() -> mainModel.getStudy(network).getContingencyLists().add(
+                new DefaultContingencyList("explicit", List.of(Contingency.line("does-not-exist")))));
+
+        List<Contingency> shown = controller.contingenciesTableView.getItems();
+        assertEquals(1, shown.size());
+        assertEquals("does-not-exist", shown.get(0).getId());
+        assertTrue(ContingencyList.getValidContingencies(shown, network).isEmpty());
+    }
+
+    @Test
+    void removingASubListRecomputesTheTable() {
+        interact(() -> mainModel.getStudy(network).getContingencyLists().add(
+                new DefaultContingencyList("explicit", List.of(Contingency.line("does-not-exist")))));
+        assertEquals(1, controller.contingenciesTableView.getItems().size());
+
+        interact(() -> mainModel.getStudy(network).getContingencyLists().clear());
+        assertTrue(controller.contingenciesTableView.getItems().isEmpty());
+    }
+
+    @Test
+    void editedCriterionListStaysSelectedAndCanBeRemoved() {
+        ListView<ContingencyList> listView = lookup("#contingencyListsListView").query();
+        interact(() -> {
+            ContingencyList created = ContingencyListKind.LINE_CRITERION.createDefault("");
+            mainModel.getStudy(network).getContingencyLists().add(created);
+            listView.getSelectionModel().select(created);
+        });
+
+        CheckComboBox<?> countries = lookup(node -> node instanceof CheckComboBox).query();
+        interact(() -> countries.getCheckModel().check(0));
+        assertSame(mainModel.getStudy(network).getContingencyLists().get(0), listView.getSelectionModel().getSelectedItem());
+
+        Button removeButton = lookup("#removeButton").query();
+        interact(removeButton::fire);
+        assertTrue(mainModel.getStudy(network).getContingencyLists().isEmpty());
+    }
+
+    @Test
+    void removingAListNextToAnEditedCriterionListKeepsTheOtherIntact() {
+        ListView<ContingencyList> listView = lookup("#contingencyListsListView").query();
+        interact(() -> {
+            mainModel.getStudy(network).getContingencyLists().add(ContingencyListKind.LINE_CRITERION.createDefault(""));
+            mainModel.getStudy(network).getContingencyLists().add(ContingencyListKind.LINE_CRITERION.createDefault(""));
+            listView.getSelectionModel().select(1);
+        });
+        CheckComboBox<?> countries = lookup(node -> node instanceof CheckComboBox).query();
+        interact(() -> countries.getCheckModel().check(0));
+        ContingencyList edited = mainModel.getStudy(network).getContingencyLists().get(1);
+
+        // removing the first list re-selects the edited one, whose form then gets rebuilt mid-removal
+        interact(() -> listView.getSelectionModel().select(0));
+        Button removeButton = lookup("#removeButton").query();
+        interact(removeButton::fire);
+
+        assertEquals(List.of(edited), mainModel.getStudy(network).getContingencyLists());
+        assertSame(edited, listView.getSelectionModel().getSelectedItem());
+    }
+
+    @Test
+    void selectingAnotherListWithAPendingNameEditKeepsTheNewListSelected() {
+        ListView<ContingencyList> listView = lookup("#contingencyListsListView").query();
+        interact(() -> {
+            mainModel.getStudy(network).getContingencyLists().add(ContingencyListKind.LINE_CRITERION.createDefault("first"));
+            mainModel.getStudy(network).getContingencyLists().add(ContingencyListKind.LINE_CRITERION.createDefault("second"));
+            listView.getSelectionModel().select(0);
+        });
+        TextField nameField = lookup("#nameField").query();
+        clickOn(nameField);
+        interact(() -> nameField.setText("renamed"));
+
+        // the name field still has focus as its form is torn down for the newly selected list, and commits then
+        interact(() -> listView.getSelectionModel().select(1));
+
+        assertEquals("renamed", mainModel.getStudy(network).getContingencyLists().get(0).getName());
+        assertSame(mainModel.getStudy(network).getContingencyLists().get(1), listView.getSelectionModel().getSelectedItem());
+        assertEquals("second", lookup("#nameField").<TextField>query().getText());
+    }
+}

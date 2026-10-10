@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<VBox fx:id="root" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.powsybl.powsybldesktop.network.search.SearchBoxController">
+    <children>
+        <HBox alignment="CENTER_LEFT" spacing="4.0">
+            <padding>
+                <Insets bottom="4.0" left="4.0" right="4.0" top="4.0"/>
+            </padding>
+            <children>
+                <TextField fx:id="searchField" HBox.hgrow="ALWAYS" onAction="#onSearchNext"/>
+                <Button fx:id="searchPreviousButton" disable="true" mnemonicParsing="false"
+                        onAction="#onSearchPrevious" text="&#9664;"/>
+                <Button fx:id="searchNextButton" disable="true" mnemonicParsing="false"
+                        onAction="#onSearchNext" text="&#9654;"/>
+            </children>
+        </HBox>
+        <Label fx:id="searchStatusLabel">
+            <padding>
+                <Insets bottom="2.0" left="4.0" right="4.0"/>
+            </padding>
+        </Label>
+    </children>
+</VBox>
