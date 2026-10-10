@@ -100,7 +100,7 @@ public class LoadsController extends AbstractEquipmentTableController<Load> {
         TableColumnSupport.configureDoubleColumn(iColumn);
 
         columnVisibilityToolbarController.configure(List.of(
-                ColumnVisibilityToolbarController.ColumnGroup.of("network.columnGroup.solvedValues", true,
+                ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,
                         pColumn, qColumn, iColumn)));
     }
 

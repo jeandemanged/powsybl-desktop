@@ -27,12 +27,25 @@ resources package.
 ## Internationalization
 
 - All user-visible text is in `i18n/messages.properties` (English) **and** `i18n/messages_fr.properties` (French);
-  both currently have the same key set (857 lines each). Add every new key to both.
+  both have the same key set. Add every new key to both.
+- English text uses **American English** spelling (`canceled`, `color`, `toward`, `-ize`, `analyze`, `center`),
+  not British (`cancelled`, `colour`, `towards`, `-ise`, `analyse`, `centre`). Key names may keep PowSyBl/JavaFX
+  spellings (e.g. `*.cancelled` mirrors `Worker.State.CANCELLED`).
 - In FXML: `text="%key"`. In Java: `Messages.get("key")` / `Messages.get("key", args...)` (`MessageFormat`
-  syntax — escape single quotes as `''`).
-- Key naming: `<area>.<sub>.<name>`, area = the view or feature (`main.*`, `networks.*`, `loads.column.*`,
-  `common.column.*` for shared column headers, `parameters.*`, `loadflow.param.*`, `securityAnalysis.param.*`, ...).
-  Reuse `common.*` keys where the text is genuinely shared.
+  syntax — escape single quotes as `''`). For a `Label: value` line use `Messages.labelValue(labelKey, value)`
+  rather than a dedicated `"Xxx: {0}"` key.
+- One concept, one key: a term means the same thing in every view, so it has a single key in `desktop.common.*`
+  instead of one copy per view. Before adding a key, search the bundle for the same English text and reuse it.
+  - `desktop.common.equipment.<kind>` / `<kind>.plural` — equipment type names (Title Case in English), used for
+    toolbar buttons, info panels, search, column headers and dialog headers alike.
+  - `desktop.common.column.*` — column headers shared by several tables.
+  - `desktop.common.action.*` — generic buttons/menu items (add, remove, import, export, clear all, cancel...).
+  - `desktop.common.computationStatus.*`, `desktop.common.regulationMode.*`, `desktop.common.columnGroup.*`,
+    and flat `desktop.common.<term>` for other shared terms (`loadFlow`, `parameters`, `singleLineDiagram`...).
+  - Shared NAD/SLD parameter labels live in `parameters.diagram.*` (`sharedLabel`/`sharedTooltip` in
+    `AbstractDiagramParametersController`).
+- Other keys: `<area>.<sub>.<name>`, area = the view or feature (`main.*`, `networks.*`, `loads.column.*`,
+  `parameters.*`, `loadflow.param.*`, `securityAnalysis.param.*`, ...), only for text specific to that area.
 - FXML `%key` text is resolved once at load; language switching works by reloading the shell (see
   [architecture.md](architecture.md#entry-point-and-lifecycle)). Strings built in Java at runtime should be
   re-resolved when rendered (see how `Notification` stores a key, not a string).

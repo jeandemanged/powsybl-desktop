@@ -194,11 +194,11 @@ public class BoundaryLinesController extends AbstractEquipmentTableController<Bo
         TableColumnSupport.configureOverloadColumn(patlIViolationColumn, BoundaryLinesController::isOverloaded);
 
         columnVisibilityToolbarController.configure(List.of(
-                ColumnVisibilityToolbarController.ColumnGroup.of("network.columnGroup.parameters", false,
+                ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.parameters", false,
                         rColumn, xColumn, gColumn, bColumn),
-                ColumnVisibilityToolbarController.ColumnGroup.of("network.columnGroup.solvedValues", true,
+                ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,
                         pNetColumn, qNetColumn, iNetColumn, patlIViolationColumn),
-                ColumnVisibilityToolbarController.ColumnGroup.of("network.columnGroup.solvedValuesAtBoundary", false,
+                ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValuesAtBoundary", false,
                         pBoundaryColumn, qBoundaryColumn, iBoundaryColumn, vBoundaryColumn, angleBoundaryColumn)));
     }
 

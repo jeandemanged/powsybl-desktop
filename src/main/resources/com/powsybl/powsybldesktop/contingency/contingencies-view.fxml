@@ -27,7 +27,7 @@
     <top>
         <ToolBar BorderPane.alignment="CENTER">
             <items>
-                <MenuButton fx:id="addMenuButton" mnemonicParsing="false" text="%contingencies.add">
+                <MenuButton fx:id="addMenuButton" mnemonicParsing="false" text="%desktop.common.action.add">
                     <graphic>
                         <FontIcon iconLiteral="mdi2p-plus" iconSize="16"/>
                     </graphic>
@@ -37,7 +37,7 @@
                         <FontIcon iconLiteral="mdi2m-minus" iconSize="16"/>
                     </graphic>
                     <tooltip>
-                        <Tooltip text="%contingencies.remove"/>
+                        <Tooltip text="%desktop.common.action.remove"/>
                     </tooltip>
                 </Button>
                 <Separator orientation="VERTICAL"/>
@@ -46,7 +46,7 @@
                         <FontIcon iconLiteral="mdi2u-upload" iconSize="16"/>
                     </graphic>
                     <tooltip>
-                        <Tooltip text="%contingencies.import"/>
+                        <Tooltip text="%desktop.common.action.import"/>
                     </tooltip>
                 </Button>
                 <Button fx:id="exportButton" mnemonicParsing="false" onAction="#onExport">
@@ -54,7 +54,7 @@
                         <FontIcon iconLiteral="mdi2d-download" iconSize="16"/>
                     </graphic>
                     <tooltip>
-                        <Tooltip text="%contingencies.export"/>
+                        <Tooltip text="%desktop.common.action.export"/>
                     </tooltip>
                 </Button>
             </items>
@@ -74,7 +74,7 @@
                         <Label fx:id="instantiatedTitleLabel" text="%contingencies.instantiated.title"/>
                         <TableView fx:id="contingenciesTableView" VBox.vgrow="ALWAYS">
                             <columns>
-                                <TableColumn fx:id="nameColumn" text="%contingencies.column.name"/>
+                                <TableColumn fx:id="nameColumn" text="%desktop.common.column.name"/>
                                 <TableColumn fx:id="elementsColumn" text="%contingencies.column.elements"/>
                                 <TableColumn fx:id="validColumn" text="%contingencies.column.valid"/>
                             </columns>

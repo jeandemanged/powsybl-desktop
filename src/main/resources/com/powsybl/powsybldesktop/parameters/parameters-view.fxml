@@ -67,22 +67,22 @@
                     <fx:include fx:id="networkExportEmbedded" source="network-format-parameters.fxml"/>
                 </content>
             </Tab>
-            <Tab text="%parameters.tab.sld">
+            <Tab text="%desktop.common.singleLineDiagram">
                 <content>
                     <fx:include fx:id="sldEmbedded" source="sld-parameters.fxml"/>
                 </content>
             </Tab>
-            <Tab text="%parameters.tab.nad">
+            <Tab text="%desktop.common.networkAreaDiagram">
                 <content>
                     <fx:include fx:id="nadEmbedded" source="nad-parameters.fxml"/>
                 </content>
             </Tab>
-            <Tab text="%parameters.tab.loadFlow">
+            <Tab text="%desktop.common.loadFlow">
                 <content>
                     <fx:include fx:id="loadFlowEmbedded" source="lf-parameters.fxml"/>
                 </content>
             </Tab>
-            <Tab text="%parameters.tab.securityAnalysis">
+            <Tab text="%desktop.common.securityAnalysis">
                 <content>
                     <fx:include fx:id="securityAnalysisEmbedded" source="sa-parameters.fxml"/>
                 </content>

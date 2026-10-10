@@ -470,7 +470,7 @@ final class TableColumnSupport {
             @Override
             protected void updateItem(Boolean overloaded, boolean empty) {
                 super.updateItem(overloaded, empty);
-                setGraphic(empty || !Boolean.TRUE.equals(overloaded) ? null : alertLabel(Messages.get("common.patlIViolation.overloaded")));
+                setGraphic(empty || !Boolean.TRUE.equals(overloaded) ? null : alertLabel(Messages.get("desktop.common.patlIViolation.overloaded")));
             }
         });
     }
@@ -1474,7 +1474,7 @@ final class TableColumnSupport {
     private static void showEditErrorPopup(Node node, PowsyblException exception) {
         Notifications.create()
                 .owner(node)
-                .title(Messages.get("common.editError.title"))
+                .title(Messages.get("desktop.common.editError.title"))
                 .text(exception.getMessage())
                 .showError();
     }
@@ -1495,7 +1495,7 @@ final class TableColumnSupport {
     private static void toggleConnection(Terminal terminal) {
         boolean changed = terminal.isConnected() ? terminal.disconnect() : terminal.connect();
         if (!changed) {
-            throw new PowsyblException(Messages.get("common.editError.connectionUnchanged"));
+            throw new PowsyblException(Messages.get("desktop.common.editError.connectionUnchanged"));
         }
     }
 }

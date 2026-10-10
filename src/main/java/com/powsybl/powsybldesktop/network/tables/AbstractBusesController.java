@@ -90,7 +90,7 @@ abstract class AbstractBusesController extends AbstractEquipmentTableController<
         TableColumnSupport.configureVoltageViolationColumn(voltageViolationColumn, Bus::getV, Bus::getVoltageLevel);
 
         columnVisibilityToolbarController.configure(List.of(
-                ColumnVisibilityToolbarController.ColumnGroup.of("network.columnGroup.solvedValues", true,
+                ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,
                         vColumn, angleColumn, voltageViolationColumn)));
     }
 

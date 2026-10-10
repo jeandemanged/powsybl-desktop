@@ -81,7 +81,7 @@ public class ReportNodeTreeCell extends TreeCell<ReportNode> {
     private void fillContextMenu(ReportNode item) {
         contextMenu.getItems().clear();
 
-        MenuItem copyMessage = new MenuItem(Messages.get("reports.copyMessage"));
+        MenuItem copyMessage = new MenuItem(Messages.get("desktop.common.action.copyMessage"));
         copyMessage.setOnAction(e -> copyToClipboard(item.getMessage()));
         contextMenu.getItems().add(copyMessage);
 

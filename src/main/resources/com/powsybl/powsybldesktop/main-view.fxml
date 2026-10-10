@@ -36,7 +36,7 @@
                         <Menu mnemonicParsing="false" text="%main.menu.help">
                             <items>
                                 <MenuItem mnemonicParsing="false" onAction="#onMemory" text="%main.menu.help.memory" />
-                                <MenuItem mnemonicParsing="false" onAction="#onAbout" text="%main.menu.help.about" />
+                                <MenuItem mnemonicParsing="false" onAction="#onAbout" text="%main.about" />
                             </items>
                         </Menu>
                     </menus>
@@ -64,7 +64,7 @@
                                 <FontIcon iconLiteral="mdi2h-home" iconSize="16" />
                             </graphic>
                         </Button>
-                        <Button mnemonicParsing="false" onAction="#onSubstations" text="%main.toolbar.substations">
+                        <Button mnemonicParsing="false" onAction="#onSubstations" text="%desktop.common.equipment.substation.plural">
                             <graphic>
                                 <FontIcon iconLiteral="mdi2h-hubspot" iconSize="16" />
                             </graphic>
@@ -84,19 +84,19 @@
                                 <FontIcon iconLiteral="mdi2t-table-multiple" iconSize="16" />
                             </graphic>
                             <items>
-                                <MenuItem mnemonicParsing="false" onAction="#onSubstationsTable" text="%main.toolbar.substationsTable" />
-                                <MenuItem mnemonicParsing="false" onAction="#onVoltageLevelsTable" text="%main.toolbar.voltageLevelsTable" />
-                                <MenuItem mnemonicParsing="false" onAction="#onBusbarSectionsTable" text="%main.toolbar.busbarSectionsTable" />
-                                <MenuItem mnemonicParsing="false" onAction="#onBusesBusView" text="%main.toolbar.busesBusView" />
-                                <MenuItem mnemonicParsing="false" onAction="#onBusesBusBreakerView" text="%main.toolbar.busesBusBreakerView" />
-                                <MenuItem mnemonicParsing="false" onAction="#onGenerators" text="%main.toolbar.generators" />
-                                <MenuItem mnemonicParsing="false" onAction="#onLoads" text="%main.toolbar.loads" />
-                                <MenuItem mnemonicParsing="false" onAction="#onLines" text="%main.toolbar.lines" />
-                                <MenuItem mnemonicParsing="false" onAction="#onTieLines" text="%main.toolbar.tieLines" />
-                                <MenuItem mnemonicParsing="false" onAction="#onBoundaryLines" text="%main.toolbar.boundaryLines" />
-                                <MenuItem mnemonicParsing="false" onAction="#onTransformers" text="%main.toolbar.transformers" />
-                                <MenuItem mnemonicParsing="false" onAction="#onShuntCompensators" text="%main.toolbar.shuntCompensators" />
-                                <MenuItem mnemonicParsing="false" onAction="#onStaticVarCompensators" text="%main.toolbar.staticVarCompensators" />
+                                <MenuItem mnemonicParsing="false" onAction="#onSubstationsTable" text="%desktop.common.equipment.substation.plural" />
+                                <MenuItem mnemonicParsing="false" onAction="#onVoltageLevelsTable" text="%desktop.common.equipment.voltageLevel.plural" />
+                                <MenuItem mnemonicParsing="false" onAction="#onBusbarSectionsTable" text="%desktop.common.equipment.busbarSection.plural" />
+                                <MenuItem mnemonicParsing="false" onAction="#onBusesBusView" text="%desktop.common.equipment.busesBusBranchView" />
+                                <MenuItem mnemonicParsing="false" onAction="#onBusesBusBreakerView" text="%desktop.common.equipment.busesBusBreakerView" />
+                                <MenuItem mnemonicParsing="false" onAction="#onGenerators" text="%desktop.common.equipment.generator.plural" />
+                                <MenuItem mnemonicParsing="false" onAction="#onLoads" text="%desktop.common.equipment.load.plural" />
+                                <MenuItem mnemonicParsing="false" onAction="#onLines" text="%desktop.common.equipment.line.plural" />
+                                <MenuItem mnemonicParsing="false" onAction="#onTieLines" text="%desktop.common.equipment.tieLine.plural" />
+                                <MenuItem mnemonicParsing="false" onAction="#onBoundaryLines" text="%desktop.common.equipment.boundaryLine.plural" />
+                                <MenuItem mnemonicParsing="false" onAction="#onTransformers" text="%desktop.common.equipment.transformer.plural" />
+                                <MenuItem mnemonicParsing="false" onAction="#onShuntCompensators" text="%desktop.common.equipment.shuntCompensator.plural" />
+                                <MenuItem mnemonicParsing="false" onAction="#onStaticVarCompensators" text="%desktop.common.equipment.staticVarCompensator.plural" />
                                 <SeparatorMenuItem />
                                 <MenuItem mnemonicParsing="false" onAction="#onComponents" text="%main.toolbar.loadflowresult" />
                                 <MenuItem mnemonicParsing="false" onAction="#onSecurityAnalysisResults" text="%main.toolbar.securityAnalysisResults" />
@@ -108,11 +108,11 @@
                                 <FontIcon iconLiteral="mdi2p-play" iconSize="16" />
                             </graphic>
                             <items>
-                                <MenuItem mnemonicParsing="false" onAction="#onLoadFlow" text="%main.toolbar.run.loadFlow" />
-                                <MenuItem mnemonicParsing="false" onAction="#onSecurityAnalysis" text="%main.toolbar.run.securityAnalysis" />
+                                <MenuItem mnemonicParsing="false" onAction="#onLoadFlow" text="%desktop.common.loadFlow" />
+                                <MenuItem mnemonicParsing="false" onAction="#onSecurityAnalysis" text="%desktop.common.securityAnalysis" />
                             </items>
                         </MenuButton>
-                        <Button mnemonicParsing="false" onAction="#onParameters" text="%main.toolbar.parameters">
+                        <Button mnemonicParsing="false" onAction="#onParameters" text="%desktop.common.parameters">
                             <graphic>
                                 <FontIcon iconLiteral="mdi2c-cog" iconSize="16" />
                             </graphic>
@@ -134,7 +134,7 @@
                                 <FontIcon iconLiteral="mdi2c-chat-outline" iconSize="16" />
                             </graphic>
                             <tooltip>
-                                <Tooltip text="%main.toolbar.notifications" />
+                                <Tooltip text="%desktop.common.notifications" />
                             </tooltip>
                         </ToggleButton>
                     </items>

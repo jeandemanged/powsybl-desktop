@@ -150,11 +150,11 @@ public class TieLinesController extends AbstractEquipmentTableController<TieLine
         TableColumnSupport.configureNullableDoubleColumn(angleBoundaryColumn, tieLine -> tieLine.getBoundaryLine1().getBoundary().getAngle());
 
         columnVisibilityToolbarController.configure(List.of(
-                ColumnVisibilityToolbarController.ColumnGroup.of("network.columnGroup.parameters", false,
+                ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.parameters", false,
                         rColumn, xColumn, g1Column, b1Column, g2Column, b2Column),
-                ColumnVisibilityToolbarController.ColumnGroup.of("network.columnGroup.solvedValues", true,
+                ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,
                         pColumn, qColumn, iColumn, patlIViolationColumn),
-                ColumnVisibilityToolbarController.ColumnGroup.of("network.columnGroup.solvedValuesAtBoundary", false,
+                ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValuesAtBoundary", false,
                         pBoundaryColumn, qBoundaryColumn, iBoundaryColumn, vBoundaryColumn, angleBoundaryColumn)));
     }
 

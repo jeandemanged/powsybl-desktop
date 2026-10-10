@@ -17,11 +17,11 @@
       <fx:include fx:id="searchBox" source="../search/search-box.fxml"/>
       <TableView fx:id="busesTableView" editable="true" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">
          <columns>
-            <TableColumn fx:id="substationColumn" text="%common.column.substation" editable="false"/>
-            <TableColumn fx:id="voltageLevelColumn" text="%common.column.voltageLevel" editable="false"/>
-            <TableColumn fx:id="nameColumn" text="%common.column.name" editable="false"/>
-            <TableColumn fx:id="connectedComponentColumn" styleClass="centered-column" text="%common.column.connectedComponent" editable="false"/>
-            <TableColumn fx:id="synchronousComponentColumn" styleClass="centered-column" text="%common.column.synchronousComponent" editable="false"/>
+            <TableColumn fx:id="substationColumn" text="%desktop.common.equipment.substation" editable="false"/>
+            <TableColumn fx:id="voltageLevelColumn" text="%desktop.common.equipment.voltageLevel" editable="false"/>
+            <TableColumn fx:id="nameColumn" text="%desktop.common.column.name" editable="false"/>
+            <TableColumn fx:id="connectedComponentColumn" styleClass="centered-column" text="%desktop.common.column.connectedComponent" editable="false"/>
+            <TableColumn fx:id="synchronousComponentColumn" styleClass="centered-column" text="%desktop.common.column.synchronousComponent" editable="false"/>
             <TableColumn fx:id="fictitiousP0Column" styleClass="right-aligned-column" text="%buses.column.fictitiousP0"/>
             <TableColumn fx:id="fictitiousQ0Column" styleClass="right-aligned-column" text="%buses.column.fictitiousQ0"/>
             <TableColumn fx:id="vColumn" styleClass="right-aligned-column" text="%buses.column.v" editable="false"/>

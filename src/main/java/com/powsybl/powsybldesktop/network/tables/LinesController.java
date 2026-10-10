@@ -125,9 +125,9 @@ public class LinesController extends AbstractEquipmentTableController<Line> {
         TableColumnSupport.configureOverloadColumn(patlIViolationColumn, Line::isOverloaded);
 
         columnVisibilityToolbarController.configure(List.of(
-                ColumnVisibilityToolbarController.ColumnGroup.of("network.columnGroup.parameters", false,
+                ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.parameters", false,
                         rColumn, xColumn, g1Column, b1Column, g2Column, b2Column),
-                ColumnVisibilityToolbarController.ColumnGroup.of("network.columnGroup.solvedValues", true,
+                ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,
                         pColumn, qColumn, iColumn, patlIViolationColumn)));
     }
 

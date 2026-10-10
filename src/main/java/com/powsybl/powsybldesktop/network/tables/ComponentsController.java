@@ -146,10 +146,10 @@ public class ComponentsController extends AbstractDisposableController {
 
     private static String statusMessageKey(LoadFlowResult.ComponentResult.Status status) {
         return switch (status) {
-            case CONVERGED -> "components.status.converged";
-            case MAX_ITERATION_REACHED -> "components.status.maxIterationReached";
-            case FAILED -> "components.status.failed";
-            case NO_CALCULATION -> "components.status.noCalculation";
+            case CONVERGED -> "desktop.common.computationStatus.converged";
+            case MAX_ITERATION_REACHED -> "desktop.common.computationStatus.maxIterationReached";
+            case FAILED -> "desktop.common.computationStatus.failed";
+            case NO_CALCULATION -> "desktop.common.computationStatus.noCalculation";
         };
     }
 

@@ -307,7 +307,7 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
             onChange.run();
         };
         bindCommit(textField, commit);
-        addRow(category, Messages.get("securityAnalysis.param.debugDir.label"), Messages.get("securityAnalysis.param.debugDir.tooltip"), textField);
+        addRow(category, Messages.get("parameters.debugDir.label"), Messages.get("parameters.debugDir.tooltip"), textField);
     }
 
     private void addContingencyActivePowerLossDistributionField(String category) {

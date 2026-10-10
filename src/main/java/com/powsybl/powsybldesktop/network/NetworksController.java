@@ -294,30 +294,30 @@ public class NetworksController extends AbstractDisposableController {
         countriesLabel.setManaged(!countries.isEmpty());
 
         ObservableList<Pair<String, String>> rows = FXCollections.observableArrayList();
-        addBusCount(rows, Messages.get("networks.info.busesBusBreaker"),
+        addBusCount(rows, Messages.get("desktop.common.equipment.busesBusBreakerView"),
                 network.getVoltageLevelStream().flatMap(vl -> vl.getBusBreakerView().getBusStream()));
-        addBusCount(rows, Messages.get("networks.info.busesBusBranch"),
+        addBusCount(rows, Messages.get("desktop.common.equipment.busesBusBranchView"),
                 network.getVoltageLevelStream().flatMap(vl -> vl.getBusView().getBusStream()));
-        addCount(rows, Messages.get("networks.info.subnetworks"), network.getSubnetworks().size());
-        addCount(rows, Messages.get("networks.info.substations"), network.getSubstationCount());
-        addCount(rows, Messages.get("networks.info.voltageLevels"), network.getVoltageLevelCount());
-        addCount(rows, Messages.get("networks.info.lines"), network.getLineCount());
-        addCount(rows, Messages.get("networks.info.tieLines"), NetworkTieLines.countOf(network));
-        addCount(rows, Messages.get("networks.info.twoWindingsTransformers"), network.getTwoWindingsTransformerCount());
-        addCount(rows, Messages.get("networks.info.threeWindingsTransformers"), network.getThreeWindingsTransformerCount());
-        addCount(rows, Messages.get("networks.info.generators"), network.getGeneratorCount());
-        addCount(rows, Messages.get("networks.info.batteries"), network.getBatteryCount());
-        addCount(rows, Messages.get("networks.info.loads"), network.getLoadCount());
-        addCount(rows, Messages.get("networks.info.shuntCompensators"), network.getShuntCompensatorCount());
-        addCount(rows, Messages.get("networks.info.staticVarCompensators"), network.getStaticVarCompensatorCount());
-        addCount(rows, Messages.get("networks.info.switches"), network.getSwitchCount());
-        addCount(rows, Messages.get("networks.info.busbarSections"), network.getBusbarSectionCount());
+        addCount(rows, Messages.get("desktop.common.equipment.subnetwork.plural"), network.getSubnetworks().size());
+        addCount(rows, Messages.get("desktop.common.equipment.substation.plural"), network.getSubstationCount());
+        addCount(rows, Messages.get("desktop.common.equipment.voltageLevel.plural"), network.getVoltageLevelCount());
+        addCount(rows, Messages.get("desktop.common.equipment.line.plural"), network.getLineCount());
+        addCount(rows, Messages.get("desktop.common.equipment.tieLine.plural"), NetworkTieLines.countOf(network));
+        addCount(rows, Messages.get("desktop.common.equipment.twoWindingsTransformer.plural"), network.getTwoWindingsTransformerCount());
+        addCount(rows, Messages.get("desktop.common.equipment.threeWindingsTransformer.plural"), network.getThreeWindingsTransformerCount());
+        addCount(rows, Messages.get("desktop.common.equipment.generator.plural"), network.getGeneratorCount());
+        addCount(rows, Messages.get("desktop.common.equipment.battery.plural"), network.getBatteryCount());
+        addCount(rows, Messages.get("desktop.common.equipment.load.plural"), network.getLoadCount());
+        addCount(rows, Messages.get("desktop.common.equipment.shuntCompensator.plural"), network.getShuntCompensatorCount());
+        addCount(rows, Messages.get("desktop.common.equipment.staticVarCompensator.plural"), network.getStaticVarCompensatorCount());
+        addCount(rows, Messages.get("desktop.common.equipment.switch.plural"), network.getSwitchCount());
+        addCount(rows, Messages.get("desktop.common.equipment.busbarSection.plural"), network.getBusbarSectionCount());
         addBoundaryLineCount(rows, network);
-        addCount(rows, Messages.get("networks.info.hvdcLines"), network.getHvdcLineCount());
-        addCount(rows, Messages.get("networks.info.lccConverterStations"), network.getLccConverterStationCount());
-        addCount(rows, Messages.get("networks.info.vscConverterStations"), network.getVscConverterStationCount());
-        addCount(rows, Messages.get("networks.info.grounds"), network.getGroundCount());
-        addCount(rows, Messages.get("networks.info.overloadManagementSystems"), network.getOverloadManagementSystemCount());
+        addCount(rows, Messages.get("desktop.common.equipment.hvdcLine.plural"), network.getHvdcLineCount());
+        addCount(rows, Messages.get("desktop.common.equipment.lccConverterStation.plural"), network.getLccConverterStationCount());
+        addCount(rows, Messages.get("desktop.common.equipment.vscConverterStation.plural"), network.getVscConverterStationCount());
+        addCount(rows, Messages.get("desktop.common.equipment.ground.plural"), network.getGroundCount());
+        addCount(rows, Messages.get("desktop.common.equipment.overloadManagementSystem.plural"), network.getOverloadManagementSystemCount());
         networkInfoTable.setItems(rows);
     }
 
@@ -345,7 +345,7 @@ public class NetworksController extends AbstractDisposableController {
         long tieLineCount = boundaryLines.stream().filter(BoundaryLine::isPaired)
                 .map(boundaryLine -> boundaryLine.getTieLine().orElseThrow()).distinct().count();
         long unpairedCount = boundaryLines.size() - pairedCount;
-        rows.add(new Pair<>(Messages.get("networks.info.boundaryLines"),
+        rows.add(new Pair<>(Messages.get("desktop.common.equipment.boundaryLine.plural"),
                 Messages.get("networks.info.boundaryLineCountDetail", boundaryLines.size(), pairedCount, tieLineCount, unpairedCount)));
     }
 

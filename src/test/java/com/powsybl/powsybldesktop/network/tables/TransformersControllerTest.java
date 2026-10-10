@@ -345,7 +345,7 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> mainModel.setUpdate());
 
         Label label = (Label) cellGraphic(controller.patlIViolationColumn, rowOf(transformer));
-        assertEquals(Messages.get("common.patlIViolation.overloaded"), label.getText());
+        assertEquals(Messages.get("desktop.common.patlIViolation.overloaded"), label.getText());
     }
 
     @Test
@@ -359,7 +359,7 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> mainModel.setUpdate());
 
         Label label = (Label) cellGraphic(controller.patlIViolationColumn, rowOf(transformer));
-        assertEquals(Messages.get("common.patlIViolation.overloaded"), label.getText());
+        assertEquals(Messages.get("desktop.common.patlIViolation.overloaded"), label.getText());
     }
 
     @Test

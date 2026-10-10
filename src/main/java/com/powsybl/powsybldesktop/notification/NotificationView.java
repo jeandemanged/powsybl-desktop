@@ -143,7 +143,7 @@ public class NotificationView extends VBox {
         if (onCancel == null) {
             return List.of();
         }
-        Button button = new Button(Messages.get("main.cancel"));
+        Button button = new Button(Messages.get("desktop.common.action.cancel"));
         button.setOnAction(e -> onCancel.run());
         return List.of(button);
     }

@@ -8,6 +8,7 @@
 package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
+import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.property.ObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -255,5 +256,13 @@ public abstract class AbstractDiagramParametersController<T> extends AbstractDis
         };
         bindCommit(textField, commit);
         addRow(category, label, tooltip, textField);
+    }
+
+    protected static String sharedLabel(String param) {
+        return Messages.get("parameters.diagram.param." + param + ".label");
+    }
+
+    protected static String sharedTooltip(String param) {
+        return Messages.get("parameters.diagram.param." + param + ".tooltip");
     }
 }

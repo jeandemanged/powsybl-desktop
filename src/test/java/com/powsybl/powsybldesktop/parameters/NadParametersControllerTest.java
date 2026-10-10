@@ -146,7 +146,7 @@ class NadParametersControllerTest extends AbstractHeadlessApplicationTest {
 
     @Test
     void toggleHighlightGraphUpdatesModelAndNotifiesChange() {
-        GridPane grid = selectCategory(Messages.get("parameters.nad.category.debug"));
+        GridPane grid = selectCategory(Messages.get("desktop.common.debug"));
         CheckBox checkBox = (CheckBox) controlForLabel(grid, Messages.get("parameters.nad.param.highlightGraph.label"));
         boolean before = params.get().getSvgParameters().isHighlightGraph();
 

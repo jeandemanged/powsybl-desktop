@@ -78,9 +78,9 @@ final class ShuntCompensatorSectionsDialog {
         dialog.setTitle(Messages.get("shuntCompensators.sections.dialogTitle"));
 
         VBox header = new VBox(2);
-        header.getChildren().add(new Label(Messages.get("shuntCompensators.sections.header.name", shuntCompensator.getNameOrId())));
-        header.getChildren().add(new Label(Messages.get("shuntCompensators.sections.header.type", ShuntCompensatorsController.typeLabel(shuntCompensator))));
-        header.getChildren().add(new Label(Messages.get("shuntCompensators.sections.header.modelType",
+        header.getChildren().add(new Label(Messages.labelValue("desktop.common.equipment.shuntCompensator", shuntCompensator.getNameOrId())));
+        header.getChildren().add(new Label(Messages.labelValue("desktop.common.column.type", ShuntCompensatorsController.typeLabel(shuntCompensator))));
+        header.getChildren().add(new Label(Messages.labelValue("shuntCompensators.column.modelType",
                 ShuntCompensatorsController.modelTypeLabel(shuntCompensator.getModelType()))));
 
         TableView<Integer> sectionsTableView = new TableView<>();
@@ -91,10 +91,10 @@ final class ShuntCompensatorSectionsDialog {
         }
         sectionsTableView.getItems().setAll(sections);
 
-        sectionsTableView.getColumns().add(readOnlyColumn("shuntCompensators.sections.column.section", String::valueOf));
-        sectionsTableView.getColumns().add(editableColumn("shuntCompensators.sections.column.b",
+        sectionsTableView.getColumns().add(readOnlyColumn("shuntCompensators.column.section", String::valueOf));
+        sectionsTableView.getColumns().add(editableColumn("desktop.common.column.b",
                 shuntCompensator::getB, (section, value) -> setB(shuntCompensator, section, value), editablePredicate, sectionsTableView));
-        sectionsTableView.getColumns().add(editableColumn("shuntCompensators.sections.column.g",
+        sectionsTableView.getColumns().add(editableColumn("desktop.common.column.g",
                 shuntCompensator::getG, (section, value) -> setG(shuntCompensator, section, value), editablePredicate, sectionsTableView));
         sectionsTableView.getColumns().add(readOnlyColumn("shuntCompensators.sections.column.q",
                 section -> formatValue(-shuntCompensator.getB(section) * nominalV2)));

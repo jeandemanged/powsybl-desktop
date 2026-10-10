@@ -193,7 +193,7 @@ public class MainController extends AbstractDisposableController {
 
         Dialog<Void> dialog = new Dialog<>();
         dialog.initOwner(borderPane.getScene().getWindow());
-        dialog.setTitle(Messages.get("main.about.title"));
+        dialog.setTitle(Messages.get("main.about"));
         dialog.getDialogPane().setContent(root);
         dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
 
@@ -362,7 +362,7 @@ public class MainController extends AbstractDisposableController {
 
     // completing without exception doesn't mean converged - the outcome reflects the components' convergence
     private Notification loadFlowOutcome(Instant start, LoadFlowResultAndReport loadFlowResultAndReport) {
-        NotificationAction viewResultsAction = new NotificationAction("main.loadFlow.viewResults", e ->
+        NotificationAction viewResultsAction = new NotificationAction("desktop.common.action.viewResults", e ->
                 mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_COMPONENTS)));
         NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", e ->
                 mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.REPORTS,
@@ -458,7 +458,7 @@ public class MainController extends AbstractDisposableController {
 
     // completing without exception doesn't mean the base case converged - without it, no contingency was simulated
     private Notification securityAnalysisOutcome(Instant start, SecurityAnalysisResultAndReport securityAnalysisResultAndReport) {
-        NotificationAction viewResultsAction = new NotificationAction("main.securityAnalysis.viewResults", e ->
+        NotificationAction viewResultsAction = new NotificationAction("desktop.common.action.viewResults", e ->
                 mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS)));
         NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", e ->
                 mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.REPORTS,
@@ -888,7 +888,7 @@ public class MainController extends AbstractDisposableController {
 
         parametersStage = new Stage();
         parametersStage.initOwner(borderPane.getScene().getWindow());
-        parametersStage.setTitle(Messages.get("main.toolbar.parameters"));
+        parametersStage.setTitle(Messages.get("desktop.common.parameters"));
         parametersStage.getIcons().add(new Image(
                 Objects.requireNonNull(MainApplication.class.getResourceAsStream("logo.png"))));
         parametersStage.setScene(new Scene(root, 1000, 700));

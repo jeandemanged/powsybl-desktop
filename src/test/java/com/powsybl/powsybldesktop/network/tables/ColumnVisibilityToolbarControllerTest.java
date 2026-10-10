@@ -47,8 +47,8 @@ class ColumnVisibilityToolbarControllerTest extends AbstractHeadlessApplicationT
         TableColumn<Object, Object> offColumn = new TableColumn<>();
 
         interact(() -> controller.configure(List.of(
-                ColumnVisibilityToolbarController.ColumnGroup.of("common.column.name", true, onColumn),
-                ColumnVisibilityToolbarController.ColumnGroup.of("common.column.p", false, offColumn))));
+                ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.column.name", true, onColumn),
+                ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.column.p", false, offColumn))));
 
         assertTrue(onColumn.isVisible());
         assertFalse(offColumn.isVisible());
@@ -65,7 +65,7 @@ class ColumnVisibilityToolbarControllerTest extends AbstractHeadlessApplicationT
         TableColumn<Object, Object> columnB = new TableColumn<>();
 
         interact(() -> controller.configure(List.of(
-                ColumnVisibilityToolbarController.ColumnGroup.of("common.column.p", false, columnA, columnB))));
+                ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.column.p", false, columnA, columnB))));
         CheckBox checkBox = (CheckBox) controller.root.getItems().get(0);
 
         interact(checkBox::fire);

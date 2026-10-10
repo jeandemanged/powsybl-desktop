@@ -180,14 +180,14 @@ public class CriterionListFormController {
         voltageGroups.clear();
         Runnable onCommit = this::commit;
         if (kind.countryArity() == 1) {
-            countryGroups.add(new CountryGroup("contingencies.criterion.country", onCommit));
+            countryGroups.add(new CountryGroup("desktop.common.column.country", onCommit));
         } else if (kind.countryArity() == 2) {
             countryGroups.add(new CountryGroup("contingencies.criterion.country1", onCommit));
             countryGroups.add(new CountryGroup("contingencies.criterion.country2", onCommit));
         }
         String[] indexedVoltageKeys = {"contingencies.criterion.voltage1", "contingencies.criterion.voltage2", "contingencies.criterion.voltage3"};
         if (kind.voltageArity() == 1) {
-            voltageGroups.add(new VoltageIntervalGroup("contingencies.criterion.voltage", onCommit));
+            voltageGroups.add(new VoltageIntervalGroup("desktop.common.column.nominalVoltage", onCommit));
         } else {
             for (int i = 0; i < kind.voltageArity(); i++) {
                 voltageGroups.add(new VoltageIntervalGroup(indexedVoltageKeys[i], onCommit));
@@ -351,9 +351,9 @@ public class CriterionListFormController {
 
     private static final class VoltageIntervalGroup {
         private final TextField lowField = new TextField();
-        private final CheckBox lowClosedCheckBox = new CheckBox(Messages.get("contingencies.criterion.voltage.lowClosed"));
+        private final CheckBox lowClosedCheckBox = new CheckBox(Messages.get("contingencies.criterion.voltage.inclusive"));
         private final TextField highField = new TextField();
-        private final CheckBox highClosedCheckBox = new CheckBox(Messages.get("contingencies.criterion.voltage.highClosed"));
+        private final CheckBox highClosedCheckBox = new CheckBox(Messages.get("contingencies.criterion.voltage.inclusive"));
         private final Node root;
 
         VoltageIntervalGroup(String titleKey, Runnable onCommit) {

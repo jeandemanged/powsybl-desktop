@@ -16,8 +16,8 @@
       <fx:include fx:id="searchBox" source="../search/search-box.fxml"/>
       <TableView fx:id="substationsTableView" editable="true" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">
          <columns>
-            <TableColumn fx:id="nameColumn" text="%common.column.name" editable="false"/>
-            <TableColumn fx:id="countryColumn" text="%substations.column.country"/>
+            <TableColumn fx:id="nameColumn" text="%desktop.common.column.name" editable="false"/>
+            <TableColumn fx:id="countryColumn" text="%desktop.common.column.country"/>
             <TableColumn fx:id="tsoColumn" text="%substations.column.tso"/>
             <TableColumn fx:id="geographicalTagsColumn" text="%substations.column.geographicalTags" editable="false"/>
          </columns>

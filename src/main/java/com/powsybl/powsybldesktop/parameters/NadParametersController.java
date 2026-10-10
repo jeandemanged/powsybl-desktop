@@ -63,15 +63,15 @@ public class NadParametersController extends AbstractDiagramParametersController
         titles.put(CAT_STYLE_LABELS, Messages.get("parameters.nad.category.styleLabels"));
         titles.put(CAT_SIZING, Messages.get("parameters.nad.category.sizing"));
         titles.put(CAT_TEXT_META, Messages.get("parameters.nad.category.textMeta"));
-        titles.put(CAT_SVG_OUTPUT, Messages.get("parameters.nad.category.svgOutput"));
+        titles.put(CAT_SVG_OUTPUT, Messages.get("parameters.diagram.category.svgOutput"));
         titles.put(CAT_ARROWS, Messages.get("parameters.nad.category.arrows"));
         titles.put(CAT_NODE_GEOMETRY, Messages.get("parameters.nad.category.nodeGeometry"));
         titles.put(CAT_EDGES, Messages.get("parameters.nad.category.edges"));
         titles.put(CAT_LOOPS, Messages.get("parameters.nad.category.loops"));
         titles.put(CAT_INJECTIONS, Messages.get("parameters.nad.category.injections"));
         titles.put(CAT_LEGENDS, Messages.get("parameters.nad.category.legends"));
-        titles.put(CAT_LOCALIZATION, Messages.get("parameters.nad.category.localization"));
-        titles.put(CAT_DEBUG, Messages.get("parameters.nad.category.debug"));
+        titles.put(CAT_LOCALIZATION, Messages.get("parameters.diagram.category.localization"));
+        titles.put(CAT_DEBUG, Messages.get("desktop.common.debug"));
         titles.put(CAT_LAYOUT, Messages.get("parameters.nad.category.layout"));
         titles.put(CAT_FORCE_LAYOUT, Messages.get("parameters.nad.category.forceLayout"));
         return titles;
@@ -171,7 +171,7 @@ public class NadParametersController extends AbstractDiagramParametersController
                 new Label(Messages.get("parameters.diagram.padding.top")), topField,
                 new Label(Messages.get("parameters.diagram.padding.right")), rightField,
                 new Label(Messages.get("parameters.diagram.padding.bottom")), bottomField);
-        addRow(CAT_SIZING, label("diagramPadding"), tooltip("diagramPadding"), box);
+        addRow(CAT_SIZING, sharedLabel("diagramPadding"), sharedTooltip("diagramPadding"), box);
     }
 
     // setFixedWidth/setFixedHeight/setFixedScale each silently flip sizeConstraint as a side effect (see
@@ -247,12 +247,12 @@ public class NadParametersController extends AbstractDiagramParametersController
     private void addTextMetaFields() {
         addBooleanField(CAT_TEXT_META, label("insertNameDesc"), tooltip("insertNameDesc"),
                 p -> p.getSvgParameters().isInsertNameDesc(), (p, v) -> p.getSvgParameters().setInsertNameDesc(v));
-        addStringField(CAT_TEXT_META, label("svgPrefix"), tooltip("svgPrefix"),
+        addStringField(CAT_TEXT_META, sharedLabel("svgPrefix"), sharedTooltip("svgPrefix"),
                 p -> p.getSvgParameters().getSvgPrefix(), (p, v) -> p.getSvgParameters().setSvgPrefix(v));
     }
 
     private void addSvgOutputFields() {
-        addEnumField(CAT_SVG_OUTPUT, label("cssLocation"), tooltip("cssLocation"), SvgParameters.CssLocation.class,
+        addEnumField(CAT_SVG_OUTPUT, sharedLabel("cssLocation"), sharedTooltip("cssLocation"), SvgParameters.CssLocation.class,
                 p -> p.getSvgParameters().getCssLocation(), (p, v) -> p.getSvgParameters().setCssLocation(v));
     }
 
@@ -327,19 +327,19 @@ public class NadParametersController extends AbstractDiagramParametersController
     }
 
     private void addLocalizationFields() {
-        addStringField(CAT_LOCALIZATION, label("languageTag"), tooltip("languageTag"),
+        addStringField(CAT_LOCALIZATION, sharedLabel("languageTag"), sharedTooltip("languageTag"),
                 p -> p.getSvgParameters().getLanguageTag(), (p, v) -> p.getSvgParameters().setLanguageTag(v));
-        addIntField(CAT_LOCALIZATION, label("voltageValuePrecision"), tooltip("voltageValuePrecision"),
+        addIntField(CAT_LOCALIZATION, sharedLabel("voltageValuePrecision"), sharedTooltip("voltageValuePrecision"),
                 p -> p.getSvgParameters().getVoltageValuePrecision(), (p, v) -> p.getSvgParameters().setVoltageValuePrecision(v));
-        addIntField(CAT_LOCALIZATION, label("powerValuePrecision"), tooltip("powerValuePrecision"),
+        addIntField(CAT_LOCALIZATION, sharedLabel("powerValuePrecision"), sharedTooltip("powerValuePrecision"),
                 p -> p.getSvgParameters().getPowerValuePrecision(), (p, v) -> p.getSvgParameters().setPowerValuePrecision(v));
-        addIntField(CAT_LOCALIZATION, label("angleValuePrecision"), tooltip("angleValuePrecision"),
+        addIntField(CAT_LOCALIZATION, sharedLabel("angleValuePrecision"), sharedTooltip("angleValuePrecision"),
                 p -> p.getSvgParameters().getAngleValuePrecision(), (p, v) -> p.getSvgParameters().setAngleValuePrecision(v));
-        addIntField(CAT_LOCALIZATION, label("currentValuePrecision"), tooltip("currentValuePrecision"),
+        addIntField(CAT_LOCALIZATION, sharedLabel("currentValuePrecision"), sharedTooltip("currentValuePrecision"),
                 p -> p.getSvgParameters().getCurrentValuePrecision(), (p, v) -> p.getSvgParameters().setCurrentValuePrecision(v));
-        addIntField(CAT_LOCALIZATION, label("percentageValuePrecision"), tooltip("percentageValuePrecision"),
+        addIntField(CAT_LOCALIZATION, sharedLabel("percentageValuePrecision"), sharedTooltip("percentageValuePrecision"),
                 p -> p.getSvgParameters().getPercentageValuePrecision(), (p, v) -> p.getSvgParameters().setPercentageValuePrecision(v));
-        addStringField(CAT_LOCALIZATION, label("undefinedValueSymbol"), tooltip("undefinedValueSymbol"),
+        addStringField(CAT_LOCALIZATION, sharedLabel("undefinedValueSymbol"), sharedTooltip("undefinedValueSymbol"),
                 p -> p.getSvgParameters().getUndefinedValueSymbol(), (p, v) -> p.getSvgParameters().setUndefinedValueSymbol(v));
     }
 

@@ -56,7 +56,7 @@ final class GeographicalTagsDialog {
         TextField newTagField = new TextField();
         newTagField.setPromptText(Messages.get("substations.geographicalTags.newTagPrompt"));
         HBox.setHgrow(newTagField, Priority.ALWAYS);
-        Button addButton = new Button(Messages.get("substations.geographicalTags.addButton"));
+        Button addButton = new Button(Messages.get("desktop.common.action.add"));
         Runnable addTag = () -> {
             String tag = newTagField.getText().trim();
             if (!tag.isEmpty()) {

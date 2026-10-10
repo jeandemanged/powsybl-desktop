@@ -30,7 +30,7 @@
                         <FontIcon iconLiteral="mdi2t-trash-can" iconSize="16"/>
                     </graphic>
                     <tooltip>
-                        <Tooltip text="%reports.clearAll"/>
+                        <Tooltip text="%desktop.common.action.clearAll"/>
                     </tooltip>
                 </Button>
                 <Button fx:id="exportButton" mnemonicParsing="false" onAction="#onExport">
@@ -38,7 +38,7 @@
                         <FontIcon iconLiteral="mdi2d-download" iconSize="16"/>
                     </graphic>
                     <tooltip>
-                        <Tooltip text="%reports.export"/>
+                        <Tooltip text="%desktop.common.action.export"/>
                     </tooltip>
                 </Button>
                 <Separator orientation="VERTICAL"/>

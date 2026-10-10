@@ -216,7 +216,7 @@ class BoundaryLinesControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> mainModel.setUpdate());
 
         Label label = (Label) cell(controller.patlIViolationColumn, rowOf(boundaryLine)).getGraphic();
-        assertEquals(Messages.get("common.patlIViolation.overloaded"), label.getText());
+        assertEquals(Messages.get("desktop.common.patlIViolation.overloaded"), label.getText());
     }
 
     @Test

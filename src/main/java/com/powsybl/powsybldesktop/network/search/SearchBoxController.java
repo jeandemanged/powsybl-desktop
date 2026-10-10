@@ -127,19 +127,19 @@ public class SearchBoxController {
 
     private static String pluralKindMessageKey(NetworkSearch.Kind kind) {
         return switch (kind) {
-            case SUBSTATION -> "network.search.kind.substation.plural";
-            case VOLTAGE_LEVEL -> "network.search.kind.voltageLevel.plural";
-            case BUS -> "network.search.kind.bus.plural";
-            case CONFIGURED_BUS -> "network.search.kind.configuredBus.plural";
-            case GENERATOR -> "network.search.kind.generator.plural";
-            case SHUNT_COMPENSATOR -> "network.search.kind.shuntCompensator.plural";
-            case STATIC_VAR_COMPENSATOR -> "network.search.kind.staticVarCompensator.plural";
-            case LOAD -> "network.search.kind.load.plural";
-            case LINE -> "network.search.kind.line.plural";
-            case TRANSFORMER -> "network.search.kind.transformer.plural";
-            case TIE_LINE -> "network.search.kind.tieLine.plural";
-            case BOUNDARY_LINE -> "network.search.kind.boundaryLine.plural";
-            case BUSBAR_SECTION -> "network.search.kind.busbarSection.plural";
+            case SUBSTATION -> "desktop.common.equipment.substation.plural";
+            case VOLTAGE_LEVEL -> "desktop.common.equipment.voltageLevel.plural";
+            case BUS -> "desktop.common.equipment.bus.plural";
+            case CONFIGURED_BUS -> "desktop.common.equipment.configuredBus.plural";
+            case GENERATOR -> "desktop.common.equipment.generator.plural";
+            case SHUNT_COMPENSATOR -> "desktop.common.equipment.shuntCompensator.plural";
+            case STATIC_VAR_COMPENSATOR -> "desktop.common.equipment.staticVarCompensator.plural";
+            case LOAD -> "desktop.common.equipment.load.plural";
+            case LINE -> "desktop.common.equipment.line.plural";
+            case TRANSFORMER -> "desktop.common.equipment.transformer.plural";
+            case TIE_LINE -> "desktop.common.equipment.tieLine.plural";
+            case BOUNDARY_LINE -> "desktop.common.equipment.boundaryLine.plural";
+            case BUSBAR_SECTION -> "desktop.common.equipment.busbarSection.plural";
         };
     }
 
@@ -271,21 +271,21 @@ public class SearchBoxController {
 
     private static String kindMessageKey(Identifiable<?> identifiable) {
         return switch (NetworkSearch.kindOf(identifiable)) {
-            case SUBSTATION -> "network.search.kind.substation";
-            case VOLTAGE_LEVEL -> "network.search.kind.voltageLevel";
-            case BUS -> "network.search.kind.bus";
+            case SUBSTATION -> "desktop.common.equipment.substation";
+            case VOLTAGE_LEVEL -> "desktop.common.equipment.voltageLevel";
+            case BUS -> "desktop.common.equipment.bus";
             // kindOf() never actually returns CONFIGURED_BUS (both bus kinds are the same Bus type - see its
             // own javadoc), but the switch must stay exhaustive over every Kind constant
-            case CONFIGURED_BUS -> "network.search.kind.bus";
-            case GENERATOR -> "network.search.kind.generator";
-            case SHUNT_COMPENSATOR -> "network.search.kind.shuntCompensator";
-            case STATIC_VAR_COMPENSATOR -> "network.search.kind.staticVarCompensator";
-            case LOAD -> "network.search.kind.load";
-            case LINE -> "network.search.kind.line";
-            case TRANSFORMER -> "network.search.kind.transformer";
-            case TIE_LINE -> "network.search.kind.tieLine";
-            case BOUNDARY_LINE -> "network.search.kind.boundaryLine";
-            case BUSBAR_SECTION -> "network.search.kind.busbarSection";
+            case CONFIGURED_BUS -> "desktop.common.equipment.bus";
+            case GENERATOR -> "desktop.common.equipment.generator";
+            case SHUNT_COMPENSATOR -> "desktop.common.equipment.shuntCompensator";
+            case STATIC_VAR_COMPENSATOR -> "desktop.common.equipment.staticVarCompensator";
+            case LOAD -> "desktop.common.equipment.load";
+            case LINE -> "desktop.common.equipment.line";
+            case TRANSFORMER -> "desktop.common.equipment.transformer";
+            case TIE_LINE -> "desktop.common.equipment.tieLine";
+            case BOUNDARY_LINE -> "desktop.common.equipment.boundaryLine";
+            case BUSBAR_SECTION -> "desktop.common.equipment.busbarSection";
         };
     }
 

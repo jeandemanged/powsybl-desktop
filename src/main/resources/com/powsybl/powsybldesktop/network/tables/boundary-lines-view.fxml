@@ -17,34 +17,34 @@
       <fx:include fx:id="searchBox" source="../search/search-box.fxml"/>
       <TableView fx:id="boundaryLinesTableView" editable="true" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">
          <columns>
-            <TableColumn fx:id="substationColumn" text="%common.column.substation" editable="false"/>
-            <TableColumn fx:id="voltageLevelColumn" text="%common.column.voltageLevel" editable="false"/>
-            <TableColumn fx:id="nameColumn" text="%common.column.name" editable="false"/>
-            <TableColumn fx:id="pairingKeyColumn" text="%boundaryLines.column.pairingKey" editable="false"/>
-            <TableColumn fx:id="tieLineColumn" text="%boundaryLines.column.tieLine" editable="false"/>
-            <TableColumn fx:id="connectedColumn" styleClass="centered-column" text="%common.column.connected" editable="false"/>
-            <TableColumn fx:id="connectedComponentColumn" styleClass="centered-column" text="%common.column.connectedComponent" editable="false"/>
-            <TableColumn fx:id="synchronousComponentColumn" styleClass="centered-column" text="%common.column.synchronousComponent" editable="false"/>
-            <TableColumn fx:id="rColumn" styleClass="right-aligned-column" text="%common.column.r"/>
-            <TableColumn fx:id="xColumn" styleClass="right-aligned-column" text="%common.column.x"/>
-            <TableColumn fx:id="gColumn" styleClass="right-aligned-column" text="%common.column.g"/>
-            <TableColumn fx:id="bColumn" styleClass="right-aligned-column" text="%common.column.b"/>
-            <TableColumn fx:id="p0Column" styleClass="right-aligned-column" text="%boundaryLines.column.p0"/>
-            <TableColumn fx:id="q0Column" styleClass="right-aligned-column" text="%boundaryLines.column.q0"/>
-            <TableColumn fx:id="minPColumn" styleClass="right-aligned-column" text="%common.column.minP"/>
-            <TableColumn fx:id="maxPColumn" styleClass="right-aligned-column" text="%common.column.maxP"/>
-            <TableColumn fx:id="voltageRegulatorOnColumn" styleClass="centered-column" text="%boundaryLines.column.voltageRegulatorOn"/>
-            <TableColumn fx:id="targetVColumn" styleClass="right-aligned-column" text="%common.column.targetV"/>
-            <TableColumn fx:id="targetQColumn" styleClass="right-aligned-column" text="%common.column.targetQ"/>
+            <TableColumn fx:id="substationColumn" text="%desktop.common.equipment.substation" editable="false"/>
+            <TableColumn fx:id="voltageLevelColumn" text="%desktop.common.equipment.voltageLevel" editable="false"/>
+            <TableColumn fx:id="nameColumn" text="%desktop.common.column.name" editable="false"/>
+            <TableColumn fx:id="pairingKeyColumn" text="%desktop.common.column.pairingKey" editable="false"/>
+            <TableColumn fx:id="tieLineColumn" text="%desktop.common.equipment.tieLine" editable="false"/>
+            <TableColumn fx:id="connectedColumn" styleClass="centered-column" text="%desktop.common.column.connected" editable="false"/>
+            <TableColumn fx:id="connectedComponentColumn" styleClass="centered-column" text="%desktop.common.column.connectedComponent" editable="false"/>
+            <TableColumn fx:id="synchronousComponentColumn" styleClass="centered-column" text="%desktop.common.column.synchronousComponent" editable="false"/>
+            <TableColumn fx:id="rColumn" styleClass="right-aligned-column" text="%desktop.common.column.r"/>
+            <TableColumn fx:id="xColumn" styleClass="right-aligned-column" text="%desktop.common.column.x"/>
+            <TableColumn fx:id="gColumn" styleClass="right-aligned-column" text="%desktop.common.column.g"/>
+            <TableColumn fx:id="bColumn" styleClass="right-aligned-column" text="%desktop.common.column.b"/>
+            <TableColumn fx:id="p0Column" styleClass="right-aligned-column" text="%desktop.common.column.p0"/>
+            <TableColumn fx:id="q0Column" styleClass="right-aligned-column" text="%desktop.common.column.q0"/>
+            <TableColumn fx:id="minPColumn" styleClass="right-aligned-column" text="%desktop.common.column.minP"/>
+            <TableColumn fx:id="maxPColumn" styleClass="right-aligned-column" text="%desktop.common.column.maxP"/>
+            <TableColumn fx:id="voltageRegulatorOnColumn" styleClass="centered-column" text="%desktop.common.column.voltageRegulation"/>
+            <TableColumn fx:id="targetVColumn" styleClass="right-aligned-column" text="%desktop.common.column.targetV"/>
+            <TableColumn fx:id="targetQColumn" styleClass="right-aligned-column" text="%desktop.common.column.targetQ"/>
             <TableColumn fx:id="pNetColumn" styleClass="right-aligned-column" text="%boundaryLines.column.pNet" editable="false"/>
             <TableColumn fx:id="qNetColumn" styleClass="right-aligned-column" text="%boundaryLines.column.qNet" editable="false"/>
             <TableColumn fx:id="iNetColumn" styleClass="right-aligned-column" text="%boundaryLines.column.iNet" editable="false"/>
-            <TableColumn fx:id="pBoundaryColumn" styleClass="right-aligned-column" text="%boundaryLines.column.pBoundary" editable="false"/>
-            <TableColumn fx:id="qBoundaryColumn" styleClass="right-aligned-column" text="%boundaryLines.column.qBoundary" editable="false"/>
-            <TableColumn fx:id="iBoundaryColumn" styleClass="right-aligned-column" text="%boundaryLines.column.iBoundary" editable="false"/>
-            <TableColumn fx:id="vBoundaryColumn" styleClass="right-aligned-column" text="%boundaryLines.column.vBoundary" editable="false"/>
-            <TableColumn fx:id="angleBoundaryColumn" styleClass="right-aligned-column" text="%boundaryLines.column.angleBoundary" editable="false"/>
-            <TableColumn fx:id="patlIViolationColumn" text="%common.column.patlIViolation" editable="false"/>
+            <TableColumn fx:id="pBoundaryColumn" styleClass="right-aligned-column" text="%desktop.common.column.pBoundary" editable="false"/>
+            <TableColumn fx:id="qBoundaryColumn" styleClass="right-aligned-column" text="%desktop.common.column.qBoundary" editable="false"/>
+            <TableColumn fx:id="iBoundaryColumn" styleClass="right-aligned-column" text="%desktop.common.column.iBoundary" editable="false"/>
+            <TableColumn fx:id="vBoundaryColumn" styleClass="right-aligned-column" text="%desktop.common.column.vBoundary" editable="false"/>
+            <TableColumn fx:id="angleBoundaryColumn" styleClass="right-aligned-column" text="%desktop.common.column.angleBoundary" editable="false"/>
+            <TableColumn fx:id="patlIViolationColumn" text="%desktop.common.column.patlIViolation" editable="false"/>
          </columns>
       </TableView>
    </children>

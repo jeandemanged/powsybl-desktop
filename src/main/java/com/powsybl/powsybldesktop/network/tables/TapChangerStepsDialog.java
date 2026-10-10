@@ -64,9 +64,9 @@ final class TapChangerStepsDialog {
         dialog.setTitle(Messages.get(phase ? "transformers.tapChanger.phaseDialogTitle" : "transformers.tapChanger.ratioDialogTitle"));
 
         VBox header = new VBox(2);
-        header.getChildren().add(new Label(Messages.get("transformers.tapChanger.header.transformer", transformerName)));
+        header.getChildren().add(new Label(Messages.labelValue("desktop.common.equipment.transformer", transformerName)));
         if (side != null) {
-            header.getChildren().add(new Label(Messages.get("transformers.tapChanger.header.side", side)));
+            header.getChildren().add(new Label(Messages.labelValue("desktop.common.column.side", side)));
         }
         header.getChildren().add(loadTapChangingCapabilitiesCheckBox(tapChanger));
 

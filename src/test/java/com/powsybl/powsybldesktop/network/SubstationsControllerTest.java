@@ -103,20 +103,20 @@ class SubstationsControllerTest extends AbstractHeadlessApplicationTest {
     void onlyTabsWithMatchingEquipmentAreShown() {
         select(network.getVoltageLevel("VL1"));
 
-        assertTrue(hasTabWithText(Messages.get("main.toolbar.generators")), "VL1 has a generator, so its tab should show");
-        assertFalse(hasTabWithText(Messages.get("main.toolbar.shuntCompensators")), "VL1 has no shunt compensator");
+        assertTrue(hasTabWithText(Messages.get("desktop.common.equipment.generator.plural")), "VL1 has a generator, so its tab should show");
+        assertFalse(hasTabWithText(Messages.get("desktop.common.equipment.shuntCompensator.plural")), "VL1 has no shunt compensator");
 
         select(network.getVoltageLevel("VL9"));
 
-        assertTrue(hasTabWithText(Messages.get("main.toolbar.shuntCompensators")), "VL9 has a shunt compensator, so its tab should show");
+        assertTrue(hasTabWithText(Messages.get("desktop.common.equipment.shuntCompensator.plural")), "VL9 has a shunt compensator, so its tab should show");
     }
 
     @Test
     void substationsVoltageLevelsAndComponentsAreNeverShownAsTabs() {
         select(network.getVoltageLevel("VL1"));
 
-        assertFalse(hasTabWithText(Messages.get("main.toolbar.substationsTable")));
-        assertFalse(hasTabWithText(Messages.get("main.toolbar.voltageLevelsTable")));
+        assertFalse(hasTabWithText(Messages.get("desktop.common.equipment.substation.plural")));
+        assertFalse(hasTabWithText(Messages.get("desktop.common.equipment.voltageLevel.plural")));
         assertFalse(hasTabWithText(Messages.get("main.toolbar.loadflowresult")));
     }
 
@@ -125,7 +125,7 @@ class SubstationsControllerTest extends AbstractHeadlessApplicationTest {
         VoltageLevel vl1 = network.getVoltageLevel("VL1");
         select(vl1);
 
-        interact(() -> tabPane().getSelectionModel().select(tabWithText(Messages.get("main.toolbar.generators"))));
+        interact(() -> tabPane().getSelectionModel().select(tabWithText(Messages.get("desktop.common.equipment.generator.plural"))));
 
         // tab selection is recorded in history (like the tree selection above) without becoming the
         // "current" navigation event, since it doesn't need to re-trigger MainController's view swap
@@ -142,7 +142,7 @@ class SubstationsControllerTest extends AbstractHeadlessApplicationTest {
 
         interact(() -> controller.navigateTo(vl1, ContainerNavigationState.ContainerTab.SHUNT_COMPENSATORS));
 
-        assertEquals(Messages.get("substations.tab.singleLineDiagram"), tabPane().getSelectionModel().getSelectedItem().getText());
+        assertEquals(Messages.get("desktop.common.singleLineDiagram"), tabPane().getSelectionModel().getSelectedItem().getText());
     }
 
     @Test
@@ -151,6 +151,6 @@ class SubstationsControllerTest extends AbstractHeadlessApplicationTest {
 
         interact(() -> controller.navigateTo(vl9, ContainerNavigationState.ContainerTab.SHUNT_COMPENSATORS));
 
-        assertEquals(Messages.get("main.toolbar.shuntCompensators"), tabPane().getSelectionModel().getSelectedItem().getText());
+        assertEquals(Messages.get("desktop.common.equipment.shuntCompensator.plural"), tabPane().getSelectionModel().getSelectedItem().getText());
     }
 }

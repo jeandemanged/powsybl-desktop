@@ -22,7 +22,7 @@
     <children>
         <HBox alignment="CENTER_LEFT" spacing="8">
             <children>
-                <Label text="%contingencies.name"/>
+                <Label text="%desktop.common.column.name"/>
                 <TextField fx:id="nameField" HBox.hgrow="ALWAYS"/>
             </children>
         </HBox>
@@ -36,7 +36,7 @@
         <Label text="%contingencies.criterion.propertyCriteria"/>
         <HBox spacing="4">
             <children>
-                <Button mnemonicParsing="false" onAction="#onAddPropertyCriterion" text="%contingencies.criterion.propertyCriteria.add">
+                <Button mnemonicParsing="false" onAction="#onAddPropertyCriterion" text="%desktop.common.action.add">
                     <graphic>
                         <FontIcon iconLiteral="mdi2p-plus" iconSize="14"/>
                     </graphic>

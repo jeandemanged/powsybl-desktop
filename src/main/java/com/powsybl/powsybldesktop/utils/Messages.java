@@ -35,4 +35,8 @@ public final class Messages {
     public static String get(String key, Object... args) {
         return MessageFormat.format(get(key), args);
     }
+
+    public static String labelValue(String labelKey, Object value) {
+        return get("desktop.common.labelValue", get(labelKey), value);
+    }
 }

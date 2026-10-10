@@ -235,7 +235,7 @@ class TieLinesControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> mainModel.setUpdate());
 
         Label label = (Label) cellGraphic(controller.patlIViolationColumn, rowOf(tieLine));
-        assertEquals(Messages.get("common.patlIViolation.overloaded"), label.getText());
+        assertEquals(Messages.get("desktop.common.patlIViolation.overloaded"), label.getText());
     }
 
     @Test

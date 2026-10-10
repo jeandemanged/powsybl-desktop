@@ -22,7 +22,7 @@
     <children>
         <HBox alignment="CENTER_LEFT" spacing="8">
             <children>
-                <Label text="%contingencies.name"/>
+                <Label text="%desktop.common.column.name"/>
                 <TextField fx:id="nameField" HBox.hgrow="ALWAYS"/>
             </children>
         </HBox>
@@ -46,8 +46,8 @@
                         </HBox>
                         <TableView fx:id="contingenciesTableView" editable="true" VBox.vgrow="ALWAYS">
                             <columns>
-                                <TableColumn fx:id="idColumn" editable="true" text="%contingencies.column.id"/>
-                                <TableColumn fx:id="elementsColumn" editable="false" text="%contingencies.defaultList.elements"/>
+                                <TableColumn fx:id="idColumn" editable="true" text="%desktop.common.column.id"/>
+                                <TableColumn fx:id="elementsColumn" editable="false" text="%contingencies.column.elements"/>
                             </columns>
                         </TableView>
                     </children>
@@ -70,8 +70,8 @@
                         </HBox>
                         <TableView fx:id="elementsTableView" editable="true" VBox.vgrow="ALWAYS">
                             <columns>
-                                <TableColumn fx:id="elementTypeColumn" editable="true" text="%contingencies.defaultList.column.elementType"/>
-                                <TableColumn fx:id="elementIdColumn" editable="true" text="%contingencies.defaultList.column.elementId"/>
+                                <TableColumn fx:id="elementTypeColumn" editable="true" text="%desktop.common.column.type"/>
+                                <TableColumn fx:id="elementIdColumn" editable="true" text="%desktop.common.column.id"/>
                             </columns>
                         </TableView>
                     </children>

@@ -18,12 +18,12 @@
     <children>
         <HBox spacing="5.0">
             <children>
-                <Button mnemonicParsing="false" onAction="#onImport" text="%securityAnalysis.import">
+                <Button mnemonicParsing="false" onAction="#onImport" text="%desktop.common.action.import">
                     <graphic>
                         <FontIcon iconLiteral="mdi2u-upload" iconSize="16"/>
                     </graphic>
                 </Button>
-                <Button mnemonicParsing="false" onAction="#onExport" text="%securityAnalysis.export">
+                <Button mnemonicParsing="false" onAction="#onExport" text="%desktop.common.action.export">
                     <graphic>
                         <FontIcon iconLiteral="mdi2d-download" iconSize="16"/>
                     </graphic>

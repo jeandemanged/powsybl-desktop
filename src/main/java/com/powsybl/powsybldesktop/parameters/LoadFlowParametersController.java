@@ -71,7 +71,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
         titles.put(OpenLoadFlowParameters.MODEL_CATEGORY_KEY, Messages.get("loadflow.category.model"));
         titles.put(OpenLoadFlowParameters.DC_CATEGORY_KEY, Messages.get("loadflow.category.dc"));
         titles.put(OpenLoadFlowParameters.SLACK_DISTRIBUTION_CATEGORY_KEY, Messages.get("loadflow.category.slackDistribution"));
-        titles.put(OpenLoadFlowParameters.REFERENCE_BUS_CATEGORY_KEY, Messages.get("loadflow.category.referenceBus"));
+        titles.put(OpenLoadFlowParameters.REFERENCE_BUS_CATEGORY_KEY, Messages.get("desktop.common.referenceBus"));
         titles.put(OpenLoadFlowParameters.VOLTAGE_CONTROLS_CATEGORY_KEY, Messages.get("loadflow.category.voltageControls"));
         titles.put(OpenLoadFlowParameters.GENERATOR_VOLTAGE_CONTROL_CATEGORY_KEY, Messages.get("loadflow.category.generatorVoltageControl"));
         titles.put(OpenLoadFlowParameters.TRANSFORMER_VOLTAGE_CONTROL_CATEGORY_KEY, Messages.get("loadflow.category.transformerVoltageControl"));
@@ -87,7 +87,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
         titles.put(OpenLoadFlowParameters.AUTOMATION_CATEGORY_KEY, Messages.get("loadflow.category.automation"));
         titles.put(OpenLoadFlowParameters.HVDC_CATEGORY_KEY, Messages.get("loadflow.category.hvdc"));
         titles.put(OpenLoadFlowParameters.PERFORMANCE_CATEGORY_KEY, Messages.get("loadflow.category.performance"));
-        titles.put(OpenLoadFlowParameters.DEBUG_CATEGORY_KEY, Messages.get("loadflow.category.debug"));
+        titles.put(OpenLoadFlowParameters.DEBUG_CATEGORY_KEY, Messages.get("desktop.common.debug"));
         titles.put(OpenLoadFlowParameters.REPORTING_CATEGORY_KEY, Messages.get("loadflow.category.reporting"));
         return titles;
     }
@@ -387,8 +387,8 @@ public class LoadFlowParametersController extends AbstractDisposableController {
             onChange.run();
         };
         bindCommit(textField, commit);
-        addRow(OpenLoadFlowParameters.DEBUG_CATEGORY_KEY, Messages.get("loadflow.param.debugDir.label"),
-                Messages.get("loadflow.param.debugDir.tooltip"), textField);
+        addRow(OpenLoadFlowParameters.DEBUG_CATEGORY_KEY, Messages.get("parameters.debugDir.label"),
+                Messages.get("parameters.debugDir.tooltip"), textField);
     }
 
     // ----- OpenLoadFlowParameters specific parameters, driven entirely by their metadata -----

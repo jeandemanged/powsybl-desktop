@@ -27,7 +27,7 @@
                                         <FontIcon iconLiteral="mdi2u-upload" iconSize="16"/>
                                     </graphic>
                                     <tooltip>
-                                        <Tooltip text="%networks.toolbar.import"/>
+                                        <Tooltip text="%desktop.common.action.import"/>
                                     </tooltip>
                                 </MenuButton>
                                 <Separator orientation="VERTICAL"/>
@@ -36,7 +36,7 @@
                                         <FontIcon iconLiteral="mdi2d-download" iconSize="16"/>
                                     </graphic>
                                     <tooltip>
-                                        <Tooltip text="%networks.toolbar.export"/>
+                                        <Tooltip text="%desktop.common.action.export"/>
                                     </tooltip>
                                 </MenuButton>
                                 <Separator orientation="VERTICAL"/>

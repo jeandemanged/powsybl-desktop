@@ -77,7 +77,7 @@ public class BusbarSectionsController extends AbstractEquipmentTableController<B
                 BusbarSection::getV, busbarSection -> busbarSection.getTerminal().getVoltageLevel());
 
         columnVisibilityToolbarController.configure(List.of(
-                ColumnVisibilityToolbarController.ColumnGroup.of("network.columnGroup.solvedValues", true,
+                ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,
                         vColumn, angleColumn, voltageViolationColumn)));
     }
 

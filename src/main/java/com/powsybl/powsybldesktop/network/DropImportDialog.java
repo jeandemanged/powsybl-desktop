@@ -89,7 +89,7 @@ final class DropImportDialog {
         scrollPane.setPrefViewportHeight(Math.min(400, 32.0 * (dropped.size() + 1)));
         scrollPane.setPrefViewportWidth(520);
 
-        ButtonType importButton = new ButtonType(Messages.get("networks.drop.dialog.import"), ButtonBar.ButtonData.OK_DONE);
+        ButtonType importButton = new ButtonType(Messages.get("desktop.common.action.import"), ButtonBar.ButtonData.OK_DONE);
         Dialog<List<ImportChoice>> dialog = new Dialog<>();
         dialog.initOwner(owner);
         dialog.initModality(Modality.WINDOW_MODAL);

@@ -137,7 +137,7 @@ class SldParametersControllerTest extends AbstractHeadlessApplicationTest {
     void diagramPaddingFourFieldsCommitTogether() {
         GridPane grid = selectCategory(Messages.get("parameters.sld.category.padding"));
         // the padding row is a composite HBox of four TextFields, not a single Control
-        HBox box = (HBox) nodeForLabel(grid, Messages.get("parameters.sld.param.diagramPadding.label"));
+        HBox box = (HBox) nodeForLabel(grid, Messages.get("parameters.diagram.param.diagramPadding.label"));
         TextField leftField = (TextField) box.getChildren().get(1);
 
         clickOn(leftField);

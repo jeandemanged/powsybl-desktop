@@ -167,7 +167,7 @@ public class LogsViewController extends AbstractDisposableController {
         private final ContextMenu contextMenu;
 
         private LogRow() {
-            MenuItem copyMessageItem = new MenuItem(Messages.get("logs.contextMenu.copyMessage"));
+            MenuItem copyMessageItem = new MenuItem(Messages.get("desktop.common.action.copyMessage"));
             copyMessageItem.setOnAction(event -> {
                 ClipboardContent content = new ClipboardContent();
                 content.putString(getItem().getFormattedMessage());

@@ -147,7 +147,7 @@ class LogsViewControllerTest extends AbstractHeadlessApplicationTest {
 
         Node firstRow = lookup(".table-row-cell").nth(0).query();
         rightClickOn(firstRow);
-        clickOn(Messages.get("logs.contextMenu.copyMessage"));
+        clickOn(Messages.get("desktop.common.action.copyMessage"));
 
         assertEquals("copied message", WaitForAsyncUtils.waitForAsyncFx(2000, () -> Clipboard.getSystemClipboard().getString()));
     }

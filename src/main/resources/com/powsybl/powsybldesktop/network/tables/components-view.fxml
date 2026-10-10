@@ -15,13 +15,13 @@
    <children>
       <TableView fx:id="componentsTableView" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">
          <columns>
-            <TableColumn fx:id="connectedComponentColumn" styleClass="centered-column" text="%common.column.connectedComponent"/>
-            <TableColumn fx:id="synchronousComponentColumn" styleClass="centered-column" text="%common.column.synchronousComponent"/>
-            <TableColumn fx:id="busCountColumn" styleClass="centered-column" text="%components.column.busCount"/>
-            <TableColumn fx:id="statusColumn" text="%components.column.status" prefWidth="160"/>
+            <TableColumn fx:id="connectedComponentColumn" styleClass="centered-column" text="%desktop.common.column.connectedComponent"/>
+            <TableColumn fx:id="synchronousComponentColumn" styleClass="centered-column" text="%desktop.common.column.synchronousComponent"/>
+            <TableColumn fx:id="busCountColumn" styleClass="centered-column" text="%desktop.common.equipment.bus.plural"/>
+            <TableColumn fx:id="statusColumn" text="%desktop.common.column.status" prefWidth="160"/>
             <TableColumn fx:id="statusTextColumn" text="%components.column.statusText" prefWidth="250"/>
             <TableColumn fx:id="iterationCountColumn" styleClass="centered-column" text="%components.column.iterationCount"/>
-            <TableColumn fx:id="referenceBusIdColumn" text="%components.column.referenceBusId" prefWidth="150"/>
+            <TableColumn fx:id="referenceBusIdColumn" text="%desktop.common.referenceBus" prefWidth="150"/>
             <TableColumn fx:id="slackBusesColumn" text="%components.column.slackBuses" prefWidth="200"/>
             <TableColumn fx:id="distributedActivePowerColumn" styleClass="right-aligned-column" text="%components.column.distributedActivePower"/>
          </columns>

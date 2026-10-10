@@ -128,13 +128,13 @@ public class StaticVarCompensatorsController extends AbstractEquipmentTableContr
         });
 
         columnVisibilityToolbarController.configure(List.of(
-                ColumnVisibilityToolbarController.ColumnGroup.of("network.columnGroup.solvedValues", true,
+                ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,
                         qColumn, iColumn, regulatedBusVoltageColumn)));
     }
 
     private static String regulationModeLabel(StaticVarCompensator.RegulationMode mode) {
         return Messages.get(mode == StaticVarCompensator.RegulationMode.VOLTAGE
-                ? "staticVarCompensators.regulationMode.voltage" : "staticVarCompensators.regulationMode.reactivePower");
+                ? "desktop.common.regulationMode.voltage" : "desktop.common.regulationMode.reactivePower");
     }
 
     @Override

@@ -203,7 +203,7 @@ public class TransformersController extends AbstractEquipmentTableController<Ide
         TableColumnSupport.configureOverloadColumn(patlIViolationColumn, TransformersController::isOverloaded);
 
         columnVisibilityToolbarController.configure(List.of(
-                ColumnVisibilityToolbarController.ColumnGroup.of("network.columnGroup.parameters", false,
+                ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.parameters", false,
                         rColumn, xColumn, gColumn, bColumn),
                 ColumnVisibilityToolbarController.ColumnGroup.of("transformers.columnGroup.ratioTapChanger", false,
                         ratioTapChangerColumn, ratioTapChangerRegulatingColumn, ratioTapChangerRegulationModeColumn,
@@ -211,7 +211,7 @@ public class TransformersController extends AbstractEquipmentTableController<Ide
                 ColumnVisibilityToolbarController.ColumnGroup.of("transformers.columnGroup.phaseTapChanger", false,
                         phaseTapChangerColumn, phaseTapChangerRegulatingColumn, phaseTapChangerRegulationModeColumn,
                         phaseTapChangerRegulationValueColumn, phaseTapChangerTargetDeadbandColumn, phaseTapChangerSolvedTapColumn),
-                ColumnVisibilityToolbarController.ColumnGroup.of("network.columnGroup.solvedValues", true,
+                ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,
                         pColumn, qColumn, iColumn, patlIViolationColumn)));
     }
 
@@ -395,7 +395,7 @@ public class TransformersController extends AbstractEquipmentTableController<Ide
 
     private static String ratioRegulationModeLabel(RatioTapChanger.RegulationMode mode) {
         return Messages.get(mode == RatioTapChanger.RegulationMode.VOLTAGE
-                ? "transformers.tapChanger.regulationMode.voltage" : "transformers.tapChanger.regulationMode.reactivePower");
+                ? "desktop.common.regulationMode.voltage" : "desktop.common.regulationMode.reactivePower");
     }
 
     private static String phaseRegulationModeLabel(PhaseTapChanger.RegulationMode mode) {

@@ -22,7 +22,7 @@
                         <FontIcon iconLiteral="mdi2t-trash-can" iconSize="16"/>
                     </graphic>
                     <tooltip>
-                        <Tooltip text="%logs.clearAll"/>
+                        <Tooltip text="%desktop.common.action.clearAll"/>
                     </tooltip>
                 </Button>
                 <Separator orientation="VERTICAL"/>

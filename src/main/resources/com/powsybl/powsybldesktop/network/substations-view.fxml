@@ -65,72 +65,72 @@
                 <TabPane fx:id="diagramTabPane" tabClosingPolicy="UNAVAILABLE" AnchorPane.bottomAnchor="0.0"
                          AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                     <tabs>
-                        <Tab fx:id="singleLineDiagramTab" text="%substations.tab.singleLineDiagram">
+                        <Tab fx:id="singleLineDiagramTab" text="%desktop.common.singleLineDiagram">
                             <content>
                                 <fx:include fx:id="sldPane" source="../diagram/diagram-pane.fxml"/>
                             </content>
                         </Tab>
-                        <Tab fx:id="areaDiagramTab" text="%substations.tab.areaDiagram">
+                        <Tab fx:id="areaDiagramTab" text="%desktop.common.networkAreaDiagram">
                             <content>
                                 <fx:include fx:id="nadPane" source="../diagram/diagram-pane.fxml"/>
                             </content>
                         </Tab>
-                        <Tab fx:id="switchesTab" text="%substations.tab.switches">
+                        <Tab fx:id="switchesTab" text="%desktop.common.equipment.switch.plural">
                             <content>
                                 <fx:include fx:id="switchesEmbedded" source="tables/switches-view.fxml"/>
                             </content>
                         </Tab>
-                        <Tab fx:id="generatorsTab" text="%main.toolbar.generators">
+                        <Tab fx:id="generatorsTab" text="%desktop.common.equipment.generator.plural">
                             <content>
                                 <fx:include fx:id="generatorsEmbedded" source="tables/generators-view.fxml"/>
                             </content>
                         </Tab>
-                        <Tab fx:id="shuntCompensatorsTab" text="%main.toolbar.shuntCompensators">
+                        <Tab fx:id="shuntCompensatorsTab" text="%desktop.common.equipment.shuntCompensator.plural">
                             <content>
                                 <fx:include fx:id="shuntCompensatorsEmbedded" source="tables/shunt-compensators-view.fxml"/>
                             </content>
                         </Tab>
-                        <Tab fx:id="staticVarCompensatorsTab" text="%main.toolbar.staticVarCompensators">
+                        <Tab fx:id="staticVarCompensatorsTab" text="%desktop.common.equipment.staticVarCompensator.plural">
                             <content>
                                 <fx:include fx:id="staticVarCompensatorsEmbedded" source="tables/static-var-compensators-view.fxml"/>
                             </content>
                         </Tab>
-                        <Tab fx:id="loadsTab" text="%main.toolbar.loads">
+                        <Tab fx:id="loadsTab" text="%desktop.common.equipment.load.plural">
                             <content>
                                 <fx:include fx:id="loadsEmbedded" source="tables/loads-view.fxml"/>
                             </content>
                         </Tab>
-                        <Tab fx:id="linesTab" text="%main.toolbar.lines">
+                        <Tab fx:id="linesTab" text="%desktop.common.equipment.line.plural">
                             <content>
                                 <fx:include fx:id="linesEmbedded" source="tables/lines-view.fxml"/>
                             </content>
                         </Tab>
-                        <Tab fx:id="transformersTab" text="%main.toolbar.transformers">
+                        <Tab fx:id="transformersTab" text="%desktop.common.equipment.transformer.plural">
                             <content>
                                 <fx:include fx:id="transformersEmbedded" source="tables/transformers-view.fxml"/>
                             </content>
                         </Tab>
-                        <Tab fx:id="tieLinesTab" text="%main.toolbar.tieLines">
+                        <Tab fx:id="tieLinesTab" text="%desktop.common.equipment.tieLine.plural">
                             <content>
                                 <fx:include fx:id="tieLinesEmbedded" source="tables/tie-lines-view.fxml"/>
                             </content>
                         </Tab>
-                        <Tab fx:id="boundaryLinesTab" text="%main.toolbar.boundaryLines">
+                        <Tab fx:id="boundaryLinesTab" text="%desktop.common.equipment.boundaryLine.plural">
                             <content>
                                 <fx:include fx:id="boundaryLinesEmbedded" source="tables/boundary-lines-view.fxml"/>
                             </content>
                         </Tab>
-                        <Tab fx:id="busbarSectionsTab" text="%main.toolbar.busbarSectionsTable">
+                        <Tab fx:id="busbarSectionsTab" text="%desktop.common.equipment.busbarSection.plural">
                             <content>
                                 <fx:include fx:id="busbarSectionsEmbedded" source="tables/busbar-sections-view.fxml"/>
                             </content>
                         </Tab>
-                        <Tab fx:id="busesBusViewTab" text="%main.toolbar.busesBusView">
+                        <Tab fx:id="busesBusViewTab" text="%desktop.common.equipment.busesBusBranchView">
                             <content>
                                 <fx:include fx:id="busesBusViewEmbedded" source="tables/buses-bus-view.fxml"/>
                             </content>
                         </Tab>
-                        <Tab fx:id="busesBusBreakerViewTab" text="%main.toolbar.busesBusBreakerView">
+                        <Tab fx:id="busesBusBreakerViewTab" text="%desktop.common.equipment.busesBusBreakerView">
                             <content>
                                 <fx:include fx:id="busesBusBreakerViewEmbedded" source="tables/buses-bus-breaker-view.fxml"/>
                             </content>

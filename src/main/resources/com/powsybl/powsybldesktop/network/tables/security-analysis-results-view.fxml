@@ -16,10 +16,10 @@
       <TableView fx:id="resultsTableView" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">
          <columns>
             <TableColumn fx:id="contingencyColumn" text="%securityAnalysisResults.column.contingency" prefWidth="150"/>
-            <TableColumn fx:id="statusColumn" text="%securityAnalysisResults.column.status" prefWidth="180"/>
+            <TableColumn fx:id="statusColumn" text="%desktop.common.column.status" prefWidth="180"/>
             <TableColumn fx:id="subjectColumn" text="%securityAnalysisResults.column.subject" prefWidth="150"/>
             <TableColumn fx:id="limitTypeColumn" styleClass="centered-column" text="%securityAnalysisResults.column.limitType"/>
-            <TableColumn fx:id="sideColumn" styleClass="centered-column" text="%securityAnalysisResults.column.side"/>
+            <TableColumn fx:id="sideColumn" styleClass="centered-column" text="%desktop.common.column.side"/>
             <TableColumn fx:id="valueColumn" styleClass="right-aligned-column" text="%securityAnalysisResults.column.value"/>
             <TableColumn fx:id="limitColumn" styleClass="right-aligned-column" text="%securityAnalysisResults.column.limit"/>
             <TableColumn fx:id="limitReductionColumn" styleClass="right-aligned-column" text="%securityAnalysisResults.column.limitReduction"/>

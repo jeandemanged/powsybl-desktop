@@ -187,7 +187,7 @@ class ComponentsControllerTest extends AbstractHeadlessApplicationTest {
 
         assertEquals("component-status-converged", statusMarker(mainRow).getStyleClass().stream()
                 .filter(styleClass -> styleClass.startsWith("component-status-")).findFirst().orElseThrow());
-        assertEquals(Messages.get("components.status.converged"), statusLabel(mainRow).getText());
+        assertEquals(Messages.get("desktop.common.computationStatus.converged"), statusLabel(mainRow).getText());
 
         Hyperlink referenceBusLink = assertInstanceOf(Hyperlink.class, graphicOf(controller.referenceBusIdColumn, mainRow));
         assertEquals(mainBus.getId(), referenceBusLink.getText());
@@ -207,7 +207,7 @@ class ComponentsControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals("Not computed", cellValue(controller.statusTextColumn, isolatedRow));
         assertEquals("component-status-no-calculation", statusMarker(isolatedRow).getStyleClass().stream()
                 .filter(styleClass -> styleClass.startsWith("component-status-")).findFirst().orElseThrow());
-        assertEquals(Messages.get("components.status.noCalculation"), statusLabel(isolatedRow).getText());
+        assertEquals(Messages.get("desktop.common.computationStatus.noCalculation"), statusLabel(isolatedRow).getText());
 
         Label unresolvedReferenceBus = assertInstanceOf(Label.class, graphicOf(controller.referenceBusIdColumn, isolatedRow));
         assertEquals("UNKNOWN_BUS", unresolvedReferenceBus.getText());
@@ -236,7 +236,7 @@ class ComponentsControllerTest extends AbstractHeadlessApplicationTest {
 
         assertTrue(statusMarker(failedRow).getStyleClass().contains("component-status-other"));
         assertTrue(statusMarker(maxIterationRow).getStyleClass().contains("component-status-other"));
-        assertEquals(Messages.get("components.status.failed"), statusLabel(failedRow).getText());
-        assertEquals(Messages.get("components.status.maxIterationReached"), statusLabel(maxIterationRow).getText());
+        assertEquals(Messages.get("desktop.common.computationStatus.failed"), statusLabel(failedRow).getText());
+        assertEquals(Messages.get("desktop.common.computationStatus.maxIterationReached"), statusLabel(maxIterationRow).getText());
     }
 }

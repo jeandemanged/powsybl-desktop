@@ -269,8 +269,8 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
         selectNetwork(ieee14);
 
         List<Pair<String, String>> rows = networkInfoTable().getItems();
-        assertEquals("Buses (Bus/Breaker view)", rows.get(0).getKey());
-        assertEquals("Buses (Bus/Branch view)", rows.get(1).getKey());
+        assertEquals("Buses (Bus/Breaker View)", rows.get(0).getKey());
+        assertEquals("Buses (Bus/Branch View)", rows.get(1).getKey());
 
         long busBreakerTotal = ieee14.getVoltageLevelStream()
                 .flatMap(vl -> vl.getBusBreakerView().getBusStream()).count();
@@ -295,7 +295,7 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
 
         List<Pair<String, String>> rows = networkInfoTable().getItems();
         String boundaryLinesValue = rows.stream()
-                .filter(row -> row.getKey().equals("Boundary lines"))
+                .filter(row -> row.getKey().equals("Boundary Lines"))
                 .findFirst().orElseThrow().getValue();
         assertEquals("4 (4 paired in 2 tie lines, 0 unpaired)", boundaryLinesValue);
     }
@@ -323,7 +323,7 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
         selectNetwork(merged.getSubnetwork("N1"));
 
         List<Pair<String, String>> rows = networkInfoTable().getItems();
-        assertEquals("1", rows.stream().filter(row -> row.getKey().equals("Tie lines")).findFirst().orElseThrow().getValue());
+        assertEquals("1", rows.stream().filter(row -> row.getKey().equals("Tie Lines")).findFirst().orElseThrow().getValue());
     }
 
     @Test
