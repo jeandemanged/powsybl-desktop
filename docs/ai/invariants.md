@@ -29,14 +29,16 @@ UI resources
     are injected as `<fx:id>Controller`.
 12. Every `FXMLLoader` receives `Messages.bundle()`; every UI string exists in both `messages.properties` and
     `messages_fr.properties`; `reports*.properties` stay a separate bundle.
-13. Long-running and failed operations are reported through `NotificationsModel` (RUNNING → `replace` with outcome),
+13. No inline styles: no `setStyle(...)` in Java nor `style="..."` in FXML. Styling goes through classes in
+    `styles.css`; per-instance padding/spacing may stay layout properties (`<padding><Insets/></padding>`).
+14. Long-running and failed operations are reported through `NotificationsModel` (RUNNING → `replace` with outcome),
     failures also logged with SLF4J.
 
 Build
-14. Checkstyle must pass (sorted property keys, headers, formatting) — it fails the build.
-15. Do not add dependencies, re-add Monocle, set `testfx.headless`, or remove the `org.openjfx` exclusion from
+15. Checkstyle must pass (sorted property keys, headers, formatting) — it fails the build.
+16. Do not add dependencies, re-add Monocle, set `testfx.headless`, or remove the `org.openjfx` exclusion from
     `copy-dependencies`.
-16. New table views are added to `EditLockTest`; new views get a controller test (and an `*EmptyStateTest` for
+17. New table views are added to `EditLockTest`; new views get a controller test (and an `*EmptyStateTest` for
     table/detail views).
 
 ## Review checklist
@@ -46,7 +48,7 @@ Build
   in `NetworkStudy`?
 - Any PowSyBl call that can be slow on the FX thread? Any background job missing `AbstractNetworkTask`?
 - Any new editor not going through `TableColumnSupport`? Busy lock respected?
-- New strings in both bundles, keys sorted? FXML ids/handlers matching?
+- New strings in both bundles, keys sorted? FXML ids/handlers matching? Styling through `styles.css` classes, no inline style?
 - New SLD/NAD parameter field added to `DesktopParametersJson`'s `Binder`? Form calls its `onChange` hook?
 - New navigation type handled in `NavigationEvent.describe()` and `MainController.onNavigationEvent`?
 - Tests added/updated and `mvn clean install` (or affected tests + `mvn checkstyle:check@default`) run?
@@ -64,8 +66,6 @@ Build
   `setLogsModel(LogsModel)`; `MainController` uses constructor injection through a controller factory.
 - **Dialogs**: modal dialogs are built in code (static `show` helpers), secondary windows are FXML; there is no
   single dialog abstraction. Follow the form matching your need (see ui-conventions).
-- **Inline styles** exist in a few places (`SplashScreen`, `DropImportDialog`, `LogsViewController`) although
-  `styles.css` classes are the dominant pattern.
 - **Contingency list refresh** is explicit (`refreshInstantiatedTable()`) rather than listener-based, because
   `ListenerManager` cannot detach a single listener.
 - **File I/O on the FX thread**: contingency list and parameters JSON import/export run synchronously in event

@@ -142,12 +142,12 @@
                                 </TableView>
                             </center>
                         </BorderPane>
-                        <StackPane fx:id="noNetworkSelectedPane" style="-fx-background-color: derive(-fx-base, 10%);">
+                        <StackPane fx:id="noNetworkSelectedPane" styleClass="networks-selection-placeholder">
                             <children>
                                 <Label text="%networks.noNetworkSelected"/>
                             </children>
                         </StackPane>
-                        <StackPane fx:id="multipleNetworksSelectedPane" style="-fx-background-color: derive(-fx-base, 10%);">
+                        <StackPane fx:id="multipleNetworksSelectedPane" styleClass="networks-selection-placeholder">
                             <children>
                                 <Label text="%networks.multipleNetworksSelected"/>
                             </children>

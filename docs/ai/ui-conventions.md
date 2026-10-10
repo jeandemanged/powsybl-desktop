@@ -119,12 +119,17 @@ Two established forms:
 
 ## Styling and icons
 
-- One global stylesheet, `src/main/resources/com/powsybl/powsybldesktop/styles.css`, added to the main scene and to
-  each secondary window's root. Add style classes there (with a short comment saying why) rather than inline
-  `setStyle(...)`; a few inline styles exist (`SplashScreen`, `DropImportDialog`, `LogsViewController`) but style
-  classes are the dominant pattern (`getStyleClass().add(...)`).
-- Reusable classes: `right-aligned-column`, `centered-column`, `editable-cell`, `edit-error`/`edit-success`,
-  `icon-button`, `container-link`, `row-warn`/`row-error`, `alert-label`/`alert-icon`, `notification-*`.
+- One global stylesheet, `src/main/resources/com/powsybl/powsybldesktop/styles.css`, added to the main scene, to
+  each secondary window's root, to the notification overlay popup and to the splash screen. Dialogs owned by the main
+  window (`dialog.initOwner(...)`) and popups (tooltips, context menus) inherit it from their owner's scene; a window
+  with no owner must add it itself.
+- No inline styles (`setStyle(...)` / FXML `style="..."`): add a style class to `styles.css`, in the matching section
+  (generic, tables, status markers, then one section per view), with a short comment saying where it is used and why,
+  and apply it with `getStyleClass().add(...)` / `styleClass="..."`. Padding that varies per instance of a shared class stays a layout
+  property (`<padding><Insets/></padding>`, as for the `map-overlay` panels).
+- Reusable classes: `section-title`, `right-aligned-column`, `centered-column`, `editable-cell`,
+  `edit-error`/`edit-success`, `icon-button`, `container-link`, `row-warn`/`row-error`, `alert-label`/`alert-icon`,
+  `map-overlay`, `notification-*`.
 - Icons are Ikonli Material Design 2 (`ikonli-materialdesign2-pack`): `<FontIcon iconLiteral="mdi2a-arrow-left" iconSize="16"/>`
   in FXML or `new FontIcon("mdi2p-pencil")` in Java. Do not add another icon library.
 - ControlsFX is available and used (e.g. `Notifications` popups for edit errors).

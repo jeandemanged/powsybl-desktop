@@ -67,7 +67,7 @@ final class DropImportDialog {
             Map<String, List<Importer>> accepting = droppedPath.accepting();
             if (accepting.isEmpty()) {
                 Label unsupported = new Label(Messages.get("networks.drop.dialog.unsupported"));
-                unsupported.setStyle("-fx-text-fill: gray; -fx-font-style: italic;");
+                unsupported.getStyleClass().add("drop-import-unsupported");
                 action = unsupported;
             } else if (accepting.size() == 1) {
                 action = new Label(accepting.keySet().iterator().next());
@@ -111,7 +111,7 @@ final class DropImportDialog {
 
     private static Label header(String key) {
         Label label = new Label(Messages.get(key));
-        label.setStyle("-fx-font-weight: bold;");
+        label.getStyleClass().add("section-title");
         return label;
     }
 

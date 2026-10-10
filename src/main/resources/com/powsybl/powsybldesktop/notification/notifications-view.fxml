@@ -25,7 +25,7 @@
                 <Insets bottom="4.0" left="8.0" right="8.0" top="4.0"/>
             </padding>
             <children>
-                <Label style="-fx-font-weight: bold;" text="%notifications.title"/>
+                <Label styleClass="section-title" text="%notifications.title"/>
                 <Region HBox.hgrow="ALWAYS"/>
                 <Button mnemonicParsing="false" onAction="#onClearAll" text="%notifications.clearAll">
                     <graphic>

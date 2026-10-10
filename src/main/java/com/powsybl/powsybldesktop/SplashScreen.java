@@ -33,9 +33,12 @@ class SplashScreen {
         imageView.setPreserveRatio(true);
 
         StackPane root = new StackPane(imageView);
-        root.setStyle("-fx-background-color: white; -fx-padding: 20;");
+        root.getStyleClass().add("splash-screen");
 
-        stage.setScene(new Scene(root, Color.WHITE));
+        // not owned by the main window (shown before it), so it doesn't inherit its stylesheet
+        Scene scene = new Scene(root, Color.WHITE);
+        scene.getStylesheets().add(Objects.requireNonNull(MainApplication.class.getResource("styles.css")).toExternalForm());
+        stage.setScene(scene);
         stage.getIcons().add(new Image(Objects.requireNonNull(MainApplication.class.getResourceAsStream("logo.png"))));
         stage.setAlwaysOnTop(true);
         stage.centerOnScreen();

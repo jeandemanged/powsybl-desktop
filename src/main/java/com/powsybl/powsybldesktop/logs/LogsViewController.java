@@ -207,8 +207,7 @@ public class LogsViewController extends AbstractDisposableController {
         MessageCell() {
             tooltip.setWrapText(true);
             tooltip.setMaxWidth(1200);
-            // keeps multi-line tables aligned, as in the cell
-            tooltip.setStyle("-fx-font-family: monospace;");
+            tooltip.getStyleClass().add("log-message-tooltip");
         }
 
         @Override
