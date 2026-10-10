@@ -27,8 +27,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 /**
- * Parameters-view tab form for {@link GuiParameters}, the settings the map, logs and reports views also edit from
- * their own toolbars - see {@link AbstractDiagramParametersController} for the shared shape.
+ * Parameters-view tab form for {@link GuiParameters}: the decimal places of every displayed quantity, and the
+ * settings the map, logs and reports views also edit from their own toolbars - see {@link AbstractDiagramParametersController} for the shared shape.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -37,12 +37,14 @@ public class GuiParametersController extends AbstractDiagramParametersController
     private static final String CAT_MAP = "map";
     private static final String CAT_LOGS = "logs";
     private static final String CAT_REPORTS = "reports";
+    private static final String CAT_DECIMALS = "decimals";
 
     private final MapBaseVoltages mapBaseVoltages = new MapBaseVoltages();
 
     @FXML
     private void initialize() {
         Map<String, String> titles = new LinkedHashMap<>();
+        titles.put(CAT_DECIMALS, Messages.get("parameters.gui.category.decimals"));
         titles.put(CAT_MAP, Messages.get("main.toolbar.map"));
         titles.put(CAT_LOGS, Messages.get("main.toolbar.logs"));
         titles.put(CAT_REPORTS, Messages.get("main.toolbar.reports"));
@@ -58,6 +60,11 @@ public class GuiParametersController extends AbstractDiagramParametersController
 
     @Override
     protected void buildFields() {
+        for (GuiParameters.Quantity quantity : GuiParameters.Quantity.values()) {
+            String key = "parameters.gui.param.decimals." + quantity.name().toLowerCase(Locale.ROOT);
+            addIntField(CAT_DECIMALS, Messages.get(key + ".label"), Messages.get(key + ".tooltip"),
+                    p -> p.getDecimals(quantity), (p, v) -> p.setDecimals(quantity, v));
+        }
         addChoiceField(CAT_MAP, label("basemap"), List.of(MapController.Basemap.values()), MapController.Basemap::getLabel,
                 GuiParameters::getMapBasemap, GuiParameters::setMapBasemap);
         addBaseVoltagesField();

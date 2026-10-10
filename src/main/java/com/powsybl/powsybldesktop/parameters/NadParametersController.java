@@ -329,16 +329,6 @@ public class NadParametersController extends AbstractDiagramParametersController
     private void addLocalizationFields() {
         addStringField(CAT_LOCALIZATION, sharedLabel("languageTag"), sharedTooltip("languageTag"),
                 p -> p.getSvgParameters().getLanguageTag(), (p, v) -> p.getSvgParameters().setLanguageTag(v));
-        addIntField(CAT_LOCALIZATION, sharedLabel("voltageValuePrecision"), sharedTooltip("voltageValuePrecision"),
-                p -> p.getSvgParameters().getVoltageValuePrecision(), (p, v) -> p.getSvgParameters().setVoltageValuePrecision(v));
-        addIntField(CAT_LOCALIZATION, sharedLabel("powerValuePrecision"), sharedTooltip("powerValuePrecision"),
-                p -> p.getSvgParameters().getPowerValuePrecision(), (p, v) -> p.getSvgParameters().setPowerValuePrecision(v));
-        addIntField(CAT_LOCALIZATION, sharedLabel("angleValuePrecision"), sharedTooltip("angleValuePrecision"),
-                p -> p.getSvgParameters().getAngleValuePrecision(), (p, v) -> p.getSvgParameters().setAngleValuePrecision(v));
-        addIntField(CAT_LOCALIZATION, sharedLabel("currentValuePrecision"), sharedTooltip("currentValuePrecision"),
-                p -> p.getSvgParameters().getCurrentValuePrecision(), (p, v) -> p.getSvgParameters().setCurrentValuePrecision(v));
-        addIntField(CAT_LOCALIZATION, sharedLabel("percentageValuePrecision"), sharedTooltip("percentageValuePrecision"),
-                p -> p.getSvgParameters().getPercentageValuePrecision(), (p, v) -> p.getSvgParameters().setPercentageValuePrecision(v));
         addStringField(CAT_LOCALIZATION, sharedLabel("undefinedValueSymbol"), sharedTooltip("undefinedValueSymbol"),
                 p -> p.getSvgParameters().getUndefinedValueSymbol(), (p, v) -> p.getSvgParameters().setUndefinedValueSymbol(v));
     }

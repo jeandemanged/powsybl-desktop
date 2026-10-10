@@ -21,6 +21,7 @@ import com.powsybl.powsybldesktop.navigation.TieLineNavigationState;
 import com.powsybl.powsybldesktop.network.NetworkTieLines;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
 import javafx.scene.control.Hyperlink;
@@ -126,28 +127,28 @@ public class TieLinesController extends AbstractEquipmentTableController<TieLine
                 tieLine -> tieLine.getTerminal1().getBusView().getBus(), tieLine -> tieLine.getTerminal2().getBusView().getBus(),
                 Bus::getSynchronousComponent);
 
-        TableColumnSupport.configureNullableDoubleColumn(rColumn, TieLine::getR, 2);
-        TableColumnSupport.configureNullableDoubleColumn(xColumn, TieLine::getX, 2);
-        TableColumnSupport.configureNullableDoubleColumn(g1Column, TieLine::getG1, 6);
-        TableColumnSupport.configureNullableDoubleColumn(b1Column, TieLine::getB1, 6);
-        TableColumnSupport.configureNullableDoubleColumn(g2Column, TieLine::getG2, 6);
-        TableColumnSupport.configureNullableDoubleColumn(b2Column, TieLine::getB2, 6);
+        TableColumnSupport.configureNullableDoubleColumn(rColumn, TieLine::getR, format(GuiParameters.Quantity.IMPEDANCE));
+        TableColumnSupport.configureNullableDoubleColumn(xColumn, TieLine::getX, format(GuiParameters.Quantity.IMPEDANCE));
+        TableColumnSupport.configureNullableDoubleColumn(g1Column, TieLine::getG1, format(GuiParameters.Quantity.ADMITTANCE));
+        TableColumnSupport.configureNullableDoubleColumn(b1Column, TieLine::getB1, format(GuiParameters.Quantity.ADMITTANCE));
+        TableColumnSupport.configureNullableDoubleColumn(g2Column, TieLine::getG2, format(GuiParameters.Quantity.ADMITTANCE));
+        TableColumnSupport.configureNullableDoubleColumn(b2Column, TieLine::getB2, format(GuiParameters.Quantity.ADMITTANCE));
 
         TableColumnSupport.configureTwoSidedDoubleColumn(pColumn,
-                tieLine -> tieLine.getTerminal1().getP(), tieLine -> tieLine.getTerminal2().getP());
+                tieLine -> tieLine.getTerminal1().getP(), tieLine -> tieLine.getTerminal2().getP(), format(GuiParameters.Quantity.POWER));
         TableColumnSupport.configureTwoSidedDoubleColumn(qColumn,
-                tieLine -> tieLine.getTerminal1().getQ(), tieLine -> tieLine.getTerminal2().getQ());
+                tieLine -> tieLine.getTerminal1().getQ(), tieLine -> tieLine.getTerminal2().getQ(), format(GuiParameters.Quantity.POWER));
         TableColumnSupport.configureTwoSidedDoubleColumn(iColumn,
-                tieLine -> tieLine.getTerminal1().getI(), tieLine -> tieLine.getTerminal2().getI());
+                tieLine -> tieLine.getTerminal1().getI(), tieLine -> tieLine.getTerminal2().getI(), format(GuiParameters.Quantity.CURRENT));
         TableColumnSupport.configureOverloadColumn(patlIViolationColumn, TieLine::isOverloaded);
 
         // the boundary (the shared fictitious X-node bus) is a single point, so both boundary lines report the
         // same values here - reading them off boundary line 1 is enough, unlike the per-side P/Q columns above
-        TableColumnSupport.configureNullableDoubleColumn(pBoundaryColumn, tieLine -> tieLine.getBoundaryLine1().getBoundary().getP());
-        TableColumnSupport.configureNullableDoubleColumn(qBoundaryColumn, tieLine -> tieLine.getBoundaryLine1().getBoundary().getQ());
-        TableColumnSupport.configureNullableDoubleColumn(iBoundaryColumn, tieLine -> tieLine.getBoundaryLine1().getBoundary().getI());
-        TableColumnSupport.configureNullableDoubleColumn(vBoundaryColumn, tieLine -> tieLine.getBoundaryLine1().getBoundary().getV());
-        TableColumnSupport.configureNullableDoubleColumn(angleBoundaryColumn, tieLine -> tieLine.getBoundaryLine1().getBoundary().getAngle());
+        TableColumnSupport.configureNullableDoubleColumn(pBoundaryColumn, tieLine -> tieLine.getBoundaryLine1().getBoundary().getP(), format(GuiParameters.Quantity.POWER));
+        TableColumnSupport.configureNullableDoubleColumn(qBoundaryColumn, tieLine -> tieLine.getBoundaryLine1().getBoundary().getQ(), format(GuiParameters.Quantity.POWER));
+        TableColumnSupport.configureNullableDoubleColumn(iBoundaryColumn, tieLine -> tieLine.getBoundaryLine1().getBoundary().getI(), format(GuiParameters.Quantity.CURRENT));
+        TableColumnSupport.configureNullableDoubleColumn(vBoundaryColumn, tieLine -> tieLine.getBoundaryLine1().getBoundary().getV(), format(GuiParameters.Quantity.VOLTAGE));
+        TableColumnSupport.configureNullableDoubleColumn(angleBoundaryColumn, tieLine -> tieLine.getBoundaryLine1().getBoundary().getAngle(), format(GuiParameters.Quantity.ANGLE));
 
         columnVisibilityToolbarController.configure(List.of(
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.parameters", false,

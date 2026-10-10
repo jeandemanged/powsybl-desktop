@@ -17,6 +17,7 @@ import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.StaticVarCompensatorNavigationState;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
@@ -109,23 +110,23 @@ public class StaticVarCompensatorsController extends AbstractEquipmentTableContr
                 List.of(StaticVarCompensator.RegulationMode.values()), REGULATION_MODE_FORMAT);
 
         targetVColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getVoltageSetpoint()));
-        TableColumnSupport.configureDoubleColumn(targetVColumn);
+        TableColumnSupport.configureDoubleColumn(targetVColumn, format(GuiParameters.Quantity.VOLTAGE));
         targetVColumn.setOnEditCommit(event -> event.getRowValue().setVoltageSetpoint(event.getNewValue()));
 
         targetQColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getReactivePowerSetpoint()));
-        TableColumnSupport.configureDoubleColumn(targetQColumn);
+        TableColumnSupport.configureDoubleColumn(targetQColumn, format(GuiParameters.Quantity.POWER));
         targetQColumn.setOnEditCommit(event -> event.getRowValue().setReactivePowerSetpoint(event.getNewValue()));
 
         qColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTerminal().getQ()));
-        TableColumnSupport.configureDoubleColumn(qColumn);
+        TableColumnSupport.configureDoubleColumn(qColumn, format(GuiParameters.Quantity.POWER));
 
         iColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTerminal().getI()));
-        TableColumnSupport.configureDoubleColumn(iColumn);
+        TableColumnSupport.configureDoubleColumn(iColumn, format(GuiParameters.Quantity.CURRENT));
 
         TableColumnSupport.configureNullableDoubleColumn(regulatedBusVoltageColumn, staticVarCompensator -> {
             Bus bus = staticVarCompensator.getRegulatingTerminal().getBusView().getBus();
             return bus == null ? null : bus.getV();
-        });
+        }, format(GuiParameters.Quantity.VOLTAGE));
 
         columnVisibilityToolbarController.configure(List.of(
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,

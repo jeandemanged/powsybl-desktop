@@ -8,9 +8,8 @@
 package com.powsybl.powsybldesktop.network.tables;
 
 import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
-
-import java.util.Locale;
 
 /**
  * Whether a measured voltage magnitude breaches its voltage level's configured
@@ -24,13 +23,13 @@ import java.util.Locale;
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 final class VoltageViolation implements Comparable<VoltageViolation> {
-    private static final VoltageViolation NONE = new VoltageViolation(null, 0, Double.NaN);
+    private static final VoltageViolation NONE = new VoltageViolation(null, 100, Double.NaN);
 
     private final String messageKey;
-    private final long percentOfNominal;
+    private final double percentOfNominal;
     private final double limit;
 
-    private VoltageViolation(String messageKey, long percentOfNominal, double limit) {
+    private VoltageViolation(String messageKey, double percentOfNominal, double limit) {
         this.messageKey = messageKey;
         this.percentOfNominal = percentOfNominal;
         this.limit = limit;
@@ -40,7 +39,7 @@ final class VoltageViolation implements Comparable<VoltageViolation> {
         if (Double.isNaN(v)) {
             return NONE;
         }
-        long percentOfNominal = Math.round(v / voltageLevel.getNominalV() * 100);
+        double percentOfNominal = v / voltageLevel.getNominalV() * 100;
         double highVoltageLimit = voltageLevel.getHighVoltageLimit();
         if (!Double.isNaN(highVoltageLimit) && v > highVoltageLimit) {
             return new VoltageViolation("buses.voltageViolation.overvoltage", percentOfNominal, highVoltageLimit);
@@ -56,20 +55,20 @@ final class VoltageViolation implements Comparable<VoltageViolation> {
         return messageKey != null;
     }
 
-    String text() {
-        return Messages.get(messageKey, percentOfNominal);
+    String text(GuiParameters guiParameters) {
+        return Messages.get(messageKey, guiParameters.format(GuiParameters.Quantity.PERCENTAGE, percentOfNominal));
     }
 
-    String limitTooltip() {
-        return Messages.get("buses.voltageViolation.limitTooltip", String.format(Locale.ROOT, "%.2f", limit));
+    String limitTooltip(GuiParameters guiParameters) {
+        return Messages.get("buses.voltageViolation.limitTooltip", guiParameters.format(GuiParameters.Quantity.VOLTAGE, limit));
     }
 
     @Override
     public int compareTo(VoltageViolation other) {
-        return Long.compare(distanceFromNominal(), other.distanceFromNominal());
+        return Double.compare(distanceFromNominal(), other.distanceFromNominal());
     }
 
-    private long distanceFromNominal() {
+    private double distanceFromNominal() {
         return isViolation() ? Math.abs(percentOfNominal - 100) : 0;
     }
 }

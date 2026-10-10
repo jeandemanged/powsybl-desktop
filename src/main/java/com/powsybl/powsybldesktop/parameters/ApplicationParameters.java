@@ -61,11 +61,6 @@ public record ApplicationParameters(Map<String, Properties> networkImport,
                         .setActivePowerUnit("MW")
                         .setReactivePowerUnit("MVAr")
                         .setCurrentUnit("A")
-                        .setPowerValuePrecision(2)
-                        .setCurrentValuePrecision(1)
-                        .setVoltageValuePrecision(2)
-                        .setAngleValuePrecision(2)
-                        .setPercentageValuePrecision(1)
                         .setBusesLegendAdded(true)
                         .setTooltipEnabled(true))
                 .setLayoutParameters(new LayoutParameters());

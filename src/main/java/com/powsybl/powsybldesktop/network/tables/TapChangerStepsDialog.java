@@ -11,6 +11,7 @@ import com.powsybl.commons.PowsyblException;
 import com.powsybl.iidm.network.PhaseTapChanger;
 import com.powsybl.iidm.network.PhaseTapChangerStep;
 import com.powsybl.iidm.network.TapChanger;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.geometry.Insets;
@@ -30,7 +31,6 @@ import javafx.util.StringConverter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -44,9 +44,6 @@ import java.util.function.Function;
  */
 final class TapChangerStepsDialog {
 
-    private static final StringConverter<Double> DEFAULT_FORMAT = valueFormat("%.2f");
-    private static final StringConverter<Double> RHO_FORMAT = valueFormat("%.6f");
-
     // Duplicated from TableColumnSupport's private constant rather than exposing it, since it's just the CSS
     // class name, not shared behavior.
     private static final String EDITABLE_CELL_STYLE_CLASS = "editable-cell";
@@ -54,7 +51,7 @@ final class TapChangerStepsDialog {
     private TapChangerStepsDialog() {
     }
 
-    static void show(Window owner, String transformerName, Integer side, TapChanger<?, ?, ?, ?> tapChanger) {
+    static void show(Window owner, String transformerName, Integer side, TapChanger<?, ?, ?, ?> tapChanger, GuiParameters guiParameters) {
         boolean phase = tapChanger instanceof PhaseTapChanger;
 
         Dialog<Void> dialog = new Dialog<>();
@@ -80,23 +77,23 @@ final class TapChangerStepsDialog {
 
         stepsTableView.getColumns().add(readOnlyColumn("transformers.tapChanger.column.tapPosition", String::valueOf));
         if (phase) {
-            stepsTableView.getColumns().add(editableColumn("transformers.tapChanger.column.alpha", DEFAULT_FORMAT,
+            stepsTableView.getColumns().add(editableColumn("transformers.tapChanger.column.alpha", valueFormat(guiParameters, GuiParameters.Quantity.ANGLE),
                     position -> alphaStep(tapChanger, position).getAlpha(),
                     (position, value) -> alphaStep(tapChanger, position).setAlpha(value), stepsTableView));
         }
-        stepsTableView.getColumns().add(editableColumn("transformers.tapChanger.column.rho", RHO_FORMAT,
+        stepsTableView.getColumns().add(editableColumn("transformers.tapChanger.column.rho", valueFormat(guiParameters, GuiParameters.Quantity.RHO),
                 position -> tapChanger.getStep(position).getRho(),
                 (position, value) -> tapChanger.getStep(position).setRho(value), stepsTableView));
-        stepsTableView.getColumns().add(editableColumn("transformers.tapChanger.column.r", DEFAULT_FORMAT,
+        stepsTableView.getColumns().add(editableColumn("transformers.tapChanger.column.r", valueFormat(guiParameters, GuiParameters.Quantity.PERCENTAGE),
                 position -> tapChanger.getStep(position).getR(),
                 (position, value) -> tapChanger.getStep(position).setR(value), stepsTableView));
-        stepsTableView.getColumns().add(editableColumn("transformers.tapChanger.column.x", DEFAULT_FORMAT,
+        stepsTableView.getColumns().add(editableColumn("transformers.tapChanger.column.x", valueFormat(guiParameters, GuiParameters.Quantity.PERCENTAGE),
                 position -> tapChanger.getStep(position).getX(),
                 (position, value) -> tapChanger.getStep(position).setX(value), stepsTableView));
-        stepsTableView.getColumns().add(editableColumn("transformers.tapChanger.column.g", DEFAULT_FORMAT,
+        stepsTableView.getColumns().add(editableColumn("transformers.tapChanger.column.g", valueFormat(guiParameters, GuiParameters.Quantity.PERCENTAGE),
                 position -> tapChanger.getStep(position).getG(),
                 (position, value) -> tapChanger.getStep(position).setG(value), stepsTableView));
-        stepsTableView.getColumns().add(editableColumn("transformers.tapChanger.column.b", DEFAULT_FORMAT,
+        stepsTableView.getColumns().add(editableColumn("transformers.tapChanger.column.b", valueFormat(guiParameters, GuiParameters.Quantity.PERCENTAGE),
                 position -> tapChanger.getStep(position).getB(),
                 (position, value) -> tapChanger.getStep(position).setB(value), stepsTableView));
         stepsTableView.setPrefSize(500, 300);
@@ -157,11 +154,11 @@ final class TapChangerStepsDialog {
         return column;
     }
 
-    private static StringConverter<Double> valueFormat(String pattern) {
+    private static StringConverter<Double> valueFormat(GuiParameters guiParameters, GuiParameters.Quantity quantity) {
         return new StringConverter<>() {
             @Override
             public String toString(Double value) {
-                return String.format(Locale.ROOT, pattern, value);
+                return guiParameters.format(quantity, value);
             }
 
             @Override

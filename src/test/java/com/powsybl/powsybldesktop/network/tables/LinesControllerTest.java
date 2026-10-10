@@ -18,6 +18,7 @@ import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.event.ActionEvent;
@@ -189,12 +190,16 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
                 ((Label) scBox.getChildren().get(1)).getText());
 
         VBox pBox = cellBox(controller.pColumn, row);
-        assertEquals(doubleText(line.getTerminal1().getP()), ((Label) pBox.getChildren().get(0)).getText());
-        assertEquals(doubleText(line.getTerminal2().getP()), ((Label) pBox.getChildren().get(1)).getText());
+        assertEquals(powerText(line.getTerminal1().getP()), ((Label) pBox.getChildren().get(0)).getText());
+        assertEquals(powerText(line.getTerminal2().getP()), ((Label) pBox.getChildren().get(1)).getText());
 
         VBox qBox = cellBox(controller.qColumn, row);
-        assertEquals(doubleText(line.getTerminal1().getQ()), ((Label) qBox.getChildren().get(0)).getText());
-        assertEquals(doubleText(line.getTerminal2().getQ()), ((Label) qBox.getChildren().get(1)).getText());
+        assertEquals(powerText(line.getTerminal1().getQ()), ((Label) qBox.getChildren().get(0)).getText());
+        assertEquals(powerText(line.getTerminal2().getQ()), ((Label) qBox.getChildren().get(1)).getText());
+    }
+
+    private static String powerText(double value) {
+        return Double.isNaN(value) ? "-" : String.format(Locale.ROOT, "%.1f", value);
     }
 
     private static String doubleText(double value) {
@@ -218,6 +223,20 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals(sixDecimalText(line.getB1()), labelOf(cellBox(controller.b1Column, row), 0).getText());
         assertEquals(sixDecimalText(line.getG2()), labelOf(cellBox(controller.g2Column, row), 0).getText());
         assertEquals(sixDecimalText(line.getB2()), labelOf(cellBox(controller.b2Column, row), 0).getText());
+    }
+
+    @Test
+    void columnsFollowGuiParametersDecimals() {
+        interact(() -> controller.rColumn.setVisible(true));
+        Line line = network.getLineStream().findFirst().orElseThrow();
+        int row = rowOf(line);
+
+        interact(() -> {
+            mainModel.getParametersModel().getGuiParameters().setDecimals(GuiParameters.Quantity.IMPEDANCE, 4);
+            mainModel.getParametersModel().guiParametersChanged();
+        });
+
+        assertEquals(String.format(Locale.ROOT, "%.4f", line.getR()), labelOf(cellBox(controller.rColumn, row), 0).getText());
     }
 
     @Test

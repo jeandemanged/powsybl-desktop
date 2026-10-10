@@ -38,6 +38,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -269,11 +270,6 @@ public final class ApplicationParametersJson {
         b.string("prefixId", p::getPrefixId, p::setPrefixId);
         b.string("languageTag", p::getLanguageTag, p::setLanguageTag);
         b.string("undefinedValueSymbol", p::getUndefinedValueSymbol, p::setUndefinedValueSymbol);
-        b.integer("voltageValuePrecision", p::getVoltageValuePrecision, p::setVoltageValuePrecision);
-        b.integer("powerValuePrecision", p::getPowerValuePrecision, p::setPowerValuePrecision);
-        b.integer("angleValuePrecision", p::getAngleValuePrecision, p::setAngleValuePrecision);
-        b.integer("currentValuePrecision", p::getCurrentValuePrecision, p::setCurrentValuePrecision);
-        b.integer("percentageValuePrecision", p::getPercentageValuePrecision, p::setPercentageValuePrecision);
         b.string("activePowerUnit", p::getActivePowerUnit, p::setActivePowerUnit);
         b.string("reactivePowerUnit", p::getReactivePowerUnit, p::setReactivePowerUnit);
         b.string("currentUnit", p::getCurrentUnit, p::setCurrentUnit);
@@ -377,11 +373,6 @@ public final class ApplicationParametersJson {
         b.number("injectionCircleRadius", p::getInjectionCircleRadius, p::setInjectionCircleRadius);
         b.bool("voltageLevelLegendsIncluded", p::isVoltageLevelLegendsIncluded, p::setVoltageLevelLegendsIncluded);
         b.string("languageTag", p::getLanguageTag, p::setLanguageTag);
-        b.integer("voltageValuePrecision", p::getVoltageValuePrecision, p::setVoltageValuePrecision);
-        b.integer("powerValuePrecision", p::getPowerValuePrecision, p::setPowerValuePrecision);
-        b.integer("angleValuePrecision", p::getAngleValuePrecision, p::setAngleValuePrecision);
-        b.integer("currentValuePrecision", p::getCurrentValuePrecision, p::setCurrentValuePrecision);
-        b.integer("percentageValuePrecision", p::getPercentageValuePrecision, p::setPercentageValuePrecision);
         b.string("undefinedValueSymbol", p::getUndefinedValueSymbol, p::setUndefinedValueSymbol);
         b.bool("highlightGraph", p::isHighlightGraph, p::setHighlightGraph);
     }
@@ -435,6 +426,19 @@ public final class ApplicationParametersJson {
         logs.bool("newestOnTop", p::isLogsNewestOnTop, p::setLogsNewestOnTop);
         Binder reports = b.child("reports");
         reports.string("minSeverity", p::getReportsMinSeverity, p::setReportsMinSeverity);
+        Binder decimals = b.child("decimals");
+        for (GuiParameters.Quantity quantity : GuiParameters.Quantity.values()) {
+            decimals.integer(camelCase(quantity.name()), () -> p.getDecimals(quantity), v -> p.setDecimals(quantity, v));
+        }
+    }
+
+    // e.g. LIMIT_REDUCTION -> limitReduction, like every other key of the file
+    private static String camelCase(String constant) {
+        StringBuilder sb = new StringBuilder();
+        for (String word : constant.toLowerCase(Locale.ROOT).split("_")) {
+            sb.append(sb.isEmpty() ? word : Character.toUpperCase(word.charAt(0)) + word.substring(1));
+        }
+        return sb.toString();
     }
 
     // ----- Binders -----

@@ -20,6 +20,7 @@ import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.TieLineNavigationState;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
@@ -138,59 +139,59 @@ public class BoundaryLinesController extends AbstractEquipmentTableController<Bo
                 boundaryLine -> boundaryLine.getTerminal().getBusView().getBus(), Bus::getSynchronousComponent);
 
         rColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getR()));
-        TableColumnSupport.configureDoubleColumn(rColumn, 2);
+        TableColumnSupport.configureDoubleColumn(rColumn, format(GuiParameters.Quantity.IMPEDANCE));
         rColumn.setOnEditCommit(event -> event.getRowValue().setR(event.getNewValue()));
 
         xColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getX()));
-        TableColumnSupport.configureDoubleColumn(xColumn, 2);
+        TableColumnSupport.configureDoubleColumn(xColumn, format(GuiParameters.Quantity.IMPEDANCE));
         xColumn.setOnEditCommit(event -> event.getRowValue().setX(event.getNewValue()));
 
         gColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getG()));
-        TableColumnSupport.configureDoubleColumn(gColumn, 6);
+        TableColumnSupport.configureDoubleColumn(gColumn, format(GuiParameters.Quantity.ADMITTANCE));
         gColumn.setOnEditCommit(event -> event.getRowValue().setG(event.getNewValue()));
 
         bColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getB()));
-        TableColumnSupport.configureDoubleColumn(bColumn, 6);
+        TableColumnSupport.configureDoubleColumn(bColumn, format(GuiParameters.Quantity.ADMITTANCE));
         bColumn.setOnEditCommit(event -> event.getRowValue().setB(event.getNewValue()));
 
         p0Column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getP0()));
-        TableColumnSupport.configureDoubleColumn(p0Column);
+        TableColumnSupport.configureDoubleColumn(p0Column, format(GuiParameters.Quantity.POWER));
         p0Column.setOnEditCommit(event -> event.getRowValue().setP0(event.getNewValue()));
 
         q0Column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getQ0()));
-        TableColumnSupport.configureDoubleColumn(q0Column);
+        TableColumnSupport.configureDoubleColumn(q0Column, format(GuiParameters.Quantity.POWER));
         q0Column.setOnEditCommit(event -> event.getRowValue().setQ0(event.getNewValue()));
 
         TableColumnSupport.configureNullableEditableDoubleColumn(minPColumn,
                 boundaryLine -> generationDouble(boundaryLine, BoundaryLine.Generation::getMinP),
-                (boundaryLine, value) -> boundaryLine.getGeneration().setMinP(value));
+                (boundaryLine, value) -> boundaryLine.getGeneration().setMinP(value), format(GuiParameters.Quantity.POWER));
         TableColumnSupport.configureNullableEditableDoubleColumn(maxPColumn,
                 boundaryLine -> generationDouble(boundaryLine, BoundaryLine.Generation::getMaxP),
-                (boundaryLine, value) -> boundaryLine.getGeneration().setMaxP(value));
+                (boundaryLine, value) -> boundaryLine.getGeneration().setMaxP(value), format(GuiParameters.Quantity.POWER));
         TableColumnSupport.configureNullableEditableBooleanColumn(voltageRegulatorOnColumn,
                 boundaryLine -> generationBoolean(boundaryLine, BoundaryLine.Generation::isVoltageRegulationOn),
                 (boundaryLine, value) -> boundaryLine.getGeneration().setVoltageRegulationOn(value));
         TableColumnSupport.configureNullableEditableDoubleColumn(targetVColumn,
                 boundaryLine -> generationDouble(boundaryLine, BoundaryLine.Generation::getTargetV),
-                (boundaryLine, value) -> boundaryLine.getGeneration().setTargetV(value));
+                (boundaryLine, value) -> boundaryLine.getGeneration().setTargetV(value), format(GuiParameters.Quantity.VOLTAGE));
         TableColumnSupport.configureNullableEditableDoubleColumn(targetQColumn,
                 boundaryLine -> generationDouble(boundaryLine, BoundaryLine.Generation::getTargetQ),
-                (boundaryLine, value) -> boundaryLine.getGeneration().setTargetQ(value));
+                (boundaryLine, value) -> boundaryLine.getGeneration().setTargetQ(value), format(GuiParameters.Quantity.POWER));
 
         pNetColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTerminal().getP()));
-        TableColumnSupport.configureDoubleColumn(pNetColumn);
+        TableColumnSupport.configureDoubleColumn(pNetColumn, format(GuiParameters.Quantity.POWER));
 
         qNetColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTerminal().getQ()));
-        TableColumnSupport.configureDoubleColumn(qNetColumn);
+        TableColumnSupport.configureDoubleColumn(qNetColumn, format(GuiParameters.Quantity.POWER));
 
         iNetColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTerminal().getI()));
-        TableColumnSupport.configureDoubleColumn(iNetColumn);
+        TableColumnSupport.configureDoubleColumn(iNetColumn, format(GuiParameters.Quantity.CURRENT));
 
-        TableColumnSupport.configureNullableDoubleColumn(pBoundaryColumn, boundaryLine -> boundaryLine.getBoundary().getP());
-        TableColumnSupport.configureNullableDoubleColumn(qBoundaryColumn, boundaryLine -> boundaryLine.getBoundary().getQ());
-        TableColumnSupport.configureNullableDoubleColumn(iBoundaryColumn, boundaryLine -> boundaryLine.getBoundary().getI());
-        TableColumnSupport.configureNullableDoubleColumn(vBoundaryColumn, boundaryLine -> boundaryLine.getBoundary().getV());
-        TableColumnSupport.configureNullableDoubleColumn(angleBoundaryColumn, boundaryLine -> boundaryLine.getBoundary().getAngle());
+        TableColumnSupport.configureNullableDoubleColumn(pBoundaryColumn, boundaryLine -> boundaryLine.getBoundary().getP(), format(GuiParameters.Quantity.POWER));
+        TableColumnSupport.configureNullableDoubleColumn(qBoundaryColumn, boundaryLine -> boundaryLine.getBoundary().getQ(), format(GuiParameters.Quantity.POWER));
+        TableColumnSupport.configureNullableDoubleColumn(iBoundaryColumn, boundaryLine -> boundaryLine.getBoundary().getI(), format(GuiParameters.Quantity.CURRENT));
+        TableColumnSupport.configureNullableDoubleColumn(vBoundaryColumn, boundaryLine -> boundaryLine.getBoundary().getV(), format(GuiParameters.Quantity.VOLTAGE));
+        TableColumnSupport.configureNullableDoubleColumn(angleBoundaryColumn, boundaryLine -> boundaryLine.getBoundary().getAngle(), format(GuiParameters.Quantity.ANGLE));
         TableColumnSupport.configureOverloadColumn(patlIViolationColumn, BoundaryLinesController::isOverloaded);
 
         columnVisibilityToolbarController.configure(List.of(

@@ -20,6 +20,7 @@ import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.ShuntCompensatorNavigationState;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
@@ -103,7 +104,7 @@ public class ShuntCompensatorsController extends AbstractEquipmentTableControlle
         typeColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(typeLabel(cellData.getValue())));
 
         TableColumnSupport.configureInfoButtonColumn(modelTypeColumn, shuntCompensator -> modelTypeLabel(shuntCompensator.getModelType()),
-                "shuntCompensators.sections.tooltip", ShuntCompensatorSectionsDialog::show);
+                "shuntCompensators.sections.tooltip", (owner, shuntCompensator) -> ShuntCompensatorSectionsDialog.show(owner, shuntCompensator, guiParameters()));
 
         TableColumnSupport.configureSpinnerIntColumn(sectionColumn, ShuntCompensator::getSectionCount,
                 ShuntCompensator::getMaximumSectionCount, ShuntCompensator::setSectionCount);
@@ -113,28 +114,28 @@ public class ShuntCompensatorsController extends AbstractEquipmentTableControlle
                 ShuntCompensator::isVoltageRegulatorOn, ShuntCompensator::setVoltageRegulatorOn);
 
         targetVColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTargetV()));
-        TableColumnSupport.configureDoubleColumn(targetVColumn);
+        TableColumnSupport.configureDoubleColumn(targetVColumn, format(GuiParameters.Quantity.VOLTAGE));
         targetVColumn.setOnEditCommit(event -> event.getRowValue().setTargetV(event.getNewValue()));
 
         targetDeadbandColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTargetDeadband()));
-        TableColumnSupport.configureDoubleColumn(targetDeadbandColumn);
+        TableColumnSupport.configureDoubleColumn(targetDeadbandColumn, format(GuiParameters.Quantity.VOLTAGE));
         targetDeadbandColumn.setOnEditCommit(event -> event.getRowValue().setTargetDeadband(event.getNewValue()));
 
         TableColumnSupport.configureNullableDoubleColumn(regulatedBusVoltageColumn, shuntCompensator -> {
             Bus bus = shuntCompensator.getRegulatingTerminal().getBusView().getBus();
             return bus == null ? null : bus.getV();
-        });
+        }, format(GuiParameters.Quantity.VOLTAGE));
 
         TableColumnSupport.configureNullableIntColumn(solvedSectionColumn, ShuntCompensator::getSolvedSectionCount);
 
         pColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTerminal().getP()));
-        TableColumnSupport.configureDoubleColumn(pColumn);
+        TableColumnSupport.configureDoubleColumn(pColumn, format(GuiParameters.Quantity.POWER));
 
         qColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTerminal().getQ()));
-        TableColumnSupport.configureDoubleColumn(qColumn);
+        TableColumnSupport.configureDoubleColumn(qColumn, format(GuiParameters.Quantity.POWER));
 
         iColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTerminal().getI()));
-        TableColumnSupport.configureDoubleColumn(iColumn);
+        TableColumnSupport.configureDoubleColumn(iColumn, format(GuiParameters.Quantity.CURRENT));
 
         columnVisibilityToolbarController.configure(List.of(
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,

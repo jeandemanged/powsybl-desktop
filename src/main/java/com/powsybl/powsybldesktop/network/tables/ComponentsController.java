@@ -14,6 +14,7 @@ import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.utils.TableAutoFitLimiter;
@@ -33,10 +34,10 @@ import javafx.scene.control.TableView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.util.StringConverter;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -102,7 +103,7 @@ public class ComponentsController extends AbstractDisposableController {
         configureReferenceBusIdColumn();
         configureSlackBusesColumn();
         TableColumnSupport.configureNullableDoubleColumn(distributedActivePowerColumn,
-                row -> row.componentResult() == null ? null : row.componentResult().getDistributedActivePower());
+                row -> row.componentResult() == null ? null : row.componentResult().getDistributedActivePower(), format(GuiParameters.Quantity.POWER));
     }
 
     private void configureStatusColumn() {
@@ -189,7 +190,7 @@ public class ComponentsController extends AbstractDisposableController {
         VBox box = new VBox();
         box.setAlignment(Pos.CENTER_LEFT);
         for (LoadFlowResult.SlackBusResult slackBusResult : slackBusResults) {
-            Label mismatch = new Label(String.format(Locale.ROOT, ": %.3f", slackBusResult.getActivePowerMismatch()));
+            Label mismatch = new Label(": " + guiParameters().format(GuiParameters.Quantity.POWER, slackBusResult.getActivePowerMismatch()));
             box.getChildren().add(new HBox(busIdNode(slackBusResult.getId()), mismatch));
         }
         return box;
@@ -216,6 +217,8 @@ public class ComponentsController extends AbstractDisposableController {
         updateComponents();
         listenerManager.listen(this.mainModel.networkProperty(), (observable, oldValue, newValue) -> updateComponents());
         listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> updateComponents());
+        // for the decimal places, read by the cells on every render
+        listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> componentsTableView.refresh());
     }
 
     private void updateComponents() {
@@ -247,5 +250,14 @@ public class ComponentsController extends AbstractDisposableController {
                         && result.getSynchronousComponentNum() == key.synchronousComponentNum())
                 .findFirst()
                 .orElse(null);
+    }
+
+    // read fresh: a parameters reset/import replaces the GuiParameters instance
+    private GuiParameters guiParameters() {
+        return mainModel.getParametersModel().getGuiParameters();
+    }
+
+    private StringConverter<Double> format(GuiParameters.Quantity quantity) {
+        return TableColumnSupport.doubleFormat(this::guiParameters, quantity);
     }
 }

@@ -72,6 +72,12 @@ are pinned to `powsybl-core.version` (7.3.0) because they are outside the BOM. R
   `ParametersModel.guiParametersChanged()`; every side listens to `guiParametersRevisionProperty()` to re-apply them
   (also after a reset or import, which replace the instance). Read them through
   `ParametersModel.getGuiParameters()` each time rather than keeping a reference.
+- `GuiParameters` also hold the decimal places of every displayed quantity (`GuiParameters.Quantity`: voltage, angle,
+  power (MW, MVAr and MVA alike), current, percentage, Ω, S, rho, limit reduction), the **single source** for tables,
+  dialogs, tooltips, the substations tree and both diagrams. SLD/NAD `SvgParameters` precisions are neither edited nor
+  saved: `SubstationsController` copies the GUI decimals into each render's parameters copy. Tables format through `TableColumnSupport.doubleFormat(supplier,
+  quantity)`, which reads the decimals on every render, and refresh on each GUI parameters revision. Never hardcode a
+  `%.Nf` for a displayed value.
 - `…/parameters/ApplicationParameters.java` (record) groups all of them (PowSyBl ones and `GuiParameters`) for
   (de)serialization by `…/parameters/ApplicationParametersJson.java`: LF/SA via PowSyBl's `JsonLoadFlowParameters` /
   `JsonSecurityAnalysisParameters`, network formats as string maps, SLD/NAD/GUI field by field through a `Binder` that

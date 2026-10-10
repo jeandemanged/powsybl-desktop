@@ -47,7 +47,7 @@ class ApplicationParametersJsonTest {
                 .setStyleChoice(DesktopSldParameters.StyleChoice.NOMINAL_VOLTAGE)
                 .setVoltageLevelLayout(DesktopSldParameters.VoltageLevelLayout.POSITION_BY_CLUSTERING);
         parameters.sld().getPositionLayoutParameters().setFeederStacked(false);
-        parameters.sld().getSvgParameters().setUseName(false).setPowerValuePrecision(4).setActivePowerUnit("kW");
+        parameters.sld().getSvgParameters().setUseName(false).setActivePowerUnit("kW");
         parameters.sld().getLayoutParameters().setCellWidth(123.5).setVoltageLevelPadding(1, 2, 3, 4);
 
         parameters.nad().setStyleChoice(DesktopNadParameters.StyleChoice.NOMINAL_VOLTAGE)
@@ -71,6 +71,8 @@ class ApplicationParametersJsonTest {
         parameters.gui().setLogsMinLevel(GuiParameters.LogLevel.WARN);
         parameters.gui().setLogsNewestOnTop(false);
         parameters.gui().setReportsMinSeverity("DETAIL");
+        parameters.gui().setDecimals(GuiParameters.Quantity.RHO, 4);
+        parameters.gui().setDecimals(GuiParameters.Quantity.POWER, 0);
         return parameters;
     }
 
@@ -107,6 +109,13 @@ class ApplicationParametersJsonTest {
         assertEquals(GuiParameters.LogLevel.WARN, read.gui().getLogsMinLevel());
         assertFalse(read.gui().isLogsNewestOnTop());
         assertEquals("DETAIL", read.gui().getReportsMinSeverity());
+        assertEquals(4, read.gui().getDecimals(GuiParameters.Quantity.RHO));
+        assertEquals(0, read.gui().getDecimals(GuiParameters.Quantity.POWER));
+        assertEquals(4, json.get("gui").get("decimals").get("rho").intValue());
+        assertEquals(0, json.get("gui").get("decimals").get("power").intValue());
+        // the GUI parameters' decimals are the only ones written
+        assertFalse(json.get("singleLineDiagram").get("svg").has("powerValuePrecision"));
+        assertFalse(json.get("networkAreaDiagram").get("svg").has("powerValuePrecision"));
     }
 
     @Test
@@ -143,7 +152,7 @@ class ApplicationParametersJsonTest {
     }
 
     @Test
-    void unknownOrNullGuiValueFailsTheRead(@TempDir Path tempDir) {
+    void invalidGuiValueFailsTheRead(@TempDir Path tempDir) {
         ObjectNode unknownSeverity = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
         ((ObjectNode) unknownSeverity.get("gui").get("reports")).put("minSeverity", "FATAL");
         Path unknownSeverityFile = tempDir.resolve("unknownSeverity.json");
@@ -155,5 +164,11 @@ class ApplicationParametersJsonTest {
         Path nullBasemapFile = tempDir.resolve("nullBasemap.json");
         ApplicationParametersJson.write(nullBasemap, nullBasemapFile);
         assertThrows(PowsyblException.class, () -> ApplicationParametersJson.read(nullBasemapFile));
+
+        ObjectNode negativeDecimals = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
+        ((ObjectNode) negativeDecimals.get("gui").get("decimals")).put("voltage", -1);
+        Path negativeDecimalsFile = tempDir.resolve("negativeDecimals.json");
+        ApplicationParametersJson.write(negativeDecimals, negativeDecimalsFile);
+        assertThrows(PowsyblException.class, () -> ApplicationParametersJson.read(negativeDecimalsFile));
     }
 }

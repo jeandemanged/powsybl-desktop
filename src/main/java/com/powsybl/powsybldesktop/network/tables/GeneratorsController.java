@@ -17,6 +17,7 @@ import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
@@ -93,41 +94,41 @@ public class GeneratorsController extends AbstractEquipmentTableController<Gener
                 generator -> generator.getTerminal().getBusView().getBus(), Bus::getSynchronousComponent);
 
         targetPColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTargetP()));
-        TableColumnSupport.configureDoubleColumn(targetPColumn);
+        TableColumnSupport.configureDoubleColumn(targetPColumn, format(GuiParameters.Quantity.POWER));
         targetPColumn.setOnEditCommit(event -> event.getRowValue().setTargetP(event.getNewValue()));
 
         targetQColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTargetQ()));
-        TableColumnSupport.configureDoubleColumn(targetQColumn);
+        TableColumnSupport.configureDoubleColumn(targetQColumn, format(GuiParameters.Quantity.POWER));
         targetQColumn.setOnEditCommit(event -> event.getRowValue().setTargetQ(event.getNewValue()));
 
         minPColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getMinP()));
-        TableColumnSupport.configureDoubleColumn(minPColumn);
+        TableColumnSupport.configureDoubleColumn(minPColumn, format(GuiParameters.Quantity.POWER));
         minPColumn.setOnEditCommit(event -> event.getRowValue().setMinP(event.getNewValue()));
 
         maxPColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getMaxP()));
-        TableColumnSupport.configureDoubleColumn(maxPColumn);
+        TableColumnSupport.configureDoubleColumn(maxPColumn, format(GuiParameters.Quantity.POWER));
         maxPColumn.setOnEditCommit(event -> event.getRowValue().setMaxP(event.getNewValue()));
 
         TableColumnSupport.configureEditableBooleanColumn(voltageControlEnabledColumn,
                 Generator::isVoltageRegulatorOn, Generator::setVoltageRegulatorOn);
 
         targetVColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTargetV()));
-        TableColumnSupport.configureDoubleColumn(targetVColumn);
+        TableColumnSupport.configureDoubleColumn(targetVColumn, format(GuiParameters.Quantity.VOLTAGE));
         targetVColumn.setOnEditCommit(event -> event.getRowValue().setTargetV(event.getNewValue()));
 
         pColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTerminal().getP()));
-        TableColumnSupport.configureDoubleColumn(pColumn);
+        TableColumnSupport.configureDoubleColumn(pColumn, format(GuiParameters.Quantity.POWER));
 
         qColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTerminal().getQ()));
-        TableColumnSupport.configureDoubleColumn(qColumn);
+        TableColumnSupport.configureDoubleColumn(qColumn, format(GuiParameters.Quantity.POWER));
 
         iColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTerminal().getI()));
-        TableColumnSupport.configureDoubleColumn(iColumn);
+        TableColumnSupport.configureDoubleColumn(iColumn, format(GuiParameters.Quantity.CURRENT));
 
         TableColumnSupport.configureNullableDoubleColumn(regulatedBusVoltageColumn, generator -> {
             Bus bus = generator.getRegulatingTerminal().getBusView().getBus();
             return bus == null ? null : bus.getV();
-        });
+        }, format(GuiParameters.Quantity.VOLTAGE));
 
         columnVisibilityToolbarController.configure(List.of(
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,

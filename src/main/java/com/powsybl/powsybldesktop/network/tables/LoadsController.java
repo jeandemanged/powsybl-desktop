@@ -17,6 +17,7 @@ import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
@@ -83,21 +84,21 @@ public class LoadsController extends AbstractEquipmentTableController<Load> {
                 load -> load.getTerminal().getBusView().getBus(), Bus::getSynchronousComponent);
 
         p0Column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getP0()));
-        TableColumnSupport.configureDoubleColumn(p0Column);
+        TableColumnSupport.configureDoubleColumn(p0Column, format(GuiParameters.Quantity.POWER));
         p0Column.setOnEditCommit(event -> event.getRowValue().setP0(event.getNewValue()));
 
         q0Column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getQ0()));
-        TableColumnSupport.configureDoubleColumn(q0Column);
+        TableColumnSupport.configureDoubleColumn(q0Column, format(GuiParameters.Quantity.POWER));
         q0Column.setOnEditCommit(event -> event.getRowValue().setQ0(event.getNewValue()));
 
         pColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTerminal().getP()));
-        TableColumnSupport.configureDoubleColumn(pColumn);
+        TableColumnSupport.configureDoubleColumn(pColumn, format(GuiParameters.Quantity.POWER));
 
         qColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTerminal().getQ()));
-        TableColumnSupport.configureDoubleColumn(qColumn);
+        TableColumnSupport.configureDoubleColumn(qColumn, format(GuiParameters.Quantity.POWER));
 
         iColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTerminal().getI()));
-        TableColumnSupport.configureDoubleColumn(iColumn);
+        TableColumnSupport.configureDoubleColumn(iColumn, format(GuiParameters.Quantity.CURRENT));
 
         columnVisibilityToolbarController.configure(List.of(
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,

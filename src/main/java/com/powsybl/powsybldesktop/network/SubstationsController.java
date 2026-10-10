@@ -32,6 +32,7 @@ import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.parameters.ApplicationParametersJson;
 import com.powsybl.powsybldesktop.parameters.DesktopNadParameters;
 import com.powsybl.powsybldesktop.parameters.DesktopSldParameters;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -55,7 +56,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -167,6 +167,7 @@ public class SubstationsController extends AbstractDisposableController {
     // cleared once their render is requested
     private boolean sldStale;
     private boolean nadStale;
+    private Map<GuiParameters.Quantity, Integer> diagramDecimals;
 
     // Diagrams are rendered off the FX thread, latest wins: restarting a service drops its previous render's result.
     // Everything a render reads is captured on the FX thread in createTask.
@@ -175,6 +176,7 @@ public class SubstationsController extends AbstractDisposableController {
         protected Task<SubstationDiagramRenderer.DiagramRender> createTask() {
             Container<?> container = currentContainer;
             DesktopSldParameters parameters = ApplicationParametersJson.copy(mainModel.getParametersModel().sldParametersProperty().getValue());
+            applyDecimals(parameters.getSvgParameters(), mainModel.getParametersModel().getGuiParameters());
             return new AbstractNetworkTask<>(mainModel, container.getNetwork()) {
                 @Override
                 protected SubstationDiagramRenderer.DiagramRender compute() throws IOException {
@@ -190,6 +192,7 @@ public class SubstationsController extends AbstractDisposableController {
             Container<?> container = currentContainer;
             int depth = nadDepth;
             DesktopNadParameters parameters = ApplicationParametersJson.copy(mainModel.getParametersModel().nadParametersProperty().getValue());
+            applyDecimals(parameters.getSvgParameters(), mainModel.getParametersModel().getGuiParameters());
             return new AbstractNetworkTask<>(mainModel, container.getNetwork()) {
                 @Override
                 protected String compute() throws IOException {
@@ -198,6 +201,22 @@ public class SubstationsController extends AbstractDisposableController {
             };
         }
     };
+
+    private static void applyDecimals(com.powsybl.sld.svg.SvgParameters svgParameters, GuiParameters gui) {
+        svgParameters.setVoltageValuePrecision(gui.getDecimals(GuiParameters.Quantity.VOLTAGE));
+        svgParameters.setPowerValuePrecision(gui.getDecimals(GuiParameters.Quantity.POWER));
+        svgParameters.setAngleValuePrecision(gui.getDecimals(GuiParameters.Quantity.ANGLE));
+        svgParameters.setCurrentValuePrecision(gui.getDecimals(GuiParameters.Quantity.CURRENT));
+        svgParameters.setPercentageValuePrecision(gui.getDecimals(GuiParameters.Quantity.PERCENTAGE));
+    }
+
+    private static void applyDecimals(com.powsybl.nad.svg.SvgParameters svgParameters, GuiParameters gui) {
+        svgParameters.setVoltageValuePrecision(gui.getDecimals(GuiParameters.Quantity.VOLTAGE));
+        svgParameters.setPowerValuePrecision(gui.getDecimals(GuiParameters.Quantity.POWER));
+        svgParameters.setAngleValuePrecision(gui.getDecimals(GuiParameters.Quantity.ANGLE));
+        svgParameters.setCurrentValuePrecision(gui.getDecimals(GuiParameters.Quantity.CURRENT));
+        svgParameters.setPercentageValuePrecision(gui.getDecimals(GuiParameters.Quantity.PERCENTAGE));
+    }
 
     /**
      * Top-level tree grouping criterion, selectable via {@link #groupingMenuButton}.
@@ -272,6 +291,18 @@ public class SubstationsController extends AbstractDisposableController {
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> this.update());
         listenerManager.listen(mainModel.getParametersModel().sldParametersRevisionProperty(), (observable, oldValue, newValue) -> updateSingleLineDiagram());
         listenerManager.listen(mainModel.getParametersModel().nadParametersRevisionProperty(), (observable, oldValue, newValue) -> updateAreaDiagram());
+        // GUI parameters also hold e.g. the map basemap: only a decimals change is worth re-rendering the diagrams
+        diagramDecimals = mainModel.getParametersModel().getGuiParameters().getDecimals();
+        listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> {
+            Map<GuiParameters.Quantity, Integer> decimals = mainModel.getParametersModel().getGuiParameters().getDecimals();
+            if (!decimals.equals(diagramDecimals)) {
+                diagramDecimals = decimals;
+                // the voltage levels' nominal voltage
+                substationsTreeView.refresh();
+                updateSingleLineDiagram();
+                updateAreaDiagram();
+            }
+        });
 
         sldPaneController.loadShell(SLD_HTML_SHELL.replace("%__JS__%", js));
         // the single line diagram's zoom/fit-to-screen state is remembered across navigation/views (see
@@ -690,7 +721,7 @@ public class SubstationsController extends AbstractDisposableController {
         });
     }
 
-    private static void updateSubstationTreeCell(TreeCell<Object> cell, Object item, boolean empty) {
+    private void updateSubstationTreeCell(TreeCell<Object> cell, Object item, boolean empty) {
         cell.getStyleClass().remove("substations-tree-group-placeholder");
         if (empty) {
             cell.setText(null);
@@ -708,11 +739,8 @@ public class SubstationsController extends AbstractDisposableController {
         }
     }
 
-    private static String formatNominalV(double nominalV) {
-        if (nominalV == Math.rint(nominalV)) {
-            return String.format(Locale.ROOT, "%.0f", nominalV);
-        }
-        return String.format(Locale.ROOT, "%.1f", nominalV);
+    private String formatNominalV(double nominalV) {
+        return mainModel.getParametersModel().getGuiParameters().format(GuiParameters.Quantity.VOLTAGE, nominalV);
     }
 
     private void initializeListeners() {

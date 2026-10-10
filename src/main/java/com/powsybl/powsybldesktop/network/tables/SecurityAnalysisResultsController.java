@@ -19,6 +19,7 @@ import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.utils.TableAutoFitLimiter;
@@ -40,6 +41,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
+import javafx.util.StringConverter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -115,9 +117,10 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
         configureSubjectColumn();
         TableColumnSupport.configureNullableColumn(limitTypeColumn, row -> row.violation() == null ? null : row.violation().getLimitType());
         TableColumnSupport.configureNullableIntColumn(sideColumn, row -> row.violation() == null || row.violation().getSide() == null ? null : row.violation().getSide().getNum());
-        TableColumnSupport.configureNullableDoubleColumn(valueColumn, row -> row.violation() == null ? null : row.violation().getValue());
-        TableColumnSupport.configureNullableDoubleColumn(limitColumn, row -> row.violation() == null ? null : row.violation().getLimit());
-        TableColumnSupport.configureNullableDoubleColumn(limitReductionColumn, row -> row.violation() == null ? null : row.violation().getLimitReduction());
+        TableColumnSupport.configureNullableDoubleColumn(valueColumn, row -> row.violation() == null ? null : row.violation().getValue(), this::violationFormat);
+        TableColumnSupport.configureNullableDoubleColumn(limitColumn, row -> row.violation() == null ? null : row.violation().getLimit(), this::violationFormat);
+        TableColumnSupport.configureNullableDoubleColumn(limitReductionColumn, row -> row.violation() == null ? null : row.violation().getLimitReduction(),
+                format(GuiParameters.Quantity.LIMIT_REDUCTION));
         TableColumnSupport.configureNullableColumn(limitNameColumn, row -> row.violation() == null ? null : row.violation().getLimitName());
         TableColumnSupport.configureNullableIntColumn(acceptableDurationColumn, row -> row.violation() == null ? null : row.violation().getAcceptableDuration());
         TableColumnSupport.configureNullableColumn(operationalLimitsGroupIdColumn, row -> row.violation() == null ? null : row.violation().getOperationalLimitsGroupId());
@@ -194,6 +197,8 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
         updateResults();
         listenerManager.listen(this.mainModel.networkProperty(), (observable, oldValue, newValue) -> updateResults());
         listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> updateResults());
+        // for the decimal places, read by the cells on every render
+        listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> resultsTableView.refresh());
     }
 
     private void updateResults() {
@@ -242,5 +247,23 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
             case FAILED -> "desktop.common.computationStatus.failed";
             case NO_IMPACT -> "desktop.common.computationStatus.noImpact";
         };
+    }
+
+    // read fresh: a parameters reset/import replaces the GuiParameters instance
+    private GuiParameters guiParameters() {
+        return mainModel.getParametersModel().getGuiParameters();
+    }
+
+    private StringConverter<Double> violationFormat(ResultRow row) {
+        return format(row.violation() == null ? GuiParameters.Quantity.CURRENT : switch (row.violation().getLimitType()) {
+            case ACTIVE_POWER, APPARENT_POWER -> GuiParameters.Quantity.POWER;
+            case LOW_VOLTAGE, HIGH_VOLTAGE -> GuiParameters.Quantity.VOLTAGE;
+            case LOW_VOLTAGE_ANGLE, HIGH_VOLTAGE_ANGLE -> GuiParameters.Quantity.ANGLE;
+            case CURRENT, LOW_SHORT_CIRCUIT_CURRENT, HIGH_SHORT_CIRCUIT_CURRENT, OTHER -> GuiParameters.Quantity.CURRENT;
+        });
+    }
+
+    private StringConverter<Double> format(GuiParameters.Quantity quantity) {
+        return TableColumnSupport.doubleFormat(this::guiParameters, quantity);
     }
 }

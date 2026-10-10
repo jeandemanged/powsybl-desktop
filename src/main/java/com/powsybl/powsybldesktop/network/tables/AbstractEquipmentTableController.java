@@ -18,6 +18,7 @@ import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.TableAutoFitLimiter;
 import javafx.collections.FXCollections;
@@ -28,6 +29,7 @@ import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.util.StringConverter;
 
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -128,7 +130,18 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
         refreshAll();
         listenerManager.listen(this.mainModel.networkProperty(), (observable, oldValue, newValue) -> refreshAll());
         listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> refreshAll());
+        // for the decimal places, read by the cells on every render
+        listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> tableView().refresh());
         searchBox().bind(mainModel, searchKinds(), this::onSearchMatch);
+    }
+
+    // read fresh: a parameters reset/import replaces the instance
+    final GuiParameters guiParameters() {
+        return mainModel.getParametersModel().getGuiParameters();
+    }
+
+    final StringConverter<Double> format(GuiParameters.Quantity quantity) {
+        return TableColumnSupport.doubleFormat(this::guiParameters, quantity);
     }
 
     @Override

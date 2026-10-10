@@ -18,6 +18,7 @@ import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
 import javafx.scene.control.TableColumn;
@@ -71,10 +72,10 @@ public class BusbarSectionsController extends AbstractEquipmentTableController<B
         TableColumnSupport.configureContainerColumn(voltageLevelColumn,
                 busbarSection -> Optional.of(busbarSection.getTerminal().getVoltageLevel()), this::containerCell);
         nameColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getNameOrId()));
-        TableColumnSupport.configureNullableDoubleColumn(vColumn, BusbarSection::getV);
-        TableColumnSupport.configureNullableDoubleColumn(angleColumn, BusbarSection::getAngle);
+        TableColumnSupport.configureNullableDoubleColumn(vColumn, BusbarSection::getV, format(GuiParameters.Quantity.VOLTAGE));
+        TableColumnSupport.configureNullableDoubleColumn(angleColumn, BusbarSection::getAngle, format(GuiParameters.Quantity.ANGLE));
         TableColumnSupport.configureVoltageViolationColumn(voltageViolationColumn,
-                BusbarSection::getV, busbarSection -> busbarSection.getTerminal().getVoltageLevel());
+                BusbarSection::getV, busbarSection -> busbarSection.getTerminal().getVoltageLevel(), this::guiParameters);
 
         columnVisibilityToolbarController.configure(List.of(
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,

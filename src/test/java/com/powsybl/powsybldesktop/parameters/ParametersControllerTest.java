@@ -10,6 +10,7 @@ package com.powsybl.powsybldesktop.parameters;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -18,6 +19,7 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ListView;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -86,11 +88,24 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void guiTabEditsAndFollowsGuiParameters() {
         GuiParameters gui = mainModel.getParametersModel().getGuiParameters();
+        ListView<?> categoryList = from(tabPane.getTabs().get(0).getContent()).lookup(".list-view").queryListView();
+        assertEquals("Decimal Places", categoryList.getItems().getFirst());
+        // the first text field is the voltage decimal places
+        TextField voltageField = from(tabPane.getTabs().get(0).getContent()).lookup(".text-field").query();
+        assertEquals("1", voltageField.getText());
+        interact(() -> {
+            voltageField.setText("3");
+            voltageField.fireEvent(new ActionEvent());
+        });
+        assertEquals(3, gui.getDecimals(GuiParameters.Quantity.VOLTAGE));
+        assertEquals(1, mainModel.getParametersModel().guiParametersRevisionProperty().get());
+
+        interact(() -> categoryList.getSelectionModel().select(1));
         // the first check box is the first voltage range of the Map category
         CheckBox checkBox = from(tabPane.getTabs().get(0).getContent()).lookup(".check-box").query();
         clickOn(checkBox);
         assertEquals(1, gui.getMapHiddenBaseVoltages().size());
-        assertEquals(1, mainModel.getParametersModel().guiParametersRevisionProperty().get());
+        assertEquals(2, mainModel.getParametersModel().guiParametersRevisionProperty().get());
         assertFalse(saveButton.isDisabled());
 
         // as when edited from the map view

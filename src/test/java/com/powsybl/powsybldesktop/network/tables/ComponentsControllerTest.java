@@ -172,7 +172,7 @@ class ComponentsControllerTest extends AbstractHeadlessApplicationTest {
 
         LoadFlowResult.ComponentResult mainResult = new LoadFlowResultImpl.ComponentResultImpl(
                 mainCc, mainSc, LoadFlowResult.ComponentResult.Status.CONVERGED, "Converged", Map.of(),
-                5, mainBus.getId(), List.of(new LoadFlowResultImpl.SlackBusResultImpl(mainBus.getId(), 0.001)), 2.5);
+                5, mainBus.getId(), List.of(new LoadFlowResultImpl.SlackBusResultImpl(mainBus.getId(), 0.5)), 2.5);
         // an unresolved reference bus id (not a bus of this network) must render as plain text, no navigation
         LoadFlowResult.ComponentResult isolatedResult = new LoadFlowResultImpl.ComponentResultImpl(
                 isolatedCc, isolatedSc, LoadFlowResult.ComponentResult.Status.NO_CALCULATION, "Not computed", Map.of(),
@@ -201,7 +201,7 @@ class ComponentsControllerTest extends AbstractHeadlessApplicationTest {
         HBox slackBusLine = (HBox) slackBusesBox.getChildren().get(0);
         Hyperlink slackBusLink = assertInstanceOf(Hyperlink.class, slackBusLine.getChildren().get(0));
         assertEquals(mainBus.getId(), slackBusLink.getText());
-        assertEquals(": 0.001", ((Label) slackBusLine.getChildren().get(1)).getText());
+        assertEquals(": 0.5", ((Label) slackBusLine.getChildren().get(1)).getText());
 
         int isolatedRow = rowOf(isolatedCc, isolatedSc);
         assertEquals("Not computed", cellValue(controller.statusTextColumn, isolatedRow));

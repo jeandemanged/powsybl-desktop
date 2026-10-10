@@ -198,8 +198,8 @@ class BusesBusViewControllerTest extends AbstractHeadlessApplicationTest {
         bus.setV(120);
 
         Label label = (Label) cellGraphic(controller.voltageViolationColumn, rowOf(bus));
-        assertEquals(Messages.get("buses.voltageViolation.overvoltage", 120L), label.getText());
-        assertEquals(Messages.get("buses.voltageViolation.limitTooltip", "110.00"), label.getTooltip().getText());
+        assertEquals(Messages.get("buses.voltageViolation.overvoltage", "120.0"), label.getText());
+        assertEquals(Messages.get("buses.voltageViolation.limitTooltip", "110.0"), label.getTooltip().getText());
     }
 
     @Test
@@ -210,8 +210,8 @@ class BusesBusViewControllerTest extends AbstractHeadlessApplicationTest {
         bus.setV(80);
 
         Label label = (Label) cellGraphic(controller.voltageViolationColumn, rowOf(bus));
-        assertEquals(Messages.get("buses.voltageViolation.undervoltage", 80L), label.getText());
-        assertEquals(Messages.get("buses.voltageViolation.limitTooltip", "90.00"), label.getTooltip().getText());
+        assertEquals(Messages.get("buses.voltageViolation.undervoltage", "80.0"), label.getText());
+        assertEquals(Messages.get("buses.voltageViolation.limitTooltip", "90.0"), label.getTooltip().getText());
     }
 
     @Test

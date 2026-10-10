@@ -21,6 +21,7 @@ import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.VoltageLevelNavigationState;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.TableAutoFitLimiter;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -31,6 +32,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.util.StringConverter;
 
 import java.util.Comparator;
 import java.util.List;
@@ -88,15 +90,15 @@ public class VoltageLevelsController extends AbstractDisposableController {
         topologyKindColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTopologyKind()));
 
         nominalVoltageColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getNominalV()));
-        TableColumnSupport.configureDoubleColumn(nominalVoltageColumn);
+        TableColumnSupport.configureDoubleColumn(nominalVoltageColumn, format(GuiParameters.Quantity.VOLTAGE));
         nominalVoltageColumn.setOnEditCommit(event -> event.getRowValue().setNominalV(event.getNewValue()));
 
         lowVoltageLimitColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getLowVoltageLimit()));
-        TableColumnSupport.configureDoubleColumn(lowVoltageLimitColumn);
+        TableColumnSupport.configureDoubleColumn(lowVoltageLimitColumn, format(GuiParameters.Quantity.VOLTAGE));
         lowVoltageLimitColumn.setOnEditCommit(event -> event.getRowValue().setLowVoltageLimit(event.getNewValue()));
 
         highVoltageLimitColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getHighVoltageLimit()));
-        TableColumnSupport.configureDoubleColumn(highVoltageLimitColumn);
+        TableColumnSupport.configureDoubleColumn(highVoltageLimitColumn, format(GuiParameters.Quantity.VOLTAGE));
         highVoltageLimitColumn.setOnEditCommit(event -> event.getRowValue().setHighVoltageLimit(event.getNewValue()));
     }
 
@@ -107,6 +109,8 @@ public class VoltageLevelsController extends AbstractDisposableController {
         updateVoltageLevels();
         listenerManager.listen(this.mainModel.networkProperty(), (observable, oldValue, newValue) -> updateVoltageLevels());
         listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> updateVoltageLevels());
+        // for the decimal places, read by the cells on every render
+        listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> voltageLevelsTableView.refresh());
         searchBoxController.bind(mainModel, this::onSearchMatch);
     }
 
@@ -166,5 +170,14 @@ public class VoltageLevelsController extends AbstractDisposableController {
             voltageLevelsTableView.getSelectionModel().clearAndSelect(row, column);
             voltageLevelsTableView.scrollTo(row);
         }
+    }
+
+    // read fresh: a parameters reset/import replaces the GuiParameters instance
+    private GuiParameters guiParameters() {
+        return mainModel.getParametersModel().getGuiParameters();
+    }
+
+    private StringConverter<Double> format(GuiParameters.Quantity quantity) {
+        return TableColumnSupport.doubleFormat(this::guiParameters, quantity);
     }
 }

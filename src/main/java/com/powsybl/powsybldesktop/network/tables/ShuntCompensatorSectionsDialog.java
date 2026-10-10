@@ -12,6 +12,7 @@ import com.powsybl.iidm.network.ShuntCompensator;
 import com.powsybl.iidm.network.ShuntCompensatorLinearModel;
 import com.powsybl.iidm.network.ShuntCompensatorModelType;
 import com.powsybl.iidm.network.ShuntCompensatorNonLinearModel;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.geometry.Insets;
@@ -30,7 +31,6 @@ import javafx.util.StringConverter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -47,18 +47,6 @@ import java.util.function.Predicate;
  */
 final class ShuntCompensatorSectionsDialog {
 
-    private static final StringConverter<Double> VALUE_FORMAT = new StringConverter<>() {
-        @Override
-        public String toString(Double value) {
-            return String.format(Locale.ROOT, "%.7f", value);
-        }
-
-        @Override
-        public Double fromString(String text) {
-            return Double.valueOf(text.trim());
-        }
-    };
-
     // Duplicated from TableColumnSupport's private constant rather than exposing it, since it's just the CSS
     // class name, not shared behavior.
     private static final String EDITABLE_CELL_STYLE_CLASS = "editable-cell";
@@ -66,7 +54,18 @@ final class ShuntCompensatorSectionsDialog {
     private ShuntCompensatorSectionsDialog() {
     }
 
-    static void show(Window owner, ShuntCompensator shuntCompensator) {
+    static void show(Window owner, ShuntCompensator shuntCompensator, GuiParameters guiParameters) {
+        StringConverter<Double> admittanceFormat = new StringConverter<>() {
+            @Override
+            public String toString(Double value) {
+                return guiParameters.format(GuiParameters.Quantity.ADMITTANCE, value);
+            }
+
+            @Override
+            public Double fromString(String text) {
+                return Double.valueOf(text.trim());
+            }
+        };
         boolean linear = shuntCompensator.getModelType() == ShuntCompensatorModelType.LINEAR;
         double nominalV2 = Math.pow(shuntCompensator.getTerminal().getVoltageLevel().getNominalV(), 2);
         Predicate<Integer> editablePredicate = linear ? section -> section == 1 : section -> true;
@@ -93,13 +92,13 @@ final class ShuntCompensatorSectionsDialog {
 
         sectionsTableView.getColumns().add(readOnlyColumn("shuntCompensators.column.section", String::valueOf));
         sectionsTableView.getColumns().add(editableColumn("desktop.common.column.b",
-                shuntCompensator::getB, (section, value) -> setB(shuntCompensator, section, value), editablePredicate, sectionsTableView));
+                shuntCompensator::getB, (section, value) -> setB(shuntCompensator, section, value), editablePredicate, sectionsTableView, admittanceFormat));
         sectionsTableView.getColumns().add(editableColumn("desktop.common.column.g",
-                shuntCompensator::getG, (section, value) -> setG(shuntCompensator, section, value), editablePredicate, sectionsTableView));
+                shuntCompensator::getG, (section, value) -> setG(shuntCompensator, section, value), editablePredicate, sectionsTableView, admittanceFormat));
         sectionsTableView.getColumns().add(readOnlyColumn("shuntCompensators.sections.column.q",
-                section -> formatValue(-shuntCompensator.getB(section) * nominalV2)));
+                section -> guiParameters.format(GuiParameters.Quantity.POWER, -shuntCompensator.getB(section) * nominalV2)));
         sectionsTableView.getColumns().add(readOnlyColumn("shuntCompensators.sections.column.p",
-                section -> formatValue(shuntCompensator.getG(section) * nominalV2)));
+                section -> guiParameters.format(GuiParameters.Quantity.POWER, shuntCompensator.getG(section) * nominalV2)));
         sectionsTableView.setPrefSize(500, 300);
         sectionsTableView.setMaxWidth(Double.MAX_VALUE);
         sectionsTableView.setMaxHeight(Double.MAX_VALUE);
@@ -139,14 +138,14 @@ final class ShuntCompensatorSectionsDialog {
 
     private static TableColumn<Integer, Double> editableColumn(String titleKey, Function<Integer, Double> valueGetter,
                                                                  BiConsumer<Integer, Double> setter, Predicate<Integer> editablePredicate,
-                                                                 TableView<Integer> tableView) {
+                                                                 TableView<Integer> tableView, StringConverter<Double> format) {
         TableColumn<Integer, Double> column = new TableColumn<>(Messages.get(titleKey));
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(valueGetter.apply(cellData.getValue())));
         // Keyed by section rather than held on the TableCell instance - see EditableSectionCell.commitEdit's
         // comment for why.
         Map<Integer, String> flashStyles = new HashMap<>();
-        column.setCellFactory(col -> new EditableSectionCell(editablePredicate, flashStyles));
+        column.setCellFactory(col -> new EditableSectionCell(editablePredicate, flashStyles, format));
         column.setOnEditCommit(event -> {
             setter.accept(event.getRowValue(), event.getNewValue());
             tableView.refresh();
@@ -160,8 +159,8 @@ final class ShuntCompensatorSectionsDialog {
         private final Predicate<Integer> editablePredicate;
         private final Map<Integer, String> flashStyles;
 
-        EditableSectionCell(Predicate<Integer> editablePredicate, Map<Integer, String> flashStyles) {
-            super(TableColumnSupport.lenient(VALUE_FORMAT));
+        EditableSectionCell(Predicate<Integer> editablePredicate, Map<Integer, String> flashStyles, StringConverter<Double> format) {
+            super(TableColumnSupport.lenient(format));
             this.editablePredicate = editablePredicate;
             this.flashStyles = flashStyles;
         }
@@ -211,9 +210,5 @@ final class ShuntCompensatorSectionsDialog {
             }
             TableColumnSupport.applyKeyedFlash(this, empty ? null : section, flashStyles);
         }
-    }
-
-    private static String formatValue(double value) {
-        return String.format(Locale.ROOT, "%.2f", value);
     }
 }

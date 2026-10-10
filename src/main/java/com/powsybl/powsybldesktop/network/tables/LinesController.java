@@ -17,6 +17,7 @@ import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
 import javafx.scene.control.TableColumn;
@@ -104,24 +105,24 @@ public class LinesController extends AbstractEquipmentTableController<Line> {
         // so the editable-cell affordance stays a small per-value box instead of stretching to fill this table's
         // already-tall (two-sided P/Q/I/CC/SC) row height.
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(rColumn, line -> List.of(line.getR()),
-                (line, index, value) -> line.setR(value), 2);
+                (line, index, value) -> line.setR(value), format(GuiParameters.Quantity.IMPEDANCE));
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(xColumn, line -> List.of(line.getX()),
-                (line, index, value) -> line.setX(value), 2);
+                (line, index, value) -> line.setX(value), format(GuiParameters.Quantity.IMPEDANCE));
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(g1Column, line -> List.of(line.getG1()),
-                (line, index, value) -> line.setG1(value), 6);
+                (line, index, value) -> line.setG1(value), format(GuiParameters.Quantity.ADMITTANCE));
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(b1Column, line -> List.of(line.getB1()),
-                (line, index, value) -> line.setB1(value), 6);
+                (line, index, value) -> line.setB1(value), format(GuiParameters.Quantity.ADMITTANCE));
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(g2Column, line -> List.of(line.getG2()),
-                (line, index, value) -> line.setG2(value), 6);
+                (line, index, value) -> line.setG2(value), format(GuiParameters.Quantity.ADMITTANCE));
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(b2Column, line -> List.of(line.getB2()),
-                (line, index, value) -> line.setB2(value), 6);
+                (line, index, value) -> line.setB2(value), format(GuiParameters.Quantity.ADMITTANCE));
 
         TableColumnSupport.configureTwoSidedDoubleColumn(pColumn,
-                line -> line.getTerminal1().getP(), line -> line.getTerminal2().getP());
+                line -> line.getTerminal1().getP(), line -> line.getTerminal2().getP(), format(GuiParameters.Quantity.POWER));
         TableColumnSupport.configureTwoSidedDoubleColumn(qColumn,
-                line -> line.getTerminal1().getQ(), line -> line.getTerminal2().getQ());
+                line -> line.getTerminal1().getQ(), line -> line.getTerminal2().getQ(), format(GuiParameters.Quantity.POWER));
         TableColumnSupport.configureTwoSidedDoubleColumn(iColumn,
-                line -> line.getTerminal1().getI(), line -> line.getTerminal2().getI());
+                line -> line.getTerminal1().getI(), line -> line.getTerminal2().getI(), format(GuiParameters.Quantity.CURRENT));
         TableColumnSupport.configureOverloadColumn(patlIViolationColumn, Line::isOverloaded);
 
         columnVisibilityToolbarController.configure(List.of(

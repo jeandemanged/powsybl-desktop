@@ -11,6 +11,7 @@ import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
@@ -70,24 +71,24 @@ abstract class AbstractBusesController extends AbstractEquipmentTableController<
         nameColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getNameOrId()));
         TableColumnSupport.configureComponentColumn(connectedComponentColumn, bus -> bus, Bus::getConnectedComponent);
         TableColumnSupport.configureComponentColumn(synchronousComponentColumn, bus -> bus, Bus::getSynchronousComponent);
-        TableColumnSupport.configureNullableDoubleColumn(vColumn, Bus::getV);
-        TableColumnSupport.configureNullableDoubleColumn(angleColumn, Bus::getAngle);
+        TableColumnSupport.configureNullableDoubleColumn(vColumn, Bus::getV, format(GuiParameters.Quantity.VOLTAGE));
+        TableColumnSupport.configureNullableDoubleColumn(angleColumn, Bus::getAngle, format(GuiParameters.Quantity.ANGLE));
 
         fictitiousP0Column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getFictitiousP0()));
-        TableColumnSupport.configureDoubleColumn(fictitiousP0Column);
+        TableColumnSupport.configureDoubleColumn(fictitiousP0Column, format(GuiParameters.Quantity.POWER));
         fictitiousP0Column.setOnEditCommit(event -> {
             event.getRowValue().setFictitiousP0(event.getNewValue());
             mainModel.setUpdate(event.getRowValue().getVoltageLevel());
         });
 
         fictitiousQ0Column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getFictitiousQ0()));
-        TableColumnSupport.configureDoubleColumn(fictitiousQ0Column);
+        TableColumnSupport.configureDoubleColumn(fictitiousQ0Column, format(GuiParameters.Quantity.POWER));
         fictitiousQ0Column.setOnEditCommit(event -> {
             event.getRowValue().setFictitiousQ0(event.getNewValue());
             mainModel.setUpdate(event.getRowValue().getVoltageLevel());
         });
 
-        TableColumnSupport.configureVoltageViolationColumn(voltageViolationColumn, Bus::getV, Bus::getVoltageLevel);
+        TableColumnSupport.configureVoltageViolationColumn(voltageViolationColumn, Bus::getV, Bus::getVoltageLevel, this::guiParameters);
 
         columnVisibilityToolbarController.configure(List.of(
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,

@@ -164,7 +164,7 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     private static String doubleText(double value) {
-        return Double.isNaN(value) ? "-" : String.format(Locale.ROOT, "%.2f", value);
+        return Double.isNaN(value) ? "-" : String.format(Locale.ROOT, "%.1f", value);
     }
 
     @Test
@@ -256,7 +256,8 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals(123.45, transformer.getRatedU1());
         assertTrue(ratedU1Label.isVisible());
         assertFalse(ratedU1Field.isVisible());
-        assertEquals("123.45", ratedU1Label.getText());
+        // the full value is stored, shown at the voltage decimal places
+        assertEquals("123.5", ratedU1Label.getText());
         assertTrue(flashed[0]);
     }
 
@@ -274,7 +275,7 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
             ratedSField.getOnAction().handle(new ActionEvent());
         });
         assertEquals(50.0, transformer.getRatedS());
-        assertEquals("50.00", ratedSLabel.getText());
+        assertEquals("50.0", ratedSLabel.getText());
 
         interact(() -> doubleClick(ratedSLabel));
         interact(() -> {

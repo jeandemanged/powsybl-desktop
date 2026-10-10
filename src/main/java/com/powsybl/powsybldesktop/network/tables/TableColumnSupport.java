@@ -14,6 +14,7 @@ import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.TapChanger;
 import com.powsybl.iidm.network.Terminal;
 import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.animation.PauseTransition;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -49,7 +50,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -60,6 +60,7 @@ import java.util.function.DoubleConsumer;
 import java.util.function.DoubleSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 /**
  * Cell value/factory wiring shared by the Loads, Generators, ShuntCompensators, StaticVarCompensators, Lines,
@@ -97,17 +98,13 @@ final class TableColumnSupport {
         return EDIT_ERROR_STYLE_CLASS.equals(styleClass) ? EDIT_ERROR_FLASH_DURATION : EDIT_SUCCESS_FLASH_DURATION;
     }
 
-    private static final StringConverter<Double> DOUBLE_FORMAT = doubleFormat(2);
-
-    // Most columns show 2 decimal places (DOUBLE_FORMAT); a few (the Parameters group's G/B susceptance/
-    // conductance values, small numbers in Siemens) need more precision to not all round down to "0.000000"-ish
-    // noise - see the Lines/Transformers/BoundaryLines/TieLines "Parameters" columns.
-    private static StringConverter<Double> doubleFormat(int decimalPlaces) {
-        String pattern = "%." + decimalPlaces + "f";
+    // Decimal places read on every call rather than captured: GuiParameters is edited in place, or replaced on a
+    // parameters reset/import, and the tables are refreshed then (see AbstractEquipmentTableController.setMainModel).
+    static StringConverter<Double> doubleFormat(Supplier<GuiParameters> guiParameters, GuiParameters.Quantity quantity) {
         return new StringConverter<>() {
             @Override
             public String toString(Double value) {
-                return isMissing(value) ? "-" : String.format(Locale.ROOT, pattern, value);
+                return isMissing(value) ? "-" : guiParameters.get().format(quantity, value);
             }
 
             @Override
@@ -272,16 +269,7 @@ final class TableColumnSupport {
         return component == null ? "-" : String.valueOf(component.getNum());
     }
 
-    static <S> void configureDoubleColumn(TableColumn<S, Double> column) {
-        configureDoubleColumn(column, DOUBLE_FORMAT);
-    }
-
-    // For a column needing more precision than the default 2 decimal places - see doubleFormat().
-    static <S> void configureDoubleColumn(TableColumn<S, Double> column, int decimalPlaces) {
-        configureDoubleColumn(column, doubleFormat(decimalPlaces));
-    }
-
-    private static <S> void configureDoubleColumn(TableColumn<S, Double> column, StringConverter<Double> format) {
+    static <S> void configureDoubleColumn(TableColumn<S, Double> column, StringConverter<Double> format) {
         // Keyed by row item rather than held on the TableCell instance: some callers' onEditCommit handler
         // triggers a wider refresh (e.g. buses' fictitious P0/Q0, which fire mainModel.setUpdate()), which can
         // recycle this exact TableCell to a different row before the flash fades - same fix as
@@ -315,7 +303,7 @@ final class TableColumnSupport {
         return cell;
     }
 
-    // Same rendering as TextFieldTableCell.forTableColumn(DOUBLE_FORMAT), but catches a setter exception thrown
+    // Same rendering as TextFieldTableCell.forTableColumn(format), but catches a setter exception thrown
     // by the column's onEditCommit handler (e.g. an IIDM validation exception) instead of letting it propagate:
     // TableCell.commitEdit fires that handler via Event.fireEvent before it updates the cell's displayed value,
     // so wrapping super.commitEdit both stops the rejected value from ever being shown and lets us restore the
@@ -356,7 +344,7 @@ final class TableColumnSupport {
         }
     }
 
-    // Nullable like DOUBLE_FORMAT's "-": unlike configureNullableEditableDoubleColumn, every row can be edited here
+    // Nullable like doubleFormat's "-": unlike configureNullableEditableDoubleColumn, every row can be edited here
     // (the field just may hold no value), so clearing the text field back to "-"/blank is how a value gets unset.
     static <S> void configureEditableTextColumn(TableColumn<S, String> column) {
         column.setCellFactory(col -> {
@@ -389,17 +377,17 @@ final class TableColumnSupport {
     // For a field that only exists on some rows (e.g. a boundary line's optional generation part): shows "-" and
     // refuses to enter edit mode where the getter returns null, editable like configureDoubleColumn otherwise.
     static <S> void configureNullableEditableDoubleColumn(TableColumn<S, Double> column, Function<S, Double> getter,
-                                                            BiConsumer<S, Double> setter) {
+                                                            BiConsumer<S, Double> setter, StringConverter<Double> format) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
-        column.setCellFactory(col -> new NullableEditableDoubleTableCell<>());
+        column.setCellFactory(col -> new NullableEditableDoubleTableCell<>(format));
         disableUnlessTableEditable(column);
         column.setOnEditCommit(event -> setter.accept(event.getRowValue(), event.getNewValue()));
         column.setComparator(missingLast(column, TableColumnSupport::isMissing));
     }
 
     private static final class NullableEditableDoubleTableCell<S> extends TextFieldTableCell<S, Double> {
-        NullableEditableDoubleTableCell() {
-            super(lenient(DOUBLE_FORMAT));
+        NullableEditableDoubleTableCell(StringConverter<Double> format) {
+            super(lenient(format));
         }
 
         @Override
@@ -487,21 +475,22 @@ final class TableColumnSupport {
     // Shared by AbstractBusesController and BusbarSectionsController's "Voltage Violation" column: an alert
     // icon + text when the measured voltage breaches its voltage level's limit, nothing otherwise.
     static <S> void configureVoltageViolationColumn(TableColumn<S, VoltageViolation> column,
-                                                      Function<S, Double> vGetter, Function<S, VoltageLevel> voltageLevelGetter) {
+                                                      Function<S, Double> vGetter, Function<S, VoltageLevel> voltageLevelGetter,
+                                                      Supplier<GuiParameters> guiParameters) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(
                 VoltageViolation.of(vGetter.apply(cellData.getValue()), voltageLevelGetter.apply(cellData.getValue()))));
         column.setCellFactory(col -> new TableCell<S, VoltageViolation>() {
             @Override
             protected void updateItem(VoltageViolation violation, boolean empty) {
                 super.updateItem(violation, empty);
-                setGraphic(empty || violation == null || !violation.isViolation() ? null : voltageViolationLabel(violation));
+                setGraphic(empty || violation == null || !violation.isViolation() ? null : voltageViolationLabel(violation, guiParameters.get()));
             }
         });
     }
 
-    private static Label voltageViolationLabel(VoltageViolation violation) {
-        Label label = alertLabel(violation.text());
-        label.setTooltip(new Tooltip(violation.limitTooltip()));
+    private static Label voltageViolationLabel(VoltageViolation violation, GuiParameters guiParameters) {
+        Label label = alertLabel(violation.text(guiParameters));
+        label.setTooltip(new Tooltip(violation.limitTooltip(guiParameters)));
         return label;
     }
 
@@ -531,19 +520,21 @@ final class TableColumnSupport {
         column.setComparator(missingLast(column, Objects::isNull));
     }
 
-    static <S> void configureNullableDoubleColumn(TableColumn<S, Double> column, Function<S, Double> valueGetter) {
-        configureNullableDoubleColumn(column, valueGetter, 2);
+    static <S> void configureNullableDoubleColumn(TableColumn<S, Double> column, Function<S, Double> valueGetter,
+                                                   StringConverter<Double> format) {
+        configureNullableDoubleColumn(column, valueGetter, row -> format);
     }
 
-    // For a column needing more precision than the default 2 decimal places - see doubleFormat().
-    static <S> void configureNullableDoubleColumn(TableColumn<S, Double> column, Function<S, Double> valueGetter, int decimalPlaces) {
-        StringConverter<Double> format = doubleFormat(decimalPlaces);
+    // For a column whose unit depends on the row, e.g. a limit violation's value
+    static <S> void configureNullableDoubleColumn(TableColumn<S, Double> column, Function<S, Double> valueGetter,
+                                                   Function<S, StringConverter<Double>> formatGetter) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(valueGetter.apply(cellData.getValue())));
         column.setCellFactory(col -> new TableCell<S, Double>() {
             @Override
             protected void updateItem(Double value, boolean empty) {
                 super.updateItem(value, empty);
-                setText(empty ? null : format.toString(value));
+                S row = empty || getTableRow() == null ? null : getTableRow().getItem();
+                setText(row == null ? null : formatGetter.apply(row).toString(value));
             }
         });
         column.setComparator(missingLast(column, TableColumnSupport::isMissing));
@@ -554,7 +545,7 @@ final class TableColumnSupport {
     }
 
     static <S> void configureTwoSidedDoubleColumn(TableColumn<S, S> column, Function<S, Double> value1Getter,
-                                                   Function<S, Double> value2Getter) {
+                                                   Function<S, Double> value2Getter, StringConverter<Double> format) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
         column.setCellFactory(col -> new TableCell<S, S>() {
@@ -562,13 +553,9 @@ final class TableColumnSupport {
             protected void updateItem(S item, boolean empty) {
                 super.updateItem(item, empty);
                 setGraphic(empty || item == null ? null
-                        : twoSidedBox(new Label(doubleText(value1Getter.apply(item))), new Label(doubleText(value2Getter.apply(item))), Pos.CENTER_RIGHT));
+                        : twoSidedBox(new Label(format.toString(value1Getter.apply(item))), new Label(format.toString(value2Getter.apply(item))), Pos.CENTER_RIGHT));
             }
         });
-    }
-
-    private static String doubleText(Double value) {
-        return isMissing(value) ? "-" : String.format(Locale.ROOT, "%.2f", value);
     }
 
     static <S> void configureTwoSidedTextColumn(TableColumn<S, S> column, Function<S, String> value1Getter,
@@ -671,7 +658,8 @@ final class TableColumnSupport {
         });
     }
 
-    static <S> void configureMultiSidedDoubleColumn(TableColumn<S, S> column, Function<S, List<Double>> valuesGetter) {
+    static <S> void configureMultiSidedDoubleColumn(TableColumn<S, S> column, Function<S, List<Double>> valuesGetter,
+                                                     StringConverter<Double> format) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
         column.setCellFactory(col -> new TableCell<S, S>() {
@@ -679,7 +667,7 @@ final class TableColumnSupport {
             protected void updateItem(S item, boolean empty) {
                 super.updateItem(item, empty);
                 setGraphic(empty || item == null ? null
-                        : sidedBox(valuesGetter.apply(item).stream().<Node>map(value -> new Label(doubleText(value))).toList(), Pos.CENTER_RIGHT));
+                        : sidedBox(valuesGetter.apply(item).stream().<Node>map(value -> new Label(format.toString(value))).toList(), Pos.CENTER_RIGHT));
             }
         });
     }
@@ -705,17 +693,6 @@ final class TableColumnSupport {
     // used instead of a plain read-only Label, rather than the whole cell's built-in edit state (which only tracks
     // one value per cell).
     static <S> void configureMultiSidedEditableDoubleColumn(TableColumn<S, S> column, Function<S, List<Double>> valuesGetter,
-                                                              IndexedDoubleSetter<S> setter) {
-        configureMultiSidedEditableDoubleColumn(column, valuesGetter, setter, DOUBLE_FORMAT);
-    }
-
-    // For a column needing more precision than the default 2 decimal places - see doubleFormat().
-    static <S> void configureMultiSidedEditableDoubleColumn(TableColumn<S, S> column, Function<S, List<Double>> valuesGetter,
-                                                              IndexedDoubleSetter<S> setter, int decimalPlaces) {
-        configureMultiSidedEditableDoubleColumn(column, valuesGetter, setter, doubleFormat(decimalPlaces));
-    }
-
-    private static <S> void configureMultiSidedEditableDoubleColumn(TableColumn<S, S> column, Function<S, List<Double>> valuesGetter,
                                                               IndexedDoubleSetter<S> setter, StringConverter<Double> format) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
@@ -835,22 +812,26 @@ final class TableColumnSupport {
     // one per side on every updateItem call (as configureMultiSidedEditableDoubleColumn's plain Labels can afford
     // to) made scrolling/refreshing the Transformers table noticeably slow.
     static <S> void configureMultiSidedTapChangerColumn(TableColumn<S, S> column, Function<S, String> nameGetter,
-                                                          Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter) {
+                                                          Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter,
+                                                          Supplier<GuiParameters> guiParameters) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new MultiSidedTapChangerTableCell<>(nameGetter, tapChangersGetter));
+        column.setCellFactory(col -> new MultiSidedTapChangerTableCell<>(nameGetter, tapChangersGetter, guiParameters));
         disableUnlessTableEditable(column);
     }
 
     private static final class MultiSidedTapChangerTableCell<S> extends TableCell<S, S> {
         private final Function<S, String> nameGetter;
         private final Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter;
+        private final Supplier<GuiParameters> guiParameters;
         private final List<TapChangerSlot> slots = new ArrayList<>();
 
         MultiSidedTapChangerTableCell(Function<S, String> nameGetter,
-                                       Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter) {
+                                       Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter,
+                                       Supplier<GuiParameters> guiParameters) {
             this.nameGetter = nameGetter;
             this.tapChangersGetter = tapChangersGetter;
+            this.guiParameters = guiParameters;
         }
 
         @Override
@@ -862,7 +843,7 @@ final class TableColumnSupport {
             }
             List<Optional<? extends TapChanger<?, ?, ?, ?>>> tapChangers = tapChangersGetter.apply(item);
             while (slots.size() < tapChangers.size()) {
-                slots.add(new TapChangerSlot(this));
+                slots.add(new TapChangerSlot(this, guiParameters));
             }
             String name = nameGetter.apply(item);
             for (int side = 0; side < tapChangers.size(); side++) {
@@ -886,7 +867,7 @@ final class TableColumnSupport {
         private int side;
         private int totalSides;
 
-        TapChangerSlot(TableCell<?, ?> ownerCell) {
+        TapChangerSlot(TableCell<?, ?> ownerCell, Supplier<GuiParameters> guiParameters) {
             Button infoButton = new Button();
             infoButton.setGraphic(new FontIcon("mdi2i-information-outline"));
             infoButton.getStyleClass().add("icon-button");
@@ -897,7 +878,7 @@ final class TableColumnSupport {
                     // dialog header shouldn't claim a side; a three-windings transformer's leg number is
                     // 1-based, matching ThreeWindingsTransformer.Leg's own naming.
                     Integer sideNumber = totalSides > 1 ? side + 1 : null;
-                    TapChangerStepsDialog.show(infoButton.getScene().getWindow(), name, sideNumber, tapChanger);
+                    TapChangerStepsDialog.show(infoButton.getScene().getWindow(), name, sideNumber, tapChanger, guiParameters.get());
                     // The dialog can flip hasLoadTapChangingCapabilities, which decides whether this row's
                     // Regulating/Regulation Mode/Regulation Value/Target Deadband/Solved Tap columns are blank -
                     // refresh so they pick that up as soon as the (modal) dialog closes.
@@ -966,7 +947,8 @@ final class TableColumnSupport {
     static <S> void configureMultiSidedTapChangerDoubleColumn(TableColumn<S, S> column,
                                                                 Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter,
                                                                 Function<TapChanger<?, ?, ?, ?>, Double> getter,
-                                                                BiConsumer<TapChanger<?, ?, ?, ?>, Double> setter) {
+                                                                BiConsumer<TapChanger<?, ?, ?, ?>, Double> setter,
+                                                                Function<TapChanger<?, ?, ?, ?>, StringConverter<Double>> formatGetter) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
         column.setCellFactory(col -> new TableCell<S, S>() {
@@ -979,7 +961,7 @@ final class TableColumnSupport {
                 }
                 List<Node> nodes = tapChangersGetter.apply(item).stream()
                         .<Node>map(opt -> tapChangerFieldEnabled(opt)
-                                ? editableDoubleField(DOUBLE_FORMAT, () -> getter.apply(opt.get()), value -> setter.accept(opt.get(), value))
+                                ? editableDoubleField(formatGetter.apply(opt.get()), () -> getter.apply(opt.get()), value -> setter.accept(opt.get(), value))
                                 : new Label())
                         .toList();
                 setGraphic(sidedBox(nodes, Pos.CENTER_RIGHT));

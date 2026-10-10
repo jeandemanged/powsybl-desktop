@@ -208,12 +208,16 @@ class TieLinesControllerTest extends AbstractHeadlessApplicationTest {
                 ((Label) scBox.getChildren().get(1)).getText());
 
         VBox pBox = cellBox(controller.pColumn, row);
-        assertEquals(doubleText(tieLine.getTerminal1().getP()), ((Label) pBox.getChildren().get(0)).getText());
-        assertEquals(doubleText(tieLine.getTerminal2().getP()), ((Label) pBox.getChildren().get(1)).getText());
+        assertEquals(powerText(tieLine.getTerminal1().getP()), ((Label) pBox.getChildren().get(0)).getText());
+        assertEquals(powerText(tieLine.getTerminal2().getP()), ((Label) pBox.getChildren().get(1)).getText());
 
         VBox qBox = cellBox(controller.qColumn, row);
-        assertEquals(doubleText(tieLine.getTerminal1().getQ()), ((Label) qBox.getChildren().get(0)).getText());
-        assertEquals(doubleText(tieLine.getTerminal2().getQ()), ((Label) qBox.getChildren().get(1)).getText());
+        assertEquals(powerText(tieLine.getTerminal1().getQ()), ((Label) qBox.getChildren().get(0)).getText());
+        assertEquals(powerText(tieLine.getTerminal2().getQ()), ((Label) qBox.getChildren().get(1)).getText());
+    }
+
+    private static String powerText(double value) {
+        return Double.isNaN(value) ? "-" : String.format(Locale.ROOT, "%.1f", value);
     }
 
     private static String doubleText(double value) {
