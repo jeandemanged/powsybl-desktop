@@ -50,3 +50,8 @@ Easy to get wrong:
   which runs Sun's default rules instead of powsybl's — see `docs/ai/build-and-testing.md`.
 - PowSyBl module versions come from the `powsybl-starter` BOM, not from plain numbers in `pom.xml`: resolve them with
   `mvn -o dependency:tree` before reading a PowSyBl sources jar; don't trust whichever version sits in `~/.m2`.
+- Line endings: the repository stores LF (`.gitattributes`: `* text=auto`); working copies use the platform's
+  convention (CRLF on Windows, LF on Linux/macOS). Every file you create or rewrite must use the same endings as the
+  rest of the working copy (on Windows, CRLF everywhere). Scripted rewrites (Python `open(...).write`, `sed`,
+  heredocs) silently produce LF, so convert back if needed. Exception: `*.sh` are always LF (`eol=lf`). Check with
+  `git ls-files --eol` (text files must match their `attr/`: `w/crlf` on Windows, `w/lf` for `eol=lf`).
