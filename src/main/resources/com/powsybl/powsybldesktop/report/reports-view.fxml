@@ -8,11 +8,12 @@
 -->
 
 <?import javafx.scene.control.Button?>
-<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
 <?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.AnchorPane?>
@@ -42,8 +43,57 @@
                     </tooltip>
                 </Button>
                 <Separator orientation="VERTICAL"/>
-                <Label text="%reports.severityFilter"/>
-                <ComboBox fx:id="severityFilterComboBox"/>
+                <fx:define>
+                    <ToggleGroup fx:id="severityToggleGroup"/>
+                </fx:define>
+                <ToggleButton mnemonicParsing="false" userData="TRACE" selected="true" toggleGroup="$severityToggleGroup">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2s-shoe-print" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%reports.filter.trace"/>
+                    </tooltip>
+                </ToggleButton>
+                <ToggleButton mnemonicParsing="false" userData="DEBUG" toggleGroup="$severityToggleGroup">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2b-bug-outline" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%reports.filter.debug"/>
+                    </tooltip>
+                </ToggleButton>
+                <ToggleButton mnemonicParsing="false" userData="INFO" toggleGroup="$severityToggleGroup">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2i-information-outline" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%reports.filter.info"/>
+                    </tooltip>
+                </ToggleButton>
+                <ToggleButton mnemonicParsing="false" userData="DETAIL" toggleGroup="$severityToggleGroup">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2t-text-box-outline" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%reports.filter.detail"/>
+                    </tooltip>
+                </ToggleButton>
+                <ToggleButton mnemonicParsing="false" userData="WARN" toggleGroup="$severityToggleGroup">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2a-alert-outline" iconSize="16" iconColor="darkorange"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%reports.filter.warn"/>
+                    </tooltip>
+                </ToggleButton>
+                <ToggleButton mnemonicParsing="false" userData="ERROR" toggleGroup="$severityToggleGroup">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2a-alert-circle-outline" iconSize="16" iconColor="red"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%reports.filter.error"/>
+                    </tooltip>
+                </ToggleButton>
             </items>
         </ToolBar>
     </top>

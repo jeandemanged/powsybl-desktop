@@ -16,10 +16,10 @@ import com.powsybl.powsybldesktop.utils.FileChooserPreferences;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.ToggleGroup;
 import javafx.stage.FileChooser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +46,7 @@ public class ReportsController extends AbstractDisposableController {
     private Button exportButton;
 
     @FXML
-    private ComboBox<String> severityFilterComboBox;
+    private ToggleGroup severityToggleGroup;
 
     @FXML
     private ReportNodeViewController reportDetailController;
@@ -70,10 +70,14 @@ public class ReportsController extends AbstractDisposableController {
         exportButton.disableProperty().bind(reportsListView.getSelectionModel().selectedItemProperty().isNull());
         reportsListView.getSelectionModel().selectedItemProperty().addListener((obs, oldItem, newItem) ->
                 reportDetailController.setRootReportNode(newItem));
-        severityFilterComboBox.getItems().addAll(ReportNodeTreeCell.SEVERITIES);
-        severityFilterComboBox.getSelectionModel().selectFirst();
-        severityFilterComboBox.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) ->
-                reportDetailController.setMinSeverity(newValue));
+        severityToggleGroup.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
+            // clicking the selected toggle would otherwise leave none selected
+            if (newToggle == null) {
+                oldToggle.setSelected(true);
+            } else {
+                reportDetailController.setMinSeverity((String) newToggle.getUserData());
+            }
+        });
     }
 
     public void setMainModel(MainModel mainModel) {
