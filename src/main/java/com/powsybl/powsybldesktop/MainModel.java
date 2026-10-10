@@ -58,19 +58,19 @@ import java.util.stream.Collectors;
 public class MainModel {
     private static final int MAX_NAVIGATION_PAST_SIZE = 30;
 
-    private final ObservableList<NavigationEvent> navigationPast = FXCollections.observableArrayList();
-    private final ObservableList<NavigationEvent> navigationFuture = FXCollections.observableArrayList();
+    private final ObservableList<NavigationEvent> modifiableNavigationPast = FXCollections.observableArrayList();
+    private final ObservableList<NavigationEvent> modifiableNavigationFuture = FXCollections.observableArrayList();
     private final ObservableList<Network> networks = FXCollections.observableArrayList();
-    private final ObservableList<ReportNode> reports = FXCollections.observableArrayList();
-    private final ObservableList<Notification> notifications = FXCollections.observableArrayList();
+    private final ObservableList<ReportNode> modifiableReports = FXCollections.observableArrayList();
+    private final ObservableList<Notification> modifiableNotifications = FXCollections.observableArrayList();
 
     // Unmodifiable views, cached rather than wrapped on every getter call: the wrapper forwards
     // changes via a WeakListChangeListener on the backing list, so a fresh, unreferenced wrapper
     // is liable to be garbage-collected and silently stop forwarding to whoever listens on it.
-    private final ObservableList<NavigationEvent> navigationPastView = FXCollections.unmodifiableObservableList(navigationPast);
-    private final ObservableList<NavigationEvent> navigationFutureView = FXCollections.unmodifiableObservableList(navigationFuture);
-    private final ObservableList<ReportNode> reportsView = FXCollections.unmodifiableObservableList(reports);
-    private final ObservableList<Notification> notificationsView = FXCollections.unmodifiableObservableList(notifications);
+    private final ObservableList<NavigationEvent> navigationPast = FXCollections.unmodifiableObservableList(modifiableNavigationPast);
+    private final ObservableList<NavigationEvent> navigationFuture = FXCollections.unmodifiableObservableList(modifiableNavigationFuture);
+    private final ObservableList<ReportNode> reports = FXCollections.unmodifiableObservableList(modifiableReports);
+    private final ObservableList<Notification> notifications = FXCollections.unmodifiableObservableList(modifiableNotifications);
     private final ObjectProperty<Network> network = new SimpleObjectProperty<>();
     private final ObjectProperty<Instant> update = new SimpleObjectProperty<>();
     // the single voltage level touched by the change that triggered the most recent update() firing, or null
@@ -167,8 +167,8 @@ public class MainModel {
         cancelServices(securityAnalysisServices, network);
         cancelServices(searchIndexServices, network);
         busyCounts.remove(network);
-        navigationPast.removeIf(event -> isRelatedToNetwork(event, network));
-        navigationFuture.removeIf(event -> isRelatedToNetwork(event, network));
+        modifiableNavigationPast.removeIf(event -> isRelatedToNetwork(event, network));
+        modifiableNavigationFuture.removeIf(event -> isRelatedToNetwork(event, network));
         loadFlowResults.remove(network);
         securityAnalysisResults.remove(network);
         ObservableList<ContingencyList> lists = contingencyLists.remove(network);
@@ -229,8 +229,8 @@ public class MainModel {
         Network rootNetwork = subnetworks.getFirst().getNetwork();
         Predicate<NavigationEvent> related = event -> event != null && event.state() != null
                 && subnetworks.contains(event.state().getSelectedNetwork());
-        navigationPast.removeIf(related);
-        navigationFuture.removeIf(related);
+        modifiableNavigationPast.removeIf(related);
+        modifiableNavigationFuture.removeIf(related);
         if (related.test(navigationEvent.get())) {
             navigationEvent.setValue(null);
         }
@@ -478,17 +478,17 @@ public class MainModel {
 
     public void addNavigationEvent(NavigationEvent navigationEvent, boolean notify) {
         Objects.requireNonNull(navigationEvent);
-        if (!navigationPast.isEmpty() && navigationPast.getLast().equals(navigationEvent)) {
+        if (!modifiableNavigationPast.isEmpty() && modifiableNavigationPast.getLast().equals(navigationEvent)) {
             return;
         }
         if (notify) {
             dispatch(navigationEvent);
         }
-        navigationPast.add(navigationEvent);
-        while (navigationPast.size() > MAX_NAVIGATION_PAST_SIZE) {
-            navigationPast.removeFirst();
+        modifiableNavigationPast.add(navigationEvent);
+        while (modifiableNavigationPast.size() > MAX_NAVIGATION_PAST_SIZE) {
+            modifiableNavigationPast.removeFirst();
         }
-        navigationFuture.clear();
+        modifiableNavigationFuture.clear();
     }
 
     // NavigationEvent/ContainerNavigationState etc. are records/override equals(), and this property is only
@@ -506,43 +506,43 @@ public class MainModel {
     }
 
     public ObservableList<NavigationEvent> getNavigationPast() {
-        return navigationPastView;
+        return navigationPast;
     }
 
     public ObservableList<NavigationEvent> getNavigationFuture() {
-        return navigationFutureView;
+        return navigationFuture;
     }
 
     public void navigateBackward() {
-        if (navigationPast.size() > 1) {
-            navigateBackwardToIndex(navigationPast.size() - 2);
+        if (modifiableNavigationPast.size() > 1) {
+            navigateBackwardToIndex(modifiableNavigationPast.size() - 2);
         }
     }
 
     public void navigateForward() {
-        if (!navigationFuture.isEmpty()) {
-            navigateForwardToIndex(navigationFuture.size() - 1);
+        if (!modifiableNavigationFuture.isEmpty()) {
+            navigateForwardToIndex(modifiableNavigationFuture.size() - 1);
         }
     }
 
     public void navigateBackwardToIndex(int index) {
-        if (index < 0 || index >= navigationPast.size() - 1) {
+        if (index < 0 || index >= modifiableNavigationPast.size() - 1) {
             return;
         }
-        while (navigationPast.size() - 1 > index) {
-            navigationFuture.add(navigationPast.removeLast());
+        while (modifiableNavigationPast.size() - 1 > index) {
+            modifiableNavigationFuture.add(modifiableNavigationPast.removeLast());
         }
-        dispatch(navigationPast.getLast());
+        dispatch(modifiableNavigationPast.getLast());
     }
 
     public void navigateForwardToIndex(int index) {
-        if (index < 0 || index >= navigationFuture.size()) {
+        if (index < 0 || index >= modifiableNavigationFuture.size()) {
             return;
         }
-        while (navigationFuture.size() - 1 >= index) {
-            navigationPast.add(navigationFuture.removeLast());
+        while (modifiableNavigationFuture.size() - 1 >= index) {
+            modifiableNavigationPast.add(modifiableNavigationFuture.removeLast());
         }
-        dispatch(navigationPast.getLast());
+        dispatch(modifiableNavigationPast.getLast());
     }
 
     public LogsModel getLogsModel() {
@@ -551,45 +551,45 @@ public class MainModel {
 
     public void addReport(ReportNode reportNode) {
         Objects.requireNonNull(reportNode);
-        reports.add(reportNode);
+        modifiableReports.add(reportNode);
     }
 
     public ObservableList<ReportNode> getReports() {
-        return reportsView;
+        return reports;
     }
 
     public void clearReports() {
-        reports.clear();
+        modifiableReports.clear();
     }
 
     public void addNotification(Notification notification) {
         Objects.requireNonNull(notification);
-        notifications.add(notification);
+        modifiableNotifications.add(notification);
     }
 
     public void removeNotification(Notification notification) {
         Objects.requireNonNull(notification);
-        notifications.remove(notification);
+        modifiableNotifications.remove(notification);
     }
 
     public void replaceNotification(Notification oldNotification, Notification newNotification) {
         Objects.requireNonNull(oldNotification);
         Objects.requireNonNull(newNotification);
-        int index = notifications.indexOf(oldNotification);
+        int index = modifiableNotifications.indexOf(oldNotification);
         if (index >= 0) {
-            notifications.set(index, newNotification);
+            modifiableNotifications.set(index, newNotification);
         } else {
-            notifications.add(newNotification);
+            modifiableNotifications.add(newNotification);
         }
     }
 
     // running ones are kept: they carry the only way to cancel their operation, and are replaced by its outcome
     public void clearNotifications() {
-        notifications.removeIf(notification -> notification.status() != NotificationStatus.RUNNING);
+        modifiableNotifications.removeIf(notification -> notification.status() != NotificationStatus.RUNNING);
     }
 
     public ObservableList<Notification> getNotifications() {
-        return notificationsView;
+        return notifications;
     }
 
     public BooleanProperty notificationsPanelOpenProperty() {
