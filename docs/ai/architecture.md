@@ -55,16 +55,25 @@ Not a textbook MVC/MVVM. The actual structure is:
 
 `…/MainModel.java` holds: loaded root networks (`getNetworks()`), the selected network (`networkProperty()`, may be
 a subnetwork), an `updateProperty()` timestamp fired after any network mutation (`setUpdate()` /
-`setUpdate(VoltageLevel)`), `networkBusyProperty()`, search index state, reports, diagram/map display settings, and
-the sub-models `NavigationHistory`, `ParametersModel`, `NotificationsModel`, `LogsModel`.
+`setUpdate(VoltageLevel)`), `networkBusyProperty()`, search index state, reports, the main window's diagram display
+settings, the network change guard, and the sub-models `NavigationHistory`, `ParametersModel`, `NotificationsModel`,
+`LogsModel`.
 
 `…/NetworkStudy.java` holds everything per loaded root network: LF/SA results, contingency lists and their enabled
 flags, running computation and index-build services, search indexes, Map views, busy count. `MainModel.getStudy(n)`
 resolves a subnetwork to its root and throws if the network is not loaded. Studies are created by
 `addNetwork`/`detachSubnetworks` and disposed (services cancelled, indexes closed) by `removeNetwork`.
 
+`…/SceneModel.java` is what a view controller receives (`SceneView.setSceneModel`): the shared `MainModel` plus what
+depends on the window showing the view - the network (the main window's follows the selection; a separate window's is
+fixed to the network selected when it was opened, and closed before the selection changes, so the selection-derived
+`MainModel` state - busy, search index - applies to it too), the navigation entry points (`navigate`: drives the main
+window; `record`: main window only) and the diagram zoom/fit/depth (the main scene's are kept in `MainModel` across
+view swaps and language reloads).
+
 Rules:
 - New per-network state goes in `NetworkStudy`, not in a `Map<Network, ...>` elsewhere.
+- New state depending on the window showing a view goes in `SceneModel`.
 - After mutating a network from the UI, call `mainModel.setUpdate()` (or `setUpdate(voltageLevel)` when the change is
   confined to one voltage level, which lets the search index refresh only that level's buses). Views refresh
   from `updateProperty()`.
@@ -73,12 +82,16 @@ Rules:
 
 ## Navigation
 
-- Views never load other views. They call `mainModel.getNavigationHistory().navigate(NavigationEvent.create(type, state))`.
+- Views never load other views. They call `sceneModel.navigate(NavigationEvent.create(type, state))`.
 - `MainController.initialize()` listens to `currentEventProperty()` and `onNavigationEvent` uses
-  `ensureController(ControllerClass, "path/view.fxml", c -> c.setMainModel(mainModel))` — the view is reloaded only
-  when the controller class changes — then calls a restore method (`navigateTo`, `goToLoad`, `selectReport`, ...).
-- `navigate(event, false)` records history without switching view (used by tree/table selections, and by
-  `AbstractEquipmentTableController.containerCell` to remember the current row before leaving).
+  `ensureSceneView(ControllerClass, "path/view.fxml", type)` (or `ensureController` for main-window-only views) — the
+  view is reloaded only when the controller class changes — then calls a restore method (`navigateTo`, `goToLoad`,
+  `selectReport`, ...). `ContainerNavigationState` can carry an equipment, whose row the substations view selects.
+- `sceneModel.record(event)` records history without switching view (used by tree/table selections, and by
+  `AbstractEquipmentTableController.containerCell` to remember the current row before leaving); a no-op in a separate
+  window.
+- `NavigationHistory.setGuard` vetoes a navigation: `MainController` asks `MainModel.confirmNetworkChange` for one
+  selecting another network.
 - Back/forward history is capped at 30 entries; `removeIf` drops entries for removed networks.
 - `NavigationState` subclasses (e.g. `navigation/LoadNavigationState.java`) extend `NetworkNavigationState`, expose
   `create(equipment)` / `createNoX(network)` factories, and override `equals`/`hashCode` with identity comparison of
@@ -89,17 +102,37 @@ Rules:
 has restorable selection; add a branch in `MainController.onNavigationEvent`; add a public `onX()` action in
 `MainController` and a button/menu item in `main-view.fxml`; add `main.toolbar.*` keys in both bundles.
 
+## Separate windows
+
+`…/window/SeparateWindows.java` (owned by `MainController`, reached by views through
+`SceneModel.getSeparateWindows()`) shows one view per window in a fixed context, with no menu, toolbar nor history:
+- an "open in new window" button (`SeparateWindows.addOpenButton`) is added to the view's own toolbar (or its
+  `openInNewWindowHost` Pane): by `MainController.ensureSceneView` for whole views (tables, map, contingencies), by
+  `SubstationsController` for its diagram panes (`network/ContainerDiagram`, shared with its own tabs) and equipment
+  tabs (fixed to the selected container), and for logs/reports (single-instance, not network-bound);
+- the window's view gets a `SceneModel.separate` scene: its navigation drives the main window and brings it to front;
+- network-bound windows close when the selected network changes; `confirmNetworkChange` asks first.
+- one window per key: whole-network views (tables, map, contingencies) are keyed by `NavigationType`, container
+  diagrams and equipment tabs by kind and container id, logs/reports/parameters (not network-bound) by name; opening
+  an open key brings its window to front instead;
+- parameters are a center view (`NavigationType.PARAMETERS`) moved, not copied, to their window (the main window goes
+  back in history), since two parameter forms wouldn't follow each other's edits; the toolbar button focuses that
+  window while open, and going back in history to parameters moves them back to the main window;
+- the main window's Windows menu lists them (`getOpenWindows`) to focus one;
+- they are independent stages, not owned by the main window, which can thus come in front of them.
+
 ## Controller lifecycle
 
 - Swappable controllers extend `…/utils/AbstractDisposableController.java` (implements `DisposableController`) and
   get a `ListenerManager`. Register model listeners with `listenerManager.listen(observable, listener)` so that
   `dispose()` detaches them when `MainController` swaps the view. Override `dispose()` to also stop services,
   dispose included sub-controllers (e.g. `searchBox().dispose()`), and call `super.dispose()`.
-- Model injection is a setter, `setMainModel(MainModel)`, called right after FXML load (`LogsViewController` takes
-  `setLogsModel(LogsModel)` instead). `MainController` itself gets `MainModel` through its constructor via a controller
-  factory.
+- Model injection is a setter called right after FXML load: `setSceneModel(SceneModel)` for views
+  (`SceneView`), `setMainModel(MainModel)` for main-window-only controllers (`LogsViewController` takes
+  `setModels(LogsModel, ParametersModel)` instead). `MainController` itself gets `MainModel` through its constructor
+  via a controller factory.
 - `@FXML private void initialize()` configures controls that don't need the model; work depending on the model
-  happens in `setMainModel`.
+  happens in the model setter.
 - `ListenerManager` cannot detach a single listener; when a controller needs to switch the list it observes, it
   refreshes explicitly instead (see the class javadoc of `contingency/ContingenciesController.java`).
 

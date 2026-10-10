@@ -23,6 +23,8 @@ import com.powsybl.iidm.network.extensions.SubstationPosition;
 import com.powsybl.powsybldesktop.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.NetworkStudy;
+import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.SceneView;
 import com.powsybl.powsybldesktop.navigation.BoundaryLineNavigationState;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.LineNavigationState;
@@ -101,7 +103,7 @@ import java.util.stream.Collectors;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-public class MapController extends AbstractDisposableController {
+public class MapController extends AbstractDisposableController implements SceneView {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MapController.class);
 
@@ -197,7 +199,7 @@ public class MapController extends AbstractDisposableController {
     private final Service<MapNetworkData> networkDataService = new Service<>() {
         @Override
         protected Task<MapNetworkData> createTask() {
-            Network network = mainModel.getNetwork();
+            Network network = sceneModel.getNetwork();
             buildingNetwork = network;
             return new AbstractNetworkTask<>(mainModel, network) {
                 @Override
@@ -225,6 +227,7 @@ public class MapController extends AbstractDisposableController {
     private Network buildingNetwork;
     private Set<String> hiddenBaseVoltages = Set.of();
 
+    private SceneModel sceneModel;
     private MainModel mainModel;
     private boolean engineLoaded;
     private JSObject jsWindow;
@@ -314,8 +317,10 @@ public class MapController extends AbstractDisposableController {
                 || network.getBoundaryLineStream().anyMatch(boundaryLine -> boundaryLine.getExtension(LinePosition.class) != null));
     }
 
-    public void setMainModel(MainModel mainModel) {
-        this.mainModel = Objects.requireNonNull(mainModel);
+    @Override
+    public void setSceneModel(SceneModel sceneModel) {
+        this.sceneModel = Objects.requireNonNull(sceneModel);
+        this.mainModel = sceneModel.getMainModel();
         hiddenBaseVoltages = gui().getMapHiddenBaseVoltages();
         basemapComboBox.setValue(gui().getMapBasemap());
         basemapComboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
@@ -325,7 +330,7 @@ public class MapController extends AbstractDisposableController {
             }
             applyBasemap();
         });
-        listenerManager.listen(mainModel.networkProperty(), (observable, oldValue, newValue) -> refresh());
+        listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> refresh());
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
         createBaseVoltageCheckBoxes();
         listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> applyGuiParameters());
@@ -344,7 +349,7 @@ public class MapController extends AbstractDisposableController {
 
     private void onSearchMatch(Identifiable<?> match) {
         // not drawn yet, or still drawn from the previous network
-        if (networkData == null || displayedNetwork != mainModel.getNetwork()) {
+        if (networkData == null || displayedNetwork != sceneModel.getNetwork()) {
             return;
         }
         SearchFocus focus = searchFocus(match);
@@ -533,19 +538,19 @@ public class MapController extends AbstractDisposableController {
     @SuppressWarnings("unused") // called from map.js
     public void onMapClick(double latitude, double longitude, double zoom) {
         MapNetworkData.Hit hit = networkData == null ? null : networkData.hitTest(latitude, longitude, zoom, hiddenBaseVoltages);
-        Network network = mainModel.getNetwork();
+        Network network = sceneModel.getNetwork();
         if (hit == null || network == null) {
             return;
         }
         Identifiable<?> identifiable = network.getIdentifiable(hit.id());
         if (identifiable instanceof Substation substation) {
-            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(substation)));
+            sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(substation)));
         } else if (identifiable instanceof Line line) {
-            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_LINES, LineNavigationState.create(line)));
+            sceneModel.navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_LINES, LineNavigationState.create(line)));
         } else if (identifiable instanceof TieLine tieLine) {
-            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_TIE_LINES, TieLineNavigationState.create(tieLine)));
+            sceneModel.navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_TIE_LINES, TieLineNavigationState.create(tieLine)));
         } else if (identifiable instanceof BoundaryLine boundaryLine) {
-            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_BOUNDARY_LINES, BoundaryLineNavigationState.create(boundaryLine)));
+            sceneModel.navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_BOUNDARY_LINES, BoundaryLineNavigationState.create(boundaryLine)));
         }
     }
 

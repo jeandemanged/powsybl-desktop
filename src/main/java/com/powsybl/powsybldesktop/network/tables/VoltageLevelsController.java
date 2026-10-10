@@ -15,6 +15,8 @@ import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.SceneView;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
@@ -46,7 +48,7 @@ import java.util.Optional;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-public class VoltageLevelsController extends AbstractDisposableController {
+public class VoltageLevelsController extends AbstractDisposableController implements SceneView {
 
     @FXML
     public TableView<VoltageLevel> voltageLevelsTableView;
@@ -70,6 +72,7 @@ public class VoltageLevelsController extends AbstractDisposableController {
 
     private final ObservableList<VoltageLevel> voltageLevelsData = FXCollections.observableArrayList();
 
+    private SceneModel sceneModel;
     private MainModel mainModel;
     List<VoltageLevel> currentVoltageLevels = List.of();
 
@@ -102,12 +105,14 @@ public class VoltageLevelsController extends AbstractDisposableController {
         highVoltageLimitColumn.setOnEditCommit(event -> event.getRowValue().setHighVoltageLimit(event.getNewValue()));
     }
 
-    public void setMainModel(MainModel mainModel) {
-        this.mainModel = Objects.requireNonNull(mainModel);
-        // see AbstractEquipmentTableController.setMainModel
+    @Override
+    public void setSceneModel(SceneModel sceneModel) {
+        this.sceneModel = Objects.requireNonNull(sceneModel);
+        this.mainModel = sceneModel.getMainModel();
+        // see AbstractEquipmentTableController.setSceneModel
         voltageLevelsTableView.editableProperty().bind(mainModel.networkBusyProperty().not());
         updateVoltageLevels();
-        listenerManager.listen(this.mainModel.networkProperty(), (observable, oldValue, newValue) -> updateVoltageLevels());
+        listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> updateVoltageLevels());
         listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> updateVoltageLevels());
         // for the decimal places, read by the cells on every render
         listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> voltageLevelsTableView.refresh());
@@ -121,7 +126,7 @@ public class VoltageLevelsController extends AbstractDisposableController {
     }
 
     private void updateVoltageLevels() {
-        Network network = mainModel.getNetwork();
+        Network network = sceneModel.getNetwork();
         currentVoltageLevels = network == null ? List.of() : network.getVoltageLevelStream()
                 .sorted(Comparator.comparing(Identifiable::getNameOrId))
                 .toList();
@@ -134,9 +139,9 @@ public class VoltageLevelsController extends AbstractDisposableController {
         Hyperlink link = new Hyperlink(container.getNameOrId());
         link.getStyleClass().add("container-link");
         link.setOnAction(event -> {
-            mainModel.getNavigationHistory().navigate(NavigationEvent.create(
-                    NavigationType.NETWORK_TABLE_VOLTAGE_LEVELS, VoltageLevelNavigationState.create(item)), false);
-            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(container)));
+            sceneModel.record(NavigationEvent.create(
+                    NavigationType.NETWORK_TABLE_VOLTAGE_LEVELS, VoltageLevelNavigationState.create(item)));
+            sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(container)));
         });
         return link;
     }

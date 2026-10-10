@@ -7,10 +7,10 @@
  */
 package com.powsybl.powsybldesktop.network;
 
-import com.google.common.io.ByteStreams;
 import com.powsybl.iidm.network.*;
-import com.powsybl.powsybldesktop.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.SceneView;
 import com.powsybl.powsybldesktop.diagram.DiagramPaneController;
 import com.powsybl.powsybldesktop.navigation.*;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
@@ -28,29 +28,19 @@ import com.powsybl.powsybldesktop.network.tables.StaticVarCompensatorsController
 import com.powsybl.powsybldesktop.network.tables.SwitchesController;
 import com.powsybl.powsybldesktop.network.tables.TieLinesController;
 import com.powsybl.powsybldesktop.network.tables.TransformersController;
-import com.powsybl.powsybldesktop.notification.Notification;
-import com.powsybl.powsybldesktop.parameters.ApplicationParametersJson;
-import com.powsybl.powsybldesktop.parameters.DesktopNadParameters;
-import com.powsybl.powsybldesktop.parameters.DesktopSldParameters;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.utils.TreeItems;
-import com.powsybl.sld.svg.GraphMetadata;
-import javafx.animation.PauseTransition;
-import javafx.concurrent.Service;
-import javafx.concurrent.Task;
+import com.powsybl.powsybldesktop.window.SeparateWindows;
 import javafx.fxml.FXML;
-import javafx.geometry.Orientation;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.control.*;
-import javafx.util.Duration;
-import netscape.javascript.JSObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.time.Instant;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -66,9 +56,7 @@ import java.util.stream.Stream;
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-public class SubstationsController extends AbstractDisposableController {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(SubstationsController.class);
+public class SubstationsController extends AbstractDisposableController implements SceneView {
 
     @FXML
     private TreeView<Object> substationsTreeView;
@@ -88,10 +76,8 @@ public class SubstationsController extends AbstractDisposableController {
     private DiagramPaneController sldPaneController;
     @FXML
     private DiagramPaneController nadPaneController;
-    private Slider nadDepthSlider;
-    // last depth actually rendered with; the slider only re-renders when this changes, since it fires
-    // continuously while dragging and re-rendering the area diagram is expensive
-    private int nadDepth = 1;
+    private ContainerDiagram singleLineDiagram;
+    private ContainerDiagram areaDiagram;
 
     // one tab per equipment table embedded in this view (see EquipmentTab), each shown only while the
     // selected container has at least one row for it - everything but the two diagram tabs above
@@ -149,7 +135,7 @@ public class SubstationsController extends AbstractDisposableController {
      * {@link Tab}, and its controller (used to filter it to the selected container and to decide whether
      * it currently has rows to show).
      */
-    private record EquipmentTab(ContainerNavigationState.ContainerTab kind, Tab tab, EmbeddableEquipmentTable controller) {
+    private record EquipmentTab(ContainerNavigationState.ContainerTab kind, Tab tab, EmbeddableEquipmentTable controller, String fxml) {
     }
 
     private List<EquipmentTab> equipmentTabs;
@@ -158,65 +144,8 @@ public class SubstationsController extends AbstractDisposableController {
     private GroupingMode groupingMode;
     // only meaningful when groupingMode == AREA: which of the network's area types to group by
     private String selectedAreaType;
-    // metadata for the currently displayed single line diagram, used to map an SVG node id back to
-    // equipment (see onSwitchClick/onFeederTopBottomClick, called from sld.js)
-    private GraphMetadata sldMetadata;
     // the tree selection, kept regardless of which tab is active
     private Container<?> currentContainer;
-    // both diagrams are rendered lazily (only while their tab is showing): set whenever what they show changes,
-    // cleared once their render is requested
-    private boolean sldStale;
-    private boolean nadStale;
-    private Map<GuiParameters.Quantity, Integer> diagramDecimals;
-
-    // Diagrams are rendered off the FX thread, latest wins: restarting a service drops its previous render's result.
-    // Everything a render reads is captured on the FX thread in createTask.
-    private final Service<SubstationDiagramRenderer.DiagramRender> sldRenderService = new Service<>() {
-        @Override
-        protected Task<SubstationDiagramRenderer.DiagramRender> createTask() {
-            Container<?> container = currentContainer;
-            DesktopSldParameters parameters = ApplicationParametersJson.copy(mainModel.getParametersModel().sldParametersProperty().getValue());
-            applyDecimals(parameters.getSvgParameters(), mainModel.getParametersModel().getGuiParameters());
-            return new AbstractNetworkTask<>(mainModel, container.getNetwork()) {
-                @Override
-                protected SubstationDiagramRenderer.DiagramRender compute() throws IOException {
-                    return SubstationDiagramRenderer.render(container, parameters);
-                }
-            };
-        }
-    };
-
-    private final Service<String> nadRenderService = new Service<>() {
-        @Override
-        protected Task<String> createTask() {
-            Container<?> container = currentContainer;
-            int depth = nadDepth;
-            DesktopNadParameters parameters = ApplicationParametersJson.copy(mainModel.getParametersModel().nadParametersProperty().getValue());
-            applyDecimals(parameters.getSvgParameters(), mainModel.getParametersModel().getGuiParameters());
-            return new AbstractNetworkTask<>(mainModel, container.getNetwork()) {
-                @Override
-                protected String compute() throws IOException {
-                    return NetworkAreaDiagramRenderer.render(container, depth, parameters);
-                }
-            };
-        }
-    };
-
-    private static void applyDecimals(com.powsybl.sld.svg.SvgParameters svgParameters, GuiParameters gui) {
-        svgParameters.setVoltageValuePrecision(gui.getDecimals(GuiParameters.Quantity.VOLTAGE));
-        svgParameters.setPowerValuePrecision(gui.getDecimals(GuiParameters.Quantity.POWER));
-        svgParameters.setAngleValuePrecision(gui.getDecimals(GuiParameters.Quantity.ANGLE));
-        svgParameters.setCurrentValuePrecision(gui.getDecimals(GuiParameters.Quantity.CURRENT));
-        svgParameters.setPercentageValuePrecision(gui.getDecimals(GuiParameters.Quantity.PERCENTAGE));
-    }
-
-    private static void applyDecimals(com.powsybl.nad.svg.SvgParameters svgParameters, GuiParameters gui) {
-        svgParameters.setVoltageValuePrecision(gui.getDecimals(GuiParameters.Quantity.VOLTAGE));
-        svgParameters.setPowerValuePrecision(gui.getDecimals(GuiParameters.Quantity.POWER));
-        svgParameters.setAngleValuePrecision(gui.getDecimals(GuiParameters.Quantity.ANGLE));
-        svgParameters.setCurrentValuePrecision(gui.getDecimals(GuiParameters.Quantity.CURRENT));
-        svgParameters.setPercentageValuePrecision(gui.getDecimals(GuiParameters.Quantity.PERCENTAGE));
-    }
 
     /**
      * Top-level tree grouping criterion, selectable via {@link #groupingMenuButton}.
@@ -244,39 +173,16 @@ public class SubstationsController extends AbstractDisposableController {
     private static final Comparator<GroupKey> GROUP_KEY_COMPARATOR =
             Comparator.comparing(GroupKey::placeholder).thenComparing(GroupKey::label, String.CASE_INSENSITIVE_ORDER);
 
-    // click-to-navigate JS bridge (window.controller, see initialize()); the area diagram has no
-    // interactivity yet, so its pane keeps DiagramPaneController's default (non-interactive) shell
-    private static final String SLD_HTML_SHELL = """
-                <html>
-                    <script type="text/javascript">%__JS__%</script>
-                    <style>
-                        .sld-top-feeder,
-                        .sld-bottom-feeder,
-                        .sld-load-break-switch,
-                        .sld-breaker,
-                        .sld-disconnector {
-                            cursor: pointer;
-                        }
-                    </style>
-                    <body style='margin: 0'>
-                        <div id="svgContainer"></div>
-                    </body>
-                </html>
-            """;
-
-    private String js;
-
+    private SceneModel sceneModel;
     private MainModel mainModel;
 
-    public void setMainModel(MainModel mainModel) {
-        this.mainModel = Objects.requireNonNull(mainModel);
-        // area diagram depth is remembered across navigation/views (see MainModel), like the single line
-        // diagram's zoom/fit-to-screen below
-        nadDepth = mainModel.getDiagramAreaDepth();
-        nadDepthSlider.setValue(nadDepth);
-        refreshAreaTypesMenu(mainModel.getNetwork());
-        setGroupingMode(defaultGroupingMode(mainModel.getNetwork()));
-        listenerManager.listen(mainModel.networkProperty(), (observable, oldNetwork, newNetwork) -> {
+    @Override
+    public void setSceneModel(SceneModel sceneModel) {
+        this.sceneModel = Objects.requireNonNull(sceneModel);
+        this.mainModel = sceneModel.getMainModel();
+        refreshAreaTypesMenu(sceneModel.getNetwork());
+        setGroupingMode(defaultGroupingMode(sceneModel.getNetwork()));
+        listenerManager.listen(sceneModel.networkProperty(), (observable, oldNetwork, newNetwork) -> {
             refreshAreaTypesMenu(newNetwork);
             setGroupingMode(defaultGroupingMode(newNetwork));
         });
@@ -287,29 +193,53 @@ public class SubstationsController extends AbstractDisposableController {
         // buses) before update() re-filters them to the selected container - JavaFX fires listeners on the
         // same property in registration order, and update()'s setContainer() call would otherwise filter
         // stale, possibly-invalidated data
-        equipmentTabs.forEach(equipmentTab -> equipmentTab.controller().setMainModel(mainModel));
+        equipmentTabs.forEach(equipmentTab -> equipmentTab.controller().setSceneModel(sceneModel));
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> this.update());
-        listenerManager.listen(mainModel.getParametersModel().sldParametersRevisionProperty(), (observable, oldValue, newValue) -> updateSingleLineDiagram());
-        listenerManager.listen(mainModel.getParametersModel().nadParametersRevisionProperty(), (observable, oldValue, newValue) -> updateAreaDiagram());
-        // GUI parameters also hold e.g. the map basemap: only a decimals change is worth re-rendering the diagrams
-        diagramDecimals = mainModel.getParametersModel().getGuiParameters().getDecimals();
-        listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> {
-            Map<GuiParameters.Quantity, Integer> decimals = mainModel.getParametersModel().getGuiParameters().getDecimals();
-            if (!decimals.equals(diagramDecimals)) {
-                diagramDecimals = decimals;
-                // the voltage levels' nominal voltage
-                substationsTreeView.refresh();
-                updateSingleLineDiagram();
-                updateAreaDiagram();
+        // the voltage levels' nominal voltage follows the decimals
+        listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> substationsTreeView.refresh());
+
+        singleLineDiagram = new ContainerDiagram(ContainerDiagram.Kind.SINGLE_LINE, sldPaneController, sceneModel);
+        areaDiagram = new ContainerDiagram(ContainerDiagram.Kind.AREA, nadPaneController, sceneModel);
+        sceneModel.getSeparateWindows().ifPresent(separateWindows -> {
+            SeparateWindows.addOpenButton(sldPaneController.getToolBar(), () -> openDiagram(separateWindows, ContainerDiagram.Kind.SINGLE_LINE));
+            SeparateWindows.addOpenButton(nadPaneController.getToolBar(), () -> openDiagram(separateWindows, ContainerDiagram.Kind.AREA));
+            equipmentTabs.forEach(equipmentTab -> SeparateWindows.addOpenButton((Parent) equipmentTab.tab().getContent(),
+                    () -> openEquipmentTab(separateWindows, equipmentTab)));
+        });
+        updateDiagramsShowing();
+        update();
+    }
+
+    private void openDiagram(SeparateWindows separateWindows, ContainerDiagram.Kind kind) {
+        Container<?> container = currentContainer;
+        if (container == null) {
+            return;
+        }
+        String title = Messages.get(kind == ContainerDiagram.Kind.SINGLE_LINE ? "desktop.common.singleLineDiagram" : "desktop.common.networkAreaDiagram");
+        separateWindows.open(kind + "/" + container.getId(), title + " - " + container.getNameOrId(), scene -> {
+            FXMLLoader loader = new FXMLLoader(DiagramPaneController.class.getResource("diagram-pane.fxml"), Messages.bundle());
+            try {
+                Parent root = loader.load();
+                ContainerDiagram diagram = new ContainerDiagram(kind, loader.getController(), scene);
+                diagram.setContainer(container);
+                diagram.setShowing(true);
+                return new SeparateWindows.View(root, diagram);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
             }
         });
+    }
 
-        sldPaneController.loadShell(SLD_HTML_SHELL.replace("%__JS__%", js));
-        // the single line diagram's zoom/fit-to-screen state is remembered across navigation/views (see
-        // MainModel); the area diagram pane keeps its own default (1.0/not fitted), reset each session
-        sldPaneController.zoomProperty().addListener((observable, oldValue, newValue) -> mainModel.setDiagramZoom(newValue.doubleValue()));
-        sldPaneController.fitToScreenProperty().addListener((observable, oldValue, newValue) -> mainModel.setDiagramFitToScreen(newValue));
-        sldPaneController.restoreZoom(mainModel.getDiagramZoom(), mainModel.isDiagramFitToScreen());
+    private void openEquipmentTab(SeparateWindows separateWindows, EquipmentTab equipmentTab) {
+        Container<?> container = currentContainer;
+        if (container == null) {
+            return;
+        }
+        separateWindows.open(equipmentTab.kind() + "/" + container.getId(), equipmentTab.tab().getText() + " - " + container.getNameOrId(),
+                scene -> SeparateWindows.<EmbeddableEquipmentTable>load(equipmentTab.fxml(), controller -> {
+                    controller.setSceneModel(scene);
+                    controller.setContainer(container);
+                }));
     }
 
     private static GroupingMode defaultGroupingMode(Network network) {
@@ -355,7 +285,7 @@ public class SubstationsController extends AbstractDisposableController {
     }
 
     private void updateSubstationTree() {
-        Network network = mainModel.getNetwork();
+        Network network = sceneModel.getNetwork();
         TreeItem<Object> rootItem = new TreeItem<>(network);
         if (network != null) {
             buildTopLevelGroups(network, groupingMode).forEach(rootItem.getChildren()::add);
@@ -536,84 +466,27 @@ public class SubstationsController extends AbstractDisposableController {
     }
 
     @FXML
-    private void initialize() throws IOException {
-        js = new String(ByteStreams.toByteArray(Objects.requireNonNull(getClass().getResourceAsStream("sld.js"))));
-        sldPaneController.setOnEngineLoaded(() -> {
-            JSObject window = (JSObject) sldPaneController.getWebView().getEngine().executeScript("window");
-            window.setMember("controller", this);
-        });
-        sldPaneController.setDiagramFileNameSupplier(this::selectedContainerName);
-        nadPaneController.setDiagramFileNameSupplier(this::selectedContainerName);
-
-        initializeAreaDiagramDepthControl();
-
+    private void initialize() {
         equipmentTabs = List.of(
-                new EquipmentTab(ContainerNavigationState.ContainerTab.SWITCHES, switchesTab, switchesEmbeddedController),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.GENERATORS, generatorsTab, generatorsEmbeddedController),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.SHUNT_COMPENSATORS, shuntCompensatorsTab, shuntCompensatorsEmbeddedController),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.STATIC_VAR_COMPENSATORS, staticVarCompensatorsTab, staticVarCompensatorsEmbeddedController),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.LOADS, loadsTab, loadsEmbeddedController),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.LINES, linesTab, linesEmbeddedController),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.TRANSFORMERS, transformersTab, transformersEmbeddedController),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.TIE_LINES, tieLinesTab, tieLinesEmbeddedController),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.BOUNDARY_LINES, boundaryLinesTab, boundaryLinesEmbeddedController),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.BUSBAR_SECTIONS, busbarSectionsTab, busbarSectionsEmbeddedController),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.BUSES_BUS_VIEW, busesBusViewTab, busesBusViewEmbeddedController),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.BUSES_BUS_BREAKER_VIEW, busesBusBreakerViewTab, busesBusBreakerViewEmbeddedController));
+                new EquipmentTab(ContainerNavigationState.ContainerTab.SWITCHES, switchesTab, switchesEmbeddedController, "network/tables/switches-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.GENERATORS, generatorsTab, generatorsEmbeddedController, "network/tables/generators-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.SHUNT_COMPENSATORS, shuntCompensatorsTab, shuntCompensatorsEmbeddedController, "network/tables/shunt-compensators-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.STATIC_VAR_COMPENSATORS, staticVarCompensatorsTab, staticVarCompensatorsEmbeddedController,
+                        "network/tables/static-var-compensators-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.LOADS, loadsTab, loadsEmbeddedController, "network/tables/loads-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.LINES, linesTab, linesEmbeddedController, "network/tables/lines-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.TRANSFORMERS, transformersTab, transformersEmbeddedController, "network/tables/transformers-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.TIE_LINES, tieLinesTab, tieLinesEmbeddedController, "network/tables/tie-lines-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.BOUNDARY_LINES, boundaryLinesTab, boundaryLinesEmbeddedController, "network/tables/boundary-lines-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.BUSBAR_SECTIONS, busbarSectionsTab, busbarSectionsEmbeddedController, "network/tables/busbar-sections-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.BUSES_BUS_VIEW, busesBusViewTab, busesBusViewEmbeddedController, "network/tables/buses-bus-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.BUSES_BUS_BREAKER_VIEW, busesBusBreakerViewTab, busesBusBreakerViewEmbeddedController,
+                        "network/tables/buses-bus-breaker-view.fxml"));
 
-        diagramTabPane.getSelectionModel().selectedItemProperty().addListener((observable, oldTab, newTab) -> {
-            if (newTab == singleLineDiagramTab && sldStale) {
-                renderSingleLineDiagram();
-            } else if (newTab == areaDiagramTab && nadStale) {
-                renderAreaDiagram();
-            }
-        });
-        sldRenderService.setOnSucceeded(event -> {
-            SubstationDiagramRenderer.DiagramRender render = sldRenderService.getValue();
-            sldMetadata = render.metadata();
-            sldPaneController.showDiagram(render.svg());
-        });
-        sldRenderService.setOnFailed(event -> LOGGER.error(sldRenderService.getException().getMessage(), sldRenderService.getException()));
-        nadRenderService.setOnSucceeded(event -> nadPaneController.showDiagram(nadRenderService.getValue()));
-        nadRenderService.setOnFailed(event -> LOGGER.error(nadRenderService.getException().getMessage(), nadRenderService.getException()));
+        diagramTabPane.getSelectionModel().selectedItemProperty().addListener((observable, oldTab, newTab) -> updateDiagramsShowing());
 
         initializeTreeViews();
         initializeListeners();
-    }
-
-    // the area diagram tab has one toolbar control the single line diagram tab doesn't: a depth
-    // slider. diagram-pane.fxml only declares the controls common to both, so this one is appended
-    // to the area diagram pane's toolbar instead.
-    private void initializeAreaDiagramDepthControl() {
-        nadDepthSlider = new Slider(1, 6, 1);
-        nadDepthSlider.setBlockIncrement(1);
-        nadDepthSlider.setMajorTickUnit(1);
-        nadDepthSlider.setMinorTickCount(0);
-        nadDepthSlider.setSnapToTicks(true);
-        nadDepthSlider.setShowTickLabels(true);
-        nadDepthSlider.setPrefWidth(120);
-        nadDepthSlider.setTooltip(new Tooltip(Messages.get("substations.diagram.depth")));
-        // debounced: dragging the slider across several depths would otherwise start a render per depth, each
-        // running to completion in the background even once superseded (see AbstractNetworkTask)
-        PauseTransition depthDebounce = new PauseTransition(Duration.millis(300));
-        depthDebounce.setOnFinished(event -> renderAreaDiagram());
-        nadDepthSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-            int depth = newValue.intValue();
-            if (depth != nadDepth) {
-                nadDepth = depth;
-                mainModel.setDiagramAreaDepth(depth);
-                depthDebounce.playFromStart();
-            }
-        });
-        nadPaneController.getToolBar().getItems().addAll(
-                new Separator(Orientation.VERTICAL), new Label(Messages.get("substations.diagram.depth")), nadDepthSlider);
-    }
-
-    // name of the substation/voltage level currently selected in the tree, used as the default export filename
-    private String selectedContainerName() {
-        TreeItem<Object> selectedItem = substationsTreeView.getSelectionModel().getSelectedItem();
-        return selectedItem != null && selectedItem.getValue() instanceof Identifiable<?> identifiable
-                ? identifiable.getNameOrId() : null;
     }
 
     @FXML
@@ -641,8 +514,10 @@ public class SubstationsController extends AbstractDisposableController {
 
     @Override
     public void dispose() {
-        sldRenderService.cancel();
-        nadRenderService.cancel();
+        if (singleLineDiagram != null) {
+            singleLineDiagram.dispose();
+            areaDiagram.dispose();
+        }
         searchBoxController.dispose();
         equipmentTabs.forEach(equipmentTab -> equipmentTab.controller().dispose());
         super.dispose();
@@ -654,60 +529,6 @@ public class SubstationsController extends AbstractDisposableController {
      */
     private void onSearchMatch(Identifiable<?> match) {
         selectContainerInTree(NetworkSearch.containerOf(match));
-    }
-
-    @SuppressWarnings("unused") // used by JS
-    public void onFeederTopBottomClick(String id) {
-        GraphMetadata.NodeMetadata node = sldMetadata.getNodeMetadata(id);
-        if (Objects.nonNull(node)) {
-            // the click only ever happens from the single line diagram tab, but this state isn't
-            // guaranteed to already be in history (e.g. reached via search, which doesn't push one) -
-            // record it explicitly so navigating back from the equipment tab below lands back on it
-            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
-                    ContainerNavigationState.create(currentContainer, selectedTab())), false);
-            if (Objects.nonNull(node.getNextVId())) {
-                // re-renders through navigateTo
-                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
-                        ContainerNavigationState.create(this.mainModel.getNetwork().getNetwork().getVoltageLevel(node.getNextVId()))));
-            } else {
-                update();
-            }
-            Identifiable<?> equipment = this.mainModel.getNetwork().getNetwork().getIdentifiable(node.getEquipmentId());
-            if (equipment instanceof Generator generator) {
-                selectTab(ContainerNavigationState.ContainerTab.GENERATORS);
-                generatorsEmbeddedController.goToGenerator(generator);
-            } else if (equipment instanceof Load load) {
-                selectTab(ContainerNavigationState.ContainerTab.LOADS);
-                loadsEmbeddedController.goToLoad(load);
-            } else if (equipment instanceof ShuntCompensator shunt) {
-                selectTab(ContainerNavigationState.ContainerTab.SHUNT_COMPENSATORS);
-                shuntCompensatorsEmbeddedController.goToShuntCompensator(shunt);
-            } else if (equipment instanceof StaticVarCompensator svc) {
-                selectTab(ContainerNavigationState.ContainerTab.STATIC_VAR_COMPENSATORS);
-                staticVarCompensatorsEmbeddedController.goToStaticVarCompensator(svc);
-            }
-        } else {
-            update();
-        }
-    }
-
-    @SuppressWarnings("unused") // used by JS
-    public void onSwitchClick(String id) {
-        Objects.requireNonNull(id);
-        // not while a background job uses the network (see MainModel.markBusy), e.g. this diagram's re-render
-        // after a previous click
-        if (mainModel.isBusy(mainModel.getNetwork())) {
-            mainModel.getNotificationsModel().add(Notification.createError(Instant.now(), "main.networkBusy"));
-            return;
-        }
-        GraphMetadata.NodeMetadata nodeMetadata = sldMetadata.getNodeMetadata(id);
-        Objects.requireNonNull(nodeMetadata);
-        String switchId = nodeMetadata.getEquipmentId();
-        Switch aSwitch = mainModel.getNetwork().getSwitch(switchId);
-        Objects.requireNonNull(aSwitch);
-        aSwitch.setOpen(!aSwitch.isOpen());
-        // re-renders through this view's updateProperty listener
-        mainModel.setUpdate(aSwitch.getVoltageLevel());
     }
 
     private void initializeTreeViews() {
@@ -756,8 +577,8 @@ public class SubstationsController extends AbstractDisposableController {
             // exist on the new one) - selectedTab() below must reflect that, not the pre-switch tab
             update();
             if (newItem != null && newItem.getValue() instanceof Container<?> container) {
-                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
-                        ContainerNavigationState.create(container, selectedTab())), false);
+                sceneModel.record(NavigationEvent.create(NavigationType.SUBSTATIONS,
+                        ContainerNavigationState.create(container, selectedTab())));
             }
         });
         // same guard: switching tabs is itself a navigable moment, but only once a container is actually
@@ -766,8 +587,8 @@ public class SubstationsController extends AbstractDisposableController {
             if (programmaticSelection || currentContainer == null) {
                 return;
             }
-            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
-                    ContainerNavigationState.create(currentContainer, selectedTab())), false);
+            sceneModel.record(NavigationEvent.create(NavigationType.SUBSTATIONS,
+                    ContainerNavigationState.create(currentContainer, selectedTab())));
         });
     }
 
@@ -804,48 +625,20 @@ public class SubstationsController extends AbstractDisposableController {
         Container<?> container = selectedItem != null && selectedItem.getValue() instanceof Container<?> c
                 && (c instanceof VoltageLevel || c instanceof Substation) ? c : null;
         currentContainer = container;
-        updateSingleLineDiagram();
-        updateAreaDiagram();
+        if (singleLineDiagram != null) {
+            singleLineDiagram.setContainer(container);
+            areaDiagram.setContainer(container);
+        }
         updateEquipmentTabs(container);
     }
 
-    // rendered lazily: only while the single line diagram tab is showing, so that editing in an equipment tab
-    // doesn't keep the network busy re-rendering a hidden diagram (see MainModel.markBusy)
-    private void updateSingleLineDiagram() {
-        sldStale = true;
-        if (diagramTabPane.getSelectionModel().getSelectedItem() == singleLineDiagramTab) {
-            renderSingleLineDiagram();
-        }
-    }
-
-    private void renderSingleLineDiagram() {
-        sldStale = false;
-        if (currentContainer != null) {
-            sldRenderService.restart();
-        } else {
-            // nothing selected, or a group node (country/subnetwork/area, or one of their "no X" placeholders)
-            sldRenderService.cancel();
-            sldMetadata = null;
-            sldPaneController.showNoSelection();
-        }
-    }
-
-    // rendered lazily: only while the area diagram tab is showing, since it's a separate (possibly
-    // costly) computation from the single line diagram shown by default
-    private void updateAreaDiagram() {
-        nadStale = true;
-        if (diagramTabPane.getSelectionModel().getSelectedItem() == areaDiagramTab) {
-            renderAreaDiagram();
-        }
-    }
-
-    private void renderAreaDiagram() {
-        nadStale = false;
-        if (currentContainer != null) {
-            nadRenderService.restart();
-        } else {
-            nadRenderService.cancel();
-            nadPaneController.showNoSelection();
+    // rendered lazily: only while their tab is showing, so that editing in an equipment tab doesn't keep the network
+    // busy re-rendering a hidden diagram (see MainModel.markBusy)
+    private void updateDiagramsShowing() {
+        if (singleLineDiagram != null) {
+            Tab selected = diagramTabPane.getSelectionModel().getSelectedItem();
+            singleLineDiagram.setShowing(selected == singleLineDiagramTab);
+            areaDiagram.setShowing(selected == areaDiagramTab);
         }
     }
 
@@ -867,12 +660,23 @@ public class SubstationsController extends AbstractDisposableController {
     }
 
     public void navigateTo(Container<?> container, ContainerNavigationState.ContainerTab tab) {
+        navigateTo(container, tab, null);
+    }
+
+    /**
+     * Also selects {@code equipment}'s row in the {@code tab} equipment tab, if not null.
+     */
+    public void navigateTo(Container<?> container, ContainerNavigationState.ContainerTab tab, Identifiable<?> equipment) {
         navigateTo(container);
         programmaticSelection = true;
         try {
             selectTab(tab);
         } finally {
             programmaticSelection = false;
+        }
+        if (equipment != null) {
+            equipmentTabs.stream().filter(equipmentTab -> equipmentTab.kind() == tab)
+                    .forEach(equipmentTab -> equipmentTab.controller().goTo(equipment));
         }
     }
 

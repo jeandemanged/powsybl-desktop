@@ -16,6 +16,7 @@ import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.test.ThreeWindingsTransformerNetworkFactory;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
@@ -79,7 +80,7 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         mainModel.addNetwork(network);
         mainModel.addNetwork(threeWindingsNetwork);
         mainModel.setNetwork(network);
-        controller.setMainModel(mainModel);
+        controller.setSceneModel(SceneModel.main(mainModel));
 
         stage.setScene(new Scene(root));
         stage.show();

@@ -14,6 +14,7 @@ import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.test.FourSubstationsNodeBreakerFactory;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
@@ -54,7 +55,7 @@ class SwitchesControllerTest extends AbstractHeadlessApplicationTest {
         mainModel = new MainModel();
         mainModel.addNetwork(network);
         mainModel.setNetwork(network);
-        controller.setMainModel(mainModel);
+        controller.setSceneModel(SceneModel.main(mainModel));
 
         stage.setScene(new Scene(root));
         stage.show();

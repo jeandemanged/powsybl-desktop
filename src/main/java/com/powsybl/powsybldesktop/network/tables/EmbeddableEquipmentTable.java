@@ -8,8 +8,8 @@
 package com.powsybl.powsybldesktop.network.tables;
 
 import com.powsybl.iidm.network.Container;
-import com.powsybl.powsybldesktop.MainModel;
-import com.powsybl.powsybldesktop.utils.DisposableController;
+import com.powsybl.iidm.network.Identifiable;
+import com.powsybl.powsybldesktop.SceneView;
 
 /**
  * What {@link com.powsybl.powsybldesktop.network.SubstationsController} needs from an equipment table
@@ -19,9 +19,7 @@ import com.powsybl.powsybldesktop.utils.DisposableController;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-public interface EmbeddableEquipmentTable extends DisposableController {
-
-    void setMainModel(MainModel mainModel);
+public interface EmbeddableEquipmentTable extends SceneView {
 
     /**
      * Filters the table to the equipment belonging to {@code container}, or to nothing if {@code null}
@@ -34,4 +32,10 @@ public interface EmbeddableEquipmentTable extends DisposableController {
      * Whether the table currently has at least one row, i.e. whether its tab should be shown.
      */
     boolean hasRows();
+
+    /**
+     * Selects {@code equipment}'s row, if it is one of this table's.
+     */
+    default void goTo(Identifiable<?> equipment) {
+    }
 }

@@ -8,6 +8,7 @@
 package com.powsybl.powsybldesktop.network.tables;
 
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
@@ -35,7 +36,7 @@ class SubstationsTableControllerEmptyStateTest extends AbstractHeadlessApplicati
         Parent root = loader.load();
         controller = loader.getController();
 
-        controller.setMainModel(new MainModel());
+        controller.setSceneModel(SceneModel.main(new MainModel()));
 
         stage.setScene(new Scene(root));
         stage.show();

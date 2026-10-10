@@ -9,9 +9,11 @@ package com.powsybl.powsybldesktop.network;
 
 import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
 import com.powsybl.iidm.network.Container;
+import com.powsybl.iidm.network.Generator;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
@@ -22,6 +24,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.control.TableView;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.stage.Stage;
@@ -55,7 +58,7 @@ class SubstationsControllerTest extends AbstractHeadlessApplicationTest {
         mainModel = new MainModel();
         mainModel.addNetwork(network);
         mainModel.setNetwork(network);
-        controller.setMainModel(mainModel);
+        controller.setSceneModel(SceneModel.main(mainModel));
 
         stage.setScene(new Scene(root));
         stage.show();
@@ -152,5 +155,18 @@ class SubstationsControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> controller.navigateTo(vl9, ContainerNavigationState.ContainerTab.SHUNT_COMPENSATORS));
 
         assertEquals(Messages.get("desktop.common.equipment.shuntCompensator.plural"), tabPane().getSelectionModel().getSelectedItem().getText());
+    }
+
+    @Test
+    void navigateToSelectsTheEquipmentRow() {
+        VoltageLevel vl1 = network.getVoltageLevel("VL1");
+        Generator generator = vl1.getGenerators().iterator().next();
+
+        interact(() -> controller.navigateTo(vl1, ContainerNavigationState.ContainerTab.GENERATORS, generator));
+
+        Tab selected = tabPane().getSelectionModel().getSelectedItem();
+        assertEquals(Messages.get("desktop.common.equipment.generator.plural"), selected.getText());
+        TableView<?> table = (TableView<?>) selected.getContent().lookup(".table-view");
+        assertEquals(generator, table.getSelectionModel().getSelectedItem());
     }
 }

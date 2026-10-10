@@ -16,6 +16,8 @@ import com.powsybl.contingency.list.DefaultContingencyList;
 import com.powsybl.contingency.list.ListOfContingencyLists;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.SceneView;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.FileChooserPreferences;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -68,7 +70,7 @@ import java.util.stream.Stream;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-public class ContingenciesController extends AbstractDisposableController {
+public class ContingenciesController extends AbstractDisposableController implements SceneView {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ContingenciesController.class);
 
@@ -105,6 +107,7 @@ public class ContingenciesController extends AbstractDisposableController {
     @FXML
     private TableColumn<Contingency, Boolean> validColumn;
 
+    private SceneModel sceneModel;
     private MainModel mainModel;
     private Network network;
     private Set<String> validContingencyIds = Set.of();
@@ -162,10 +165,12 @@ public class ContingenciesController extends AbstractDisposableController {
         });
     }
 
-    public void setMainModel(MainModel mainModel) {
-        this.mainModel = Objects.requireNonNull(mainModel);
-        listenerManager.listen(mainModel.networkProperty(), (obs, oldValue, newValue) -> refreshForNetwork(newValue));
-        refreshForNetwork(mainModel.getNetwork());
+    @Override
+    public void setSceneModel(SceneModel sceneModel) {
+        this.sceneModel = Objects.requireNonNull(sceneModel);
+        this.mainModel = sceneModel.getMainModel();
+        listenerManager.listen(sceneModel.networkProperty(), (obs, oldValue, newValue) -> refreshForNetwork(newValue));
+        refreshForNetwork(sceneModel.getNetwork());
     }
 
     private void refreshForNetwork(Network selectedNetwork) {

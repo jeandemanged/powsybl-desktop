@@ -72,7 +72,7 @@ Canonical controller test: `network/tables/LoadsControllerTest.java`:
 
 ```text
 start(Stage): FXMLLoader(resource, Messages.bundle()) → load → getController()
-              new MainModel(); addNetwork(network); setNetwork(network); controller.setMainModel(mainModel)
+              new MainModel(); addNetwork(network); setNetwork(network); controller.setSceneModel(SceneModel.main(mainModel))
               stage.setScene(new Scene(root)); stage.show()
 @AfterEach:   interact(controller::dispose)
 tests:        read controller fields (columns, currentItems), build cells via the column's cell factory,

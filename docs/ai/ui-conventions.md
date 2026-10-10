@@ -124,10 +124,14 @@ Two established forms:
   (simplest), `TapChangerStepsDialog`, `ShuntCompensatorSectionsDialog` (editable cells), `…/network/DropImportDialog.java`
   (returns a result via `setResultConverter`). Edits inside these dialogs write to the IIDM object directly and use the
   same error/flash helpers as tables.
-- **FXML secondary windows** opened by `MainController`: parameters (`onParameters`, non-modal `Stage`, single
-  instance, brought to front if already open) and memory (`onMemory`); about (`onAbout`) is an FXML content inside a
-  `Dialog`. Pattern: load with `Messages.bundle()`, add `styles.css` to the root, `initOwner(main window)`, set the
+- **FXML secondary windows** opened by `MainController`: memory (`onMemory`); about (`onAbout`) is an FXML content
+  inside a `Dialog`. Parameters are a center view that can be moved to a `SeparateWindows` window (see below). Memory window pattern: load with `Messages.bundle()`, add `styles.css` to the root, `initOwner(main window)`, set the
   app icon (`logo.png`), dispose the controller in `setOnHidden`, and close it in `MainController.dispose()`.
+- **Separate view windows** (`…/window/SeparateWindows.java`, see architecture): a view controller opened there gets a
+  `SceneModel.separate` scene; it must navigate through `sceneModel.navigate`/`record` and read its network from the
+  scene, never `mainModel.getNetwork()`. A new view shown in the center gets its "open in new window" button for free
+  if it is a `SceneView` loaded through `MainController.ensureSceneView` and has a top `ToolBar` (BorderPane top or VBox
+  first child), an `openInNewWindowHost` Pane, or a VBox root.
 - Confirmations and error details use `javafx.scene.control.Alert` directly (e.g. `NetworksController`,
   `ParametersController.onReset`).
 - Inline forms inside a view (contingency list forms) are FXML sub-controllers swapped in by the parent controller

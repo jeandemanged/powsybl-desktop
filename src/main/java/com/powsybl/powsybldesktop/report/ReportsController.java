@@ -11,6 +11,8 @@ import com.powsybl.commons.report.ReportConstants;
 import com.powsybl.commons.report.ReportNode;
 import com.powsybl.commons.report.ReportNodeSerializer;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.SceneView;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.FileChooserPreferences;
@@ -33,7 +35,7 @@ import java.util.Objects;
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-public class ReportsController extends AbstractDisposableController {
+public class ReportsController extends AbstractDisposableController implements SceneView {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReportsController.class);
 
@@ -52,6 +54,7 @@ public class ReportsController extends AbstractDisposableController {
     @FXML
     private ReportNodeViewController reportDetailController;
 
+    private SceneModel sceneModel;
     private MainModel mainModel;
 
     @FXML
@@ -86,8 +89,10 @@ public class ReportsController extends AbstractDisposableController {
         });
     }
 
-    public void setMainModel(MainModel mainModel) {
-        this.mainModel = Objects.requireNonNull(mainModel);
+    @Override
+    public void setSceneModel(SceneModel sceneModel) {
+        this.sceneModel = Objects.requireNonNull(sceneModel);
+        this.mainModel = sceneModel.getMainModel();
         reportsListView.setItems(mainModel.getReports());
         noReportsLabel.setVisible(mainModel.getReports().isEmpty());
         listenerManager.listen(mainModel.getReports(), change -> noReportsLabel.setVisible(mainModel.getReports().isEmpty()));

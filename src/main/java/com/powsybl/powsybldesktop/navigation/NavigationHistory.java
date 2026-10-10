@@ -29,6 +29,12 @@ public class NavigationHistory {
     private final ObservableList<NavigationEvent> past = FXCollections.unmodifiableObservableList(modifiablePast);
     private final ObservableList<NavigationEvent> future = FXCollections.unmodifiableObservableList(modifiableFuture);
     private final ObjectProperty<NavigationEvent> currentEvent = new SimpleObjectProperty<>();
+    // may veto a navigation, e.g. to another network while separate windows show this one
+    private Predicate<NavigationEvent> guard = event -> true;
+
+    public void setGuard(Predicate<NavigationEvent> guard) {
+        this.guard = Objects.requireNonNull(guard);
+    }
 
     public ObjectProperty<NavigationEvent> currentEventProperty() {
         return currentEvent;
@@ -36,7 +42,7 @@ public class NavigationHistory {
 
     public void navigate(NavigationEvent navigationEvent, boolean notify) {
         Objects.requireNonNull(navigationEvent);
-        if (!modifiablePast.isEmpty() && modifiablePast.getLast().equals(navigationEvent)) {
+        if (!modifiablePast.isEmpty() && modifiablePast.getLast().equals(navigationEvent) || !guard.test(navigationEvent)) {
             return;
         }
         if (notify) {
@@ -84,7 +90,7 @@ public class NavigationHistory {
     }
 
     public void navigateBackwardToIndex(int index) {
-        if (index < 0 || index >= modifiablePast.size() - 1) {
+        if (index < 0 || index >= modifiablePast.size() - 1 || !guard.test(modifiablePast.get(index))) {
             return;
         }
         while (modifiablePast.size() - 1 > index) {
@@ -94,7 +100,7 @@ public class NavigationHistory {
     }
 
     public void navigateForwardToIndex(int index) {
-        if (index < 0 || index >= modifiableFuture.size()) {
+        if (index < 0 || index >= modifiableFuture.size() || !guard.test(modifiableFuture.get(index))) {
             return;
         }
         while (modifiableFuture.size() - 1 >= index) {

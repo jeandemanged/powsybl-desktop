@@ -15,6 +15,7 @@ import com.powsybl.iidm.network.SwitchKind;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.TableAutoFitLimiter;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -54,6 +55,7 @@ public class SwitchesController extends AbstractDisposableController implements 
 
     private final ObservableList<Switch> data = FXCollections.observableArrayList();
 
+    private SceneModel sceneModel;
     private MainModel mainModel;
     private Container<?> container;
 
@@ -85,9 +87,10 @@ public class SwitchesController extends AbstractDisposableController implements 
     }
 
     @Override
-    public void setMainModel(MainModel mainModel) {
-        this.mainModel = Objects.requireNonNull(mainModel);
-        // see AbstractEquipmentTableController.setMainModel
+    public void setSceneModel(SceneModel sceneModel) {
+        this.sceneModel = Objects.requireNonNull(sceneModel);
+        this.mainModel = sceneModel.getMainModel();
+        // see AbstractEquipmentTableController.setSceneModel
         switchesTableView.editableProperty().bind(mainModel.networkBusyProperty().not());
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
     }

@@ -8,6 +8,7 @@
 package com.powsybl.powsybldesktop.navigation;
 
 import com.powsybl.iidm.network.Container;
+import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 
 import java.util.Objects;
@@ -31,11 +32,14 @@ public class ContainerNavigationState extends NetworkNavigationState {
 
     private final Container<?> container;
     private final ContainerTab tab;
+    // the row to select in an equipment tab, or null
+    private final Identifiable<?> equipment;
 
-    protected ContainerNavigationState(Network selectedNetwork, Container<?> container, ContainerTab tab) {
+    protected ContainerNavigationState(Network selectedNetwork, Container<?> container, ContainerTab tab, Identifiable<?> equipment) {
         super(selectedNetwork);
         this.container = container;
         this.tab = tab;
+        this.equipment = equipment;
     }
 
     public static ContainerNavigationState create(Container<?> container) {
@@ -43,11 +47,15 @@ public class ContainerNavigationState extends NetworkNavigationState {
     }
 
     public static ContainerNavigationState create(Container<?> container, ContainerTab tab) {
-        return new ContainerNavigationState(container.getParentNetwork(), container, tab);
+        return create(container, tab, null);
+    }
+
+    public static ContainerNavigationState create(Container<?> container, ContainerTab tab, Identifiable<?> equipment) {
+        return new ContainerNavigationState(container.getParentNetwork(), container, tab, equipment);
     }
 
     public static ContainerNavigationState createNoContainer(Network network) {
-        return new ContainerNavigationState(network, null, ContainerTab.SINGLE_LINE);
+        return new ContainerNavigationState(network, null, ContainerTab.SINGLE_LINE, null);
     }
 
     public Container<?> getContainer() {
@@ -58,14 +66,18 @@ public class ContainerNavigationState extends NetworkNavigationState {
         return tab;
     }
 
+    public Identifiable<?> getEquipment() {
+        return equipment;
+    }
+
     @Override
     public boolean equals(Object o) {
         return super.equals(o) && container == ((ContainerNavigationState) o).container
-                && tab == ((ContainerNavigationState) o).tab;
+                && tab == ((ContainerNavigationState) o).tab && equipment == ((ContainerNavigationState) o).equipment;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), container, tab);
+        return Objects.hash(super.hashCode(), container, tab, equipment);
     }
 }

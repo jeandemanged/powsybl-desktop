@@ -14,6 +14,8 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.SceneView;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
@@ -54,7 +56,7 @@ import java.util.stream.Stream;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-public class SubstationsTableController extends AbstractDisposableController {
+public class SubstationsTableController extends AbstractDisposableController implements SceneView {
 
     private static final List<Country> COUNTRY_CHOICES = Stream.concat(Stream.of((Country) null), Arrays.stream(Country.values())).toList();
 
@@ -86,6 +88,7 @@ public class SubstationsTableController extends AbstractDisposableController {
 
     private final ObservableList<Substation> substationsData = FXCollections.observableArrayList();
 
+    private SceneModel sceneModel;
     private MainModel mainModel;
     List<Substation> currentSubstations = List.of();
 
@@ -113,12 +116,14 @@ public class SubstationsTableController extends AbstractDisposableController {
         TableColumnSupport.disableUnlessTableEditable(geographicalTagsColumn);
     }
 
-    public void setMainModel(MainModel mainModel) {
-        this.mainModel = Objects.requireNonNull(mainModel);
-        // see AbstractEquipmentTableController.setMainModel
+    @Override
+    public void setSceneModel(SceneModel sceneModel) {
+        this.sceneModel = Objects.requireNonNull(sceneModel);
+        this.mainModel = sceneModel.getMainModel();
+        // see AbstractEquipmentTableController.setSceneModel
         substationsTableView.editableProperty().bind(mainModel.networkBusyProperty().not());
         updateSubstations();
-        listenerManager.listen(this.mainModel.networkProperty(), (observable, oldValue, newValue) -> updateSubstations());
+        listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> updateSubstations());
         listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> updateSubstations());
         searchBoxController.bind(mainModel, this::onSearchMatch);
     }
@@ -130,7 +135,7 @@ public class SubstationsTableController extends AbstractDisposableController {
     }
 
     private void updateSubstations() {
-        Network network = mainModel.getNetwork();
+        Network network = sceneModel.getNetwork();
         currentSubstations = network == null ? List.of() : network.getSubstationStream()
                 .sorted(Comparator.comparing(Identifiable::getNameOrId))
                 .toList();
@@ -143,9 +148,9 @@ public class SubstationsTableController extends AbstractDisposableController {
         Hyperlink link = new Hyperlink(container.getNameOrId());
         link.getStyleClass().add("container-link");
         link.setOnAction(event -> {
-            mainModel.getNavigationHistory().navigate(NavigationEvent.create(
-                    NavigationType.NETWORK_TABLE_SUBSTATIONS, SubstationNavigationState.create(item)), false);
-            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(container)));
+            sceneModel.record(NavigationEvent.create(
+                    NavigationType.NETWORK_TABLE_SUBSTATIONS, SubstationNavigationState.create(item)));
+            sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(container)));
         });
         return link;
     }

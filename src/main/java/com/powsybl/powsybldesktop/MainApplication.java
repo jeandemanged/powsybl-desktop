@@ -79,6 +79,8 @@ public class MainApplication extends Application {
         stage.setTitle(APP_TITLE);
         stage.getIcons().add(new Image(Objects.requireNonNull(MainApplication.class.getResourceAsStream("logo.png"))));
         stage.setScene(scene);
+        // separate windows are independent stages, which would otherwise keep the application running
+        stage.setOnCloseRequest(event -> Platform.exit());
         stage.show();
         splash.close();
     }

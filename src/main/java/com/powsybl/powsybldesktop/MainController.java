@@ -54,6 +54,7 @@ import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.DisposableController;
 import com.powsybl.powsybldesktop.utils.LanguagePreferences;
 import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.powsybldesktop.window.SeparateWindows;
 import com.powsybl.security.SecurityAnalysis;
 import com.powsybl.security.SecurityAnalysisParameters;
 import com.powsybl.security.SecurityAnalysisReport;
@@ -72,6 +73,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.RadioMenuItem;
 import javafx.scene.control.ToggleButton;
@@ -119,13 +121,21 @@ public class MainController extends AbstractDisposableController {
     @FXML
     public Button mapButton;
     @FXML
+    private Menu windowsMenu;
+    @FXML
     public RadioMenuItem languageEnglishItem;
     @FXML
     public RadioMenuItem languageFrenchItem;
     @FXML
     public ToggleButton notificationsButton;
 
+    private static final String LOGS_WINDOW = "logs";
+    private static final String REPORTS_WINDOW = "reports";
+    private static final String PARAMETERS_WINDOW = "parameters";
+
     private final MainModel mainModel;
+    private final SeparateWindows separateWindows;
+    private final SceneModel sceneModel;
 
     private DisposableController currentController;
 
@@ -137,10 +147,11 @@ public class MainController extends AbstractDisposableController {
 
     private Stage memoryStage;
 
-    private Stage parametersStage;
-
     public MainController(MainModel mainModel) {
         this.mainModel = Objects.requireNonNull(mainModel);
+        this.separateWindows = new SeparateWindows(mainModel, () -> borderPane.getScene() == null ? null : borderPane.getScene().getWindow());
+        this.sceneModel = SceneModel.main(mainModel, separateWindows);
+        mainModel.setNetworkChangeGuard(separateWindows::confirmNetworkChange);
     }
 
     @FXML
@@ -243,6 +254,7 @@ public class MainController extends AbstractDisposableController {
 
     @Override
     public void dispose() {
+        separateWindows.closeAll();
         disposeCurrentController();
         if (notificationsController != null) {
             notificationsController.dispose();
@@ -253,9 +265,6 @@ public class MainController extends AbstractDisposableController {
         }
         if (memoryStage != null) {
             memoryStage.close();
-        }
-        if (parametersStage != null) {
-            parametersStage.close();
         }
         super.dispose();
     }
@@ -556,19 +565,42 @@ public class MainController extends AbstractDisposableController {
     // Swaps the border pane's center to fxml's view/controller only when it isn't already showing, so repeated
     // navigation events for the same NavigationType (e.g. selecting a different row) don't reload the view.
     private <T extends DisposableController> T ensureController(Class<T> controllerClass, String fxml, Consumer<T> setup) {
+        return ensureController(controllerClass, fxml, setup, root -> { });
+    }
+
+    // decorate: called with a newly loaded view's root, e.g. to add an open in new window button
+    private <T extends DisposableController> T ensureController(Class<T> controllerClass, String fxml, Consumer<T> setup, Consumer<Parent> decorate) {
         if (!controllerClass.isInstance(currentController)) {
             disposeCurrentController();
             Pair<Parent, T> viewAndController = loadView(fxml);
             T controller = viewAndController.getValue();
             currentController = controller;
             setup.accept(controller);
+            decorate.accept(viewAndController.getKey());
             borderPane.setCenter(viewAndController.getKey());
         }
         return controllerClass.cast(currentController);
     }
 
+    // a view that can also be opened in a separate window, on the selected network - in a single one, since it shows the
+    // whole network
+    private <T extends SceneView> T ensureSceneView(Class<T> controllerClass, String fxml, NavigationType type) {
+        return ensureController(controllerClass, fxml, c -> c.setSceneModel(sceneModel),
+                root -> SeparateWindows.addOpenButton(root, () -> separateWindows.open(type.name(), viewTitle(type),
+                        scene -> SeparateWindows.<T>load(fxml, c -> c.setSceneModel(scene)))));
+    }
+
+    private String viewTitle(NavigationType type) {
+        Network network = mainModel.getNetwork();
+        return (network == null ? NavigationEvent.create(type) : NavigationEvent.create(type, NetworkNavigationState.create(network))).describe();
+    }
+
     @FXML
     private void initialize() {
+        mainModel.getNavigationHistory().setGuard(event -> {
+            Network target = networkToSelect(event);
+            return target == null || mainModel.confirmNetworkChange(target);
+        });
         // MainModel briefly sets this property to null before every real dispatch, to force the listener
         // to fire even when navigating to a content-equal NavigationEvent - ignore that transient value
         listenerManager.listen(mainModel.getNavigationHistory().currentEventProperty(), (observable, oldValue, newValue) -> {
@@ -582,6 +614,8 @@ public class MainController extends AbstractDisposableController {
         });
         updateMapButtonVisibility();
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refreshSearchIndexBuses());
+        listenerManager.listen(separateWindows.getOpenWindows(), (ListChangeListener<SeparateWindows.OpenWindow>) change -> updateWindowsMenu());
+        updateWindowsMenu();
 
         FXMLLoader notificationsLoader = new FXMLLoader(getClass().getResource("notification/notifications-view.fxml"), Messages.bundle());
         try {
@@ -664,20 +698,44 @@ public class MainController extends AbstractDisposableController {
         }
     }
 
+    // the network navigating to event selects, or null if it keeps the selected one
+    private Network networkToSelect(NavigationEvent event) {
+        if (event.state() == null || event.state().getSelectedNetwork() == null) {
+            return null;
+        }
+        Network target = event.state().getSelectedNetwork();
+        // equipment states hold the equipment's own (sub)network: when its root network is selected, which
+        // shows that equipment too, keep it rather than narrowing the view down to the subnetwork
+        boolean rootSelected = !(event.state() instanceof NetworkNavigationState) && mainModel.getNetwork() == target.getNetwork();
+        return rootSelected ? null : target;
+    }
+
+    private void updateWindowsMenu() {
+        if (separateWindows.getOpenWindows().isEmpty()) {
+            MenuItem none = new MenuItem(Messages.get("main.menu.windows.none"));
+            none.setDisable(true);
+            windowsMenu.getItems().setAll(none);
+        } else {
+            windowsMenu.getItems().setAll(separateWindows.getOpenWindows().stream().map(openWindow -> {
+                MenuItem item = new MenuItem(openWindow.title());
+                item.setMnemonicParsing(false);
+                item.setOnAction(event -> SeparateWindows.focus(openWindow.stage()));
+                return item;
+            }).toList());
+        }
+    }
+
     private void onNavigationEvent(NavigationEvent newValue) {
         Objects.requireNonNull(newValue);
-        if (newValue.state() != null && newValue.state().getSelectedNetwork() != null) {
-            Network target = newValue.state().getSelectedNetwork();
-            // equipment states hold the equipment's own (sub)network: when its root network is selected, which
-            // shows that equipment too, keep it rather than narrowing the view down to the subnetwork
-            boolean rootSelected = !(newValue.state() instanceof NetworkNavigationState)
-                    && mainModel.getNetwork() == target.getNetwork();
-            if (!rootSelected) {
-                this.mainModel.setNetwork(target);
-            }
+        Network target = networkToSelect(newValue);
+        if (target != null) {
+            this.mainModel.setNetwork(target);
         }
         if (newValue.navigationType() == NavigationType.LOGS) {
-            ensureController(LogsViewController.class, "logs/logs-view.fxml", c -> c.setModels(mainModel.getLogsModel(), mainModel.getParametersModel()));
+            ensureController(LogsViewController.class, "logs/logs-view.fxml", c -> c.setModels(mainModel.getLogsModel(), mainModel.getParametersModel()),
+                    root -> SeparateWindows.addOpenButton(root, () -> separateWindows.openSingleInstance(LOGS_WINDOW, NavigationEvent.create(NavigationType.LOGS).describe(),
+                            scene -> SeparateWindows.<LogsViewController>load("logs/logs-view.fxml",
+                                    c -> c.setModels(mainModel.getLogsModel(), mainModel.getParametersModel())))));
         } else if (newValue.navigationType() == NavigationType.NETWORKS) {
             NetworksController controller = ensureController(NetworksController.class, "network/networks-view.fxml", c -> c.setMainModel(mainModel));
             if (newValue.state() instanceof NetworkNavigationState state) {
@@ -686,124 +744,131 @@ public class MainController extends AbstractDisposableController {
                 controller.navigateTo(null);
             }
         } else if (newValue.navigationType() == NavigationType.SUBSTATIONS) {
-            SubstationsController controller = ensureController(SubstationsController.class, "network/substations-view.fxml", c -> c.setMainModel(mainModel));
+            SubstationsController controller = ensureController(SubstationsController.class, "network/substations-view.fxml", c -> c.setSceneModel(sceneModel));
             if (newValue.state() instanceof ContainerNavigationState state) {
-                controller.navigateTo(state.getContainer(), state.getTab());
+                controller.navigateTo(state.getContainer(), state.getTab(), state.getEquipment());
             } else if (newValue.state() == null) {
                 controller.navigateTo(null);
             }
         } else if (newValue.navigationType() == NavigationType.MAP) {
-            ensureController(MapController.class, "map/map-view.fxml", c -> c.setMainModel(mainModel));
+            ensureSceneView(MapController.class, "map/map-view.fxml", NavigationType.MAP);
         } else if (newValue.navigationType() == NavigationType.CONTINGENCIES) {
-            ensureController(ContingenciesController.class, "contingency/contingencies-view.fxml", c -> c.setMainModel(mainModel));
+            ensureSceneView(ContingenciesController.class, "contingency/contingencies-view.fxml", NavigationType.CONTINGENCIES);
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SUBSTATIONS) {
-            SubstationsTableController controller = ensureController(SubstationsTableController.class,
-                    "network/tables/substations-view.fxml", c -> c.setMainModel(mainModel));
+            SubstationsTableController controller = ensureSceneView(SubstationsTableController.class,
+                    "network/tables/substations-view.fxml", NavigationType.NETWORK_TABLE_SUBSTATIONS);
             if (newValue.state() instanceof SubstationNavigationState state) {
                 controller.goToSubstation(state.getSubstation());
             } else if (newValue.state() == null) {
                 controller.goToSubstation(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_VOLTAGE_LEVELS) {
-            VoltageLevelsController controller = ensureController(VoltageLevelsController.class,
-                    "network/tables/voltage-levels-view.fxml", c -> c.setMainModel(mainModel));
+            VoltageLevelsController controller = ensureSceneView(VoltageLevelsController.class,
+                    "network/tables/voltage-levels-view.fxml", NavigationType.NETWORK_TABLE_VOLTAGE_LEVELS);
             if (newValue.state() instanceof VoltageLevelNavigationState state) {
                 controller.goToVoltageLevel(state.getVoltageLevel());
             } else if (newValue.state() == null) {
                 controller.goToVoltageLevel(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_BUSBAR_SECTIONS) {
-            BusbarSectionsController controller = ensureController(BusbarSectionsController.class,
-                    "network/tables/busbar-sections-view.fxml", c -> c.setMainModel(mainModel));
+            BusbarSectionsController controller = ensureSceneView(BusbarSectionsController.class,
+                    "network/tables/busbar-sections-view.fxml", NavigationType.NETWORK_TABLE_BUSBAR_SECTIONS);
             if (newValue.state() instanceof BusbarSectionNavigationState state) {
                 controller.goToBusbarSection(state.getBusbarSection());
             } else if (newValue.state() == null) {
                 controller.goToBusbarSection(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_BUSES_BUS_VIEW) {
-            BusesBusViewController controller = ensureController(BusesBusViewController.class,
-                    "network/tables/buses-bus-view.fxml", c -> c.setMainModel(mainModel));
+            BusesBusViewController controller = ensureSceneView(BusesBusViewController.class,
+                    "network/tables/buses-bus-view.fxml", NavigationType.NETWORK_TABLE_BUSES_BUS_VIEW);
             if (newValue.state() instanceof BusNavigationState state) {
                 controller.goToBus(state.getBus());
             } else if (newValue.state() == null) {
                 controller.goToBus(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_BUSES_BUS_BREAKER_VIEW) {
-            BusesBusBreakerViewController controller = ensureController(BusesBusBreakerViewController.class,
-                    "network/tables/buses-bus-breaker-view.fxml", c -> c.setMainModel(mainModel));
+            BusesBusBreakerViewController controller = ensureSceneView(BusesBusBreakerViewController.class,
+                    "network/tables/buses-bus-breaker-view.fxml", NavigationType.NETWORK_TABLE_BUSES_BUS_BREAKER_VIEW);
             if (newValue.state() instanceof BusNavigationState state) {
                 controller.goToBus(state.getBus());
             } else if (newValue.state() == null) {
                 controller.goToBus(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_GENERATORS) {
-            GeneratorsController controller = ensureController(GeneratorsController.class,
-                    "network/tables/generators-view.fxml", c -> c.setMainModel(mainModel));
+            GeneratorsController controller = ensureSceneView(GeneratorsController.class,
+                    "network/tables/generators-view.fxml", NavigationType.NETWORK_TABLE_GENERATORS);
             if (newValue.state() instanceof GeneratorNavigationState state) {
                 controller.goToGenerator(state.getGenerator());
             } else if (newValue.state() == null) {
                 controller.goToGenerator(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SHUNT_COMPENSATORS) {
-            ShuntCompensatorsController controller = ensureController(ShuntCompensatorsController.class,
-                    "network/tables/shunt-compensators-view.fxml", c -> c.setMainModel(mainModel));
+            ShuntCompensatorsController controller = ensureSceneView(ShuntCompensatorsController.class,
+                    "network/tables/shunt-compensators-view.fxml", NavigationType.NETWORK_TABLE_SHUNT_COMPENSATORS);
             if (newValue.state() instanceof ShuntCompensatorNavigationState state) {
                 controller.goToShuntCompensator(state.getShuntCompensator());
             } else if (newValue.state() == null) {
                 controller.goToShuntCompensator(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_STATIC_VAR_COMPENSATORS) {
-            StaticVarCompensatorsController controller = ensureController(StaticVarCompensatorsController.class,
-                    "network/tables/static-var-compensators-view.fxml", c -> c.setMainModel(mainModel));
+            StaticVarCompensatorsController controller = ensureSceneView(StaticVarCompensatorsController.class,
+                    "network/tables/static-var-compensators-view.fxml", NavigationType.NETWORK_TABLE_STATIC_VAR_COMPENSATORS);
             if (newValue.state() instanceof StaticVarCompensatorNavigationState state) {
                 controller.goToStaticVarCompensator(state.getStaticVarCompensator());
             } else if (newValue.state() == null) {
                 controller.goToStaticVarCompensator(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_LOADS) {
-            LoadsController controller = ensureController(LoadsController.class, "network/tables/loads-view.fxml", c -> c.setMainModel(mainModel));
+            LoadsController controller = ensureSceneView(LoadsController.class, "network/tables/loads-view.fxml", NavigationType.NETWORK_TABLE_LOADS);
             if (newValue.state() instanceof LoadNavigationState state) {
                 controller.goToLoad(state.getLoad());
             } else if (newValue.state() == null) {
                 controller.goToLoad(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_LINES) {
-            LinesController controller = ensureController(LinesController.class, "network/tables/lines-view.fxml", c -> c.setMainModel(mainModel));
+            LinesController controller = ensureSceneView(LinesController.class, "network/tables/lines-view.fxml", NavigationType.NETWORK_TABLE_LINES);
             if (newValue.state() instanceof LineNavigationState state) {
                 controller.goToLine(state.getLine());
             } else if (newValue.state() == null) {
                 controller.goToLine(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_TRANSFORMERS) {
-            TransformersController controller = ensureController(TransformersController.class,
-                    "network/tables/transformers-view.fxml", c -> c.setMainModel(mainModel));
+            TransformersController controller = ensureSceneView(TransformersController.class,
+                    "network/tables/transformers-view.fxml", NavigationType.NETWORK_TABLE_TRANSFORMERS);
             if (newValue.state() instanceof TransformerNavigationState state) {
                 controller.goToTransformer(state.getTransformer());
             } else if (newValue.state() == null) {
                 controller.goToTransformer(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_TIE_LINES) {
-            TieLinesController controller = ensureController(TieLinesController.class, "network/tables/tie-lines-view.fxml", c -> c.setMainModel(mainModel));
+            TieLinesController controller = ensureSceneView(TieLinesController.class, "network/tables/tie-lines-view.fxml", NavigationType.NETWORK_TABLE_TIE_LINES);
             if (newValue.state() instanceof TieLineNavigationState state) {
                 controller.goToTieLine(state.getTieLine());
             } else if (newValue.state() == null) {
                 controller.goToTieLine(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_BOUNDARY_LINES) {
-            BoundaryLinesController controller = ensureController(BoundaryLinesController.class,
-                    "network/tables/boundary-lines-view.fxml", c -> c.setMainModel(mainModel));
+            BoundaryLinesController controller = ensureSceneView(BoundaryLinesController.class,
+                    "network/tables/boundary-lines-view.fxml", NavigationType.NETWORK_TABLE_BOUNDARY_LINES);
             if (newValue.state() instanceof BoundaryLineNavigationState state) {
                 controller.goToBoundaryLine(state.getBoundaryLine());
             } else if (newValue.state() == null) {
                 controller.goToBoundaryLine(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_COMPONENTS) {
-            ensureController(ComponentsController.class, "network/tables/components-view.fxml", c -> c.setMainModel(mainModel));
+            ensureSceneView(ComponentsController.class, "network/tables/components-view.fxml", NavigationType.NETWORK_TABLE_COMPONENTS);
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS) {
-            ensureController(SecurityAnalysisResultsController.class,
-                    "network/tables/security-analysis-results-view.fxml", c -> c.setMainModel(mainModel));
+            ensureSceneView(SecurityAnalysisResultsController.class,
+                    "network/tables/security-analysis-results-view.fxml", NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS);
+        } else if (newValue.navigationType() == NavigationType.PARAMETERS) {
+            // shown once: going back to it in history moves a detached parameters window back here
+            separateWindows.close(PARAMETERS_WINDOW);
+            ensureController(ParametersController.class, "parameters/parameters-view.fxml", c -> c.setMainModel(mainModel),
+                    root -> SeparateWindows.addOpenButton(root, this::detachParameters));
         } else if (newValue.navigationType() == NavigationType.REPORTS) {
-            ReportsController controller = ensureController(ReportsController.class, "report/reports-view.fxml", c -> c.setMainModel(mainModel));
+            ReportsController controller = ensureController(ReportsController.class, "report/reports-view.fxml", c -> c.setSceneModel(sceneModel),
+                    root -> SeparateWindows.addOpenButton(root, () -> separateWindows.openSingleInstance(REPORTS_WINDOW, NavigationEvent.create(NavigationType.REPORTS).describe(),
+                            scene -> SeparateWindows.<ReportsController>load("report/reports-view.fxml", c -> c.setSceneModel(scene)))));
             if (newValue.state() instanceof ReportNavigationState state) {
                 controller.selectReport(state.getReportNode());
             }
@@ -868,35 +933,22 @@ public class MainController extends AbstractDisposableController {
     // a separate non-modal window rather than a center view, so parameters can be edited while the main
     // stage keeps showing e.g. the diagram they apply to
     public void onParameters() {
-        if (parametersStage != null) {
-            parametersStage.requestFocus();
-            parametersStage.toFront();
-            return;
+        if (!separateWindows.focusOpen(PARAMETERS_WINDOW)) {
+            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.PARAMETERS));
         }
+    }
 
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("parameters/parameters-view.fxml"), Messages.bundle());
-        Parent root;
-        try {
-            root = loader.load();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-        root.getStylesheets().add(Objects.requireNonNull(
-                getClass().getResource("/com/powsybl/powsybldesktop/styles.css")).toExternalForm());
-        ParametersController controller = loader.getController();
-        controller.setMainModel(mainModel);
-
-        parametersStage = new Stage();
-        parametersStage.initOwner(borderPane.getScene().getWindow());
-        parametersStage.setTitle(Messages.get("desktop.common.parameters"));
-        parametersStage.getIcons().add(new Image(
-                Objects.requireNonNull(MainApplication.class.getResourceAsStream("logo.png"))));
-        parametersStage.setScene(new Scene(root, 1000, 700));
-        parametersStage.setOnHidden(event -> {
-            controller.dispose();
-            parametersStage = null;
+    // moved rather than copied: two parameter forms wouldn't follow each other's edits
+    private void detachParameters() {
+        separateWindows.openSingleInstance(PARAMETERS_WINDOW, Messages.get("desktop.common.parameters"), scene -> {
+            SeparateWindows.View view = SeparateWindows.<ParametersController>load("parameters/parameters-view.fxml", c -> c.setMainModel(mainModel));
+            return new SeparateWindows.View(view.root(), view.controller(), 1000, 700);
         });
-        parametersStage.show();
+        mainModel.getNavigationHistory().navigateBackward();
+        if (currentController instanceof ParametersController) {
+            // no previous view, or going back to it was refused
+            onNetworks();
+        }
     }
 
     public void onLogs() {

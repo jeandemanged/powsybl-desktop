@@ -45,6 +45,7 @@ public record NavigationEvent(NavigationType navigationType, NavigationState sta
             case NETWORK_TABLE_COMPONENTS -> Messages.get("main.toolbar.loadflowresult");
             case NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS -> Messages.get("main.toolbar.securityAnalysisResults");
             case REPORTS -> Messages.get("main.toolbar.reports");
+            case PARAMETERS -> Messages.get("desktop.common.parameters");
         };
         String selection = null;
         if (state instanceof BusNavigationState s && s.getBus() != null) {

@@ -11,6 +11,7 @@ import com.powsybl.cgmes.conformity.CgmesConformity1Catalog;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.DisposableController;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -83,7 +84,7 @@ class EditLockTest extends AbstractHeadlessApplicationTest {
             Object controller = loader.getController();
             interact(() -> {
                 stage.getScene().setRoot(root);
-                controller.getClass().getMethod("setMainModel", MainModel.class).invoke(controller, mainModel);
+                controller.getClass().getMethod("setSceneModel", SceneModel.class).invoke(controller, SceneModel.main(mainModel));
                 if (controller instanceof SwitchesController switches) {
                     switches.setContainer(network.getVoltageLevelStream()
                             .filter(vl -> vl.getSwitchCount() > 0).findFirst().map(VoltageLevel.class::cast).orElseThrow());

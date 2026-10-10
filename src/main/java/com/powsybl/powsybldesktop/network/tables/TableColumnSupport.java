@@ -99,7 +99,7 @@ final class TableColumnSupport {
     }
 
     // Decimal places read on every call rather than captured: GuiParameters is edited in place, or replaced on a
-    // parameters reset/import, and the tables are refreshed then (see AbstractEquipmentTableController.setMainModel).
+    // parameters reset/import, and the tables are refreshed then (see AbstractEquipmentTableController.setSceneModel).
     static StringConverter<Double> doubleFormat(Supplier<GuiParameters> guiParameters, GuiParameters.Quantity quantity) {
         return new StringConverter<>() {
             @Override
@@ -287,7 +287,7 @@ final class TableColumnSupport {
     }
 
     // An editing cell is disabled (greyed, inert) while its table isn't editable, which a table is made while its
-    // network is busy with a background job (see AbstractEquipmentTableController.setMainModel) - so that custom
+    // network is busy with a background job (see AbstractEquipmentTableController.setSceneModel) - so that custom
     // editors (check boxes, steppers, ...), whose columns aren't editable in TableView's sense, follow the same rule
     // TextFieldTableCell already does.
     static <S, T> void disableUnlessTableEditable(TableColumn<S, T> column) {

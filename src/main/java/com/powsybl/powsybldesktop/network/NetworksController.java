@@ -59,6 +59,7 @@ import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.FileChooserPreferences;
 import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.powsybldesktop.utils.Messages;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -222,6 +223,11 @@ public class NetworksController extends AbstractDisposableController {
         } else if (selectedNetworks.size() == 1) {
             Network network = selectedNetworks.getFirst();
             if (network != mainModel.getNetwork()) {
+                if (!mainModel.confirmNetworkChange(network)) {
+                    // not from within this selection change
+                    Platform.runLater(() -> navigateTo(mainModel.getNetwork()));
+                    return;
+                }
                 mainModel.setNetwork(network);
                 mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORKS, NetworkNavigationState.create(network)), false);
             }

@@ -21,7 +21,8 @@ questions about PowSyBl itself.
 ## Non-negotiable rules (details in `docs/ai/invariants.md`)
 
 - `MainModel` is the single shared state; views talk to each other only through it and through
-  `NavigationHistory`. Per-network state goes in `NetworkStudy`.
+  `NavigationHistory` (via `SceneModel.navigate`/`record`). Per-network state goes in `NetworkStudy`, per-window state
+  in `SceneModel`.
 - Swappable controllers extend `AbstractDisposableController` and register model listeners through
   `listenerManager.listen(...)`, never `addListener` directly.
 - Never call slow PowSyBl APIs on the JavaFX Application Thread. Any background job reading or writing a loaded

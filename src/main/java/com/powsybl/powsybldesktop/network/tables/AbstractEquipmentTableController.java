@@ -13,6 +13,7 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
@@ -55,6 +56,7 @@ import java.util.stream.Stream;
  */
 abstract class AbstractEquipmentTableController<T extends Identifiable<?>> extends AbstractDisposableController implements EmbeddableEquipmentTable {
 
+    protected SceneModel sceneModel;
     protected MainModel mainModel;
 
     private final ObservableList<T> data = FXCollections.observableArrayList();
@@ -121,14 +123,15 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
     }
 
     @Override
-    public void setMainModel(MainModel mainModel) {
-        this.mainModel = Objects.requireNonNull(mainModel);
+    public void setSceneModel(SceneModel sceneModel) {
+        this.sceneModel = Objects.requireNonNull(sceneModel);
+        this.mainModel = sceneModel.getMainModel();
         // a table with editable columns stops editing while a background job uses its network (see MainModel.markBusy)
         if (tableView().isEditable()) {
             tableView().editableProperty().bind(mainModel.networkBusyProperty().not());
         }
         refreshAll();
-        listenerManager.listen(this.mainModel.networkProperty(), (observable, oldValue, newValue) -> refreshAll());
+        listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> refreshAll());
         listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> refreshAll());
         // for the decimal places, read by the cells on every render
         listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> tableView().refresh());
@@ -158,6 +161,11 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
     }
 
     @Override
+    public void goTo(Identifiable<?> equipment) {
+        asOwnEntity(equipment).ifPresent(this::goToItem);
+    }
+
+    @Override
     public boolean hasRows() {
         return !currentItems.isEmpty();
     }
@@ -179,7 +187,7 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
     }
 
     private void refreshAll() {
-        Network network = mainModel.getNetwork();
+        Network network = sceneModel.getNetwork();
         // embedded: only the container's items are sorted, not the whole network's, on every update
         allSorted = network == null || filtering ? List.of() : networkItems(network)
                 .sorted(Comparator.comparing(Identifiable::getNameOrId))
@@ -189,7 +197,7 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
 
     // not filtering (standalone): everything. Filtering with no container selected: nothing.
     private void refreshFiltered() {
-        Network network = mainModel.getNetwork();
+        Network network = sceneModel.getNetwork();
         currentItems = !filtering ? allSorted
                 : scopeContainer == null || network == null ? List.of()
                 : networkItems(network)
@@ -239,9 +247,9 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
             // table's own row selection in history is meaningless for an embedded instance, which has no
             // navigation history entry of its own to update
             if (!filtering) {
-                mainModel.getNavigationHistory().navigate(ownNavigationEvent(item), false);
+                sceneModel.record(ownNavigationEvent(item));
             }
-            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(container)));
+            sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(container)));
         });
         return link;
     }

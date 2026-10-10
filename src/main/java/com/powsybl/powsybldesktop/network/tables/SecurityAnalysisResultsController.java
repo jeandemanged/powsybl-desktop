@@ -14,6 +14,8 @@ import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.SceneView;
 import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
@@ -56,7 +58,7 @@ import java.util.Objects;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-public class SecurityAnalysisResultsController extends AbstractDisposableController {
+public class SecurityAnalysisResultsController extends AbstractDisposableController implements SceneView {
 
     @FXML
     public TableView<ResultRow> resultsTableView;
@@ -86,6 +88,7 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
 
     private final ObservableList<ResultRow> resultsData = FXCollections.observableArrayList();
 
+    private SceneModel sceneModel;
     private MainModel mainModel;
 
     private enum RowKind { NOT_CONVERGED, VIOLATION }
@@ -166,7 +169,7 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
     }
 
     private Node subjectNode(LimitViolation violation) {
-        Network network = mainModel.getNetwork();
+        Network network = sceneModel.getNetwork();
         Identifiable<?> identifiable = network == null ? null : network.getNetwork().getIdentifiable(violation.getSubjectId());
         // TODO: improve in powsybl-open-loadflow - LimitViolationManager builds its LimitViolations without a
         // subjectName, so the name is recovered from the current network instead, falling back to subjectName then
@@ -187,22 +190,24 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
         Hyperlink link = new Hyperlink(subjectName);
         link.getStyleClass().add("container-link");
         Container<?> target = container;
-        link.setOnAction(event -> mainModel.getNavigationHistory().navigate(
+        link.setOnAction(event -> sceneModel.navigate(
                 NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(target))));
         return link;
     }
 
-    public void setMainModel(MainModel mainModel) {
-        this.mainModel = Objects.requireNonNull(mainModel);
+    @Override
+    public void setSceneModel(SceneModel sceneModel) {
+        this.sceneModel = Objects.requireNonNull(sceneModel);
+        this.mainModel = sceneModel.getMainModel();
         updateResults();
-        listenerManager.listen(this.mainModel.networkProperty(), (observable, oldValue, newValue) -> updateResults());
+        listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> updateResults());
         listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> updateResults());
         // for the decimal places, read by the cells on every render
         listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> resultsTableView.refresh());
     }
 
     private void updateResults() {
-        Network network = mainModel.getNetwork();
+        Network network = sceneModel.getNetwork();
         SecurityAnalysisResult result = network == null ? null : mainModel.getStudy(network).getSecurityAnalysisResult();
         resultsData.setAll(result == null ? List.of() : buildRows(result, network));
     }

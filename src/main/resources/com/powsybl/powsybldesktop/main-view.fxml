@@ -33,6 +33,7 @@
                                 <RadioMenuItem fx:id="languageFrenchItem" mnemonicParsing="false" onAction="#onLanguageFrench" text="Français" toggleGroup="$languageToggleGroup" />
                             </items>
                         </Menu>
+                        <Menu fx:id="windowsMenu" mnemonicParsing="false" text="%main.menu.windows"/>
                         <Menu mnemonicParsing="false" text="%main.menu.help">
                             <items>
                                 <MenuItem mnemonicParsing="false" onAction="#onMemory" text="%main.menu.help.memory" />

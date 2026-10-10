@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -59,6 +60,8 @@ public class MainModel {
     private final DoubleProperty diagramZoom = new SimpleDoubleProperty(1.0);
     private final BooleanProperty diagramFitToScreen = new SimpleBooleanProperty(false);
     private final IntegerProperty diagramAreaDepth = new SimpleIntegerProperty(1);
+    // may veto a selection change initiated by the user, see confirmNetworkChange
+    private Predicate<Network> networkChangeGuard = network -> true;
 
     public MainModel() {
         update.setValue(Instant.now());
@@ -128,6 +131,18 @@ public class MainModel {
 
     public void removeAllNetworks() {
         List.copyOf(networks).forEach(this::removeNetwork);
+    }
+
+    public void setNetworkChangeGuard(Predicate<Network> networkChangeGuard) {
+        this.networkChangeGuard = Objects.requireNonNull(networkChangeGuard);
+    }
+
+    /**
+     * Whether the user may select {@code network} (e.g. after confirming that the separate windows showing the
+     * selected one will be closed), to check before a user-initiated {@link #setNetwork}.
+     */
+    public boolean confirmNetworkChange(Network network) {
+        return network == this.network.get() || networkChangeGuard.test(network);
     }
 
     public void setNetwork(Network network) {

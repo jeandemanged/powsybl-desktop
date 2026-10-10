@@ -13,6 +13,7 @@ import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
@@ -61,7 +62,7 @@ class SubstationsTableControllerTest extends AbstractHeadlessApplicationTest {
         mainModel = new MainModel();
         mainModel.addNetwork(network);
         mainModel.setNetwork(network);
-        controller.setMainModel(mainModel);
+        controller.setSceneModel(SceneModel.main(mainModel));
 
         stage.setScene(new Scene(root));
         stage.show();

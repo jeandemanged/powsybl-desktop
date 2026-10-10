@@ -32,7 +32,7 @@
         </VBox>
         <VBox alignment="TOP_RIGHT" spacing="8.0" pickOnBounds="false" AnchorPane.topAnchor="10.0" AnchorPane.rightAnchor="10.0">
             <children>
-                <HBox alignment="CENTER_RIGHT" spacing="8.0" pickOnBounds="false">
+                <HBox fx:id="openInNewWindowHost" alignment="CENTER_RIGHT" spacing="8.0" pickOnBounds="false">
                     <children>
                         <Label fx:id="basemapUnreachableLabel" text="%map.basemap.unreachable" styleClass="map-overlay, alert-label"
                                visible="false" managed="false">

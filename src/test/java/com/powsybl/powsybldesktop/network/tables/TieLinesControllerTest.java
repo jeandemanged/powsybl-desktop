@@ -17,6 +17,7 @@ import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.test.EurostagTutorialExample1Factory;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.navigation.BoundaryLineNavigationState;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
@@ -68,7 +69,7 @@ class TieLinesControllerTest extends AbstractHeadlessApplicationTest {
         mainModel = new MainModel();
         mainModel.addNetwork(network);
         mainModel.setNetwork(network);
-        controller.setMainModel(mainModel);
+        controller.setSceneModel(SceneModel.main(mainModel));
 
         stage.setScene(new Scene(root));
         stage.show();

@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.report;
 
 import com.powsybl.commons.report.ReportNode;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
@@ -47,7 +48,7 @@ class ReportsControllerTest extends AbstractHeadlessApplicationTest {
                 .withAllResourceBundlesFromClasspath()
                 .withMessageTemplate("desktop.loadFlow")
                 .build());
-        controller.setMainModel(mainModel);
+        controller.setSceneModel(SceneModel.main(mainModel));
 
         stage.setScene(new Scene(root));
         stage.show();

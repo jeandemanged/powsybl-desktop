@@ -8,6 +8,7 @@
 package com.powsybl.powsybldesktop.map;
 
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
@@ -39,7 +40,7 @@ class MapControllerEmptyStateTest extends AbstractHeadlessApplicationTest {
         controller = loader.getController();
         mapContainer = (AnchorPane) root;
 
-        controller.setMainModel(new MainModel());
+        controller.setSceneModel(SceneModel.main(new MainModel()));
 
         stage.setScene(new Scene(root));
         stage.show();

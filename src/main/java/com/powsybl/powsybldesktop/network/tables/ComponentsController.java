@@ -11,6 +11,8 @@ import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.SceneView;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
@@ -50,7 +52,7 @@ import java.util.stream.Collectors;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-public class ComponentsController extends AbstractDisposableController {
+public class ComponentsController extends AbstractDisposableController implements SceneView {
 
     @FXML
     public TableView<ComponentRow> componentsTableView;
@@ -76,6 +78,7 @@ public class ComponentsController extends AbstractDisposableController {
 
     private final ObservableList<ComponentRow> componentsData = FXCollections.observableArrayList();
 
+    private SceneModel sceneModel;
     private MainModel mainModel;
     List<ComponentRow> currentComponents = List.of();
 
@@ -200,29 +203,31 @@ public class ComponentsController extends AbstractDisposableController {
         if (busId == null) {
             return null;
         }
-        Network network = mainModel.getNetwork();
+        Network network = sceneModel.getNetwork();
         Bus bus = network == null ? null : network.getBusView().getBus(busId);
         if (bus == null) {
             return new Label(busId);
         }
         Hyperlink link = new Hyperlink(busId);
         link.getStyleClass().add("container-link");
-        link.setOnAction(event -> mainModel.getNavigationHistory().navigate(
+        link.setOnAction(event -> sceneModel.navigate(
                 NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(bus.getVoltageLevel()))));
         return link;
     }
 
-    public void setMainModel(MainModel mainModel) {
-        this.mainModel = Objects.requireNonNull(mainModel);
+    @Override
+    public void setSceneModel(SceneModel sceneModel) {
+        this.sceneModel = Objects.requireNonNull(sceneModel);
+        this.mainModel = sceneModel.getMainModel();
         updateComponents();
-        listenerManager.listen(this.mainModel.networkProperty(), (observable, oldValue, newValue) -> updateComponents());
+        listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> updateComponents());
         listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> updateComponents());
         // for the decimal places, read by the cells on every render
         listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> componentsTableView.refresh());
     }
 
     private void updateComponents() {
-        Network network = mainModel.getNetwork();
+        Network network = sceneModel.getNetwork();
         if (network == null) {
             currentComponents = List.of();
         } else {
