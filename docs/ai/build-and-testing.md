@@ -88,7 +88,7 @@ Testing the shell: `MainControllerMapButtonTest` loads `main-view.fxml` with a c
   no network selected (`new MainModel()` without networks). Follow this pair for new views.
 - Add every new table FXML to `EditLockTest.VIEWS`; it fails if any editor stays enabled while the network is busy.
 - Pure logic is tested with plain JUnit, no toolkit: e.g. `SubstationDiagramRendererTest`, `ContingencyListsIOTest`,
-  `DesktopParametersJsonTest`, `NetworkSearchTest`, `LoadFlowConvergenceTest`, `CategoryTitlesTest`. Prefer factoring
+  `ApplicationParametersJsonTest`, `NetworkSearchTest`, `LoadFlowConvergenceTest`, `CategoryTitlesTest`. Prefer factoring
   logic into such a class when it is non-trivial.
 - Tests needing the toolkit without a stage call `Platform.startup` in `@BeforeAll` (`NetworkTaskTest`).
 - Test names are sentences in camelCase describing behavior (`togglingConnectedCheckBoxDisconnectsAndReconnectsLoad`).

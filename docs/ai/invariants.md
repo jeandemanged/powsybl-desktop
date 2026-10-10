@@ -49,7 +49,7 @@ Build
 - Any PowSyBl call that can be slow on the FX thread? Any background job missing `AbstractNetworkTask`?
 - Any new editor not going through `TableColumnSupport`? Busy lock respected?
 - New strings in both bundles, keys sorted? FXML ids/handlers matching? Styling through `styles.css` classes, no inline style?
-- New SLD/NAD parameter field added to `DesktopParametersJson`'s `Binder`? Form calls its `onChange` hook?
+- New SLD/NAD/GUI parameter field added to `ApplicationParametersJson`'s `Binder`? Form calls its `onChange` hook?
 - New navigation type handled in `NavigationEvent.describe()` and `MainController.onNavigationEvent`?
 - Tests added/updated and `mvn clean install` (or affected tests + `mvn checkstyle:check@default`) run?
 

@@ -11,7 +11,6 @@ import com.powsybl.commons.report.ReportNode;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.logs.LogsModel;
-import com.powsybl.powsybldesktop.map.MapController;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationHistory;
 import com.powsybl.powsybldesktop.network.search.NetworkSearchIndex;
@@ -28,7 +27,6 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.collections.ObservableSet;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -61,8 +59,6 @@ public class MainModel {
     private final DoubleProperty diagramZoom = new SimpleDoubleProperty(1.0);
     private final BooleanProperty diagramFitToScreen = new SimpleBooleanProperty(false);
     private final IntegerProperty diagramAreaDepth = new SimpleIntegerProperty(1);
-    private final ObservableSet<String> mapHiddenBaseVoltages = FXCollections.observableSet();
-    private MapController.Basemap mapBasemap = MapController.Basemap.OFFLINE;
 
     public MainModel() {
         update.setValue(Instant.now());
@@ -273,20 +269,5 @@ public class MainModel {
 
     public void setDiagramAreaDepth(int depth) {
         diagramAreaDepth.set(depth);
-    }
-
-    public MapController.Basemap getMapBasemap() {
-        return mapBasemap;
-    }
-
-    public void setMapBasemap(MapController.Basemap basemap) {
-        mapBasemap = Objects.requireNonNull(basemap);
-    }
-
-    /**
-     * Names of the base voltages (see {@code BaseVoltagesConfig}) whose substations and lines the Map view hides.
-     */
-    public ObservableSet<String> getMapHiddenBaseVoltages() {
-        return mapHiddenBaseVoltages;
     }
 }

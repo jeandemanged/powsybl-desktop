@@ -11,6 +11,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.powsybl.commons.PowsyblException;
@@ -23,6 +24,7 @@ import com.powsybl.nad.svg.EdgeInfoParameters;
 import com.powsybl.nad.svg.LabelProviderParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
+import com.powsybl.powsybldesktop.map.MapController;
 import com.powsybl.security.SecurityAnalysisParameters;
 import com.powsybl.security.json.JsonSecurityAnalysisParameters;
 import com.powsybl.sld.layout.LayoutParameters;
@@ -34,10 +36,13 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
@@ -47,23 +52,23 @@ import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 /**
- * Reads/writes {@link DesktopParameters} as a single JSON document. Load flow and security analysis sections use
- * PowSyBl's own JSON serialization; the diagram sections are written field by field, each field declared once
+ * Reads/writes {@link ApplicationParameters} as a single JSON document. Load flow and security analysis sections use
+ * PowSyBl's own JSON serialization; the diagram and GUI sections are written field by field, each field declared once
  * through a {@link Binder} that either writes it or reads it back, so both directions can't drift apart.
  * Reading is all-or-nothing: any malformed section or wrongly typed field fails the whole read. Missing fields
  * keep their default value, so a file written by an older version still loads.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-public final class DesktopParametersJson {
+public final class ApplicationParametersJson {
 
     private static final String VERSION = "1.0";
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private DesktopParametersJson() {
+    private ApplicationParametersJson() {
     }
 
-    public static ObjectNode toJson(DesktopParameters parameters) {
+    public static ObjectNode toJson(ApplicationParameters parameters) {
         ObjectNode root = MAPPER.createObjectNode();
         root.put("version", VERSION);
         root.set("networkImport", networkFormatsToJson(parameters.networkImport()));
@@ -72,24 +77,28 @@ public final class DesktopParametersJson {
         nad(new Writer(root.putObject("networkAreaDiagram")), parameters.nad());
         root.set("loadFlow", loadFlowToJson(parameters.loadFlow()));
         root.set("securityAnalysis", securityAnalysisToJson(parameters.securityAnalysis()));
+        gui(new Writer(root.putObject("gui")), parameters.gui());
         return root;
     }
 
-    public static DesktopParameters fromJson(JsonNode root) {
+    public static ApplicationParameters fromJson(JsonNode root) {
         requireObject(root, "root");
-        DesktopParameters defaults = DesktopParameters.createDefault();
+        ApplicationParameters defaults = ApplicationParameters.createDefault();
         Reader reader = new Reader(root, "root");
         DesktopSldParameters sld = defaults.sld();
         sld(reader.child("singleLineDiagram"), sld);
         DesktopNadParameters nad = defaults.nad();
         nad(reader.child("networkAreaDiagram"), nad);
-        return new DesktopParameters(
+        GuiParameters gui = defaults.gui();
+        gui(reader.child("gui"), gui);
+        return new ApplicationParameters(
                 networkFormatsFromJson(root.get("networkImport"), "networkImport"),
                 networkFormatsFromJson(root.get("networkExport"), "networkExport"),
                 sld,
                 nad,
                 root.has("loadFlow") ? loadFlowFromJson(root.get("loadFlow")) : defaults.loadFlow(),
-                root.has("securityAnalysis") ? securityAnalysisFromJson(root.get("securityAnalysis")) : defaults.securityAnalysis());
+                root.has("securityAnalysis") ? securityAnalysisFromJson(root.get("securityAnalysis")) : defaults.securityAnalysis(),
+                gui);
     }
 
     // Independent copies, e.g. for a background diagram render: it must neither see the parameters window's in-place
@@ -97,7 +106,7 @@ public final class DesktopParametersJson {
     public static DesktopSldParameters copy(DesktopSldParameters parameters) {
         ObjectNode node = MAPPER.createObjectNode();
         sld(new Writer(node), parameters);
-        DesktopSldParameters copy = DesktopParameters.defaultSldParameters();
+        DesktopSldParameters copy = ApplicationParameters.defaultSldParameters();
         sld(new Reader(node, "singleLineDiagram"), copy);
         return copy;
     }
@@ -110,7 +119,7 @@ public final class DesktopParametersJson {
         return copy;
     }
 
-    public static void write(DesktopParameters parameters, Path path) {
+    public static void write(ApplicationParameters parameters, Path path) {
         write(toJson(parameters), path);
     }
 
@@ -135,7 +144,7 @@ public final class DesktopParametersJson {
 
     // PowSyBl's JSON readers and the parameter setters reject some invalid values with IllegalArgumentException
     // or IllegalStateException: normalized, for callers to handle any malformed file with a single exception type
-    public static DesktopParameters read(Path path) {
+    public static ApplicationParameters read(Path path) {
         try {
             return fromJson(readTree(path));
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -415,6 +424,19 @@ public final class DesktopParametersJson {
         b.number("attractToCenterIntensity", () -> o.get().getAttractToCenterIntensity(), v -> p.updateOverlapPreventionParameters(x -> x.withAttractToCenterIntensity(v)));
     }
 
+    // ----- GUI -----
+
+    private static void gui(Binder b, GuiParameters p) {
+        Binder map = b.child("map");
+        map.enumeration("basemap", MapController.Basemap.class, p::getMapBasemap, p::setMapBasemap);
+        map.stringSet("hiddenBaseVoltages", p::getMapHiddenBaseVoltages, p::setMapHiddenBaseVoltages);
+        Binder logs = b.child("logs");
+        logs.enumeration("minLevel", GuiParameters.LogLevel.class, p::getLogsMinLevel, p::setLogsMinLevel);
+        logs.bool("newestOnTop", p::isLogsNewestOnTop, p::setLogsNewestOnTop);
+        Binder reports = b.child("reports");
+        reports.string("minSeverity", p::getReportsMinSeverity, p::setReportsMinSeverity);
+    }
+
     // ----- Binders -----
 
     private interface Binder {
@@ -429,6 +451,8 @@ public final class DesktopParametersJson {
         <E extends Enum<E>> void enumeration(String name, Class<E> type, Supplier<E> getter, Consumer<E> setter);
 
         <T> void bean(String name, Class<T> type, Supplier<T> getter, Consumer<T> setter);
+
+        void stringSet(String name, Supplier<Set<String>> getter, Consumer<Set<String>> setter);
 
         Binder child(String name);
     }
@@ -463,6 +487,12 @@ public final class DesktopParametersJson {
         @Override
         public <T> void bean(String name, Class<T> type, Supplier<T> getter, Consumer<T> setter) {
             node.set(name, MAPPER.valueToTree(getter.get()));
+        }
+
+        @Override
+        public void stringSet(String name, Supplier<Set<String>> getter, Consumer<Set<String>> setter) {
+            ArrayNode array = node.putArray(name);
+            new TreeSet<>(getter.get()).forEach(array::add);
         }
 
         @Override
@@ -563,6 +593,24 @@ public final class DesktopParametersJson {
                 } catch (IOException e) {
                     throw new PowsyblException("Invalid parameters JSON: unexpected value for '" + path(name) + "'", e);
                 }
+            }
+        }
+
+        @Override
+        public void stringSet(String name, Supplier<Set<String>> getter, Consumer<Set<String>> setter) {
+            JsonNode value = value(name);
+            if (value != null) {
+                if (!value.isArray()) {
+                    throw invalid(path(name));
+                }
+                Set<String> strings = new HashSet<>();
+                for (JsonNode element : value) {
+                    if (!element.isTextual()) {
+                        throw invalid(path(name));
+                    }
+                    strings.add(element.textValue());
+                }
+                setter.accept(strings);
             }
         }
 

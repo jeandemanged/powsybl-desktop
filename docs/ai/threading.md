@@ -16,7 +16,7 @@ Paths `…/X.java` are relative to `src/main/java/com/powsybl/powsybldesktop/`.
 4. **Capture inputs on the FX thread** in `createTask()` (current container, parameter copies) and pass them into the
    task. Parameter objects edited in place by the parameters window must be copied first:
    `LoadFlowParameters.copy()`, `MainController.copyParameters(SecurityAnalysisParameters)`,
-   `DesktopParametersJson.copy(...)` for SLD/NAD.
+   `ApplicationParametersJson.copy(...)` for SLD/NAD.
 5. Network import (`NetworksController.runImport`) uses a plain `Task` because the network isn't loaded (no study
    to mark busy) yet. Format detection on dropped files does too.
 

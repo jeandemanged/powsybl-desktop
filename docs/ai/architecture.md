@@ -13,7 +13,7 @@ Not a textbook MVC/MVVM. The actual structure is:
 - **No service layer, no DI framework.** Controllers call PowSyBl APIs themselves (off the FX thread when slow, see
   [threading.md](threading.md)). Logic that must be unit-testable without a JavaFX toolkit is factored into plain
   classes (e.g. `SubstationDiagramRenderer`, `NetworkAreaDiagramRenderer`, `ContingencyListsIO`,
-  `LoadFlowConvergence`, `DesktopParametersJson`, `MapNetworkData`).
+  `LoadFlowConvergence`, `ApplicationParametersJson`, `MapNetworkData`).
 
 ## Package map
 
@@ -28,7 +28,7 @@ Not a textbook MVC/MVVM. The actual structure is:
 | `map` | Map view: `MapController`, `MapNetworkData` snapshot, `MapTileRenderer`, `map.js` + Leaflet |
 | `contingency` | Contingency lists editor and JSON I/O |
 | `loadflow`, `security` | Result/report records and helpers (`LoadFlowConvergence`) |
-| `parameters` | Parameters window (tabs), `ParametersModel`, `DesktopParameters` record, `DesktopParametersJson`, `ParametersConfigFile` |
+| `parameters` | Parameters window (tabs), `ParametersModel`, `ApplicationParameters` record, `ApplicationParametersJson`, `ParametersConfigFile` |
 | `notification` | `Notification` record, `NotificationsModel`, overlay popup and history panel |
 | `report`, `reports` | Report viewer; `PowsyblDesktopReportResourceBundle` registering `reports(_fr).properties` |
 | `logs` | `LogsModel` (Logback appender → observable list), `LogsViewController` |

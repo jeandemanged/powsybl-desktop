@@ -30,10 +30,12 @@ public class ParametersModel {
     private final ObjectProperty<SecurityAnalysisParameters> securityAnalysisParameters = new SimpleObjectProperty<>();
     private final ObjectProperty<DesktopSldParameters> sldParameters = new SimpleObjectProperty<>();
     private final ObjectProperty<DesktopNadParameters> nadParameters = new SimpleObjectProperty<>();
-    // the diagram parameters are edited in place, so their properties don't fire: these counters are bumped
-    // instead, for the displayed diagrams to re-render
+    private final ObjectProperty<GuiParameters> guiParameters = new SimpleObjectProperty<>();
+    // the diagram and GUI parameters are edited in place, so their properties don't fire: these counters are bumped
+    // instead, for the displayed diagrams to re-render and the views to apply their settings
     private final LongProperty sldParametersRevision = new SimpleLongProperty();
     private final LongProperty nadParametersRevision = new SimpleLongProperty();
+    private final LongProperty guiParametersRevision = new SimpleLongProperty();
     // bumped on any parameter edit or replacement, for the parameters view to compare them against the saved file
     private final LongProperty parametersRevision = new SimpleLongProperty();
     // JSON of the parameters as last saved to / restored from the configuration file, null if there's none
@@ -44,7 +46,7 @@ public class ParametersModel {
     private final Map<String, Properties> networkExportParameters = new HashMap<>();
 
     public ParametersModel() {
-        DesktopParameters defaults = DesktopParameters.createDefault();
+        ApplicationParameters defaults = ApplicationParameters.createDefault();
         loadFlowParameters.setValue(defaults.loadFlow());
         securityAnalysisParameters.setValue(defaults.securityAnalysis());
         syncSecurityAnalysisLoadFlowParameters();
@@ -56,10 +58,12 @@ public class ParametersModel {
         securityAnalysisParameters.addListener((observable, oldValue, newValue) -> syncSecurityAnalysisLoadFlowParameters());
         sldParameters.setValue(defaults.sld());
         nadParameters.setValue(defaults.nad());
+        guiParameters.setValue(defaults.gui());
         loadFlowParameters.addListener((observable, oldValue, newValue) -> parametersChanged());
         securityAnalysisParameters.addListener((observable, oldValue, newValue) -> parametersChanged());
         sldParameters.addListener((observable, oldValue, newValue) -> parametersChanged());
         nadParameters.addListener((observable, oldValue, newValue) -> parametersChanged());
+        guiParameters.addListener((observable, oldValue, newValue) -> parametersChanged());
     }
 
     private void syncSecurityAnalysisLoadFlowParameters() {
@@ -105,6 +109,23 @@ public class ParametersModel {
         parametersChanged();
     }
 
+    public ObjectProperty<GuiParameters> guiParametersProperty() {
+        return guiParameters;
+    }
+
+    public GuiParameters getGuiParameters() {
+        return guiParameters.getValue();
+    }
+
+    public ReadOnlyLongProperty guiParametersRevisionProperty() {
+        return guiParametersRevision;
+    }
+
+    public void guiParametersChanged() {
+        guiParametersRevision.set(guiParametersRevision.get() + 1);
+        parametersChanged();
+    }
+
     public ReadOnlyLongProperty parametersRevisionProperty() {
         return parametersRevision;
     }
@@ -114,12 +135,13 @@ public class ParametersModel {
     }
 
     // the returned objects are the live ones, edited in place by the parameters view
-    public DesktopParameters getParameters() {
-        return new DesktopParameters(Map.copyOf(networkImportParameters), Map.copyOf(networkExportParameters),
-                sldParameters.getValue(), nadParameters.getValue(), loadFlowParameters.getValue(), securityAnalysisParameters.getValue());
+    public ApplicationParameters getParameters() {
+        return new ApplicationParameters(Map.copyOf(networkImportParameters), Map.copyOf(networkExportParameters),
+                sldParameters.getValue(), nadParameters.getValue(), loadFlowParameters.getValue(), securityAnalysisParameters.getValue(),
+                guiParameters.getValue());
     }
 
-    public void setParameters(DesktopParameters parameters) {
+    public void setParameters(ApplicationParameters parameters) {
         Objects.requireNonNull(parameters);
         networkImportParameters.clear();
         networkImportParameters.putAll(copy(parameters.networkImport()));
@@ -129,8 +151,10 @@ public class ParametersModel {
         loadFlowParameters.setValue(parameters.loadFlow());
         sldParameters.setValue(parameters.sld());
         nadParameters.setValue(parameters.nad());
+        guiParameters.setValue(parameters.gui());
         sldParametersChanged();
         nadParametersChanged();
+        guiParametersChanged();
     }
 
     private static Map<String, Properties> copy(Map<String, Properties> parameters) {

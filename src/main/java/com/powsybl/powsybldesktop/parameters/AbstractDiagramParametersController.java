@@ -210,7 +210,7 @@ public abstract class AbstractDiagramParametersController<T> extends AbstractDis
             }
             try {
                 double value = Double.parseDouble(textField.getText());
-                // parseDouble accepts "NaN"/"Infinity", which DesktopParametersJson can't read back from the config file
+                // parseDouble accepts "NaN"/"Infinity", which ApplicationParametersJson can't read back from the config file
                 if (!Double.isFinite(value)) {
                     throw new IllegalArgumentException("Non-finite value: " + value);
                 }

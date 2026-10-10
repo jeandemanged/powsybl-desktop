@@ -74,7 +74,7 @@ class ParametersConfigFileTest {
         }
         assertEquals(1, backups.size());
         assertEquals("{ not json", Files.readString(backups.getFirst()));
-        assertEquals(DesktopParametersJson.toJson(DesktopParameters.createDefault()), DesktopParametersJson.readTree(path));
+        assertEquals(ApplicationParametersJson.toJson(ApplicationParameters.createDefault()), ApplicationParametersJson.readTree(path));
         assertTrue(ParametersConfigFile.isSaved(parametersModel));
     }
 }

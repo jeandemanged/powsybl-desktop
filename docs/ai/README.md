@@ -40,7 +40,7 @@ live under the mirrored package in `src/main/resources/com/powsybl/powsybldeskto
 
 1. **Inspect** the closest existing implementation (each document names canonical examples) and the tests next to it.
 2. **Identify affected layers**: FXML, controller, `MainModel`/`NetworkStudy`/sub-model, navigation, i18n bundles
-   (both languages), CSS, `DesktopParametersJson` (for parameters), tests.
+   (both languages), CSS, `ApplicationParametersJson` (for parameters), tests.
 3. **Make the smallest coherent change** that follows the existing pattern. No speculative abstractions, no
    unrelated refactoring.
 4. **Update resources and tests** together with the code: FXML ids, message keys in both bundles, a controller test

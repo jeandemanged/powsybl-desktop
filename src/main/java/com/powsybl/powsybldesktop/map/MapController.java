@@ -9,8 +9,6 @@ package com.powsybl.powsybldesktop.map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.powsybl.commons.config.BaseVoltageConfig;
-import com.powsybl.commons.config.BaseVoltagesConfig;
 import com.powsybl.iidm.network.BoundaryLine;
 import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Identifiable;
@@ -33,6 +31,7 @@ import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.TieLineNavigationState;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.application.Platform;
@@ -41,13 +40,10 @@ import javafx.concurrent.Task;
 import javafx.concurrent.Worker;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
-import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
 import javafx.scene.web.WebView;
 import javafx.util.StringConverter;
 import netscape.javascript.JSObject;
@@ -60,9 +56,7 @@ import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,8 +66,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -99,11 +91,9 @@ import java.util.stream.Collectors;
  * The default basemap is {@link Basemap#OFFLINE}, drawn in the same tiles below the network, so the view works
  * without internet access. OpenStreetMap tiles are opt-in.
  * <p>
- * Substations and lines are colored by base voltage like single line diagrams: ranges from the
- * {@link BaseVoltagesConfig}, colors from the single line diagram's {@code baseVoltages.css}. The highest base voltage
- * range is open-ended here, so e.g. 750 kV equipment is shown as the 300-500 kV range rather than uncolored.
- * Each base voltage can be hidden from an overlay checkbox, remembered in
- * {@link MainModel#getMapHiddenBaseVoltages()}.
+ * Substations and lines are colored by base voltage (see {@link MapBaseVoltages}). Each base voltage can be hidden
+ * from an overlay checkbox. The basemap and hidden base voltages are {@link GuiParameters}, also editable from the
+ * parameters view.
  * <p>
  * The search box zooms to its current match: a line, tie line or boundary line to fit it whole, anything else to its
  * substation, with some neighbouring substations around it, and marks it: a line halfway along, anything else at its
@@ -152,7 +142,6 @@ public class MapController extends AbstractDisposableController {
             </html>
             """;
 
-    private static final Pattern BASE_VOLTAGE_COLOR = Pattern.compile("\\.sld-(\\w+)\\s*\\{\\s*--sld-vl-color:\\s*(#\\w+)\\s*}");
     /** One core is left to the FX thread. */
     private static final int TILE_THREADS = Math.max(1, Runtime.getRuntime().availableProcessors() - 1);
 
@@ -167,19 +156,15 @@ public class MapController extends AbstractDisposableController {
             this.jsName = jsName;
             this.labelKey = labelKey;
         }
+
+        public String getLabel() {
+            return Messages.get(labelKey);
+        }
     }
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final BaseVoltagesConfig baseVoltagesConfig = BaseVoltagesConfig.fromPlatformConfig();
-    private final Map<String, String> baseVoltageColors = readBaseVoltageColors();
-    private final List<BaseVoltageConfig> baseVoltages = baseVoltagesConfig.getBaseVoltages().stream()
-            .filter(baseVoltage -> baseVoltage.getProfile().equals(baseVoltagesConfig.getDefaultProfile()))
-            .toList();
-    private final BaseVoltageConfig highestBaseVoltage = baseVoltages.stream()
-            .max(Comparator.comparingDouble(BaseVoltageConfig::getMaxValue))
-            .orElse(null);
-    private final List<CheckBox> baseVoltageCheckBoxes = new ArrayList<>();
-    private boolean settingAllBaseVoltages;
+    private final MapBaseVoltages mapBaseVoltages = new MapBaseVoltages();
+    private MapBaseVoltages.CheckBoxes baseVoltageCheckBoxes;
 
     @FXML
     private WebView webView;
@@ -217,7 +202,7 @@ public class MapController extends AbstractDisposableController {
             return new AbstractNetworkTask<>(mainModel, network) {
                 @Override
                 protected MapNetworkData compute() {
-                    return MapNetworkData.build(network, MapController.this::baseVoltageName, MapController.this::color);
+                    return MapNetworkData.build(network, mapBaseVoltages::baseVoltageName, mapBaseVoltages::color);
                 }
             };
         }
@@ -251,7 +236,7 @@ public class MapController extends AbstractDisposableController {
         basemapComboBox.setConverter(new StringConverter<>() {
             @Override
             public String toString(Basemap basemap) {
-                return basemap == null ? "" : Messages.get(basemap.labelKey);
+                return basemap == null ? "" : basemap.getLabel();
             }
 
             @Override
@@ -331,15 +316,19 @@ public class MapController extends AbstractDisposableController {
 
     public void setMainModel(MainModel mainModel) {
         this.mainModel = Objects.requireNonNull(mainModel);
-        hiddenBaseVoltages = Set.copyOf(mainModel.getMapHiddenBaseVoltages());
-        basemapComboBox.setValue(mainModel.getMapBasemap());
+        hiddenBaseVoltages = gui().getMapHiddenBaseVoltages();
+        basemapComboBox.setValue(gui().getMapBasemap());
         basemapComboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
-            mainModel.setMapBasemap(newValue);
+            if (gui().getMapBasemap() != newValue) {
+                gui().setMapBasemap(newValue);
+                mainModel.getParametersModel().guiParametersChanged();
+            }
             applyBasemap();
         });
         listenerManager.listen(mainModel.networkProperty(), (observable, oldValue, newValue) -> refresh());
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
         createBaseVoltageCheckBoxes();
+        listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> applyGuiParameters());
         searchBoxController.bind(mainModel, this::onSearchMatch);
         searchBoxController.setOnNoMatch(this::clearSearchHighlight);
     }
@@ -419,42 +408,33 @@ public class MapController extends AbstractDisposableController {
         return bounds == null ? null : new SearchFocus(bounds, List.of(networkData.substationLatLng(substation.getId())));
     }
 
+    private GuiParameters gui() {
+        return mainModel.getParametersModel().getGuiParameters();
+    }
+
+    // the network is redrawn by applyGuiParameters, once the change has gone through the GUI parameters
     private void createBaseVoltageCheckBoxes() {
-        checkAllBaseVoltagesLink.setOnAction(event -> setAllBaseVoltagesSelected(true));
-        checkNoBaseVoltagesLink.setOnAction(event -> setAllBaseVoltagesSelected(false));
-        for (BaseVoltageConfig baseVoltage : baseVoltages) {
-            CheckBox checkBox = new CheckBox(baseVoltage == highestBaseVoltage
-                    ? Messages.get("map.baseVoltages.rangeAbove", baseVoltage.getMinValue())
-                    : Messages.get("map.baseVoltages.range", baseVoltage.getMinValue(), baseVoltage.getMaxValue()));
-            checkBox.setGraphic(new Rectangle(10, 10, Color.web(color(baseVoltage.getName(), MapNetworkData.DEFAULT_SUBSTATION_COLOR))));
-            checkBox.setSelected(!mainModel.getMapHiddenBaseVoltages().contains(baseVoltage.getName()));
-            checkBox.selectedProperty().addListener((observable, oldValue, selected) -> {
-                if (selected) {
-                    mainModel.getMapHiddenBaseVoltages().remove(baseVoltage.getName());
-                } else {
-                    mainModel.getMapHiddenBaseVoltages().add(baseVoltage.getName());
-                }
-                if (!settingAllBaseVoltages) {
-                    applyHiddenBaseVoltages();
-                }
-            });
-            baseVoltageCheckBoxes.add(checkBox);
-            baseVoltagesBox.getChildren().add(checkBox);
-        }
+        baseVoltageCheckBoxes = mapBaseVoltages.createCheckBoxes(hidden -> {
+            if (!hidden.equals(gui().getMapHiddenBaseVoltages())) {
+                gui().setMapHiddenBaseVoltages(hidden);
+                mainModel.getParametersModel().guiParametersChanged();
+            }
+        });
+        baseVoltageCheckBoxes.setHidden(hiddenBaseVoltages);
+        checkAllBaseVoltagesLink.setOnAction(event -> baseVoltageCheckBoxes.setAllSelected(true));
+        checkNoBaseVoltagesLink.setOnAction(event -> baseVoltageCheckBoxes.setAllSelected(false));
+        baseVoltagesBox.getChildren().addAll(baseVoltageCheckBoxes.getCheckBoxes());
     }
 
-    // a single redraw rather than one per checkbox
-    private void setAllBaseVoltagesSelected(boolean selected) {
-        settingAllBaseVoltages = true;
-        baseVoltageCheckBoxes.forEach(checkBox -> checkBox.setSelected(selected));
-        settingAllBaseVoltages = false;
-        applyHiddenBaseVoltages();
-    }
-
-    private void applyHiddenBaseVoltages() {
-        hiddenBaseVoltages = Set.copyOf(mainModel.getMapHiddenBaseVoltages());
-        if (engineLoaded) {
-            webView.getEngine().executeScript("redrawNetwork()");
+    // edited from this view or the parameters view, or replaced by a parameters reset or import
+    private void applyGuiParameters() {
+        basemapComboBox.setValue(gui().getMapBasemap());
+        baseVoltageCheckBoxes.setHidden(gui().getMapHiddenBaseVoltages());
+        if (!hiddenBaseVoltages.equals(gui().getMapHiddenBaseVoltages())) {
+            hiddenBaseVoltages = gui().getMapHiddenBaseVoltages();
+            if (engineLoaded) {
+                webView.getEngine().executeScript("redrawNetwork()");
+            }
         }
     }
 
@@ -584,26 +564,6 @@ public class MapController extends AbstractDisposableController {
         }
         loadingPane.setVisible(true);
         networkDataService.restart();
-    }
-
-    private String baseVoltageName(double nominalV) {
-        if (highestBaseVoltage != null && nominalV >= highestBaseVoltage.getMinValue()) {
-            return highestBaseVoltage.getName();
-        }
-        return baseVoltagesConfig.getBaseVoltageName(nominalV, baseVoltagesConfig.getDefaultProfile()).orElse(null);
-    }
-
-    private String color(String baseVoltage, String defaultColor) {
-        return baseVoltage == null ? defaultColor : baseVoltageColors.getOrDefault(baseVoltage, defaultColor);
-    }
-
-    private Map<String, String> readBaseVoltageColors() {
-        Map<String, String> colors = new HashMap<>();
-        Matcher matcher = BASE_VOLTAGE_COLOR.matcher(readResource("/baseVoltages.css"));
-        while (matcher.find()) {
-            colors.put(matcher.group(1), matcher.group(2));
-        }
-        return colors;
     }
 
     private String readResource(String name) {

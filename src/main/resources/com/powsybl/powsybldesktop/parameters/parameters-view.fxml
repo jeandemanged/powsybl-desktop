@@ -57,6 +57,11 @@
     </ToolBar>
     <TabPane fx:id="tabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
         <tabs>
+            <Tab text="%parameters.tab.gui">
+                <content>
+                    <fx:include fx:id="guiEmbedded" source="gui-parameters.fxml"/>
+                </content>
+            </Tab>
             <Tab text="%parameters.tab.networkImport">
                 <content>
                     <fx:include fx:id="networkImportEmbedded" source="network-format-parameters.fxml"/>

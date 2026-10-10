@@ -16,10 +16,14 @@ import com.powsybl.nad.svg.EdgeInfoParameters;
 import com.powsybl.nad.svg.SvgParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
+import com.powsybl.powsybldesktop.map.MapController;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -29,14 +33,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-class DesktopParametersJsonTest {
+class ApplicationParametersJsonTest {
 
-    private static DesktopParameters customParameters() {
+    private static ApplicationParameters customParameters() {
         Properties iidmImport = new Properties();
         iidmImport.setProperty("iidm.import.xml.throw-exception-if-extension-not-found", "true");
-        DesktopParameters defaults = DesktopParameters.createDefault();
-        DesktopParameters parameters = new DesktopParameters(Map.of("IIDM", iidmImport), Map.of("IIDM", new Properties()),
-                defaults.sld(), defaults.nad(), defaults.loadFlow(), defaults.securityAnalysis());
+        ApplicationParameters defaults = ApplicationParameters.createDefault();
+        ApplicationParameters parameters = new ApplicationParameters(Map.of("IIDM", iidmImport), Map.of("IIDM", new Properties()),
+                defaults.sld(), defaults.nad(), defaults.loadFlow(), defaults.securityAnalysis(), defaults.gui());
 
         parameters.sld().setSubstationLayoutChoice(DesktopSldParameters.SubstationLayoutChoice.VERTICAL)
                 .setComponentLibraryChoice(DesktopSldParameters.ComponentLibraryChoice.FLAT_DESIGN)
@@ -61,16 +65,22 @@ class DesktopParametersJsonTest {
         OpenLoadFlowParameters.get(parameters.loadFlow()).setMaxNewtonRaphsonIterations(33);
         parameters.securityAnalysis().getIncreasedViolationsParameters().setFlowProportionalThreshold(0.3);
         parameters.securityAnalysis().getExtension(OpenSecurityAnalysisParameters.class).setThreadCount(3);
+
+        parameters.gui().setMapBasemap(MapController.Basemap.OPEN_STREET_MAP);
+        parameters.gui().setMapHiddenBaseVoltages(Set.of("vl300to500", "vl0to30"));
+        parameters.gui().setLogsMinLevel(GuiParameters.LogLevel.WARN);
+        parameters.gui().setLogsNewestOnTop(false);
+        parameters.gui().setReportsMinSeverity("DETAIL");
         return parameters;
     }
 
     @Test
     void roundTripsEverySection() {
-        DesktopParameters original = customParameters();
-        ObjectNode json = DesktopParametersJson.toJson(original);
-        DesktopParameters read = DesktopParametersJson.fromJson(json);
+        ApplicationParameters original = customParameters();
+        ObjectNode json = ApplicationParametersJson.toJson(original);
+        ApplicationParameters read = ApplicationParametersJson.fromJson(json);
 
-        assertEquals(json, DesktopParametersJson.toJson(read));
+        assertEquals(json, ApplicationParametersJson.toJson(read));
         assertEquals("true", read.networkImport().get("IIDM").getProperty("iidm.import.xml.throw-exception-if-extension-not-found"));
         assertEquals(DesktopSldParameters.SubstationLayoutChoice.VERTICAL, read.sld().getSubstationLayoutChoice());
         assertEquals(DesktopSldParameters.ComponentLibraryChoice.FLAT_DESIGN, read.sld().getComponentLibraryChoice());
@@ -92,11 +102,16 @@ class DesktopParametersJsonTest {
         assertEquals(33, OpenLoadFlowParameters.get(read.loadFlow()).getMaxNewtonRaphsonIterations());
         assertEquals(0.3, read.securityAnalysis().getIncreasedViolationsParameters().getFlowProportionalThreshold());
         assertEquals(3, read.securityAnalysis().getExtension(OpenSecurityAnalysisParameters.class).getThreadCount());
+        assertEquals(MapController.Basemap.OPEN_STREET_MAP, read.gui().getMapBasemap());
+        assertEquals(Set.of("vl300to500", "vl0to30"), read.gui().getMapHiddenBaseVoltages());
+        assertEquals(GuiParameters.LogLevel.WARN, read.gui().getLogsMinLevel());
+        assertFalse(read.gui().isLogsNewestOnTop());
+        assertEquals("DETAIL", read.gui().getReportsMinSeverity());
     }
 
     @Test
     void emptyNetworkFormatsAndEmbeddedLoadFlowAreNotWritten() {
-        ObjectNode json = DesktopParametersJson.toJson(customParameters());
+        ObjectNode json = ApplicationParametersJson.toJson(customParameters());
         assertFalse(json.get("networkExport").has("IIDM"));
         assertFalse(json.get("securityAnalysis").has("load-flow-parameters"));
     }
@@ -105,21 +120,40 @@ class DesktopParametersJsonTest {
     void missingFieldsKeepDefaults() {
         ObjectNode json = new ObjectMapper().createObjectNode();
         json.putObject("singleLineDiagram").putObject("layout").put("cellWidth", 99.0);
-        DesktopParameters read = DesktopParametersJson.fromJson(json);
+        ApplicationParameters read = ApplicationParametersJson.fromJson(json);
 
-        ObjectNode expected = DesktopParametersJson.toJson(DesktopParameters.createDefault());
+        ObjectNode expected = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
         ((ObjectNode) expected.get("singleLineDiagram").get("layout")).put("cellWidth", 99.0);
-        assertEquals(expected, DesktopParametersJson.toJson(read));
+        assertEquals(expected, ApplicationParametersJson.toJson(read));
     }
 
     @Test
     void wronglyTypedFieldFailsTheWholeRead() {
-        ObjectNode json = DesktopParametersJson.toJson(DesktopParameters.createDefault());
+        ObjectNode json = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
         ((ObjectNode) json.get("networkAreaDiagram").get("svg")).put("fixedWidth", "wide");
-        assertThrows(PowsyblException.class, () -> DesktopParametersJson.fromJson(json));
+        assertThrows(PowsyblException.class, () -> ApplicationParametersJson.fromJson(json));
 
-        ObjectNode unknownEnum = DesktopParametersJson.toJson(DesktopParameters.createDefault());
+        ObjectNode unknownEnum = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
         ((ObjectNode) unknownEnum.get("singleLineDiagram")).put("styleProvider", "UNKNOWN");
-        assertThrows(PowsyblException.class, () -> DesktopParametersJson.fromJson(unknownEnum));
+        assertThrows(PowsyblException.class, () -> ApplicationParametersJson.fromJson(unknownEnum));
+
+        ObjectNode hiddenBaseVoltagesNotArray = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
+        ((ObjectNode) hiddenBaseVoltagesNotArray.get("gui").get("map")).put("hiddenBaseVoltages", "vl300to500");
+        assertThrows(PowsyblException.class, () -> ApplicationParametersJson.fromJson(hiddenBaseVoltagesNotArray));
+    }
+
+    @Test
+    void unknownOrNullGuiValueFailsTheRead(@TempDir Path tempDir) {
+        ObjectNode unknownSeverity = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
+        ((ObjectNode) unknownSeverity.get("gui").get("reports")).put("minSeverity", "FATAL");
+        Path unknownSeverityFile = tempDir.resolve("unknownSeverity.json");
+        ApplicationParametersJson.write(unknownSeverity, unknownSeverityFile);
+        assertThrows(PowsyblException.class, () -> ApplicationParametersJson.read(unknownSeverityFile));
+
+        ObjectNode nullBasemap = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
+        ((ObjectNode) nullBasemap.get("gui").get("map")).putNull("basemap");
+        Path nullBasemapFile = tempDir.resolve("nullBasemap.json");
+        ApplicationParametersJson.write(nullBasemap, nullBasemapFile);
+        assertThrows(PowsyblException.class, () -> ApplicationParametersJson.read(nullBasemapFile));
     }
 }

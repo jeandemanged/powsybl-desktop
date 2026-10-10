@@ -14,6 +14,8 @@ import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.TreeView;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
@@ -21,6 +23,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -63,5 +66,22 @@ class ReportsControllerTest extends AbstractHeadlessApplicationTest {
         interact(mainModel::clearReports);
 
         assertNull(detailTree.getRoot());
+    }
+
+    @Test
+    void severityTogglesEditAndFollowGuiParameters() {
+        ToggleGroup severities = ((ToggleButton) lookup(".toggle-button").query()).getToggleGroup();
+        ToggleButton warn = (ToggleButton) severities.getToggles().stream()
+                .filter(toggle -> "WARN".equals(toggle.getUserData())).findFirst().orElseThrow();
+        clickOn(warn);
+        assertEquals("WARN", mainModel.getParametersModel().getGuiParameters().getReportsMinSeverity());
+        assertEquals(1, mainModel.getParametersModel().guiParametersRevisionProperty().get());
+
+        // as when edited from the parameters view
+        interact(() -> {
+            mainModel.getParametersModel().getGuiParameters().setReportsMinSeverity("DEBUG");
+            mainModel.getParametersModel().guiParametersChanged();
+        });
+        assertEquals("DEBUG", severities.getSelectedToggle().getUserData());
     }
 }

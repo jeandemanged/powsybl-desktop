@@ -362,7 +362,7 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
             onImportFailed.accept(path, e);
             return;
         }
-        // same as DesktopParametersJson: the OLF-specific fields edit this extension in place
+        // same as ApplicationParametersJson: the OLF-specific fields edit this extension in place
         if (parameters.getExtension(OpenSecurityAnalysisParameters.class) == null) {
             parameters.addExtension(OpenSecurityAnalysisParameters.class, new OpenSecurityAnalysisParameters());
         }

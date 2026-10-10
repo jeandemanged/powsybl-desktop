@@ -29,8 +29,8 @@ import com.powsybl.powsybldesktop.network.tables.SwitchesController;
 import com.powsybl.powsybldesktop.network.tables.TieLinesController;
 import com.powsybl.powsybldesktop.network.tables.TransformersController;
 import com.powsybl.powsybldesktop.notification.Notification;
+import com.powsybl.powsybldesktop.parameters.ApplicationParametersJson;
 import com.powsybl.powsybldesktop.parameters.DesktopNadParameters;
-import com.powsybl.powsybldesktop.parameters.DesktopParametersJson;
 import com.powsybl.powsybldesktop.parameters.DesktopSldParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Labels;
@@ -174,7 +174,7 @@ public class SubstationsController extends AbstractDisposableController {
         @Override
         protected Task<SubstationDiagramRenderer.DiagramRender> createTask() {
             Container<?> container = currentContainer;
-            DesktopSldParameters parameters = DesktopParametersJson.copy(mainModel.getParametersModel().sldParametersProperty().getValue());
+            DesktopSldParameters parameters = ApplicationParametersJson.copy(mainModel.getParametersModel().sldParametersProperty().getValue());
             return new AbstractNetworkTask<>(mainModel, container.getNetwork()) {
                 @Override
                 protected SubstationDiagramRenderer.DiagramRender compute() throws IOException {
@@ -189,7 +189,7 @@ public class SubstationsController extends AbstractDisposableController {
         protected Task<String> createTask() {
             Container<?> container = currentContainer;
             int depth = nadDepth;
-            DesktopNadParameters parameters = DesktopParametersJson.copy(mainModel.getParametersModel().nadParametersProperty().getValue());
+            DesktopNadParameters parameters = ApplicationParametersJson.copy(mainModel.getParametersModel().nadParametersProperty().getValue());
             return new AbstractNetworkTask<>(mainModel, container.getNetwork()) {
                 @Override
                 protected String compute() throws IOException {

@@ -677,7 +677,7 @@ public class MainController extends AbstractDisposableController {
             }
         }
         if (newValue.navigationType() == NavigationType.LOGS) {
-            ensureController(LogsViewController.class, "logs/logs-view.fxml", c -> c.setLogsModel(mainModel.getLogsModel()));
+            ensureController(LogsViewController.class, "logs/logs-view.fxml", c -> c.setModels(mainModel.getLogsModel(), mainModel.getParametersModel()));
         } else if (newValue.navigationType() == NavigationType.NETWORKS) {
             NetworksController controller = ensureController(NetworksController.class, "network/networks-view.fxml", c -> c.setMainModel(mainModel));
             if (newValue.state() instanceof NetworkNavigationState state) {

@@ -9,6 +9,9 @@ package com.powsybl.powsybldesktop.logs;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import com.powsybl.powsybldesktop.parameters.ApplicationParameters;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.powsybldesktop.parameters.ParametersModel;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
@@ -28,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -48,6 +52,7 @@ class LogsViewControllerTest extends AbstractHeadlessApplicationTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(LogsViewControllerTest.class);
 
     private LogsViewController controller;
+    private ParametersModel parametersModel;
 
     @Override
     public void start(Stage stage) throws IOException {
@@ -58,7 +63,8 @@ class LogsViewControllerTest extends AbstractHeadlessApplicationTest {
         if (logsModel == null) {
             logsModel = new LogsModel();
         }
-        controller.setLogsModel(logsModel);
+        parametersModel = new ParametersModel();
+        controller.setModels(logsModel, parametersModel);
 
         stage.setScene(new Scene(root));
         stage.show();
@@ -132,6 +138,20 @@ class LogsViewControllerTest extends AbstractHeadlessApplicationTest {
 
         clickOn(controller.infoToggleButton);
         assertTrue(isShown("filtered info") && isShown("filtered warn") && isShown("filtered error"));
+    }
+
+    @Test
+    void togglesEditAndFollowGuiParameters() {
+        clickOn(controller.warnToggleButton);
+        clickOn(controller.newestOnBottomToggleButton);
+        assertEquals(GuiParameters.LogLevel.WARN, parametersModel.getGuiParameters().getLogsMinLevel());
+        assertFalse(parametersModel.getGuiParameters().isLogsNewestOnTop());
+        assertEquals(2, parametersModel.guiParametersRevisionProperty().get());
+
+        // as after a parameters reset
+        interact(() -> parametersModel.setParameters(ApplicationParameters.createDefault()));
+        assertTrue(controller.infoToggleButton.isSelected());
+        assertTrue(controller.newestOnTopToggleButton.isSelected());
     }
 
     private boolean isShown(String message) {

@@ -31,7 +31,7 @@ import java.util.Map;
  */
 public class ReportNodeTreeCell extends TreeCell<ReportNode> {
 
-    static final List<String> SEVERITIES = List.of("TRACE", "DEBUG", "INFO", "DETAIL", "WARN", "ERROR");
+    public static final List<String> SEVERITIES = List.of("TRACE", "DEBUG", "INFO", "DETAIL", "WARN", "ERROR");
 
     private static final List<String> SEVERITY_STYLE_CLASSES = SEVERITIES.stream()
             .map(severity -> "severity-" + severity.toLowerCase(Locale.ROOT))

@@ -11,6 +11,7 @@ import com.powsybl.commons.report.ReportConstants;
 import com.powsybl.commons.report.ReportNode;
 import com.powsybl.commons.report.ReportNodeSerializer;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.FileChooserPreferences;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -75,7 +76,12 @@ public class ReportsController extends AbstractDisposableController {
             if (newToggle == null) {
                 oldToggle.setSelected(true);
             } else {
-                reportDetailController.setMinSeverity((String) newToggle.getUserData());
+                String severity = (String) newToggle.getUserData();
+                if (!gui().getReportsMinSeverity().equals(severity)) {
+                    gui().setReportsMinSeverity(severity);
+                    mainModel.getParametersModel().guiParametersChanged();
+                }
+                reportDetailController.setMinSeverity(severity);
             }
         });
     }
@@ -88,6 +94,20 @@ public class ReportsController extends AbstractDisposableController {
         if (!mainModel.getReports().isEmpty()) {
             reportsListView.getSelectionModel().select(mainModel.getReports().size() - 1);
         }
+        applyGuiParameters();
+        // edited from this view or the parameters view, or replaced by a parameters reset or import
+        listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> applyGuiParameters());
+    }
+
+    private GuiParameters gui() {
+        return mainModel.getParametersModel().getGuiParameters();
+    }
+
+    private void applyGuiParameters() {
+        severityToggleGroup.getToggles().stream()
+                .filter(toggle -> gui().getReportsMinSeverity().equals(toggle.getUserData()))
+                .findFirst()
+                .ifPresent(severityToggleGroup::selectToggle);
     }
 
     @FXML

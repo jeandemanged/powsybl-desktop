@@ -33,9 +33,10 @@ import java.util.Objects;
  * Tab host for the app's parameter screens: network import/export parameters per format
  * ({@link NetworkFormatParametersController}), single line and network area diagram parameters
  * ({@link SldParametersController}, {@link NadParametersController}), load flow parameters (existing
- * {@link LoadFlowParametersController}, embedded unchanged) and security analysis parameters
- * ({@link SecurityAnalysisParametersController}). Its toolbar saves all of them to the configuration file restored
- * on startup ({@link ParametersConfigFile}), resets them to defaults, or imports/exports them from/to any JSON file.
+ * {@link LoadFlowParametersController}, embedded unchanged), security analysis parameters
+ * ({@link SecurityAnalysisParametersController}) and the app's own {@link GuiParameters}
+ * ({@link GuiParametersController}). Its toolbar saves all of them to the configuration file restored on startup
+ * ({@link ParametersConfigFile}), resets them to defaults, or imports/exports them from/to any JSON file.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -61,6 +62,8 @@ public class ParametersController extends AbstractDisposableController {
     private LoadFlowParametersController loadFlowEmbeddedController;
     @FXML
     private SecurityAnalysisParametersController securityAnalysisEmbeddedController;
+    @FXML
+    private GuiParametersController guiEmbeddedController;
 
     private MainModel mainModel;
     private Path configPath = ParametersConfigFile.defaultPath();
@@ -79,6 +82,7 @@ public class ParametersController extends AbstractDisposableController {
         securityAnalysisEmbeddedController.setSecurityAnalysisParametersProperty(mainModel.getParametersModel().securityAnalysisParametersProperty());
         securityAnalysisEmbeddedController.setOnChange(mainModel.getParametersModel()::parametersChanged);
         securityAnalysisEmbeddedController.setOnImportFailed((path, e) -> importFailed(Instant.now(), path, e));
+        guiEmbeddedController.setParametersModel(mainModel.getParametersModel());
         listenerManager.listen(mainModel.getParametersModel().parametersRevisionProperty(), (observable, oldValue, newValue) -> updateSaveButton());
         setConfigPath(configPath);
     }
@@ -111,7 +115,7 @@ public class ParametersController extends AbstractDisposableController {
         alert.initOwner(tabPane.getScene().getWindow());
         alert.setHeaderText(null);
         if (alert.showAndWait().filter(ButtonType.YES::equals).isPresent()) {
-            setParameters(DesktopParameters.createDefault());
+            setParameters(ApplicationParameters.createDefault());
         }
     }
 
@@ -136,9 +140,9 @@ public class ParametersController extends AbstractDisposableController {
     // all or nothing: a file that fails to read leaves the current parameters untouched
     void importFrom(Path path) {
         Instant start = Instant.now();
-        DesktopParameters parameters;
+        ApplicationParameters parameters;
         try {
-            parameters = DesktopParametersJson.read(path);
+            parameters = ApplicationParametersJson.read(path);
         } catch (PowsyblException | UncheckedIOException e) {
             importFailed(start, path, e);
             return;
@@ -154,14 +158,14 @@ public class ParametersController extends AbstractDisposableController {
     void exportTo(Path path) {
         Instant start = Instant.now();
         try {
-            DesktopParametersJson.write(mainModel.getParametersModel().getParameters(), path);
+            ApplicationParametersJson.write(mainModel.getParametersModel().getParameters(), path);
         } catch (PowsyblException | UncheckedIOException e) {
             LOGGER.error("Failed to export parameters to {}", path, e);
             mainModel.getNotificationsModel().add(Notification.createError(start, "parameters.export.failed").withMessageArgs(path));
         }
     }
 
-    private void setParameters(DesktopParameters parameters) {
+    private void setParameters(ApplicationParameters parameters) {
         mainModel.getParametersModel().setParameters(parameters);
         networkImportEmbeddedController.refresh();
         networkExportEmbeddedController.refresh();
@@ -184,6 +188,7 @@ public class ParametersController extends AbstractDisposableController {
         nadEmbeddedController.dispose();
         loadFlowEmbeddedController.dispose();
         securityAnalysisEmbeddedController.dispose();
+        guiEmbeddedController.dispose();
         super.dispose();
     }
 }

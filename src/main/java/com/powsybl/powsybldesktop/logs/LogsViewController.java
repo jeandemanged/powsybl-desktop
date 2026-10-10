@@ -9,6 +9,8 @@ package com.powsybl.powsybldesktop.logs;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.powsybldesktop.parameters.ParametersModel;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.utils.TableAutoFitLimiter;
@@ -69,6 +71,7 @@ public class LogsViewController extends AbstractDisposableController {
     public ToggleButton newestOnBottomToggleButton;
 
     private LogsModel logsModel;
+    private ParametersModel parametersModel;
 
     private static final Comparator<ILoggingEvent> NEWEST_FIRST =
             Comparator.comparingLong(ILoggingEvent::getSequenceNumber).reversed();
@@ -91,8 +94,9 @@ public class LogsViewController extends AbstractDisposableController {
             .appendOffset("+HH:MM:ss", "+00:00")
             .toFormatter(Locale.getDefault());
 
-    public void setLogsModel(LogsModel logsModel) {
+    public void setModels(LogsModel logsModel, ParametersModel parametersModel) {
         this.logsModel = logsModel;
+        this.parametersModel = parametersModel;
         FilteredList<ILoggingEvent> filteredLogs = new FilteredList<>(logsModel.getLogs(), this::isLevelShown);
         SortedList<ILoggingEvent> sortedLogs = new SortedList<>(filteredLogs, NEWEST_FIRST);
         tableView.setItems(sortedLogs);
@@ -101,6 +105,11 @@ public class LogsViewController extends AbstractDisposableController {
         keepOneSelected(levelToggleGroup);
         levelToggleGroup.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
             if (newToggle != null) {
+                GuiParameters.LogLevel level = selectedLevel();
+                if (gui().getLogsMinLevel() != level) {
+                    gui().setLogsMinLevel(level);
+                    parametersModel.guiParametersChanged();
+                }
                 filteredLogs.setPredicate(this::isLevelShown);
                 scrollToNewest();
             }
@@ -108,10 +117,18 @@ public class LogsViewController extends AbstractDisposableController {
         keepOneSelected(orderToggleGroup);
         orderToggleGroup.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
             if (newToggle != null) {
-                sortedLogs.setComparator(newToggle == newestOnTopToggleButton ? NEWEST_FIRST : null);
+                boolean newestOnTop = newToggle == newestOnTopToggleButton;
+                if (gui().isLogsNewestOnTop() != newestOnTop) {
+                    gui().setLogsNewestOnTop(newestOnTop);
+                    parametersModel.guiParametersChanged();
+                }
+                sortedLogs.setComparator(newestOnTop ? NEWEST_FIRST : null);
                 scrollToNewest();
             }
         });
+        applyGuiParameters();
+        // edited from this view or the parameters view, or replaced by a parameters reset or import
+        listenerManager.listen(parametersModel.guiParametersRevisionProperty(), (observable, oldValue, newValue) -> applyGuiParameters());
 
         listenerManager.listen(logsModel.getLogs(), change -> Platform.runLater(this::scrollToNewest));
         scrollToNewest();
@@ -139,16 +156,30 @@ public class LogsViewController extends AbstractDisposableController {
         });
     }
 
-    private boolean isLevelShown(ILoggingEvent event) {
-        Level minLevel;
+    private GuiParameters gui() {
+        return parametersModel.getGuiParameters();
+    }
+
+    private void applyGuiParameters() {
+        levelToggleGroup.selectToggle(switch (gui().getLogsMinLevel()) {
+            case INFO -> infoToggleButton;
+            case WARN -> warnToggleButton;
+            case ERROR -> errorToggleButton;
+        });
+        orderToggleGroup.selectToggle(gui().isLogsNewestOnTop() ? newestOnTopToggleButton : newestOnBottomToggleButton);
+    }
+
+    private GuiParameters.LogLevel selectedLevel() {
         if (errorToggleButton.isSelected()) {
-            minLevel = Level.ERROR;
+            return GuiParameters.LogLevel.ERROR;
         } else if (warnToggleButton.isSelected()) {
-            minLevel = Level.WARN;
-        } else {
-            minLevel = Level.INFO;
+            return GuiParameters.LogLevel.WARN;
         }
-        return event.getLevel().isGreaterOrEqual(minLevel);
+        return GuiParameters.LogLevel.INFO;
+    }
+
+    private boolean isLevelShown(ILoggingEvent event) {
+        return event.getLevel().isGreaterOrEqual(Level.toLevel(selectedLevel().name()));
     }
 
     @FXML

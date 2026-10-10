@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -72,25 +73,44 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void hostsParametersTabsInOrder() {
         List<Tab> tabs = tabPane.getTabs();
-        assertEquals(6, tabs.size());
-        assertEquals("Network Import", tabs.get(0).getText());
-        assertEquals("Network Export", tabs.get(1).getText());
-        assertEquals("Single Line Diagram", tabs.get(2).getText());
-        assertEquals("Network Area Diagram", tabs.get(3).getText());
-        assertEquals("Load Flow", tabs.get(4).getText());
-        assertEquals("Security Analysis", tabs.get(5).getText());
+        assertEquals(7, tabs.size());
+        assertEquals("User Interface", tabs.get(0).getText());
+        assertEquals("Network Import", tabs.get(1).getText());
+        assertEquals("Network Export", tabs.get(2).getText());
+        assertEquals("Single Line Diagram", tabs.get(3).getText());
+        assertEquals("Network Area Diagram", tabs.get(4).getText());
+        assertEquals("Load Flow", tabs.get(5).getText());
+        assertEquals("Security Analysis", tabs.get(6).getText());
+    }
+
+    @Test
+    void guiTabEditsAndFollowsGuiParameters() {
+        GuiParameters gui = mainModel.getParametersModel().getGuiParameters();
+        // the first check box is the first voltage range of the Map category
+        CheckBox checkBox = from(tabPane.getTabs().get(0).getContent()).lookup(".check-box").query();
+        clickOn(checkBox);
+        assertEquals(1, gui.getMapHiddenBaseVoltages().size());
+        assertEquals(1, mainModel.getParametersModel().guiParametersRevisionProperty().get());
+        assertFalse(saveButton.isDisabled());
+
+        // as when edited from the map view
+        interact(() -> {
+            gui.setMapHiddenBaseVoltages(Set.of());
+            mainModel.getParametersModel().guiParametersChanged();
+        });
+        assertTrue(checkBox.isSelected());
     }
 
     @Test
     void networkImportTabListsIidmFirstAndCgmes() {
-        ListView<?> formatList = from(tabPane.getTabs().get(0).getContent()).lookup(".list-view").queryListView();
+        ListView<?> formatList = from(tabPane.getTabs().get(1).getContent()).lookup(".list-view").queryListView();
         assertEquals("IIDM", formatList.getItems().getFirst());
         assertTrue(formatList.getItems().contains("CGMES"));
     }
 
     @Test
     void networkExportTabGroupsIidmFormats() {
-        ListView<?> formatList = from(tabPane.getTabs().get(1).getContent()).lookup(".list-view").queryListView();
+        ListView<?> formatList = from(tabPane.getTabs().get(2).getContent()).lookup(".list-view").queryListView();
         assertEquals("IIDM", formatList.getItems().getFirst());
         assertFalse(formatList.getItems().contains("XIIDM"));
         assertFalse(formatList.getItems().contains("BIIDM"));
@@ -99,7 +119,8 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
 
     @Test
     void editingImportParameterWritesIntoMainModel() {
-        CheckBox checkBox = from(tabPane.getTabs().get(0).getContent()).lookup(".check-box").query();
+        interact(() -> tabPane.getSelectionModel().select(1));
+        CheckBox checkBox = from(tabPane.getTabs().get(1).getContent()).lookup(".check-box").query();
         boolean initial = checkBox.isSelected();
         clickOn(checkBox);
         assertEquals(String.valueOf(!initial), mainModel.getParametersModel().getNetworkImportParameters("IIDM").values().iterator().next());
@@ -107,13 +128,13 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
 
     @Test
     void editingDiagramParametersBumpsMainModelRevisions() {
-        interact(() -> tabPane.getSelectionModel().select(2));
-        clickOn(from(tabPane.getTabs().get(2).getContent()).lookup(".check-box").<CheckBox>query());
+        interact(() -> tabPane.getSelectionModel().select(3));
+        clickOn(from(tabPane.getTabs().get(3).getContent()).lookup(".check-box").<CheckBox>query());
         assertEquals(1, mainModel.getParametersModel().sldParametersRevisionProperty().get());
         assertEquals(0, mainModel.getParametersModel().nadParametersRevisionProperty().get());
 
-        interact(() -> tabPane.getSelectionModel().select(3));
-        clickOn(from(tabPane.getTabs().get(3).getContent()).lookup(".check-box").<CheckBox>query());
+        interact(() -> tabPane.getSelectionModel().select(4));
+        clickOn(from(tabPane.getTabs().get(4).getContent()).lookup(".check-box").<CheckBox>query());
         assertEquals(1, mainModel.getParametersModel().nadParametersRevisionProperty().get());
     }
 
@@ -130,26 +151,28 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
         assertTrue(saveButton.isDisabled());
         assertTrue(Files.exists(tempDir.resolve("config.json")));
 
-        clickOn(from(tabPane.getTabs().get(0).getContent()).lookup(".check-box").<CheckBox>query());
+        interact(() -> tabPane.getSelectionModel().select(1));
+        clickOn(from(tabPane.getTabs().get(1).getContent()).lookup(".check-box").<CheckBox>query());
         assertFalse(saveButton.isDisabled());
-        clickOn(from(tabPane.getTabs().get(0).getContent()).lookup(".check-box").<CheckBox>query());
+        clickOn(from(tabPane.getTabs().get(1).getContent()).lookup(".check-box").<CheckBox>query());
         assertTrue(saveButton.isDisabled());
     }
 
     @Test
     void importReplacesParametersAndRefreshesNetworkFormatForm() {
         Path path = tempDir.resolve("exported.json");
-        CheckBox checkBox = from(tabPane.getTabs().get(0).getContent()).lookup(".check-box").query();
+        interact(() -> tabPane.getSelectionModel().select(1));
+        CheckBox checkBox = from(tabPane.getTabs().get(1).getContent()).lookup(".check-box").query();
         boolean initial = checkBox.isSelected();
         clickOn(checkBox);
         mainModel.getParametersModel().loadFlowParametersProperty().get().setDc(true);
         interact(() -> controller.exportTo(path));
 
-        interact(() -> mainModel.getParametersModel().setParameters(DesktopParameters.createDefault()));
+        interact(() -> mainModel.getParametersModel().setParameters(ApplicationParameters.createDefault()));
         interact(() -> controller.importFrom(path));
 
         assertTrue(mainModel.getParametersModel().loadFlowParametersProperty().get().isDc());
-        CheckBox refreshed = from(tabPane.getTabs().get(0).getContent()).lookup(".check-box").query();
+        CheckBox refreshed = from(tabPane.getTabs().get(1).getContent()).lookup(".check-box").query();
         assertEquals(!initial, refreshed.isSelected());
     }
 

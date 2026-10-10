@@ -19,21 +19,22 @@ import java.util.Properties;
 
 /**
  * Every parameter edited from the parameters view, as saved to / restored from a single JSON file by
- * {@link DesktopParametersJson}. Network import/export parameters are keyed by format as in
- * {@link NetworkFormatParametersController}.
+ * {@link ApplicationParametersJson}: the PowSyBl ones and the app's own {@link GuiParameters}. Network import/export
+ * parameters are keyed by format as in {@link NetworkFormatParametersController}.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-public record DesktopParameters(Map<String, Properties> networkImport,
-                                Map<String, Properties> networkExport,
-                                DesktopSldParameters sld,
-                                DesktopNadParameters nad,
-                                LoadFlowParameters loadFlow,
-                                SecurityAnalysisParameters securityAnalysis) {
+public record ApplicationParameters(Map<String, Properties> networkImport,
+                                    Map<String, Properties> networkExport,
+                                    DesktopSldParameters sld,
+                                    DesktopNadParameters nad,
+                                    LoadFlowParameters loadFlow,
+                                    SecurityAnalysisParameters securityAnalysis,
+                                    GuiParameters gui) {
 
-    public static DesktopParameters createDefault() {
-        return new DesktopParameters(Map.of(), Map.of(), defaultSldParameters(), new DesktopNadParameters(),
-                defaultLoadFlowParameters(), defaultSecurityAnalysisParameters());
+    public static ApplicationParameters createDefault() {
+        return new ApplicationParameters(Map.of(), Map.of(), defaultSldParameters(), new DesktopNadParameters(),
+                defaultLoadFlowParameters(), defaultSecurityAnalysisParameters(), new GuiParameters());
     }
 
     public static LoadFlowParameters defaultLoadFlowParameters() {

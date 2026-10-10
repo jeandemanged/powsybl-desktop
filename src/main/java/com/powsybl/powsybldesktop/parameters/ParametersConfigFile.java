@@ -62,10 +62,10 @@ public final class ParametersConfigFile {
         }
         Instant start = Instant.now();
         try {
-            parametersModel.setParameters(DesktopParametersJson.read(path));
+            parametersModel.setParameters(ApplicationParametersJson.read(path));
             // snapshot of what was actually applied rather than the file's raw content, so a file missing fields
             // or written by another PowSyBl version doesn't show as modified right away
-            parametersModel.setSavedParameters(DesktopParametersJson.toJson(parametersModel.getParameters()));
+            parametersModel.setSavedParameters(ApplicationParametersJson.toJson(parametersModel.getParameters()));
             return Optional.empty();
         } catch (PowsyblException | UncheckedIOException e) {
             Path backup = path.resolveSibling(path.getFileName() + "." + LocalDateTime.now().format(BACKUP_TIMESTAMP) + ".bak");
@@ -86,12 +86,12 @@ public final class ParametersConfigFile {
     }
 
     public static void save(ParametersModel parametersModel, Path path) {
-        JsonNode json = DesktopParametersJson.toJson(parametersModel.getParameters());
-        DesktopParametersJson.write(json, path);
+        JsonNode json = ApplicationParametersJson.toJson(parametersModel.getParameters());
+        ApplicationParametersJson.write(json, path);
         parametersModel.setSavedParameters(json);
     }
 
     public static boolean isSaved(ParametersModel parametersModel) {
-        return DesktopParametersJson.toJson(parametersModel.getParameters()).equals(parametersModel.getSavedParameters());
+        return ApplicationParametersJson.toJson(parametersModel.getParameters()).equals(parametersModel.getSavedParameters());
     }
 }
