@@ -462,136 +462,16 @@ public class NetworksController extends AbstractDisposableController {
 
     private void addSampleNetworksMenu() {
         Menu sampleNetworksMenu = new Menu(Messages.get("networks.toolbar.import.sampleNetworks"));
-        addFactoryMenu(sampleNetworksMenu, "IeeeCdfNetworkFactory", List.of(
-                new Pair<>("create9", IeeeCdfNetworkFactory::create9),
-                new Pair<>("create14", IeeeCdfNetworkFactory::create14),
-                new Pair<>("create30", IeeeCdfNetworkFactory::create30),
-                new Pair<>("create33", IeeeCdfNetworkFactory::create33),
-                new Pair<>("create57", IeeeCdfNetworkFactory::create57),
-                new Pair<>("create69", IeeeCdfNetworkFactory::create69),
-                new Pair<>("create118", IeeeCdfNetworkFactory::create118),
-                new Pair<>("create300", IeeeCdfNetworkFactory::create300)));
-        addFactoryMenu(sampleNetworksMenu, "MetrixTutorialSixBusesFactory", List.of(
-                new Pair<>("create", MetrixTutorialSixBusesFactory::create)));
-        addFactoryMenu(sampleNetworksMenu, "BatteryNetworkFactory", List.of(
-                new Pair<>("create", BatteryNetworkFactory::create)));
-        addFactoryMenu(sampleNetworksMenu, "BoundaryLineNetworkFactory", List.of(
-                new Pair<>("create", BoundaryLineNetworkFactory::create),
-                new Pair<>("createWithGeneration", BoundaryLineNetworkFactory::createWithGeneration)));
-        addFactoryMenu(sampleNetworksMenu, "DcDetailedNetworkFactory", List.of(
-                new Pair<>("createLccMonopoleGroundReturn", DcDetailedNetworkFactory::createLccMonopoleGroundReturn),
-                new Pair<>("createLccMonopoleMetallicReturn", DcDetailedNetworkFactory::createLccMonopoleMetallicReturn),
-                new Pair<>("createLccBipoleGroundReturn", DcDetailedNetworkFactory::createLccBipoleGroundReturn),
-                new Pair<>("createLccBipoleGroundReturnNegativePoleOutage", DcDetailedNetworkFactory::createLccBipoleGroundReturnNegativePoleOutage),
-                new Pair<>("createLccBipoleGroundReturnWithDcLineSegments", DcDetailedNetworkFactory::createLccBipoleGroundReturnWithDcLineSegments),
-                new Pair<>("createVscSymmetricalMonopole", DcDetailedNetworkFactory::createVscSymmetricalMonopole),
-                new Pair<>("createVscAsymmetricalMonopole", DcDetailedNetworkFactory::createVscAsymmetricalMonopole),
-                new Pair<>("createSimple2NodesDcSwitch", DcDetailedNetworkFactory::createSimple2NodesDcSwitch),
-                new Pair<>("createSimple4NodesDcLinesSwitchLine", DcDetailedNetworkFactory::createSimple4NodesDcLinesSwitchLine)));
-        addFactoryMenu(sampleNetworksMenu, "EuropeanLvTestFeederFactory", List.of(
-                new Pair<>("create", EuropeanLvTestFeederFactory::create)));
-        addFactoryMenu(sampleNetworksMenu, "EurostagTutorialExample1Factory", List.of(
-                new Pair<>("create", EurostagTutorialExample1Factory::create),
-                new Pair<>("createWithTieLine", EurostagTutorialExample1Factory::createWithTieLine),
-                new Pair<>("createWithLFResults", EurostagTutorialExample1Factory::createWithLFResults),
-                new Pair<>("createWithMoreGenerators", EurostagTutorialExample1Factory::createWithMoreGenerators),
-                new Pair<>("createWithFixedCurrentLimits", EurostagTutorialExample1Factory::createWithFixedCurrentLimits),
-                new Pair<>("createWithMultipleSelectedFixedCurrentLimits", EurostagTutorialExample1Factory::createWithMultipleSelectedFixedCurrentLimits),
-                new Pair<>("createWithHighAndLowCurrentLimits", EurostagTutorialExample1Factory::createWithHighAndLowCurrentLimits),
-                new Pair<>("createWithMultipleSelectedFixedActivePowerLimits", EurostagTutorialExample1Factory::createWithMultipleSelectedFixedActivePowerLimits),
-                new Pair<>("createWithMultipleSelectedFixedApparentPowerLimits", EurostagTutorialExample1Factory::createWithMultipleSelectedFixedApparentPowerLimits),
-                new Pair<>("createWithFixedLimits", EurostagTutorialExample1Factory::createWithFixedLimits),
-                new Pair<>("createWithFixedCurrentLimitsOnBoundaryLines", EurostagTutorialExample1Factory::createWithFixedCurrentLimitsOnBoundaryLines),
-                new Pair<>("createWithFixedLimitsOnBoundaryLines", EurostagTutorialExample1Factory::createWithFixedLimitsOnBoundaryLines),
-                new Pair<>("createWithMultipleConnectedComponents", EurostagTutorialExample1Factory::createWithMultipleConnectedComponents),
-                new Pair<>("createWithTerminalMockExt", EurostagTutorialExample1Factory::createWithTerminalMockExt),
-                new Pair<>("createWithVoltageAngleLimit", EurostagTutorialExample1Factory::createWithVoltageAngleLimit),
-                new Pair<>("createWithTieLinesAndAreas", EurostagTutorialExample1Factory::createWithTieLinesAndAreas),
-                new Pair<>("createWithReactiveTcc", EurostagTutorialExample1Factory::createWithReactiveTcc),
-                new Pair<>("createRemoteReactiveTcc", EurostagTutorialExample1Factory::createRemoteReactiveTcc),
-                new Pair<>("createRemoteVoltageTcc", EurostagTutorialExample1Factory::createRemoteVoltageTcc),
-                new Pair<>("createWithoutRtcControl", EurostagTutorialExample1Factory::createWithoutRtcControl),
-                new Pair<>("createWith3wTransformer", EurostagTutorialExample1Factory::createWith3wTransformer),
-                new Pair<>("createWith3wWithVoltageControl", EurostagTutorialExample1Factory::createWith3wWithVoltageControl),
-                new Pair<>("createWith3wWithoutControl", EurostagTutorialExample1Factory::createWith3wWithoutControl),
-                new Pair<>("create3wWithReactiveTcc", EurostagTutorialExample1Factory::create3wWithReactiveTcc),
-                new Pair<>("create3wRemoteReactiveTcc", EurostagTutorialExample1Factory::create3wRemoteReactiveTcc),
-                new Pair<>("create3wRemoteVoltageTcc", EurostagTutorialExample1Factory::create3wRemoteVoltageTcc),
-                new Pair<>("createWithRemoteVoltageGenerator", EurostagTutorialExample1Factory::createWithRemoteVoltageGenerator),
-                new Pair<>("createWithRemoteReactiveGenerator", EurostagTutorialExample1Factory::createWithRemoteReactiveGenerator),
-                new Pair<>("createWithLocalReactiveGenerator", EurostagTutorialExample1Factory::createWithLocalReactiveGenerator),
-                new Pair<>("createWithRemoteReactiveAndVoltageGenerators", EurostagTutorialExample1Factory::createWithRemoteReactiveAndVoltageGenerators),
-                new Pair<>("createWithLocalReactiveAndVoltageGenerator", EurostagTutorialExample1Factory::createWithLocalReactiveAndVoltageGenerator),
-                new Pair<>("createWithoutControl", EurostagTutorialExample1Factory::createWithoutControl),
-                new Pair<>("createRemoteWithoutControl", EurostagTutorialExample1Factory::createRemoteWithoutControl)));
-        addFactoryMenu(sampleNetworksMenu, "FictitiousSwitchFactory", List.of(
-                new Pair<>("create", FictitiousSwitchFactory::create)));
-        addFactoryMenu(sampleNetworksMenu, "FourSubstationsNodeBreakerFactory", List.of(
-                new Pair<>("create", FourSubstationsNodeBreakerFactory::create)));
-        addFactoryMenu(sampleNetworksMenu, "FourSubstationsNodeBreakerWithExtensionsFactory", List.of(
-                new Pair<>("create", FourSubstationsNodeBreakerWithExtensionsFactory::create)));
-        addFactoryMenu(sampleNetworksMenu, "HvdcTestNetwork", List.of(
-                new Pair<>("createBase", HvdcTestNetwork::createBase),
-                new Pair<>("createVsc", HvdcTestNetwork::createVsc),
-                new Pair<>("createLcc", HvdcTestNetwork::createLcc)));
-        addFactoryMenu(sampleNetworksMenu, "PhaseShifterTestCaseFactory", List.of(
-                new Pair<>("create", PhaseShifterTestCaseFactory::create),
-                new Pair<>("createWithTargetDeadband", PhaseShifterTestCaseFactory::createWithTargetDeadband),
-                new Pair<>("createRegulatingWithoutMode", PhaseShifterTestCaseFactory::createRegulatingWithoutMode),
-                new Pair<>("createLocalActivePowerWithTargetDeadband", PhaseShifterTestCaseFactory::createLocalActivePowerWithTargetDeadband),
-                new Pair<>("createLocalCurrentLimiterWithTargetDeadband", PhaseShifterTestCaseFactory::createLocalCurrentLimiterWithTargetDeadband),
-                new Pair<>("createRemoteActivePowerWithTargetDeadband", PhaseShifterTestCaseFactory::createRemoteActivePowerWithTargetDeadband),
-                new Pair<>("createRemoteCurrentLimiterWithTargetDeadband", PhaseShifterTestCaseFactory::createRemoteCurrentLimiterWithTargetDeadband)));
-        addFactoryMenu(sampleNetworksMenu, "ReactiveLimitsTestNetworkFactory", List.of(
-                new Pair<>("create", ReactiveLimitsTestNetworkFactory::create),
-                new Pair<>("createWithShape", ReactiveLimitsTestNetworkFactory::createWithShape)));
-        addFactoryMenu(sampleNetworksMenu, "ScadaNetworkFactory", List.of(
-                new Pair<>("create", ScadaNetworkFactory::create)));
-        addFactoryMenu(sampleNetworksMenu, "SecurityAnalysisTestNetworkFactory", List.of(
-                new Pair<>("create", SecurityAnalysisTestNetworkFactory::create),
-                new Pair<>("createWithFixedCurrentLimits", SecurityAnalysisTestNetworkFactory::createWithFixedCurrentLimits),
-                new Pair<>("createWithFixedPowerLimits", SecurityAnalysisTestNetworkFactory::createWithFixedPowerLimits)));
-        addFactoryMenu(sampleNetworksMenu, "ShuntTestCaseFactory", List.of(
-                new Pair<>("create", ShuntTestCaseFactory::create),
-                new Pair<>("createWithActivePower", ShuntTestCaseFactory::createWithActivePower),
-                new Pair<>("createNonLinear", ShuntTestCaseFactory::createNonLinear),
-                new Pair<>("createLocalLinear", ShuntTestCaseFactory::createLocalLinear),
-                new Pair<>("createDisabledRemoteLinear", ShuntTestCaseFactory::createDisabledRemoteLinear),
-                new Pair<>("createDisabledLocalLinear", ShuntTestCaseFactory::createDisabledLocalLinear),
-                new Pair<>("createDisabledRemoteNonLinear", ShuntTestCaseFactory::createDisabledRemoteNonLinear),
-                new Pair<>("createDisabledLocalNonLinear", ShuntTestCaseFactory::createDisabledLocalNonLinear),
-                new Pair<>("createRemoteLinearNoTarget", ShuntTestCaseFactory::createRemoteLinearNoTarget),
-                new Pair<>("createRemoteNonLinearNoTarget", ShuntTestCaseFactory::createRemoteNonLinearNoTarget),
-                new Pair<>("createLocalLinearNoTarget", ShuntTestCaseFactory::createLocalLinearNoTarget),
-                new Pair<>("createLocalNonLinearNoTarget", ShuntTestCaseFactory::createLocalNonLinearNoTarget),
-                new Pair<>("createLocalNonLinear", ShuntTestCaseFactory::createLocalNonLinear)));
-        addFactoryMenu(sampleNetworksMenu, "SvcTestCaseFactory", List.of(
-                new Pair<>("create", SvcTestCaseFactory::create),
-                new Pair<>("createWithMoreSVCs", SvcTestCaseFactory::createWithMoreSVCs),
-                new Pair<>("createWithRemoteRegulatingTerminal", SvcTestCaseFactory::createWithRemoteRegulatingTerminal),
-                new Pair<>("createLocalVoltageControl", SvcTestCaseFactory::createLocalVoltageControl),
-                new Pair<>("createRemoteVoltageControl", SvcTestCaseFactory::createRemoteVoltageControl),
-                new Pair<>("createLocalReactiveControl", SvcTestCaseFactory::createLocalReactiveControl),
-                new Pair<>("createRemoteReactiveControl", SvcTestCaseFactory::createRemoteReactiveControl),
-                new Pair<>("createLocalOffReactiveTarget", SvcTestCaseFactory::createLocalOffReactiveTarget),
-                new Pair<>("createRemoteOffReactiveTarget", SvcTestCaseFactory::createRemoteOffReactiveTarget),
-                new Pair<>("createLocalOffVoltageTarget", SvcTestCaseFactory::createLocalOffVoltageTarget),
-                new Pair<>("createRemoteOffVoltageTarget", SvcTestCaseFactory::createRemoteOffVoltageTarget),
-                new Pair<>("createLocalOffBothTarget", SvcTestCaseFactory::createLocalOffBothTarget),
-                new Pair<>("createRemoteOffBothTarget", SvcTestCaseFactory::createRemoteOffBothTarget),
-                new Pair<>("createLocalOffNoTarget", SvcTestCaseFactory::createLocalOffNoTarget),
-                new Pair<>("createRemoteOffNoTarget", SvcTestCaseFactory::createRemoteOffNoTarget)));
-        addFactoryMenu(sampleNetworksMenu, "ThreeWindingsTransformerNetworkFactory", List.of(
-                new Pair<>("create", ThreeWindingsTransformerNetworkFactory::create),
-                new Pair<>("createWithCurrentLimits", ThreeWindingsTransformerNetworkFactory::createWithCurrentLimits),
-                new Pair<>("createWithUnsortedEndsAndCurrentLimits", ThreeWindingsTransformerNetworkFactory::createWithUnsortedEndsAndCurrentLimits),
-                new Pair<>("createWithApparentPowerLimits", ThreeWindingsTransformerNetworkFactory::createWithApparentPowerLimits),
-                new Pair<>("createWithActivePowerLimits", ThreeWindingsTransformerNetworkFactory::createWithActivePowerLimits),
-                new Pair<>("createWithCurrentLimitsAndTerminalsPAndQ", ThreeWindingsTransformerNetworkFactory::createWithCurrentLimitsAndTerminalsPAndQ)));
-        addFactoryMenu(sampleNetworksMenu, "TwoVoltageLevelNetworkFactory", List.of(
-                new Pair<>("create", TwoVoltageLevelNetworkFactory::create),
-                new Pair<>("createWithGrounds", TwoVoltageLevelNetworkFactory::createWithGrounds)));
-
+        addFactoryMenu(sampleNetworksMenu, "IEEE", List.of(
+                new Pair<>("IEEE 9", IeeeCdfNetworkFactory::create9),
+                new Pair<>("IEEE 14", IeeeCdfNetworkFactory::create14),
+                new Pair<>("IEEE 30", IeeeCdfNetworkFactory::create30),
+                new Pair<>("IEEE 33", IeeeCdfNetworkFactory::create33),
+                new Pair<>("IEEE 57", IeeeCdfNetworkFactory::create57),
+                new Pair<>("IEEE 69", IeeeCdfNetworkFactory::create69),
+                new Pair<>("IEEE 118", IeeeCdfNetworkFactory::create118),
+                new Pair<>("IEEE 300", IeeeCdfNetworkFactory::create300)));
+        addSampleItem(sampleNetworksMenu, "Metrix Tutorial", MetrixTutorialSixBusesFactory::create);
         addFactoryMenu(sampleNetworksMenu, "Cgmes3Catalog", List.of(
                 new Pair<>(withGl("microGrid"), cgmes(Cgmes3Catalog::microGrid)),
                 new Pair<>(withGl("microGridWithoutTpSv"), cgmes(Cgmes3Catalog::microGridWithoutTpSv)),
@@ -639,6 +519,120 @@ public class NetworksController extends AbstractDisposableController {
                 new Pair<>("hvdcNordheimGalia", cgmes(ReliCapGridCatalog::hvdcNordheimGalia)),
                 new Pair<>("nineRealms", cgmes(ReliCapGridCatalog::nineRealms))));
 
+        Menu miscellaneousMenu = new Menu(Messages.get("networks.toolbar.import.sampleNetworks.miscellaneousTesting"));
+        addSampleItem(miscellaneousMenu, "Battery", BatteryNetworkFactory::create);
+        addFactoryMenu(miscellaneousMenu, "BoundaryLineNetworkFactory", List.of(
+                new Pair<>("create", BoundaryLineNetworkFactory::create),
+                new Pair<>("createWithGeneration", BoundaryLineNetworkFactory::createWithGeneration)));
+        addFactoryMenu(miscellaneousMenu, "DcDetailedNetworkFactory", List.of(
+                new Pair<>("createLccMonopoleGroundReturn", DcDetailedNetworkFactory::createLccMonopoleGroundReturn),
+                new Pair<>("createLccMonopoleMetallicReturn", DcDetailedNetworkFactory::createLccMonopoleMetallicReturn),
+                new Pair<>("createLccBipoleGroundReturn", DcDetailedNetworkFactory::createLccBipoleGroundReturn),
+                new Pair<>("createLccBipoleGroundReturnNegativePoleOutage", DcDetailedNetworkFactory::createLccBipoleGroundReturnNegativePoleOutage),
+                new Pair<>("createLccBipoleGroundReturnWithDcLineSegments", DcDetailedNetworkFactory::createLccBipoleGroundReturnWithDcLineSegments),
+                new Pair<>("createVscSymmetricalMonopole", DcDetailedNetworkFactory::createVscSymmetricalMonopole),
+                new Pair<>("createVscAsymmetricalMonopole", DcDetailedNetworkFactory::createVscAsymmetricalMonopole),
+                new Pair<>("createSimple2NodesDcSwitch", DcDetailedNetworkFactory::createSimple2NodesDcSwitch),
+                new Pair<>("createSimple4NodesDcLinesSwitchLine", DcDetailedNetworkFactory::createSimple4NodesDcLinesSwitchLine)));
+        addSampleItem(miscellaneousMenu, "European LV Test Feeder", EuropeanLvTestFeederFactory::create);
+        addFactoryMenu(miscellaneousMenu, "EurostagTutorialExample1Factory", List.of(
+                new Pair<>("create", EurostagTutorialExample1Factory::create),
+                new Pair<>("createWithTieLine", EurostagTutorialExample1Factory::createWithTieLine),
+                new Pair<>("createWithLFResults", EurostagTutorialExample1Factory::createWithLFResults),
+                new Pair<>("createWithMoreGenerators", EurostagTutorialExample1Factory::createWithMoreGenerators),
+                new Pair<>("createWithFixedCurrentLimits", EurostagTutorialExample1Factory::createWithFixedCurrentLimits),
+                new Pair<>("createWithMultipleSelectedFixedCurrentLimits", EurostagTutorialExample1Factory::createWithMultipleSelectedFixedCurrentLimits),
+                new Pair<>("createWithHighAndLowCurrentLimits", EurostagTutorialExample1Factory::createWithHighAndLowCurrentLimits),
+                new Pair<>("createWithMultipleSelectedFixedActivePowerLimits", EurostagTutorialExample1Factory::createWithMultipleSelectedFixedActivePowerLimits),
+                new Pair<>("createWithMultipleSelectedFixedApparentPowerLimits", EurostagTutorialExample1Factory::createWithMultipleSelectedFixedApparentPowerLimits),
+                new Pair<>("createWithFixedLimits", EurostagTutorialExample1Factory::createWithFixedLimits),
+                new Pair<>("createWithFixedCurrentLimitsOnBoundaryLines", EurostagTutorialExample1Factory::createWithFixedCurrentLimitsOnBoundaryLines),
+                new Pair<>("createWithFixedLimitsOnBoundaryLines", EurostagTutorialExample1Factory::createWithFixedLimitsOnBoundaryLines),
+                new Pair<>("createWithMultipleConnectedComponents", EurostagTutorialExample1Factory::createWithMultipleConnectedComponents),
+                new Pair<>("createWithTerminalMockExt", EurostagTutorialExample1Factory::createWithTerminalMockExt),
+                new Pair<>("createWithVoltageAngleLimit", EurostagTutorialExample1Factory::createWithVoltageAngleLimit),
+                new Pair<>("createWithTieLinesAndAreas", EurostagTutorialExample1Factory::createWithTieLinesAndAreas),
+                new Pair<>("createWithReactiveTcc", EurostagTutorialExample1Factory::createWithReactiveTcc),
+                new Pair<>("createRemoteReactiveTcc", EurostagTutorialExample1Factory::createRemoteReactiveTcc),
+                new Pair<>("createRemoteVoltageTcc", EurostagTutorialExample1Factory::createRemoteVoltageTcc),
+                new Pair<>("createWithoutRtcControl", EurostagTutorialExample1Factory::createWithoutRtcControl),
+                new Pair<>("createWith3wTransformer", EurostagTutorialExample1Factory::createWith3wTransformer),
+                new Pair<>("createWith3wWithVoltageControl", EurostagTutorialExample1Factory::createWith3wWithVoltageControl),
+                new Pair<>("createWith3wWithoutControl", EurostagTutorialExample1Factory::createWith3wWithoutControl),
+                new Pair<>("create3wWithReactiveTcc", EurostagTutorialExample1Factory::create3wWithReactiveTcc),
+                new Pair<>("create3wRemoteReactiveTcc", EurostagTutorialExample1Factory::create3wRemoteReactiveTcc),
+                new Pair<>("create3wRemoteVoltageTcc", EurostagTutorialExample1Factory::create3wRemoteVoltageTcc),
+                new Pair<>("createWithRemoteVoltageGenerator", EurostagTutorialExample1Factory::createWithRemoteVoltageGenerator),
+                new Pair<>("createWithRemoteReactiveGenerator", EurostagTutorialExample1Factory::createWithRemoteReactiveGenerator),
+                new Pair<>("createWithLocalReactiveGenerator", EurostagTutorialExample1Factory::createWithLocalReactiveGenerator),
+                new Pair<>("createWithRemoteReactiveAndVoltageGenerators", EurostagTutorialExample1Factory::createWithRemoteReactiveAndVoltageGenerators),
+                new Pair<>("createWithLocalReactiveAndVoltageGenerator", EurostagTutorialExample1Factory::createWithLocalReactiveAndVoltageGenerator),
+                new Pair<>("createWithoutControl", EurostagTutorialExample1Factory::createWithoutControl),
+                new Pair<>("createRemoteWithoutControl", EurostagTutorialExample1Factory::createRemoteWithoutControl)));
+        addSampleItem(miscellaneousMenu, "Fictitious Switch", FictitiousSwitchFactory::create);
+        addSampleItem(miscellaneousMenu, "Four Substations Node Breaker", FourSubstationsNodeBreakerFactory::create);
+        addSampleItem(miscellaneousMenu, "Four Substations Node Breaker With Extensions", FourSubstationsNodeBreakerWithExtensionsFactory::create);
+        addFactoryMenu(miscellaneousMenu, "HvdcTestNetwork", List.of(
+                new Pair<>("createBase", HvdcTestNetwork::createBase),
+                new Pair<>("createVsc", HvdcTestNetwork::createVsc),
+                new Pair<>("createLcc", HvdcTestNetwork::createLcc)));
+        addFactoryMenu(miscellaneousMenu, "PhaseShifterTestCaseFactory", List.of(
+                new Pair<>("create", PhaseShifterTestCaseFactory::create),
+                new Pair<>("createWithTargetDeadband", PhaseShifterTestCaseFactory::createWithTargetDeadband),
+                new Pair<>("createRegulatingWithoutMode", PhaseShifterTestCaseFactory::createRegulatingWithoutMode),
+                new Pair<>("createLocalActivePowerWithTargetDeadband", PhaseShifterTestCaseFactory::createLocalActivePowerWithTargetDeadband),
+                new Pair<>("createLocalCurrentLimiterWithTargetDeadband", PhaseShifterTestCaseFactory::createLocalCurrentLimiterWithTargetDeadband),
+                new Pair<>("createRemoteActivePowerWithTargetDeadband", PhaseShifterTestCaseFactory::createRemoteActivePowerWithTargetDeadband),
+                new Pair<>("createRemoteCurrentLimiterWithTargetDeadband", PhaseShifterTestCaseFactory::createRemoteCurrentLimiterWithTargetDeadband)));
+        addFactoryMenu(miscellaneousMenu, "ReactiveLimitsTestNetworkFactory", List.of(
+                new Pair<>("create", ReactiveLimitsTestNetworkFactory::create),
+                new Pair<>("createWithShape", ReactiveLimitsTestNetworkFactory::createWithShape)));
+        addSampleItem(miscellaneousMenu, "SCADA", ScadaNetworkFactory::create);
+        addFactoryMenu(miscellaneousMenu, "SecurityAnalysisTestNetworkFactory", List.of(
+                new Pair<>("create", SecurityAnalysisTestNetworkFactory::create),
+                new Pair<>("createWithFixedCurrentLimits", SecurityAnalysisTestNetworkFactory::createWithFixedCurrentLimits),
+                new Pair<>("createWithFixedPowerLimits", SecurityAnalysisTestNetworkFactory::createWithFixedPowerLimits)));
+        addFactoryMenu(miscellaneousMenu, "ShuntTestCaseFactory", List.of(
+                new Pair<>("create", ShuntTestCaseFactory::create),
+                new Pair<>("createWithActivePower", ShuntTestCaseFactory::createWithActivePower),
+                new Pair<>("createNonLinear", ShuntTestCaseFactory::createNonLinear),
+                new Pair<>("createLocalLinear", ShuntTestCaseFactory::createLocalLinear),
+                new Pair<>("createDisabledRemoteLinear", ShuntTestCaseFactory::createDisabledRemoteLinear),
+                new Pair<>("createDisabledLocalLinear", ShuntTestCaseFactory::createDisabledLocalLinear),
+                new Pair<>("createDisabledRemoteNonLinear", ShuntTestCaseFactory::createDisabledRemoteNonLinear),
+                new Pair<>("createDisabledLocalNonLinear", ShuntTestCaseFactory::createDisabledLocalNonLinear),
+                new Pair<>("createRemoteLinearNoTarget", ShuntTestCaseFactory::createRemoteLinearNoTarget),
+                new Pair<>("createRemoteNonLinearNoTarget", ShuntTestCaseFactory::createRemoteNonLinearNoTarget),
+                new Pair<>("createLocalLinearNoTarget", ShuntTestCaseFactory::createLocalLinearNoTarget),
+                new Pair<>("createLocalNonLinearNoTarget", ShuntTestCaseFactory::createLocalNonLinearNoTarget),
+                new Pair<>("createLocalNonLinear", ShuntTestCaseFactory::createLocalNonLinear)));
+        addFactoryMenu(miscellaneousMenu, "SvcTestCaseFactory", List.of(
+                new Pair<>("create", SvcTestCaseFactory::create),
+                new Pair<>("createWithMoreSVCs", SvcTestCaseFactory::createWithMoreSVCs),
+                new Pair<>("createWithRemoteRegulatingTerminal", SvcTestCaseFactory::createWithRemoteRegulatingTerminal),
+                new Pair<>("createLocalVoltageControl", SvcTestCaseFactory::createLocalVoltageControl),
+                new Pair<>("createRemoteVoltageControl", SvcTestCaseFactory::createRemoteVoltageControl),
+                new Pair<>("createLocalReactiveControl", SvcTestCaseFactory::createLocalReactiveControl),
+                new Pair<>("createRemoteReactiveControl", SvcTestCaseFactory::createRemoteReactiveControl),
+                new Pair<>("createLocalOffReactiveTarget", SvcTestCaseFactory::createLocalOffReactiveTarget),
+                new Pair<>("createRemoteOffReactiveTarget", SvcTestCaseFactory::createRemoteOffReactiveTarget),
+                new Pair<>("createLocalOffVoltageTarget", SvcTestCaseFactory::createLocalOffVoltageTarget),
+                new Pair<>("createRemoteOffVoltageTarget", SvcTestCaseFactory::createRemoteOffVoltageTarget),
+                new Pair<>("createLocalOffBothTarget", SvcTestCaseFactory::createLocalOffBothTarget),
+                new Pair<>("createRemoteOffBothTarget", SvcTestCaseFactory::createRemoteOffBothTarget),
+                new Pair<>("createLocalOffNoTarget", SvcTestCaseFactory::createLocalOffNoTarget),
+                new Pair<>("createRemoteOffNoTarget", SvcTestCaseFactory::createRemoteOffNoTarget)));
+        addFactoryMenu(miscellaneousMenu, "ThreeWindingsTransformerNetworkFactory", List.of(
+                new Pair<>("create", ThreeWindingsTransformerNetworkFactory::create),
+                new Pair<>("createWithCurrentLimits", ThreeWindingsTransformerNetworkFactory::createWithCurrentLimits),
+                new Pair<>("createWithUnsortedEndsAndCurrentLimits", ThreeWindingsTransformerNetworkFactory::createWithUnsortedEndsAndCurrentLimits),
+                new Pair<>("createWithApparentPowerLimits", ThreeWindingsTransformerNetworkFactory::createWithApparentPowerLimits),
+                new Pair<>("createWithActivePowerLimits", ThreeWindingsTransformerNetworkFactory::createWithActivePowerLimits),
+                new Pair<>("createWithCurrentLimitsAndTerminalsPAndQ", ThreeWindingsTransformerNetworkFactory::createWithCurrentLimitsAndTerminalsPAndQ)));
+        addFactoryMenu(miscellaneousMenu, "TwoVoltageLevelNetworkFactory", List.of(
+                new Pair<>("create", TwoVoltageLevelNetworkFactory::create),
+                new Pair<>("createWithGrounds", TwoVoltageLevelNetworkFactory::createWithGrounds)));
+
         Menu mapTestsMenu = new Menu("Map performance tests");
         MenuItem mapTest10kItem = new MenuItem("Map test 10k");
         mapTest10kItem.setOnAction(event -> loadSample(MapTestNetworkFactory::create));
@@ -647,16 +641,21 @@ public class NetworksController extends AbstractDisposableController {
         MenuItem mapTest200kItem = new MenuItem("Map test 200k");
         mapTest200kItem.setOnAction(event -> loadSample(MapTestNetworkFactory::createEuropeAfrica));
         mapTestsMenu.getItems().addAll(mapTest10kItem, mapTest50kItem, mapTest200kItem);
-        sampleNetworksMenu.getItems().add(mapTestsMenu);
+        miscellaneousMenu.getItems().add(mapTestsMenu);
+        sampleNetworksMenu.getItems().add(miscellaneousMenu);
         importMenuButton.getItems().add(sampleNetworksMenu);
+    }
+
+    private void addSampleItem(Menu parent, String label, Supplier<Network> supplier) {
+        MenuItem item = new MenuItem(label);
+        item.setOnAction(event -> loadSample(supplier));
+        parent.getItems().add(item);
     }
 
     private void addFactoryMenu(Menu parent, String factoryName, List<Pair<String, Supplier<Network>>> networks) {
         Menu factoryMenu = new Menu(factoryName);
         for (Pair<String, Supplier<Network>> pair : networks) {
-            MenuItem item = new MenuItem(pair.getKey());
-            item.setOnAction(event -> loadSample(pair.getValue()));
-            factoryMenu.getItems().add(item);
+            addSampleItem(factoryMenu, pair.getKey(), pair.getValue());
         }
         parent.getItems().add(factoryMenu);
     }
