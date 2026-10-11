@@ -19,9 +19,10 @@ Lifecycle
    `listenerManager.listen(...)`; `dispose()` releases listeners, services and sub-controllers and calls `super.dispose()`.
 6. Every window other than modal dialogs and the memory window (single-instance, owned by the main window) goes through
    `window/SeparateWindows`: independent stages (not owned, so that the main window can come in front of them; never
-   raise them from a focus listener, it steals the activation from the clicked window), disposing their controller on
-   hide, closed with the main window and on language reload, and - when network-bound - when the selected network
-   changes. Never create a `Stage` for a view elsewhere.
+   raise them from a focus listener, it steals the activation from the clicked window), showing views as tabs,
+   disposing a view's controller when its tab closes or its window hides (not when the tab moves to another window),
+   closed with their last tab, with the main window and on language reload; network-bound views close when the
+   selected network changes. Never create a `Stage` for a view elsewhere.
 
 Threading
 7. No slow PowSyBl call on the FX thread. Background network reads/writes are `AbstractNetworkTask`s created in

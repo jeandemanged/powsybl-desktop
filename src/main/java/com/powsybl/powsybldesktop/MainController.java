@@ -76,6 +76,8 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.RadioMenuItem;
+import javafx.scene.control.SeparatorMenuItem;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.image.Image;
 import javafx.scene.input.ContextMenuEvent;
@@ -586,7 +588,7 @@ public class MainController extends AbstractDisposableController {
     // whole network
     private <T extends SceneView> T ensureSceneView(Class<T> controllerClass, String fxml, NavigationType type) {
         return ensureController(controllerClass, fxml, c -> c.setSceneModel(sceneModel),
-                root -> SeparateWindows.addOpenButton(root, () -> separateWindows.open(type.name(), viewTitle(type),
+                root -> separateWindows.addOpenButton(root, () -> separateWindows.open(type.name(), viewTitle(type),
                         scene -> SeparateWindows.<T>load(fxml, c -> c.setSceneModel(scene)))));
     }
 
@@ -614,7 +616,9 @@ public class MainController extends AbstractDisposableController {
         });
         updateMapButtonVisibility();
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refreshSearchIndexBuses());
-        listenerManager.listen(separateWindows.getOpenWindows(), (ListChangeListener<SeparateWindows.OpenWindow>) change -> updateWindowsMenu());
+        listenerManager.listen(separateWindows.getOpenWindows(), (ListChangeListener<SeparateWindows.DetachedWindow>) change -> updateWindowsMenu());
+        // also on showing: windows' names and tabs change without changing the list
+        windowsMenu.setOnShowing(event -> updateWindowsMenu());
         updateWindowsMenu();
 
         FXMLLoader notificationsLoader = new FXMLLoader(getClass().getResource("notification/notifications-view.fxml"), Messages.bundle());
@@ -716,13 +720,36 @@ public class MainController extends AbstractDisposableController {
             none.setDisable(true);
             windowsMenu.getItems().setAll(none);
         } else {
-            windowsMenu.getItems().setAll(separateWindows.getOpenWindows().stream().map(openWindow -> {
-                MenuItem item = new MenuItem(openWindow.title());
-                item.setMnemonicParsing(false);
-                item.setOnAction(event -> SeparateWindows.focus(openWindow.stage()));
-                return item;
-            }).toList());
+            windowsMenu.getItems().setAll(separateWindows.getOpenWindows().stream().map(this::windowMenu).toList());
         }
+    }
+
+    private Menu windowMenu(SeparateWindows.DetachedWindow window) {
+        Menu menu = new Menu(window.getName());
+        menu.setMnemonicParsing(false);
+        MenuItem show = new MenuItem(Messages.get("main.menu.windows.show"));
+        show.setOnAction(event -> window.show());
+        MenuItem rename = new MenuItem(Messages.get("main.menu.windows.rename"));
+        rename.setOnAction(event -> renameWindow(window));
+        menu.getItems().addAll(show, rename, new SeparatorMenuItem());
+        List<String> tabTitles = window.getTabTitles();
+        for (int i = 0; i < tabTitles.size(); i++) {
+            int index = i;
+            MenuItem tab = new MenuItem(tabTitles.get(i));
+            tab.setMnemonicParsing(false);
+            tab.setOnAction(event -> window.showTab(index));
+            menu.getItems().add(tab);
+        }
+        return menu;
+    }
+
+    private void renameWindow(SeparateWindows.DetachedWindow window) {
+        TextInputDialog dialog = new TextInputDialog(window.getName());
+        dialog.initOwner(borderPane.getScene().getWindow());
+        dialog.setTitle(Messages.get("main.menu.windows.rename.title"));
+        dialog.setHeaderText(null);
+        dialog.setContentText(Messages.get("main.menu.windows.rename.name"));
+        dialog.showAndWait().ifPresent(window::rename);
     }
 
     private void onNavigationEvent(NavigationEvent newValue) {
@@ -733,7 +760,7 @@ public class MainController extends AbstractDisposableController {
         }
         if (newValue.navigationType() == NavigationType.LOGS) {
             ensureController(LogsViewController.class, "logs/logs-view.fxml", c -> c.setModels(mainModel.getLogsModel(), mainModel.getParametersModel()),
-                    root -> SeparateWindows.addOpenButton(root, () -> separateWindows.openSingleInstance(LOGS_WINDOW, NavigationEvent.create(NavigationType.LOGS).describe(),
+                    root -> separateWindows.addOpenButton(root, () -> separateWindows.openSingleInstance(LOGS_WINDOW, NavigationEvent.create(NavigationType.LOGS).describe(),
                             scene -> SeparateWindows.<LogsViewController>load("logs/logs-view.fxml",
                                     c -> c.setModels(mainModel.getLogsModel(), mainModel.getParametersModel())))));
         } else if (newValue.navigationType() == NavigationType.NETWORKS) {
@@ -862,10 +889,10 @@ public class MainController extends AbstractDisposableController {
                     "network/tables/security-analysis-results-view.fxml", NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS);
         } else if (newValue.navigationType() == NavigationType.PARAMETERS) {
             ensureController(ParametersController.class, "parameters/parameters-view.fxml", c -> c.setMainModel(mainModel),
-                    root -> SeparateWindows.addOpenButton(root, this::detachParameters));
+                    root -> separateWindows.addOpenButton(root, this::detachParameters));
         } else if (newValue.navigationType() == NavigationType.REPORTS) {
             ReportsController controller = ensureController(ReportsController.class, "report/reports-view.fxml", c -> c.setSceneModel(sceneModel),
-                    root -> SeparateWindows.addOpenButton(root, () -> separateWindows.openSingleInstance(REPORTS_WINDOW, NavigationEvent.create(NavigationType.REPORTS).describe(),
+                    root -> separateWindows.addOpenButton(root, () -> separateWindows.openSingleInstance(REPORTS_WINDOW, NavigationEvent.create(NavigationType.REPORTS).describe(),
                             scene -> SeparateWindows.<ReportsController>load("report/reports-view.fxml", c -> c.setSceneModel(scene)))));
             if (newValue.state() instanceof ReportNavigationState state) {
                 controller.selectReport(state.getReportNode());

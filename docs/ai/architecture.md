@@ -105,18 +105,24 @@ has restorable selection; add a branch in `MainController.onNavigationEvent`; ad
 ## Separate windows
 
 `…/window/SeparateWindows.java` (owned by `MainController`, reached by views through
-`SceneModel.getSeparateWindows()`) shows one view per window in a fixed context, with no menu, toolbar nor history:
-- an "open in new window" button (`SeparateWindows.addOpenButton`) is added to the view's own toolbar (or its
+`SceneModel.getSeparateWindows()`) shows views in a fixed context, with no menu, toolbar nor history, as tabs of named
+windows ("Window N", the lowest free N; renamed by double-clicking the name left of the tab strip or from the Windows
+menu, blank and taken names rejected):
+- an "open in new window" split button (`separateWindows.addOpenButton`, its menu listing the windows to open the view
+  as a tab of one instead) is added to the view's own toolbar (or its
   `openInNewWindowHost` Pane): by `MainController.ensureSceneView` for whole views (tables, map, contingencies), by
   `SubstationsController` for its diagram panes (`network/ContainerDiagram`, shared with its own tabs) and equipment
   tabs (fixed to the selected container), and for logs/reports (single-instance, not network-bound);
 - the window's view gets a `SceneModel.separate` scene: its navigation drives the main window and brings it to front;
-- network-bound windows close when the selected network changes; `confirmNetworkChange` asks first.
-- one window per key: whole-network views (tables, map, contingencies) are keyed by `NavigationType`, container
+- network-bound views (tabs) close when the selected network changes; `confirmNetworkChange` asks first;
+- a tab can be dragged to another window's tab strip, reordered, or dropped outside any window to get its own window
+  (moved with its controller, not disposed); a window closes with its last tab, disposing its views' controllers;
+- one view per key: whole-network views (tables, map, contingencies) are keyed by `NavigationType`, container
   diagrams and equipment tabs by kind and container id, logs/reports/parameters (not network-bound) by name; opening
-  an open key brings its window to front instead;
+  an open key brings its window to front and selects its tab instead;
 - parameters are a center view (`NavigationType.PARAMETERS`) that, like the others, can also be opened in a window;
-- the main window's Windows menu lists them (`getOpenWindows`) to focus one;
+- the main window's Windows menu has a submenu per window (`getOpenWindows`): show it, rename it, or show one of
+  its tabs;
 - they are independent stages, not owned by the main window, which can thus come in front of them.
 
 ## Controller lifecycle

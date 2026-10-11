@@ -201,9 +201,9 @@ public class SubstationsController extends AbstractDisposableController implemen
         singleLineDiagram = new ContainerDiagram(ContainerDiagram.Kind.SINGLE_LINE, sldPaneController, sceneModel);
         areaDiagram = new ContainerDiagram(ContainerDiagram.Kind.AREA, nadPaneController, sceneModel);
         sceneModel.getSeparateWindows().ifPresent(separateWindows -> {
-            SeparateWindows.addOpenButton(sldPaneController.getToolBar(), () -> openDiagram(separateWindows, ContainerDiagram.Kind.SINGLE_LINE));
-            SeparateWindows.addOpenButton(nadPaneController.getToolBar(), () -> openDiagram(separateWindows, ContainerDiagram.Kind.AREA));
-            equipmentTabs.forEach(equipmentTab -> SeparateWindows.addOpenButton((Parent) equipmentTab.tab().getContent(),
+            separateWindows.addOpenButton(sldPaneController.getToolBar(), () -> openDiagram(separateWindows, ContainerDiagram.Kind.SINGLE_LINE));
+            separateWindows.addOpenButton(nadPaneController.getToolBar(), () -> openDiagram(separateWindows, ContainerDiagram.Kind.AREA));
+            equipmentTabs.forEach(equipmentTab -> separateWindows.addOpenButton((Parent) equipmentTab.tab().getContent(),
                     () -> openEquipmentTab(separateWindows, equipmentTab)));
         });
         updateDiagramsShowing();

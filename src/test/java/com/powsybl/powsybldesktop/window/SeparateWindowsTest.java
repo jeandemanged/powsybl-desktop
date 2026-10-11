@@ -11,14 +11,16 @@ import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
 import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.logs.LogsViewController;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.network.tables.LinesController;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
+import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
+import javafx.scene.control.SplitMenuButton;
 import javafx.scene.control.ToolBar;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -29,6 +31,8 @@ import org.junit.jupiter.api.Test;
 import org.testfx.util.WaitForAsyncUtils;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -138,7 +142,7 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
         interact(openLines);
 
         assertEquals(1, windows("Lines").size());
-        assertEquals(List.of("Lines"), separateWindows.getOpenWindows().stream().map(SeparateWindows.OpenWindow::title).toList());
+        assertEquals(List.of(List.of("Lines")), separateWindows.getOpenWindows().stream().map(SeparateWindows.DetachedWindow::getTabTitles).toList());
 
         interact(() -> windows("Lines").getFirst().close());
 
@@ -167,16 +171,146 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
         assertTrue(windows("Lines").isEmpty());
     }
 
+    // a view whose controller counts its disposals in disposed
+    private void openPlain(String key, boolean bound, AtomicInteger disposed) {
+        Function<SceneModel, SeparateWindows.View> factory = scene -> new SeparateWindows.View(new StackPane(), disposed::incrementAndGet);
+        if (bound) {
+            separateWindows.open(key, key, factory);
+        } else {
+            separateWindows.openSingleInstance(key, key, factory);
+        }
+    }
+
+    private void openPlainIn(SeparateWindows.DetachedWindow window, String key, boolean bound, AtomicInteger disposed) {
+        ToolBar toolBar = new ToolBar();
+        separateWindows.addOpenButton(toolBar, () -> openPlain(key, bound, disposed));
+        SplitMenuButton button = (SplitMenuButton) toolBar.getItems().getLast();
+        button.getOnShowing().handle(null);
+        button.getItems().stream().filter(item -> item.getText().equals(window.getName())).findFirst().orElseThrow().fire();
+    }
+
+    private static String defaultName(int n) {
+        return Messages.get("separateWindows.defaultName", n);
+    }
+
+    private List<String> names() {
+        return separateWindows.getOpenWindows().stream().map(SeparateWindows.DetachedWindow::getName).toList();
+    }
+
+    @Test
+    void windowsGetTheLowestFreeDefaultName() {
+        AtomicInteger disposed = new AtomicInteger();
+        interact(() -> {
+            openPlain("a", false, disposed);
+            openPlain("b", false, disposed);
+        });
+        assertEquals(List.of(defaultName(1), defaultName(2)), names());
+
+        interact(() -> separateWindows.close("a"));
+        interact(() -> openPlain("c", false, disposed));
+
+        assertEquals(List.of(defaultName(2), defaultName(1)), names());
+    }
+
+    @Test
+    void renamingRejectsBlankAndTakenNames() throws Exception {
+        AtomicInteger disposed = new AtomicInteger();
+        interact(() -> {
+            openPlain("a", false, disposed);
+            openPlain("b", false, disposed);
+        });
+        SeparateWindows.DetachedWindow first = separateWindows.getOpenWindows().getFirst();
+
+        assertFalse(WaitForAsyncUtils.asyncFx(() -> first.rename("  ")).get());
+        assertFalse(WaitForAsyncUtils.asyncFx(() -> first.rename(defaultName(2))).get());
+        assertTrue(WaitForAsyncUtils.asyncFx(() -> first.rename(" Diagrams ")).get());
+
+        assertEquals(List.of("Diagrams", defaultName(2)), names());
+        assertEquals(1, windows("Diagrams - a").size());
+    }
+
+    @Test
+    void viewsCanBeOpenedAsTabsOfAnExistingWindowAndFocusedByKey() throws Exception {
+        AtomicInteger disposed = new AtomicInteger();
+        interact(() -> openPlain("a", false, disposed));
+        SeparateWindows.DetachedWindow window = separateWindows.getOpenWindows().getFirst();
+
+        interact(() -> openPlainIn(window, "b", false, disposed));
+
+        assertEquals(1, separateWindows.getOpenWindows().size());
+        assertEquals(List.of("a", "b"), window.getTabTitles());
+        assertEquals(1, windows(defaultName(1) + " - b").size());
+
+        assertTrue(WaitForAsyncUtils.asyncFx(() -> separateWindows.focusOpen("a")).get());
+        assertEquals(1, windows(defaultName(1) + " - a").size());
+    }
+
+    @Test
+    void movingTheLastTabClosesItsWindowWithoutDisposingTheView() {
+        AtomicInteger disposed = new AtomicInteger();
+        interact(() -> {
+            openPlain("a", false, disposed);
+            openPlain("b", false, disposed);
+        });
+        SeparateWindows.DetachedWindow first = separateWindows.getOpenWindows().getFirst();
+        SeparateWindows.DetachedWindow second = separateWindows.getOpenWindows().getLast();
+
+        interact(() -> separateWindows.move("b", first, 0));
+
+        assertEquals(List.of(first), separateWindows.getOpenWindows());
+        assertEquals(List.of("b", "a"), first.getTabTitles());
+        assertEquals(0, disposed.get());
+        assertFalse(second.getTabTitles().contains("b"));
+
+        interact(() -> separateWindows.move("a", null, 0));
+
+        assertEquals(2, separateWindows.getOpenWindows().size());
+        assertEquals(List.of("a"), separateWindows.getOpenWindows().getLast().getTabTitles());
+        assertEquals(0, disposed.get());
+    }
+
+    @Test
+    void networkChangeClosesOnlyBoundTabs() {
+        AtomicInteger disposed = new AtomicInteger();
+        interact(() -> openPlain("logs", false, disposed));
+        SeparateWindows.DetachedWindow window = separateWindows.getOpenWindows().getFirst();
+        interact(() -> openPlainIn(window, "lines", true, disposed));
+        interact(() -> openPlain("map", true, disposed));
+        assertEquals(2, separateWindows.getOpenWindows().size());
+
+        interact(() -> mainModel.setNetwork(otherNetwork));
+
+        assertEquals(List.of(window), separateWindows.getOpenWindows());
+        assertEquals(List.of("logs"), window.getTabTitles());
+        assertEquals(2, disposed.get());
+    }
+
+    @Test
+    void closeAllDisposesEveryView() {
+        AtomicInteger disposed = new AtomicInteger();
+        interact(() -> openPlain("a", false, disposed));
+        SeparateWindows.DetachedWindow window = separateWindows.getOpenWindows().getFirst();
+        interact(() -> {
+            openPlainIn(window, "b", false, disposed);
+            openPlain("c", true, disposed);
+        });
+
+        interact(separateWindows::closeAll);
+
+        assertTrue(separateWindows.getOpenWindows().isEmpty());
+        assertEquals(3, disposed.get());
+    }
+
     @Test
     void openButtonGoesInTheViewsTopToolbarOrANewOne() {
         ToolBar toolBar = new ToolBar();
         VBox withToolBar = new VBox(toolBar);
         VBox withoutToolBar = new VBox(new StackPane());
 
-        SeparateWindows.addOpenButton(withToolBar, () -> { });
-        SeparateWindows.addOpenButton(withoutToolBar, () -> { });
+        separateWindows.addOpenButton(withToolBar, () -> { });
+        separateWindows.addOpenButton(withoutToolBar, () -> { });
 
-        assertInstanceOf(Button.class, toolBar.getItems().getLast());
+        assertInstanceOf(SplitMenuButton.class, toolBar.getItems().getLast());
         assertInstanceOf(ToolBar.class, withoutToolBar.getChildren().getFirst());
     }
 }

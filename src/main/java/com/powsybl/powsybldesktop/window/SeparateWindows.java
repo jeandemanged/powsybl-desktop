@@ -13,23 +13,45 @@ import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.utils.DisposableController;
 import com.powsybl.powsybldesktop.utils.Messages;
+import javafx.beans.binding.Bindings;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Bounds;
+import javafx.geometry.Insets;
+import javafx.geometry.Point2D;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.SplitMenuButton;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.TextField;
 import javafx.scene.control.ToolBar;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.DataFormat;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.robot.Robot;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import org.kordamp.ikonli.javafx.FontIcon;
@@ -43,15 +65,21 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.IntStream;
 
 /**
- * The windows showing one view each in a fixed context, next to the main window: no menu, toolbar nor history of
- * their own, their navigation drives the main window (see {@link SceneModel#separate}). Independent stages, so that
- * the main window can come in front of them, all closed with it.
+ * The windows showing views in a fixed context, next to the main window: no menu, toolbar nor history of their own,
+ * their views' navigation drives the main window (see {@link SceneModel#separate}). Independent stages, so that the
+ * main window can come in front of them, all closed with it.
  * <p>
- * A network-bound window shows the network selected when it was opened: before the main window selects another
+ * Each window is named ("Window 1" by default, renamed by double-clicking its name or from the main window's Windows
+ * menu) and shows its views as tabs: a view is opened in a new window or as a tab of an existing one, and its tab can
+ * be dragged to another window, reordered, or dropped outside any window to get its own. A window closes with its
+ * last tab.
+ * <p>
+ * A network-bound view shows the network selected when it was opened: before the main window selects another
  * network, {@link #confirmNetworkChange} asks whether to close them, and they are closed anyway once it changes (e.g.
- * the network was closed). Logs and reports windows aren't bound, and are single-instance.
+ * the network was closed). Logs and reports views aren't bound, and are single-instance.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -63,8 +91,11 @@ public final class SeparateWindows {
     private static final double DEFAULT_WIDTH = 900;
     private static final double DEFAULT_HEIGHT = 600;
 
+    // only tells drop targets that a tab is dragged, the tab itself being draggedView: a drag never leaves the application
+    private static final DataFormat TAB_FORMAT = new DataFormat("application/x-powsybl-desktop-tab");
+
     /**
-     * A separate window's content: its root, the controller disposed when the window closes, and its initial size.
+     * A separate view's content: its root, the controller disposed when its tab closes, and its new window's size.
      */
     public record View(Parent root, DisposableController controller, double width, double height) {
         public View(Parent root, DisposableController controller) {
@@ -72,25 +103,189 @@ public final class SeparateWindows {
         }
     }
 
-    /**
-     * An open window, as listed to the user.
-     */
-    public record OpenWindow(String title, Stage stage) {
+    private static final class SeparateView {
+        private final String key;
+        private final String title;
+        private final boolean bound;
+        private final Network network;
+        private final DisposableController controller;
+        private final Tab tab = new Tab();
+        private DetachedWindow window;
+
+        private SeparateView(String key, String title, boolean bound, Network network, View view) {
+            this.key = key;
+            this.title = title;
+            this.bound = bound;
+            this.network = network;
+            this.controller = view.controller();
+            tab.setContent(view.root());
+            tab.setUserData(this);
+        }
     }
 
-    private record SeparateWindow(OpenWindow openWindow, boolean bound, Network network, String key) {
-        Stage stage() {
-            return openWindow.stage();
+    private static SeparateView view(Tab tab) {
+        return (SeparateView) tab.getUserData();
+    }
+
+    /**
+     * A window, as listed to the user: its name and its tabs.
+     */
+    public final class DetachedWindow {
+        private final Stage stage = new Stage();
+        private final StringProperty name = new SimpleStringProperty(defaultName());
+        private final TabPane tabPane = new TabPane();
+        private final Label nameLabel = new Label();
+        private final HBox nameBox = new HBox(nameLabel);
+
+        private DetachedWindow(double width, double height) {
+            tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.ALL_TABS);
+            tabPane.setOnDragOver(event -> {
+                if (draggedView != null && event.getDragboard().hasContent(TAB_FORMAT)) {
+                    event.acceptTransferModes(TransferMode.MOVE);
+                }
+                event.consume();
+            });
+            tabPane.setOnDragDropped(event -> {
+                SeparateView dropped = draggedView;
+                if (dropped != null) {
+                    draggedView = null;
+                    move(dropped, this, dropIndex(dropped, event.getSceneX()));
+                    focus(stage);
+                }
+                event.setDropCompleted(dropped != null);
+                event.consume();
+            });
+
+            nameLabel.textProperty().bind(name);
+            nameLabel.getStyleClass().add("section-title");
+            nameLabel.setTooltip(new Tooltip(Messages.get("separateWindows.renameHint")));
+            nameLabel.setOnMouseClicked(event -> {
+                if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
+                    editName();
+                }
+            });
+            nameBox.setAlignment(Pos.CENTER_LEFT);
+            nameBox.setPadding(new Insets(0, 6, 0, 8));
+            nameBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+            StackPane root = new StackPane(tabPane, nameBox);
+            StackPane.setAlignment(nameBox, Pos.TOP_LEFT);
+
+            stage.titleProperty().bind(Bindings.createStringBinding(() -> {
+                Tab selected = tabPane.getSelectionModel().getSelectedItem();
+                return MainApplication.APP_TITLE + " - " + name.get() + (selected == null ? "" : " - " + view(selected).title);
+            }, name, tabPane.getSelectionModel().selectedItemProperty()));
+            stage.getIcons().add(new Image(Objects.requireNonNull(MainApplication.class.getResourceAsStream("logo.png"))));
+            Scene scene = new Scene(root, width, height);
+            scene.getStylesheets().add(Objects.requireNonNull(MainApplication.class.getResource("styles.css")).toExternalForm());
+            stage.setScene(scene);
+            // the name sits over the left of the tab strip, whose tabs are shifted right of it
+            root.applyCss();
+            if (tabPane.lookup(".tab-header-area") instanceof Region header) {
+                Insets padding = header.getPadding();
+                header.paddingProperty().bind(Bindings.createObjectBinding(
+                        () -> new Insets(padding.getTop(), padding.getRight(), padding.getBottom(), nameBox.getWidth()), nameBox.widthProperty()));
+                nameBox.prefHeightProperty().bind(header.heightProperty());
+            }
+            stage.setOnHidden(event -> {
+                tabPane.getTabs().forEach(tab -> dispose(view(tab)));
+                windows.remove(this);
+            });
+            windows.add(this);
+        }
+
+        public String getName() {
+            return name.get();
+        }
+
+        /**
+         * Renames this window, unless {@code newName} is blank or another window's name.
+         */
+        public boolean rename(String newName) {
+            String trimmed = newName == null ? "" : newName.trim();
+            if (trimmed.isEmpty() || windows.stream().anyMatch(window -> window != this && window.getName().equals(trimmed))) {
+                return false;
+            }
+            name.set(trimmed);
+            return true;
+        }
+
+        public List<String> getTabTitles() {
+            return tabPane.getTabs().stream().map(tab -> view(tab).title).toList();
+        }
+
+        public void show() {
+            focus(stage);
+        }
+
+        public void showTab(int index) {
+            tabPane.getSelectionModel().select(index);
+            focus(stage);
+        }
+
+        private void add(SeparateView view, int index) {
+            view.window = this;
+            tabPane.getTabs().add(Math.min(index, tabPane.getTabs().size()), view.tab);
+            tabPane.getSelectionModel().select(view.tab);
+        }
+
+        private void closeIfEmpty() {
+            if (tabPane.getTabs().isEmpty()) {
+                stage.close();
+            }
+        }
+
+        // after the other tabs whose title is left of sceneX
+        private int dropIndex(SeparateView dropped, double sceneX) {
+            return (int) tabPane.getTabs().stream()
+                    .filter(tab -> tab != dropped.tab && tab.getGraphic() != null)
+                    .filter(tab -> {
+                        Node graphic = tab.getGraphic();
+                        Bounds bounds = graphic.localToScene(graphic.getBoundsInLocal());
+                        return bounds.getCenterX() < sceneX;
+                    })
+                    .count();
+        }
+
+        private void editName() {
+            TextField field = new TextField(name.get());
+            field.setPrefColumnCount(12);
+            field.setOnAction(event -> endEditName(field, true));
+            field.setOnKeyPressed(event -> {
+                if (event.getCode() == KeyCode.ESCAPE) {
+                    endEditName(field, false);
+                }
+            });
+            field.focusedProperty().addListener((observable, oldValue, focused) -> {
+                if (!focused) {
+                    endEditName(field, true);
+                }
+            });
+            nameBox.getChildren().setAll(field);
+            field.requestFocus();
+            field.selectAll();
+        }
+
+        private void endEditName(TextField field, boolean commit) {
+            // also called back when removing the field takes its focus away
+            if (nameBox.getChildren().contains(field)) {
+                if (commit) {
+                    rename(field.getText());
+                }
+                nameBox.getChildren().setAll(nameLabel);
+            }
         }
     }
 
     private final MainModel mainModel;
     private final Supplier<Window> mainWindow;
-    private final List<SeparateWindow> windows = new ArrayList<>();
-    private final ObservableList<OpenWindow> modifiableOpenWindows = FXCollections.observableArrayList();
+    private final List<SeparateView> views = new ArrayList<>();
+    private final ObservableList<DetachedWindow> windows = FXCollections.observableArrayList();
     // cached, see NavigationHistory's unmodifiable views
-    private final ObservableList<OpenWindow> openWindows = FXCollections.unmodifiableObservableList(modifiableOpenWindows);
+    private final ObservableList<DetachedWindow> openWindows = FXCollections.unmodifiableObservableList(windows);
     private final ChangeListener<Network> networkListener;
+    // the window the view being opened goes to, a new one if null, see openIn
+    private DetachedWindow destination;
+    private SeparateView draggedView;
 
     public SeparateWindows(MainModel mainModel, Supplier<Window> mainWindow) {
         this.mainModel = Objects.requireNonNull(mainModel);
@@ -115,44 +310,45 @@ public final class SeparateWindows {
     }
 
     /**
-     * Opens a window bound to the selected network, its view built for the window's scene.
+     * Opens a view bound to the selected network, built for its window's scene.
      */
     public void open(String title, Function<SceneModel, View> viewFactory) {
         open(null, title, viewFactory);
     }
 
     /**
-     * Same as {@link #open(String, Function)}, but brings the window of {@code key} to front instead if already open:
+     * Same as {@link #open(String, Function)}, but brings the view of {@code key} to front instead if already open:
      * a view of the whole network, or of a given container, is shown once.
      */
     public void open(String key, String title, Function<SceneModel, View> viewFactory) {
         if (!focusOpen(key)) {
             SceneModel sceneModel = SceneModel.separate(mainModel, this::bringMainWindowToFront);
-            show(new SeparateWindow(new OpenWindow(title, new Stage()), true, sceneModel.getNetwork(), key), viewFactory.apply(sceneModel));
+            View view = viewFactory.apply(sceneModel);
+            show(new SeparateView(key, title, true, sceneModel.getNetwork(), view), view);
         }
     }
 
     /**
-     * Opens the single window of {@code key} not bound to a network, or brings it to front if already open.
+     * Opens the single view of {@code key} not bound to a network, or brings it to front if already open.
      */
     public void openSingleInstance(String key, String title, Function<SceneModel, View> viewFactory) {
         if (!focusOpen(Objects.requireNonNull(key))) {
-            show(new SeparateWindow(new OpenWindow(title, new Stage()), false, null, key),
-                    viewFactory.apply(SceneModel.separate(mainModel, this::bringMainWindowToFront)));
+            View view = viewFactory.apply(SceneModel.separate(mainModel, this::bringMainWindowToFront));
+            show(new SeparateView(key, title, false, null, view), view);
         }
     }
 
     /**
-     * Brings the window of {@code key} to front, if open.
+     * Brings the view of {@code key} to front, if open.
      */
     public boolean focusOpen(String key) {
-        Optional<SeparateWindow> open = key == null ? Optional.empty() : windows.stream().filter(window -> key.equals(window.key())).findFirst();
-        open.ifPresent(window -> focus(window.stage()));
+        Optional<SeparateView> open = find(key);
+        open.ifPresent(view -> view.window.showTab(view.window.tabPane.getTabs().indexOf(view.tab)));
         return open.isPresent();
     }
 
     public void close(String key) {
-        close(windows.stream().filter(window -> key.equals(window.key())).toList());
+        close(views.stream().filter(view -> key.equals(view.key)).toList());
     }
 
     public static void focus(Stage stage) {
@@ -164,25 +360,108 @@ public final class SeparateWindows {
     /**
      * The open windows, in opening order.
      */
-    public ObservableList<OpenWindow> getOpenWindows() {
+    public ObservableList<DetachedWindow> getOpenWindows() {
         return openWindows;
     }
 
-    private void show(SeparateWindow window, View view) {
-        Stage stage = window.stage();
-        stage.setTitle(MainApplication.APP_TITLE + " - " + window.openWindow().title());
-        stage.getIcons().add(new Image(Objects.requireNonNull(MainApplication.class.getResourceAsStream("logo.png"))));
-        Scene scene = new Scene(view.root(), view.width(), view.height());
-        scene.getStylesheets().add(Objects.requireNonNull(MainApplication.class.getResource("styles.css")).toExternalForm());
-        stage.setScene(scene);
-        stage.setOnHidden(event -> {
-            view.controller().dispose();
-            windows.remove(window);
-            modifiableOpenWindows.remove(window.openWindow());
+    /**
+     * Moves the view of {@code key} to {@code target} at {@code index}, or to a new window if {@code target} is null.
+     */
+    void move(String key, DetachedWindow target, int index) {
+        SeparateView view = find(key).orElseThrow();
+        if (target == null) {
+            newWindowFor(view, view.window.stage.getScene().getWidth(), view.window.stage.getScene().getHeight()).stage.show();
+        } else {
+            move(view, target, index);
+        }
+    }
+
+    private Optional<SeparateView> find(String key) {
+        return key == null ? Optional.empty() : views.stream().filter(view -> key.equals(view.key)).findFirst();
+    }
+
+    private void openIn(DetachedWindow window, Runnable open) {
+        destination = window;
+        try {
+            open.run();
+        } finally {
+            destination = null;
+        }
+    }
+
+    private void show(SeparateView view, View content) {
+        Label label = new Label(view.title);
+        label.setOnDragDetected(event -> {
+            Dragboard dragboard = label.startDragAndDrop(TransferMode.MOVE);
+            ClipboardContent clipboardContent = new ClipboardContent();
+            clipboardContent.put(TAB_FORMAT, view.title);
+            dragboard.setContent(clipboardContent);
+            dragboard.setDragView(label.snapshot(null, null));
+            draggedView = view;
+            event.consume();
         });
-        windows.add(window);
-        modifiableOpenWindows.add(window.openWindow());
+        label.setOnDragDone(event -> {
+            // still set: no window took it
+            if (draggedView == view) {
+                draggedView = null;
+                tearOff(view, new Robot().getMousePosition());
+            }
+            event.consume();
+        });
+        view.tab.setGraphic(label);
+        view.tab.setOnClosed(event -> {
+            dispose(view);
+            view.window.closeIfEmpty();
+        });
+        views.add(view);
+        if (destination != null && windows.contains(destination)) {
+            destination.add(view, Integer.MAX_VALUE);
+            destination.show();
+        } else {
+            DetachedWindow window = new DetachedWindow(content.width(), content.height());
+            window.add(view, 0);
+            window.stage.show();
+        }
+    }
+
+    private void move(SeparateView view, DetachedWindow target, int index) {
+        DetachedWindow source = view.window;
+        source.tabPane.getTabs().remove(view.tab);
+        target.add(view, index);
+        if (source != target) {
+            source.closeIfEmpty();
+        }
+    }
+
+    private DetachedWindow newWindowFor(SeparateView view, double width, double height) {
+        DetachedWindow window = new DetachedWindow(width, height);
+        move(view, window, 0);
+        return window;
+    }
+
+    private void tearOff(SeparateView view, Point2D position) {
+        Stage stage = view.window.stage;
+        if (view.window.tabPane.getTabs().size() > 1) {
+            stage = newWindowFor(view, stage.getScene().getWidth(), stage.getScene().getHeight()).stage;
+        }
+        stage.setX(position.getX());
+        stage.setY(position.getY());
         stage.show();
+    }
+
+    private void dispose(SeparateView view) {
+        if (views.remove(view)) {
+            view.controller.dispose();
+        }
+    }
+
+    // the lowest "Window N" no window is named
+    private String defaultName() {
+        return IntStream.iterate(1, n -> n + 1)
+                .mapToObj(n -> Messages.get("separateWindows.defaultName", n))
+                .filter(candidate -> windows.stream().noneMatch(window -> window.getName().equals(candidate)))
+                .findFirst()
+                .orElseThrow();
     }
 
     private void bringMainWindowToFront() {
@@ -192,11 +471,11 @@ public final class SeparateWindows {
     }
 
     /**
-     * Whether the main window may select {@code target}: true if no window is bound to another network, or if the
+     * Whether the main window may select {@code target}: true if no view is bound to another network, or if the
      * user confirms closing them (then closed).
      */
     public boolean confirmNetworkChange(Network target) {
-        List<SeparateWindow> toClose = boundToOtherThan(target);
+        List<SeparateView> toClose = boundToOtherThan(target);
         if (toClose.isEmpty()) {
             return true;
         }
@@ -211,26 +490,30 @@ public final class SeparateWindows {
         return true;
     }
 
-    private List<SeparateWindow> boundToOtherThan(Network network) {
-        return windows.stream().filter(window -> window.bound() && window.network() != network).toList();
+    private List<SeparateView> boundToOtherThan(Network network) {
+        return views.stream().filter(view -> view.bound && view.network != network).toList();
     }
 
-    private static void close(List<SeparateWindow> toClose) {
-        toClose.forEach(window -> window.stage().close());
+    private void close(List<SeparateView> toClose) {
+        toClose.forEach(view -> {
+            view.window.tabPane.getTabs().remove(view.tab);
+            dispose(view);
+            view.window.closeIfEmpty();
+        });
     }
 
     public void closeAll() {
         mainModel.networkProperty().removeListener(networkListener);
-        close(List.copyOf(windows));
+        List.copyOf(windows).forEach(window -> window.stage.close());
     }
 
     /**
      * Adds an "open in new window" button to a view: in the Pane with id {@value #BUTTON_HOST_ID} if it declares
      * one, else at the end of its top toolbar (a BorderPane's top or a VBox's first child), else in a new toolbar at
-     * the top of a VBox.
+     * the top of a VBox. Its menu opens the view in an existing window instead.
      */
-    public static void addOpenButton(Parent viewRoot, Runnable open) {
-        Button button = openButton(open);
+    public void addOpenButton(Parent viewRoot, Runnable open) {
+        SplitMenuButton button = openButton(open);
         if (viewRoot.lookup("#" + BUTTON_HOST_ID) instanceof Pane host) {
             host.getChildren().add(button);
         } else if (viewRoot instanceof BorderPane borderPane && borderPane.getTop() instanceof ToolBar toolBar) {
@@ -246,20 +529,32 @@ public final class SeparateWindows {
         }
     }
 
-    public static void addOpenButton(ToolBar toolBar, Runnable open) {
+    public void addOpenButton(ToolBar toolBar, Runnable open) {
         addTo(toolBar, openButton(open));
     }
 
-    private static Button openButton(Runnable open) {
-        Button button = new Button();
+    private SplitMenuButton openButton(Runnable open) {
+        SplitMenuButton button = new SplitMenuButton();
         button.setGraphic(new FontIcon("mdi2o-open-in-new"));
         button.setTooltip(new Tooltip(Messages.get("separateWindows.open")));
-        button.setOnAction(event -> open.run());
+        button.setOnAction(event -> openIn(null, open));
+        MenuItem newWindow = new MenuItem(Messages.get("separateWindows.newWindow"));
+        newWindow.setOnAction(event -> openIn(null, open));
+        button.getItems().setAll(newWindow);
+        button.setOnShowing(event -> {
+            button.getItems().setAll(newWindow);
+            windows.forEach(window -> {
+                MenuItem item = new MenuItem(window.getName());
+                item.setMnemonicParsing(false);
+                item.setOnAction(itemEvent -> openIn(window, open));
+                button.getItems().add(item);
+            });
+        });
         return button;
     }
 
     // right-aligned
-    private static void addTo(ToolBar toolBar, Button button) {
+    private static void addTo(ToolBar toolBar, SplitMenuButton button) {
         Pane spacer = new Pane();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         toolBar.getItems().addAll(spacer, button);
