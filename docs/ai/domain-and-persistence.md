@@ -48,7 +48,10 @@ are pinned to `powsybl-core.version` (7.3.0) because they are outside the BOM. R
   not mean converged.
 - Security analysis: `SecurityAnalysis.runAsync` with the enabled contingency lists of the study, aggregated in a
   `ListOfContingencyLists` and de-duplicated by `ContingencyNames.deduplicate`. A non-converged pre-contingency result
-  is reported as an error.
+  is reported as an error. OpenLoadFlow's multi-threaded analysis switches the network to thread-local variants while
+  running; `MainController.onSecurityAnalysis` makes that switch itself beforehand, setting the FX thread's and the
+  task's working variant, and undoes it once the computation is over, so that the FX thread can still read the network
+  meanwhile. The desktop code otherwise never uses variants.
 - Both produce a `ReportNode` stored with `mainModel.addReport`. New report message keys go into
   `reports.properties` and `reports_fr.properties`.
 

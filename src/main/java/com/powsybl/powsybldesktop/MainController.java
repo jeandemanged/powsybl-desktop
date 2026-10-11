@@ -12,6 +12,7 @@ import com.powsybl.contingency.Contingency;
 import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.contingency.list.ListOfContingencyLists;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.VariantManager;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.limitmodification.LimitsComputer;
 import com.powsybl.loadflow.LoadFlow;
@@ -102,6 +103,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -419,12 +421,28 @@ public class MainController extends AbstractDisposableController {
                 .collect(Collectors.toList());
         ContingencyList contingencyList = new ListOfContingencyLists(network.getNameOrId(), enabledContingencyLists);
 
+        // OpenLoadFlow's multi-threaded security analysis switches the network to thread-local variants while running,
+        // so that any other thread reading it meanwhile fails ("Variant index not set for current thread"), e.g. the FX
+        // thread opening a table. So the switch is made here, giving the FX thread (and the task's) its working variant,
+        // and undone once the computation is over: OpenLoadFlow then finds it on and leaves it on.
+        // The FX thread may still read the network while OpenLoadFlow's threads build their own networks from it, racing
+        // on IIDM's lazily computed caches (e.g. the bus view): running the security analysis on a copy of the network
+        // would isolate it fully, at the cost of a copy per run.
+        VariantManager variantManager = network.getVariantManager();
+        String variantId = variantManager.getWorkingVariantId();
+        boolean variantMultiThreadAccessAllowed = variantManager.isVariantMultiThreadAccessAllowed();
+        variantManager.allowVariantMultiThreadAccess(true);
+        variantManager.setWorkingVariant(variantId);
+        Runnable restoreVariantAccess = () -> variantManager.allowVariantMultiThreadAccess(variantMultiThreadAccessAllowed);
+        AtomicReference<CompletableFuture<SecurityAnalysisReport>> computation = new AtomicReference<>();
+
         Service<SecurityAnalysisResultAndReport> securityAnalysisService = new Service<>() {
             @Override
             protected Task<SecurityAnalysisResultAndReport> createTask() {
                 return new AbstractNetworkTask<>(mainModel, network) {
                     @Override
                     protected SecurityAnalysisResultAndReport compute() throws Exception {
+                        variantManager.setWorkingVariant(variantId);
                         ReportNode reportNode = ReportNode.newRootReportNode()
                                 .withAllResourceBundlesFromClasspath()
                                 .withMessageTemplate("desktop.securityAnalysis")
@@ -439,6 +457,7 @@ public class MainController extends AbstractDisposableController {
                         // SecurityAnalysis.run() blocks on CompletableFuture.join(), which ignores thread interruption,
                         // so cancelling this task wouldn't stop the underlying computation - runAsync()+get() honors it
                         CompletableFuture<SecurityAnalysisReport> future = SecurityAnalysis.runAsync(network, contingencies, runParameters);
+                        computation.set(future);
                         try {
                             SecurityAnalysisReport securityAnalysisReport = future.get();
                             return new SecurityAnalysisResultAndReport(securityAnalysisReport.getResult(), reportNode);
@@ -460,6 +479,7 @@ public class MainController extends AbstractDisposableController {
         mainModel.getNotificationsModel().add(runningNotification);
 
         securityAnalysisService.setOnSucceeded(event -> {
+            restoreVariantAccess.run();
             SecurityAnalysisResultAndReport securityAnalysisResultAndReport = (SecurityAnalysisResultAndReport) event.getSource().getValue();
             mainModel.getStudy(network).setSecurityAnalysisResult(securityAnalysisResultAndReport.securityAnalysisResult());
             mainModel.setUpdate();
@@ -469,6 +489,7 @@ public class MainController extends AbstractDisposableController {
         });
 
         securityAnalysisService.setOnFailed(event -> {
+            restoreVariantAccess.run();
             Throwable exception = event.getSource().getException();
             LOGGER.error(exception.toString(), exception);
 
@@ -478,8 +499,17 @@ public class MainController extends AbstractDisposableController {
             mainModel.getNotificationsModel().replace(runningNotification,
                     Notification.createError(runningNotification.startTimestamp(), "main.securityAnalysis.failed", viewLogsAction));
         });
-        securityAnalysisService.setOnCancelled(event -> mainModel.getNotificationsModel().replace(runningNotification,
-                Notification.createCancelled(runningNotification.startTimestamp(), "main.securityAnalysis.cancelled")));
+        securityAnalysisService.setOnCancelled(event -> {
+            // a cancelled computation may still be running, until OpenLoadFlow notices
+            CompletableFuture<SecurityAnalysisReport> future = computation.get();
+            if (future == null) {
+                restoreVariantAccess.run();
+            } else {
+                future.whenComplete((report, exception) -> Platform.runLater(restoreVariantAccess));
+            }
+            mainModel.getNotificationsModel().replace(runningNotification,
+                    Notification.createCancelled(runningNotification.startTimestamp(), "main.securityAnalysis.cancelled"));
+        });
         mainModel.getStudy(network).trackComputation(securityAnalysisService);
         securityAnalysisService.start();
     }
