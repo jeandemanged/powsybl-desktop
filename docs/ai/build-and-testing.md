@@ -110,6 +110,9 @@ app-images and creates a GitHub release.
 `mvn package` → `jdeps` → `jlink` (JDK + separately downloaded JavaFX 27 jmods) → `jpackage --type app-image`. The
 `copy-dependencies` execution excludes `org.openjfx` on purpose (JavaFX is jlinked as modules; having the jars on the
 classpath too breaks startup) — do not remove that exclusion. Full details in `README.md`.
+Don't add `-Xmx` through `--java-options`: the Memory popup owns that line of the launcher `.cfg`
+(`memory/MaxHeapConfig`). It must stay in the `.cfg`: a `-XX:VMOptionsFile` pointing to a per-user file stops the JVM
+from starting while that file doesn't exist.
 
 ## Third-party licenses
 

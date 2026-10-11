@@ -111,6 +111,10 @@ jpackage --type app-image --input target/app-libs --dest target/dist ^
          --runtime-image target/runtime [--icon packaging/icons/app.ico]
 ```
 
+The max heap defaults to the JVM's (25% of physical memory). Users change it in Help > Memory, which writes a
+`java-options=-Xmx…` line to the app-image's launcher config (`app/PowSyBl Desktop.cfg`); it applies at the next start
+and needs write access to the app-image folder.
+
 ### Icons
 
 `packaging/icons/app.png` is already provided (the app's existing logo), used automatically for
