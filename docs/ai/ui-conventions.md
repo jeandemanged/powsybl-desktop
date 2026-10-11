@@ -125,7 +125,7 @@ Two established forms:
   (returns a result via `setResultConverter`). Edits inside these dialogs write to the IIDM object directly and use the
   same error/flash helpers as tables.
 - **FXML secondary windows** opened by `MainController`: memory (`onMemory`); about (`onAbout`) is an FXML content
-  inside a `Dialog`. Parameters are a center view that can be moved to a `SeparateWindows` window (see below). Memory window pattern: load with `Messages.bundle()`, add `styles.css` to the root, `initOwner(main window)`, set the
+  inside a `Dialog`. Parameters are a center view that can also be opened in a `SeparateWindows` window (see below). Memory window pattern: load with `Messages.bundle()`, add `styles.css` to the root, `initOwner(main window)`, set the
   app icon (`logo.png`), dispose the controller in `setOnHidden`, and close it in `MainController.dispose()`.
 - **Separate view windows** (`…/window/SeparateWindows.java`, see architecture): a view controller opened there gets a
   `SceneModel.separate` scene; it must navigate through `sceneModel.navigate`/`record` and read its network from the

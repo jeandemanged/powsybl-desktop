@@ -861,8 +861,6 @@ public class MainController extends AbstractDisposableController {
             ensureSceneView(SecurityAnalysisResultsController.class,
                     "network/tables/security-analysis-results-view.fxml", NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS);
         } else if (newValue.navigationType() == NavigationType.PARAMETERS) {
-            // shown once: going back to it in history moves a detached parameters window back here
-            separateWindows.close(PARAMETERS_WINDOW);
             ensureController(ParametersController.class, "parameters/parameters-view.fxml", c -> c.setMainModel(mainModel),
                     root -> SeparateWindows.addOpenButton(root, this::detachParameters));
         } else if (newValue.navigationType() == NavigationType.REPORTS) {
@@ -930,25 +928,15 @@ public class MainController extends AbstractDisposableController {
         mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.CONTINGENCIES, NetworkNavigationState.create(mainModel.getNetwork())));
     }
 
-    // a separate non-modal window rather than a center view, so parameters can be edited while the main
-    // stage keeps showing e.g. the diagram they apply to
     public void onParameters() {
-        if (!separateWindows.focusOpen(PARAMETERS_WINDOW)) {
-            mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.PARAMETERS));
-        }
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.PARAMETERS));
     }
 
-    // moved rather than copied: two parameter forms wouldn't follow each other's edits
     private void detachParameters() {
         separateWindows.openSingleInstance(PARAMETERS_WINDOW, Messages.get("desktop.common.parameters"), scene -> {
             SeparateWindows.View view = SeparateWindows.<ParametersController>load("parameters/parameters-view.fxml", c -> c.setMainModel(mainModel));
             return new SeparateWindows.View(view.root(), view.controller(), 1000, 700);
         });
-        mainModel.getNavigationHistory().navigateBackward();
-        if (currentController instanceof ParametersController) {
-            // no previous view, or going back to it was refused
-            onNetworks();
-        }
     }
 
     public void onLogs() {

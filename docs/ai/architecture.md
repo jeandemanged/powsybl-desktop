@@ -115,9 +115,7 @@ has restorable selection; add a branch in `MainController.onNavigationEvent`; ad
 - one window per key: whole-network views (tables, map, contingencies) are keyed by `NavigationType`, container
   diagrams and equipment tabs by kind and container id, logs/reports/parameters (not network-bound) by name; opening
   an open key brings its window to front instead;
-- parameters are a center view (`NavigationType.PARAMETERS`) moved, not copied, to their window (the main window goes
-  back in history), since two parameter forms wouldn't follow each other's edits; the toolbar button focuses that
-  window while open, and going back in history to parameters moves them back to the main window;
+- parameters are a center view (`NavigationType.PARAMETERS`) that, like the others, can also be opened in a window;
 - the main window's Windows menu lists them (`getOpenWindows`) to focus one;
 - they are independent stages, not owned by the main window, which can thus come in front of them.
 
