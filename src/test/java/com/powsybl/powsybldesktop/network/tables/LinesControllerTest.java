@@ -277,21 +277,42 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
-    void patlIViolationColumnIsEmptyWhenNotOverloaded() {
+    void loadingColumnIsEmptyWithoutLimits() {
         Line line = network.getLineStream().findFirst().orElseThrow();
-        assertNull(cellGraphic(controller.patlIViolationColumn, rowOf(line)));
+        interact(() -> ViolationsTestSupport.recompute(mainModel, network));
+        assertNull(cellGraphic(controller.loadingColumn, rowOf(line)));
     }
 
     @Test
-    void patlIViolationColumnShowsOverloadedIcon() {
+    void loadingColumnShowsLoadingOfTheMostSevereViolation() {
         Line line = network.getLineStream().findFirst().orElseThrow();
         line.getTerminal1().getBusView().getBus().setV(100);
         line.getTerminal1().setP(1000).setQ(1000);
         line.newCurrentLimits1().setPermanentLimit(0.001).add();
-        interact(() -> mainModel.setUpdate());
+        interact(() -> ViolationsTestSupport.recompute(mainModel, network));
 
-        Label label = (Label) cellGraphic(controller.patlIViolationColumn, rowOf(line));
-        assertEquals(Messages.get("desktop.common.patlIViolation.overloaded"), label.getText());
+        Node graphic = cellGraphic(controller.loadingColumn, rowOf(line));
+        TableColumnSupport.LoadingBar bar = ViolationsTestSupport.loadingBar(graphic);
+        assertTrue(bar.getPercent() > 200);
+        assertTrue(bar.isViolated());
+        assertTrue(bar.isTruncated());
+        assertTrue(ViolationsTestSupport.loadingText(graphic).endsWith(" %"));
+    }
+
+    @Test
+    void loadingColumnShowsGreenLoadingWithinLimits() {
+        Line line = network.getLineStream().findFirst().orElseThrow();
+        line.getTerminal1().getBusView().getBus().setV(100);
+        line.getTerminal1().setP(1000).setQ(1000);
+        line.newCurrentLimits1().setPermanentLimit(line.getTerminal1().getI() * 2).add();
+        interact(() -> ViolationsTestSupport.recompute(mainModel, network));
+
+        Node graphic = cellGraphic(controller.loadingColumn, rowOf(line));
+        TableColumnSupport.LoadingBar bar = ViolationsTestSupport.loadingBar(graphic);
+        assertEquals(50, bar.getPercent(), 1e-9);
+        assertFalse(bar.isViolated());
+        assertFalse(bar.isTruncated());
+        assertEquals("50.0 %", ViolationsTestSupport.loadingText(graphic));
     }
 
     @Test

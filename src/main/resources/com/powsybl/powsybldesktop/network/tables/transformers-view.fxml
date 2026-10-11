@@ -44,7 +44,7 @@
             <TableColumn fx:id="pColumn" styleClass="right-aligned-column" text="%desktop.common.column.p" editable="false" sortable="false"/>
             <TableColumn fx:id="qColumn" styleClass="right-aligned-column" text="%desktop.common.column.q" editable="false" sortable="false"/>
             <TableColumn fx:id="iColumn" styleClass="right-aligned-column" text="%desktop.common.column.i" editable="false" sortable="false"/>
-            <TableColumn fx:id="patlIViolationColumn" text="%desktop.common.column.patlIViolation" editable="false"/>
+            <TableColumn fx:id="loadingColumn" text="%desktop.common.column.loading" editable="false" prefWidth="200"/>
          </columns>
       </TableView>
    </children>

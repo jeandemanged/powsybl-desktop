@@ -67,8 +67,8 @@ Build
   `NavigationEvent.describe()` is an exhaustive `switch`. Both must be extended for a new view; only the switch is
   compiler-checked.
 - **Table controllers have two shapes**: most extend `AbstractEquipmentTableController`, but
-  `SubstationsTableController`, `VoltageLevelsController`, `ComponentsController`, `SecurityAnalysisResultsController`
-  and `SwitchesController` extend `AbstractDisposableController` directly and re-implement parts (e.g. the busy-lock
+  `SubstationsTableController`, `VoltageLevelsController`, `ComponentsController`, `SecurityAnalysisResultsController`,
+  `ViolationsController` and `SwitchesController` extend `AbstractDisposableController` directly and re-implement parts (e.g. the busy-lock
   binding). Prefer the abstract base for a new flat equipment table.
 - **Model injection**: views that can be shown in a separate window implement `SceneView.setSceneModel(SceneModel)`;
   main-window-only controllers (networks, notifications, parameters) use `setMainModel(MainModel)`; `LogsViewController`

@@ -26,6 +26,7 @@ import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.powsybldesktop.violations.Loading;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
 import javafx.scene.control.TableColumn;
@@ -143,7 +144,7 @@ public class TransformersController extends AbstractEquipmentTableController<Ide
     @FXML
     TableColumn<Identifiable<?>, Identifiable<?>> iColumn;
     @FXML
-    TableColumn<Identifiable<?>, Boolean> patlIViolationColumn;
+    TableColumn<Identifiable<?>, Loading> loadingColumn;
 
     @FXML
     private void initialize() {
@@ -201,7 +202,7 @@ public class TransformersController extends AbstractEquipmentTableController<Ide
                 transformer -> terminalsOf(transformer).stream().map(Terminal::getQ).toList(), format(GuiParameters.Quantity.POWER));
         TableColumnSupport.configureMultiSidedDoubleColumn(iColumn,
                 transformer -> terminalsOf(transformer).stream().map(Terminal::getI).toList(), format(GuiParameters.Quantity.CURRENT));
-        TableColumnSupport.configureOverloadColumn(patlIViolationColumn, TransformersController::isOverloaded);
+        TableColumnSupport.configureLoadingColumn(loadingColumn, this::loading, this::guiParameters, this::showFlowViolations);
 
         columnVisibilityToolbarController.configure(List.of(
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.parameters", false,
@@ -213,7 +214,7 @@ public class TransformersController extends AbstractEquipmentTableController<Ide
                         phaseTapChangerColumn, phaseTapChangerRegulatingColumn, phaseTapChangerRegulationModeColumn,
                         phaseTapChangerRegulationValueColumn, phaseTapChangerTargetDeadbandColumn, phaseTapChangerSolvedTapColumn),
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,
-                        pColumn, qColumn, iColumn, patlIViolationColumn)));
+                        pColumn, qColumn, iColumn, loadingColumn)));
     }
 
     private static List<Terminal> terminalsOf(Identifiable<?> transformer) {
@@ -413,16 +414,6 @@ public class TransformersController extends AbstractEquipmentTableController<Ide
     private static String phaseRegulationModeLabel(PhaseTapChanger.RegulationMode mode) {
         return Messages.get(mode == PhaseTapChanger.RegulationMode.CURRENT_LIMITER
                 ? "transformers.tapChanger.regulationMode.currentLimiter" : "transformers.tapChanger.regulationMode.activePowerControl");
-    }
-
-    private static boolean isOverloaded(Identifiable<?> transformer) {
-        if (transformer instanceof TwoWindingsTransformer t) {
-            return t.isOverloaded();
-        }
-        if (transformer instanceof ThreeWindingsTransformer t) {
-            return t.isOverloaded();
-        }
-        throw new IllegalArgumentException("Unsupported transformer type: " + transformer.getClass());
     }
 
     private static Optional<Substation> substationOf(Identifiable<?> transformer) {

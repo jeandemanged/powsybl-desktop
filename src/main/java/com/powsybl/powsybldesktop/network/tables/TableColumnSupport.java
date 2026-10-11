@@ -8,14 +8,17 @@
 package com.powsybl.powsybldesktop.network.tables;
 
 import com.powsybl.commons.PowsyblException;
+import com.powsybl.contingency.violations.LimitViolation;
+import com.powsybl.contingency.violations.LimitViolationType;
 import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.Component;
 import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.TapChanger;
 import com.powsybl.iidm.network.Terminal;
-import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.powsybldesktop.violations.FlowViolation;
+import com.powsybl.powsybldesktop.violations.Loading;
 import javafx.animation.PauseTransition;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
@@ -36,9 +39,11 @@ import javafx.scene.control.cell.ChoiceBoxTableCell;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.Polygon;
 import javafx.stage.Window;
 import javafx.util.Callback;
 import javafx.util.Duration;
@@ -46,6 +51,8 @@ import javafx.util.StringConverter;
 import org.controlsfx.control.Notifications;
 import org.kordamp.ikonli.javafx.FontIcon;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -450,48 +457,297 @@ final class TableColumnSupport {
         column.setComparator(missingLast(column, Objects::isNull));
     }
 
-    // Shared by the Lines/TieLines/Transformers/BoundaryLines "PATL I Violation" columns: an alert icon + text
-    // when overloaded, nothing otherwise. Sorting isn't dealt with yet - plain boolean order is good enough for now.
-    static <S> void configureOverloadColumn(TableColumn<S, Boolean> column, Function<S, Boolean> overloadedGetter) {
-        column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(overloadedGetter.apply(cellData.getValue())));
-        column.setCellFactory(col -> new TableCell<S, Boolean>() {
-            @Override
-            protected void updateItem(Boolean overloaded, boolean empty) {
-                super.updateItem(overloaded, empty);
-                setGraphic(empty || !Boolean.TRUE.equals(overloaded) ? null : alertLabel(Messages.get("desktop.common.patlIViolation.overloaded")));
+    // Shared by the Lines/TieLines/Transformers/BoundaryLines "Loading" columns, the Violations view and
+    // FlowViolationsDialog: the loading (percentage of the permanent limit) as a LoadingBar, orange/red when violated,
+    // green otherwise, with the violation's acceptable duration in minutes, plus an info button opening onInfoClick if
+    // not null. Sorts most severe first.
+    static <S> void configureLoadingColumn(TableColumn<S, Loading> column, Function<S, Loading> loadingGetter,
+                                           Supplier<GuiParameters> guiParameters, BiConsumer<Window, S> onInfoClick) {
+        column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(loadingGetter.apply(cellData.getValue())));
+        column.setCellFactory(col -> new LoadingTableCell<>(guiParameters, onInfoClick));
+        column.setComparator(missingLast(column, Objects::isNull));
+    }
+
+    private static final class LoadingTableCell<S> extends TableCell<S, Loading> {
+        private final Supplier<GuiParameters> guiParameters;
+        private final LoadingBar bar = new LoadingBar();
+        private final Label label = new Label();
+        private final HBox box = new HBox(6);
+
+        LoadingTableCell(Supplier<GuiParameters> guiParameters, BiConsumer<Window, S> onInfoClick) {
+            this.guiParameters = guiParameters;
+            box.setAlignment(Pos.CENTER_LEFT);
+            if (onInfoClick != null) {
+                Button infoButton = new Button();
+                infoButton.setGraphic(new FontIcon("mdi2i-information-outline"));
+                infoButton.getStyleClass().add("icon-button");
+                infoButton.setTooltip(new Tooltip(Messages.get("violations.details")));
+                // a read-only popup: unlike configureInfoButtonColumn's, not disabled while the network is busy
+                infoButton.setOnAction(event -> {
+                    S row = getTableRow() == null ? null : getTableRow().getItem();
+                    if (row != null) {
+                        onInfoClick.accept(infoButton.getScene().getWindow(), row);
+                    }
+                });
+                box.getChildren().add(infoButton);
             }
-        });
-    }
+            box.getChildren().addAll(bar, label);
+        }
 
-    // Shared alert affordance (orange icon + text), also used by the voltage violation column below.
-    static Label alertLabel(String text) {
-        FontIcon icon = new FontIcon("mdi2a-alert");
-        icon.getStyleClass().add("alert-icon");
-        Label label = new Label(text, icon);
-        label.getStyleClass().add("alert-label");
-        return label;
-    }
-
-    // Shared by AbstractBusesController and BusbarSectionsController's "Voltage Violation" column: an alert
-    // icon + text when the measured voltage breaches its voltage level's limit, nothing otherwise.
-    static <S> void configureVoltageViolationColumn(TableColumn<S, VoltageViolation> column,
-                                                      Function<S, Double> vGetter, Function<S, VoltageLevel> voltageLevelGetter,
-                                                      Supplier<GuiParameters> guiParameters) {
-        column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(
-                VoltageViolation.of(vGetter.apply(cellData.getValue()), voltageLevelGetter.apply(cellData.getValue()))));
-        column.setCellFactory(col -> new TableCell<S, VoltageViolation>() {
-            @Override
-            protected void updateItem(VoltageViolation violation, boolean empty) {
-                super.updateItem(violation, empty);
-                setGraphic(empty || violation == null || !violation.isViolation() ? null : voltageViolationLabel(violation, guiParameters.get()));
+        @Override
+        protected void updateItem(Loading loading, boolean empty) {
+            super.updateItem(loading, empty);
+            if (empty || loading == null) {
+                setGraphic(null);
+                setTooltip(null);
+            } else {
+                bar.setLoading(loading.percent(), loading.isViolated());
+                label.setText(loadingText(loading, guiParameters.get()));
+                setTooltip(loading.isViolated() ? new Tooltip(flowViolationText(loading.violation())) : null);
+                setGraphic(box);
             }
-        });
+        }
     }
 
-    private static Label voltageViolationLabel(VoltageViolation violation, GuiParameters guiParameters) {
-        Label label = alertLabel(violation.text(guiParameters));
-        label.setTooltip(new Tooltip(violation.limitTooltip(guiParameters)));
-        return label;
+    // e.g. "120.0 % 10'", the acceptable duration of a temporary limit violation in minutes
+    static String loadingText(Loading loading, GuiParameters guiParameters) {
+        String text = guiParameters.format(GuiParameters.Quantity.PERCENTAGE, loading.percent()) + " %";
+        int acceptableDuration = loading.isViolated() ? loading.violation().violation().getAcceptableDuration() : Integer.MAX_VALUE;
+        return acceptableDuration == Integer.MAX_VALUE ? text : text + " " + minutesText(acceptableDuration);
+    }
+
+    static String minutesText(int seconds) {
+        return BigDecimal.valueOf(seconds).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString() + "'";
+    }
+
+    static String flowViolationText(FlowViolation violation) {
+        LimitViolation limitViolation = violation.violation();
+        return Messages.get("violations.flowTooltip", limitViolationTypeText(limitViolation.getLimitType()),
+                Objects.requireNonNullElse(limitViolation.getLimitName(), "-"),
+                limitViolation.getSide() == null ? "-" : limitViolation.getSide().getNum(), acceptableDurationText(limitViolation.getAcceptableDuration()));
+    }
+
+    // as a string: MessageFormat would group the digits, e.g. "2,400 s"
+    static String acceptableDurationText(int acceptableDuration) {
+        return acceptableDuration == Integer.MAX_VALUE ? Messages.get("limits.permanent") : Messages.get("limits.duration", String.valueOf(acceptableDuration));
+    }
+
+    static String limitViolationTypeText(LimitViolationType type) {
+        return Messages.get("desktop.common.limitViolationType." + type.name());
+    }
+
+    /**
+     * Loading from 0 to 200 % (capped, an arrow at the end then), with a marker at 100 % (mid-width) and the part
+     * beyond it in the alert color; all green when not violated. Fixed width, so that the 100 % markers of a column
+     * stay aligned whatever the width of the text next to them.
+     */
+    static final class LoadingBar extends Pane {
+        private static final double WIDTH = 80;
+        private static final double HEIGHT = 10;
+        private static final double MAX_PERCENT = 200;
+
+        private final Region fill = new Region();
+        private final Region excess = new Region();
+        private final Region marker = new Region();
+        private final Polygon overflow = overflowArrow(true);
+        private double percent;
+
+        LoadingBar() {
+            getStyleClass().add("violation-bar");
+            fill.getStyleClass().add("violation-bar-fill");
+            excess.getStyleClass().add("violation-bar-excess");
+            marker.getStyleClass().add("violation-bar-marker");
+            getChildren().addAll(fill, excess, marker, overflow);
+            setMinSize(WIDTH, HEIGHT);
+            setPrefSize(WIDTH, HEIGHT);
+            setMaxSize(WIDTH, HEIGHT);
+        }
+
+        void setLoading(double percent, boolean violated) {
+            this.percent = percent;
+            overflow.setVisible(percent > MAX_PERCENT);
+            getStyleClass().remove("violation-bar-ok");
+            if (!violated) {
+                getStyleClass().add("violation-bar-ok");
+            }
+            requestLayout();
+        }
+
+        double getPercent() {
+            return percent;
+        }
+
+        boolean isViolated() {
+            return !getStyleClass().contains("violation-bar-ok");
+        }
+
+        boolean isTruncated() {
+            return overflow.isVisible();
+        }
+
+        @Override
+        protected void layoutChildren() {
+            double barWidth = getWidth();
+            double width = Double.isNaN(percent) ? 0 : Math.clamp(percent, 0, MAX_PERCENT) / MAX_PERCENT * barWidth;
+            fill.resizeRelocate(0, 0, Math.min(width, barWidth / 2), HEIGHT);
+            excess.resizeRelocate(barWidth / 2, 0, Math.max(0, width - barWidth / 2), HEIGHT);
+            marker.resizeRelocate(Math.floor(barWidth / 2), 0, 1, HEIGHT);
+            overflow.setLayoutX(barWidth - OVERFLOW_ARROW_WIDTH);
+        }
+    }
+
+    private static final double OVERFLOW_ARROW_WIDTH = 7;
+
+    // A chevron at a bar's end, shown when the value is beyond the bar's scale
+    private static Polygon overflowArrow(boolean pointingRight) {
+        double w = OVERFLOW_ARROW_WIDTH;
+        Polygon arrow = pointingRight
+                ? new Polygon(0, 0, w, 4, 0, 8, 2, 4)
+                : new Polygon(w, 0, 0, 4, w, 8, w - 2, 4);
+        arrow.getStyleClass().add("bar-overflow");
+        // set by geometry, not bounds: relocate() would shift it by half the stroke width
+        arrow.setLayoutY(1);
+        arrow.setManaged(false);
+        arrow.setVisible(false);
+        return arrow;
+    }
+
+    // Shared by AbstractBusesController and BusbarSectionsController's "Voltage Range" column, and the Violations
+    // view: a VoltageBar and the percentage of the nominal voltage. Sorts most severe first.
+    static <S> void configureVoltageRangeColumn(TableColumn<S, VoltageRange> column, Function<S, VoltageRange> rangeGetter,
+                                                Supplier<GuiParameters> guiParameters) {
+        column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(rangeGetter.apply(cellData.getValue())));
+        column.setCellFactory(col -> new VoltageRangeTableCell<>(guiParameters));
+        column.setComparator(missingLast(column, Objects::isNull));
+    }
+
+    private static final class VoltageRangeTableCell<S> extends TableCell<S, VoltageRange> {
+        private final Supplier<GuiParameters> guiParameters;
+        private final VoltageBar bar = new VoltageBar();
+        private final Label label = new Label();
+        private final HBox box = new HBox(6, bar, label);
+
+        VoltageRangeTableCell(Supplier<GuiParameters> guiParameters) {
+            this.guiParameters = guiParameters;
+            box.setAlignment(Pos.CENTER_LEFT);
+        }
+
+        @Override
+        protected void updateItem(VoltageRange range, boolean empty) {
+            super.updateItem(range, empty);
+            if (empty || range == null) {
+                setGraphic(null);
+                setTooltip(null);
+            } else {
+                bar.setRange(range);
+                label.setText(guiParameters.get().format(GuiParameters.Quantity.PERCENTAGE, range.percentOfNominal()) + " %");
+                setGraphic(box);
+                setTooltip(new Tooltip(voltageRangeTooltip(range, guiParameters.get())));
+            }
+        }
+    }
+
+    private static String voltageRangeTooltip(VoltageRange range, GuiParameters guiParameters) {
+        Function<Double, String> kV = value -> Double.isNaN(value) ? "-" : guiParameters.format(GuiParameters.Quantity.VOLTAGE, value) + " kV";
+        return Messages.get("buses.voltageRange.tooltip", kV.apply(range.v()), kV.apply(range.nominalV()),
+                kV.apply(range.lowLimit()), kV.apply(range.highLimit()));
+    }
+
+    /**
+     * A voltage on a scale from 80 % to 120 % of the nominal voltage (capped, an arrow at that end then), the nominal at
+     * the center: filled from the nominal to the voltage, the part beyond a limit in red, with the allowed band between
+     * the low and high limits (up to the scale's end on a side without limit). Fixed width, so that the nominal markers
+     * of a column stay aligned.
+     */
+    static final class VoltageBar extends Pane {
+        private static final double WIDTH = 100;
+        private static final double HEIGHT = 10;
+        private static final double HALF_SCALE = 0.2;
+
+        private final Region band = new Region();
+        private final Region fill = new Region();
+        private final Region lowExcess = new Region();
+        private final Region highExcess = new Region();
+        private final Region nominal = new Region();
+        private final Region lowMarker = new Region();
+        private final Region highMarker = new Region();
+        private final Polygon lowOverflow = overflowArrow(false);
+        private final Polygon highOverflow = overflowArrow(true);
+        private VoltageRange range;
+
+        VoltageBar() {
+            getStyleClass().add("voltage-bar");
+            band.getStyleClass().add("voltage-bar-band");
+            fill.getStyleClass().add("voltage-bar-fill");
+            lowExcess.getStyleClass().add("voltage-bar-excess");
+            highExcess.getStyleClass().add("voltage-bar-excess");
+            nominal.getStyleClass().add("voltage-bar-nominal");
+            lowMarker.getStyleClass().add("voltage-bar-limit");
+            highMarker.getStyleClass().add("voltage-bar-limit");
+            getChildren().addAll(band, fill, lowExcess, highExcess, nominal, lowMarker, highMarker, lowOverflow, highOverflow);
+            setMinSize(WIDTH, HEIGHT);
+            setPrefSize(WIDTH, HEIGHT);
+            setMaxSize(WIDTH, HEIGHT);
+        }
+
+        void setRange(VoltageRange range) {
+            this.range = range;
+            double offset = scaleOffset(range.v());
+            lowOverflow.setVisible(offset < -1);
+            highOverflow.setVisible(offset > 1);
+            requestLayout();
+        }
+
+        VoltageRange getRange() {
+            return range;
+        }
+
+        // -1 at the scale's low end, 0 at the nominal voltage, 1 at its high end
+        private double scaleOffset(double v) {
+            return (v - range.nominalV()) / range.nominalV() / HALF_SCALE;
+        }
+
+        private double x(double v) {
+            double width = getWidth();
+            return Math.clamp(width / 2 + scaleOffset(v) * width / 2, 0, width);
+        }
+
+        private static void place(Region region, double from, double to) {
+            region.setVisible(to > from);
+            region.resizeRelocate(from, 2, Math.max(0, to - from), HEIGHT - 4);
+        }
+
+        boolean isTruncated() {
+            return lowOverflow.isVisible() || highOverflow.isVisible();
+        }
+
+        @Override
+        protected void layoutChildren() {
+            if (range == null) {
+                return;
+            }
+            double width = getWidth();
+            boolean hasLow = !Double.isNaN(range.lowLimit());
+            boolean hasHigh = !Double.isNaN(range.highLimit());
+            double bandStart = hasLow ? x(range.lowLimit()) : 0;
+            double bandEnd = hasHigh ? x(range.highLimit()) : width;
+            band.resizeRelocate(bandStart, 0, Math.max(0, bandEnd - bandStart), HEIGHT);
+            // from the nominal to the voltage: within the limits in green, beyond them in red
+            double center = Math.floor(width / 2);
+            double value = x(range.v());
+            double from = Math.min(center, value);
+            double to = Math.max(center, value);
+            place(fill, Math.max(from, bandStart), Math.min(to, bandEnd));
+            place(lowExcess, from, Math.min(to, bandStart));
+            place(highExcess, Math.max(from, bandEnd), to);
+            nominal.resizeRelocate(center, 0, 1, HEIGHT);
+            lowMarker.setVisible(hasLow);
+            lowMarker.resizeRelocate(bandStart, 0, 2, HEIGHT);
+            highMarker.setVisible(hasHigh);
+            highMarker.resizeRelocate(Math.max(0, bandEnd - 2), 0, 2, HEIGHT);
+            lowOverflow.setLayoutX(0);
+            highOverflow.setLayoutX(width - OVERFLOW_ARROW_WIDTH);
+        }
     }
 
     // Generic read-only counterpart of configureNullableIntColumn, for a field whose type has no dedicated

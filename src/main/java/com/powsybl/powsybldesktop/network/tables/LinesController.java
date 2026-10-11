@@ -18,6 +18,7 @@ import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.powsybldesktop.violations.Loading;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
 import javafx.scene.control.TableColumn;
@@ -77,7 +78,7 @@ public class LinesController extends AbstractEquipmentTableController<Line> {
     @FXML
     TableColumn<Line, Line> iColumn;
     @FXML
-    TableColumn<Line, Boolean> patlIViolationColumn;
+    TableColumn<Line, Loading> loadingColumn;
 
     @FXML
     private void initialize() {
@@ -123,13 +124,13 @@ public class LinesController extends AbstractEquipmentTableController<Line> {
                 line -> line.getTerminal1().getQ(), line -> line.getTerminal2().getQ(), format(GuiParameters.Quantity.POWER));
         TableColumnSupport.configureTwoSidedDoubleColumn(iColumn,
                 line -> line.getTerminal1().getI(), line -> line.getTerminal2().getI(), format(GuiParameters.Quantity.CURRENT));
-        TableColumnSupport.configureOverloadColumn(patlIViolationColumn, Line::isOverloaded);
+        TableColumnSupport.configureLoadingColumn(loadingColumn, this::loading, this::guiParameters, this::showFlowViolations);
 
         columnVisibilityToolbarController.configure(List.of(
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.parameters", false,
                         rColumn, xColumn, g1Column, b1Column, g2Column, b2Column),
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,
-                        pColumn, qColumn, iColumn, patlIViolationColumn)));
+                        pColumn, qColumn, iColumn, loadingColumn)));
     }
 
     @Override

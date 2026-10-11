@@ -333,35 +333,44 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
-    void patlIViolationColumnIsEmptyWhenNotOverloaded() {
+    void loadingColumnIsEmptyWithoutLimits() {
         TwoWindingsTransformer transformer = network.getTwoWindingsTransformerStream().findFirst().orElseThrow();
-        assertNull(cellGraphic(controller.patlIViolationColumn, rowOf(transformer)));
+        interact(() -> ViolationsTestSupport.recompute(mainModel, network));
+        assertNull(cellGraphic(controller.loadingColumn, rowOf(transformer)));
     }
 
     @Test
-    void patlIViolationColumnShowsOverloadedIconForATwoWindingsTransformer() {
+    void loadingColumnShowsLoadingForATwoWindingsTransformer() {
         TwoWindingsTransformer transformer = network.getTwoWindingsTransformerStream().findFirst().orElseThrow();
         transformer.getTerminal1().getBusView().getBus().setV(100);
         transformer.getTerminal1().setP(1000).setQ(1000);
         transformer.newCurrentLimits1().setPermanentLimit(0.001).add();
-        interact(() -> mainModel.setUpdate());
+        interact(() -> ViolationsTestSupport.recompute(mainModel, network));
 
-        Label label = (Label) cellGraphic(controller.patlIViolationColumn, rowOf(transformer));
-        assertEquals(Messages.get("desktop.common.patlIViolation.overloaded"), label.getText());
+        Node graphic = cellGraphic(controller.loadingColumn, rowOf(transformer));
+        TableColumnSupport.LoadingBar bar = ViolationsTestSupport.loadingBar(graphic);
+        assertTrue(bar.getPercent() > 200);
+        assertTrue(bar.isViolated());
+        assertTrue(bar.isTruncated());
+        assertTrue(ViolationsTestSupport.loadingText(graphic).endsWith(" %"));
     }
 
     @Test
-    void patlIViolationColumnShowsOverloadedIconForAThreeWindingsTransformer() {
+    void loadingColumnShowsLoadingForAThreeWindingsTransformer() {
         interact(() -> mainModel.setNetwork(threeWindingsNetwork));
         ThreeWindingsTransformer transformer = threeWindingsNetwork.getThreeWindingsTransformerStream().findFirst().orElseThrow();
         ThreeWindingsTransformer.Leg leg1 = transformer.getLeg1();
         leg1.getTerminal().getBusView().getBus().setV(100);
         leg1.getTerminal().setP(1000).setQ(1000);
         leg1.newCurrentLimits().setPermanentLimit(0.001).add();
-        interact(() -> mainModel.setUpdate());
+        interact(() -> ViolationsTestSupport.recompute(mainModel, threeWindingsNetwork));
 
-        Label label = (Label) cellGraphic(controller.patlIViolationColumn, rowOf(transformer));
-        assertEquals(Messages.get("desktop.common.patlIViolation.overloaded"), label.getText());
+        Node graphic = cellGraphic(controller.loadingColumn, rowOf(transformer));
+        TableColumnSupport.LoadingBar bar = ViolationsTestSupport.loadingBar(graphic);
+        assertTrue(bar.getPercent() > 200);
+        assertTrue(bar.isViolated());
+        assertTrue(bar.isTruncated());
+        assertTrue(ViolationsTestSupport.loadingText(graphic).endsWith(" %"));
     }
 
     @Test

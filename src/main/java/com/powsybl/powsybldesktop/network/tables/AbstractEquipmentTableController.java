@@ -22,6 +22,8 @@ import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.TableAutoFitLimiter;
+import com.powsybl.powsybldesktop.violations.Loading;
+import com.powsybl.powsybldesktop.violations.NetworkViolations;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.SortedList;
@@ -30,6 +32,7 @@ import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.stage.Window;
 import javafx.util.StringConverter;
 
 import java.util.Comparator;
@@ -145,6 +148,20 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
 
     final StringConverter<Double> format(GuiParameters.Quantity quantity) {
         return TableColumnSupport.doubleFormat(this::guiParameters, quantity);
+    }
+
+    // cached by the root network's study, recomputed after a load flow run (see MainController.onLoadFlow)
+    final NetworkViolations violations() {
+        Network network = sceneModel == null ? null : sceneModel.getNetwork();
+        return network == null ? NetworkViolations.EMPTY : mainModel.getStudy(network).getViolations();
+    }
+
+    final Loading loading(Identifiable<?> equipment) {
+        return violations().getLoading(equipment.getId());
+    }
+
+    final void showFlowViolations(Window owner, Identifiable<?> equipment) {
+        FlowViolationsDialog.show(owner, equipment, violations().getFlowViolations(equipment.getId()), guiParameters());
     }
 
     @Override

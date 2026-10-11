@@ -104,6 +104,7 @@
                                 </Menu>
                                 <MenuItem mnemonicParsing="false" onAction="#onComponents" text="%main.toolbar.loadflowresult" />
                                 <MenuItem mnemonicParsing="false" onAction="#onSecurityAnalysisResults" text="%main.toolbar.securityAnalysisResults" />
+                                <MenuItem mnemonicParsing="false" onAction="#onViolations" text="%main.toolbar.violations" />
                             </items>
                         </MenuButton>
                         <Separator orientation="VERTICAL" />

@@ -11,6 +11,7 @@ import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.powsybldesktop.network.search.NetworkSearchIndex;
+import com.powsybl.powsybldesktop.violations.NetworkViolations;
 import com.powsybl.security.SecurityAnalysisResult;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ReadOnlyBooleanProperty;
@@ -38,9 +39,10 @@ import java.util.Set;
 public class NetworkStudy {
     private final Network network;
     // results are kept per root network only: load flow and security analysis always run on the root, never a
-    // subnetwork (see MainController.onLoadFlow)
+    // subnetwork (see MainController.onLoadFlow), and so are violations
     private LoadFlowResult loadFlowResult;
     private SecurityAnalysisResult securityAnalysisResult;
+    private NetworkViolations violations = NetworkViolations.EMPTY;
     private final ObservableList<ContingencyList> contingencyLists = FXCollections.observableArrayList();
     // Whether a sublist is included when contingencies are resolved for a security analysis run, keyed by
     // identity since editing a sublist's form replaces it with a brand-new instance (see ContingenciesController's
@@ -87,6 +89,14 @@ public class NetworkStudy {
 
     public void setSecurityAnalysisResult(SecurityAnalysisResult securityAnalysisResult) {
         this.securityAnalysisResult = Objects.requireNonNull(securityAnalysisResult);
+    }
+
+    public NetworkViolations getViolations() {
+        return violations;
+    }
+
+    public void setViolations(NetworkViolations violations) {
+        this.violations = Objects.requireNonNull(violations);
     }
 
     public ObservableList<ContingencyList> getContingencyLists() {

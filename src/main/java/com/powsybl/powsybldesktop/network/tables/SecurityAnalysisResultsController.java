@@ -8,7 +8,6 @@
 package com.powsybl.powsybldesktop.network.tables;
 
 import com.powsybl.contingency.violations.LimitViolation;
-import com.powsybl.contingency.violations.LimitViolationType;
 import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
@@ -70,7 +69,7 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
     @FXML
     TableColumn<ResultRow, ResultRow> subjectColumn;
     @FXML
-    TableColumn<ResultRow, LimitViolationType> limitTypeColumn;
+    TableColumn<ResultRow, String> limitTypeColumn;
     @FXML
     TableColumn<ResultRow, Integer> sideColumn;
     @FXML
@@ -118,7 +117,8 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
 
         configureStatusColumn();
         configureSubjectColumn();
-        TableColumnSupport.configureNullableColumn(limitTypeColumn, row -> row.violation() == null ? null : row.violation().getLimitType());
+        TableColumnSupport.configureNullableColumn(limitTypeColumn, row -> row.violation() == null ? null
+                : TableColumnSupport.limitViolationTypeText(row.violation().getLimitType()));
         TableColumnSupport.configureNullableIntColumn(sideColumn, row -> row.violation() == null || row.violation().getSide() == null ? null : row.violation().getSide().getNum());
         TableColumnSupport.configureNullableDoubleColumn(valueColumn, row -> row.violation() == null ? null : row.violation().getValue(), this::violationFormat);
         TableColumnSupport.configureNullableDoubleColumn(limitColumn, row -> row.violation() == null ? null : row.violation().getLimit(), this::violationFormat);
@@ -163,13 +163,14 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
             @Override
             protected void updateItem(ResultRow row, boolean empty) {
                 super.updateItem(row, empty);
-                setGraphic(empty || row == null || row.violation() == null ? null : subjectNode(row.violation()));
+                setGraphic(empty || row == null || row.violation() == null ? null : subjectNode(sceneModel, row.violation()));
             }
         });
     }
 
-    private Node subjectNode(LimitViolation violation) {
-        Network network = sceneModel.getNetwork();
+    // also used by ViolationsController
+    static Node subjectNode(SceneModel scene, LimitViolation violation) {
+        Network network = scene.getNetwork();
         Identifiable<?> identifiable = network == null ? null : network.getNetwork().getIdentifiable(violation.getSubjectId());
         // TODO: improve in powsybl-open-loadflow - LimitViolationManager builds its LimitViolations without a
         // subjectName, so the name is recovered from the current network instead, falling back to subjectName then
@@ -190,7 +191,7 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
         Hyperlink link = new Hyperlink(subjectName);
         link.getStyleClass().add("container-link");
         Container<?> target = container;
-        link.setOnAction(event -> sceneModel.navigate(
+        link.setOnAction(event -> scene.navigate(
                 NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(target))));
         return link;
     }

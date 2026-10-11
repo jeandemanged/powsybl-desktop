@@ -226,21 +226,26 @@ class TieLinesControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
-    void patlIViolationColumnIsEmptyWhenNotOverloaded() {
+    void loadingColumnIsEmptyWithoutLimits() {
         TieLine tieLine = network.getTieLineStream().findFirst().orElseThrow();
-        assertNull(cellGraphic(controller.patlIViolationColumn, rowOf(tieLine)));
+        interact(() -> ViolationsTestSupport.recompute(mainModel, network));
+        assertNull(cellGraphic(controller.loadingColumn, rowOf(tieLine)));
     }
 
     @Test
-    void patlIViolationColumnShowsOverloadedIcon() {
+    void loadingColumnShowsLoadingOfTheMostSevereViolation() {
         TieLine tieLine = network.getTieLineStream().findFirst().orElseThrow();
         tieLine.getTerminal1().getBusView().getBus().setV(100);
         tieLine.getTerminal1().setP(1000).setQ(1000);
         tieLine.newCurrentLimits1().setPermanentLimit(0.001).add();
-        interact(() -> mainModel.setUpdate());
+        interact(() -> ViolationsTestSupport.recompute(mainModel, network));
 
-        Label label = (Label) cellGraphic(controller.patlIViolationColumn, rowOf(tieLine));
-        assertEquals(Messages.get("desktop.common.patlIViolation.overloaded"), label.getText());
+        Node graphic = cellGraphic(controller.loadingColumn, rowOf(tieLine));
+        TableColumnSupport.LoadingBar bar = ViolationsTestSupport.loadingBar(graphic);
+        assertTrue(bar.getPercent() > 200);
+        assertTrue(bar.isViolated());
+        assertTrue(bar.isTruncated());
+        assertTrue(ViolationsTestSupport.loadingText(graphic).endsWith(" %"));
     }
 
     @Test

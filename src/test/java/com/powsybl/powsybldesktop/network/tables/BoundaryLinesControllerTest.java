@@ -28,7 +28,6 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Hyperlink;
-import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TablePosition;
@@ -203,21 +202,26 @@ class BoundaryLinesControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
-    void patlIViolationColumnIsEmptyWhenNotOverloaded() {
+    void loadingColumnIsEmptyWithoutLimits() {
         BoundaryLine boundaryLine = network.getBoundaryLineStream().findFirst().orElseThrow();
-        assertNull(cell(controller.patlIViolationColumn, rowOf(boundaryLine)).getGraphic());
+        interact(() -> ViolationsTestSupport.recompute(mainModel, network));
+        assertNull(cell(controller.loadingColumn, rowOf(boundaryLine)).getGraphic());
     }
 
     @Test
-    void patlIViolationColumnShowsOverloadedIcon() {
+    void loadingColumnShowsLoadingOfTheMostSevereViolation() {
         BoundaryLine boundaryLine = network.getBoundaryLineStream().findFirst().orElseThrow();
         boundaryLine.getTerminal().getBusView().getBus().setV(100);
         boundaryLine.getTerminal().setP(1000).setQ(1000);
         boundaryLine.newCurrentLimits().setPermanentLimit(0.001).add();
-        interact(() -> mainModel.setUpdate());
+        interact(() -> ViolationsTestSupport.recompute(mainModel, network));
 
-        Label label = (Label) cell(controller.patlIViolationColumn, rowOf(boundaryLine)).getGraphic();
-        assertEquals(Messages.get("desktop.common.patlIViolation.overloaded"), label.getText());
+        Node graphic = cell(controller.loadingColumn, rowOf(boundaryLine)).getGraphic();
+        TableColumnSupport.LoadingBar bar = ViolationsTestSupport.loadingBar(graphic);
+        assertTrue(bar.getPercent() > 200);
+        assertTrue(bar.isViolated());
+        assertTrue(bar.isTruncated());
+        assertTrue(ViolationsTestSupport.loadingText(graphic).endsWith(" %"));
     }
 
     @Test

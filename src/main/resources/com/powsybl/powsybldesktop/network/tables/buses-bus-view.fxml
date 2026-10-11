@@ -26,7 +26,7 @@
             <TableColumn fx:id="fictitiousQ0Column" styleClass="right-aligned-column" text="%buses.column.fictitiousQ0"/>
             <TableColumn fx:id="vColumn" styleClass="right-aligned-column" text="%buses.column.v" editable="false"/>
             <TableColumn fx:id="angleColumn" styleClass="right-aligned-column" text="%buses.column.angle" editable="false"/>
-            <TableColumn fx:id="voltageViolationColumn" text="%buses.column.voltageViolation" editable="false"/>
+            <TableColumn fx:id="voltageRangeColumn" text="%buses.column.voltageRange" editable="false" prefWidth="310"/>
          </columns>
       </TableView>
    </children>

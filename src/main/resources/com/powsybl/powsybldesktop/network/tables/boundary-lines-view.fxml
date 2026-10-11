@@ -44,7 +44,7 @@
             <TableColumn fx:id="iBoundaryColumn" styleClass="right-aligned-column" text="%desktop.common.column.iBoundary" editable="false"/>
             <TableColumn fx:id="vBoundaryColumn" styleClass="right-aligned-column" text="%desktop.common.column.vBoundary" editable="false"/>
             <TableColumn fx:id="angleBoundaryColumn" styleClass="right-aligned-column" text="%desktop.common.column.angleBoundary" editable="false"/>
-            <TableColumn fx:id="patlIViolationColumn" text="%desktop.common.column.patlIViolation" editable="false"/>
+            <TableColumn fx:id="loadingColumn" text="%desktop.common.column.loading" editable="false" prefWidth="200"/>
          </columns>
       </TableView>
    </children>

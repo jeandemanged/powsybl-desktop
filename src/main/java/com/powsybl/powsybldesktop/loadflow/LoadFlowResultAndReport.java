@@ -9,12 +9,14 @@ package com.powsybl.powsybldesktop.loadflow;
 
 import com.powsybl.commons.report.ReportNode;
 import com.powsybl.loadflow.LoadFlowResult;
+import com.powsybl.powsybldesktop.violations.NetworkViolations;
 
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 public record LoadFlowResultAndReport(
         LoadFlowResult loadFlowResult,
-        ReportNode reportNode
+        ReportNode reportNode,
+        NetworkViolations violations
 ) {
 }

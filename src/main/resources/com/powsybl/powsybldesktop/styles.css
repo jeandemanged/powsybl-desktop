@@ -313,6 +313,98 @@
     -fx-background-radius: 4px;
 }
 
+/* ===== Violations (violations-view.fxml, FlowViolationsDialog, OperationalLimitsPane) ===== */
+
+/* Loading bar (TableColumnSupport.LoadingBar), from 0 to 200 %: the part beyond the 100 % marker (mid-width) in the
+   alert color, all green when not violated. */
+.violation-bar {
+    -fx-background-color: #e0e0e0;
+}
+
+.violation-bar-fill {
+    -fx-background-color: #f0b070;
+}
+
+.violation-bar-excess {
+    -fx-background-color: orangered;
+}
+
+.violation-bar-marker {
+    -fx-background-color: black;
+}
+
+.violation-bar-ok .violation-bar-fill,
+.violation-bar-ok .violation-bar-excess {
+    -fx-background-color: mediumseagreen;
+}
+
+/* Chevron at the end of a loading or voltage bar whose value is beyond its scale */
+.bar-overflow {
+    -fx-fill: white;
+    -fx-stroke: black;
+    -fx-stroke-width: 1;
+}
+
+/* Voltage bar (TableColumnSupport.VoltageBar): the nominal voltage at the center, the allowed band between the limits */
+.voltage-bar {
+    -fx-background-color: #f4c7c3;
+}
+
+.voltage-bar-band {
+    -fx-background-color: #e0e0e0;
+}
+
+.voltage-bar-fill {
+    -fx-background-color: mediumseagreen;
+}
+
+.voltage-bar-excess {
+    -fx-background-color: orangered;
+}
+
+.voltage-bar-nominal {
+    -fx-background-color: black;
+}
+
+.voltage-bar-limit {
+    -fx-background-color: dimgray;
+}
+
+/* The violation an equipment's loading shows, in FlowViolationsDialog */
+.table-row-cell.worst-violation .table-cell {
+    -fx-font-weight: bold;
+}
+
+.limits-side-title {
+    -fx-font-weight: bold;
+    -fx-font-size: 1.1em;
+}
+
+.limits-group {
+    -fx-border-color: lightgray;
+    -fx-border-radius: 4px;
+    -fx-padding: 6px;
+}
+
+.limits-group-title {
+    -fx-font-weight: bold;
+}
+
+/* A selected operational limits group holding one of the equipment's violations */
+.limits-group-violated {
+    -fx-border-color: darkorange;
+    -fx-border-width: 2px;
+}
+
+/* The limit a violation crossed, in an OperationalLimitsPane limits table */
+.table-row-cell.limit-crossed {
+    -fx-background-color: #ffd9b3;
+}
+
+.table-row-cell.limit-crossed .table-cell {
+    -fx-text-fill: black;
+}
+
 /* ===== Logs view (LogsViewController) ===== */
 
 /* Full message tooltip of an ellipsized log cell: monospace like the cell, so multi-line tables (e.g. load flow

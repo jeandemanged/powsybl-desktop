@@ -27,6 +27,13 @@ are pinned to `powsybl-core.version` (7.3.0) because they are outside the BOM. R
 - Results are stored per root network in `NetworkStudy` (`setLoadFlowResult`, `setSecurityAnalysisResult`). The
   network itself carries the solved values (P/Q/I...) written by the load flow; views re-read them on
   `updateProperty()`.
+- Limit violations (`violations/NetworkViolations`: current, active and apparent power limits of branches,
+  three-winding transformers and unpaired boundary lines, plus bus voltages) are computed off the FX thread once per
+  loaded root network (`MainController.computeViolations`) and after each load flow run (in its task), then cached in
+  `NetworkStudy.setViolations`, with every equipment's loading (percentage of its permanent limits, violated or not).
+  Edits don't recompute them. Every violation indication (Violations view, the equipment tables' "Loading" and
+  "Voltage Range" columns) reads this cache; never check limits on the fly in a cell.
+  Detection takes a `LimitsComputer` (`NO_MODIFICATIONS` for now) so limit reductions can be plugged in later.
 
 ## Computations
 

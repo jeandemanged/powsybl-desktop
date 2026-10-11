@@ -61,7 +61,7 @@ abstract class AbstractBusesController extends AbstractEquipmentTableController<
     @FXML
     TableColumn<Bus, Double> fictitiousQ0Column;
     @FXML
-    TableColumn<Bus, VoltageViolation> voltageViolationColumn;
+    TableColumn<Bus, VoltageRange> voltageRangeColumn;
 
     final void initializeCommonColumns() {
         initializeTable();
@@ -88,12 +88,18 @@ abstract class AbstractBusesController extends AbstractEquipmentTableController<
             mainModel.setUpdate(event.getRowValue().getVoltageLevel());
         });
 
-        TableColumnSupport.configureVoltageViolationColumn(voltageViolationColumn, Bus::getV, Bus::getVoltageLevel, this::guiParameters);
+        TableColumnSupport.configureVoltageRangeColumn(voltageRangeColumn,
+                bus -> VoltageRange.of(bus.getV(), bus.getVoltageLevel(), violations().getVoltageViolation(busViewBusId(bus))), this::guiParameters);
 
         columnVisibilityToolbarController.configure(List.of(
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,
-                        vColumn, angleColumn, voltageViolationColumn)));
+                        vColumn, angleColumn, voltageRangeColumn)));
     }
+
+    /**
+     * The id of the bus view bus {@code bus} is part of, or null if none: voltage violations are cached by bus view bus.
+     */
+    abstract String busViewBusId(Bus bus);
 
     @Override
     final TableView<Bus> tableView() {

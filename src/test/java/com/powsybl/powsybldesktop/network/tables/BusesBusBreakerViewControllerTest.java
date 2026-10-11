@@ -27,7 +27,6 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Hyperlink;
-import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TablePosition;
@@ -150,39 +149,45 @@ class BusesBusBreakerViewControllerTest extends AbstractHeadlessApplicationTest 
     }
 
     @Test
-    void voltageViolationColumnIsEmptyWithinLimitsOrWhenVIsMissing() {
+    void voltageRangeColumnShowsVoltageWithinLimitsAndIsEmptyWhenVIsMissing() {
         Bus bus = bus("VL2");
         VoltageLevel voltageLevel = bus.getVoltageLevel();
-        voltageLevel.setLowVoltageLimit(90).setHighVoltageLimit(110);
-        bus.setV(100);
-        assertNull(cellGraphic(controller.voltageViolationColumn, rowOf(bus)));
+        voltageLevel.setNominalV(100).setLowVoltageLimit(90).setHighVoltageLimit(110);
+        bus.setV(105);
+        interact(() -> ViolationsTestSupport.recompute(mainModel, network));
+        Node graphic = cellGraphic(controller.voltageRangeColumn, rowOf(bus));
+        assertEquals("105.0 %", ViolationsTestSupport.voltageLabel(graphic).getText());
+        assertNull(ViolationsTestSupport.voltageBar(graphic).getRange().violation());
 
         bus.setV(Double.NaN);
-        assertNull(cellGraphic(controller.voltageViolationColumn, rowOf(bus)));
+        interact(() -> ViolationsTestSupport.recompute(mainModel, network));
+        assertNull(cellGraphic(controller.voltageRangeColumn, rowOf(bus)));
     }
 
     @Test
-    void voltageViolationColumnShowsOvervoltageAboveHighLimit() {
+    void voltageRangeColumnShowsOvervoltageAboveHighLimit() {
         Bus bus = bus("VL2");
         VoltageLevel voltageLevel = bus.getVoltageLevel();
         voltageLevel.setNominalV(100).setLowVoltageLimit(90).setHighVoltageLimit(110);
         bus.setV(120);
+        interact(() -> ViolationsTestSupport.recompute(mainModel, network));
 
-        Label label = (Label) cellGraphic(controller.voltageViolationColumn, rowOf(bus));
-        assertEquals(Messages.get("buses.voltageViolation.overvoltage", "120.0"), label.getText());
-        assertEquals(Messages.get("buses.voltageViolation.limitTooltip", "110.0"), label.getTooltip().getText());
+        Node graphic = cellGraphic(controller.voltageRangeColumn, rowOf(bus));
+        assertEquals("120.0 %", ViolationsTestSupport.voltageLabel(graphic).getText());
+        assertEquals(110, ViolationsTestSupport.voltageBar(graphic).getRange().violation().violation().getLimit());
     }
 
     @Test
-    void voltageViolationColumnShowsUndervoltageBelowLowLimit() {
+    void voltageRangeColumnShowsUndervoltageBelowLowLimit() {
         Bus bus = bus("VL2");
         VoltageLevel voltageLevel = bus.getVoltageLevel();
         voltageLevel.setNominalV(100).setLowVoltageLimit(90).setHighVoltageLimit(110);
         bus.setV(80);
+        interact(() -> ViolationsTestSupport.recompute(mainModel, network));
 
-        Label label = (Label) cellGraphic(controller.voltageViolationColumn, rowOf(bus));
-        assertEquals(Messages.get("buses.voltageViolation.undervoltage", "80.0"), label.getText());
-        assertEquals(Messages.get("buses.voltageViolation.limitTooltip", "90.0"), label.getTooltip().getText());
+        Node graphic = cellGraphic(controller.voltageRangeColumn, rowOf(bus));
+        assertEquals("80.0 %", ViolationsTestSupport.voltageLabel(graphic).getText());
+        assertEquals(90, ViolationsTestSupport.voltageBar(graphic).getRange().violation().violation().getLimit());
     }
 
     @Test

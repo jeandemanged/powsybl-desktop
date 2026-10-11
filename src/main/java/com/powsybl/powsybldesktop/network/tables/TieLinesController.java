@@ -22,6 +22,7 @@ import com.powsybl.powsybldesktop.network.NetworkTieLines;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.powsybldesktop.violations.Loading;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
 import javafx.scene.control.Hyperlink;
@@ -91,7 +92,7 @@ public class TieLinesController extends AbstractEquipmentTableController<TieLine
     @FXML
     TableColumn<TieLine, TieLine> iColumn;
     @FXML
-    TableColumn<TieLine, Boolean> patlIViolationColumn;
+    TableColumn<TieLine, Loading> loadingColumn;
     @FXML
     TableColumn<TieLine, Double> pBoundaryColumn;
     @FXML
@@ -140,7 +141,7 @@ public class TieLinesController extends AbstractEquipmentTableController<TieLine
                 tieLine -> tieLine.getTerminal1().getQ(), tieLine -> tieLine.getTerminal2().getQ(), format(GuiParameters.Quantity.POWER));
         TableColumnSupport.configureTwoSidedDoubleColumn(iColumn,
                 tieLine -> tieLine.getTerminal1().getI(), tieLine -> tieLine.getTerminal2().getI(), format(GuiParameters.Quantity.CURRENT));
-        TableColumnSupport.configureOverloadColumn(patlIViolationColumn, TieLine::isOverloaded);
+        TableColumnSupport.configureLoadingColumn(loadingColumn, this::loading, this::guiParameters, this::showFlowViolations);
 
         // the boundary (the shared fictitious X-node bus) is a single point, so both boundary lines report the
         // same values here - reading them off boundary line 1 is enough, unlike the per-side P/Q columns above
@@ -154,7 +155,7 @@ public class TieLinesController extends AbstractEquipmentTableController<TieLine
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.parameters", false,
                         rColumn, xColumn, g1Column, b1Column, g2Column, b2Column),
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,
-                        pColumn, qColumn, iColumn, patlIViolationColumn),
+                        pColumn, qColumn, iColumn, loadingColumn),
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValuesAtBoundary", false,
                         pBoundaryColumn, qBoundaryColumn, iBoundaryColumn, vBoundaryColumn, angleBoundaryColumn)));
     }

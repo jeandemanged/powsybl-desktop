@@ -37,6 +37,11 @@ public class BusesBusViewController extends AbstractBusesController {
     }
 
     @Override
+    String busViewBusId(Bus bus) {
+        return bus.getId();
+    }
+
+    @Override
     Optional<Bus> asOwnEntity(Identifiable<?> match) {
         return match instanceof Bus bus ? Optional.ofNullable(busById(bus.getId())) : Optional.empty();
     }

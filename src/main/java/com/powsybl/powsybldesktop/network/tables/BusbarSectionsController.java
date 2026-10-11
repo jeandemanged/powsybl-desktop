@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop.network.tables;
 
+import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.BusbarSection;
 import com.powsybl.iidm.network.Country;
 import com.powsybl.iidm.network.Identifiable;
@@ -58,7 +59,7 @@ public class BusbarSectionsController extends AbstractEquipmentTableController<B
     @FXML
     TableColumn<BusbarSection, Double> angleColumn;
     @FXML
-    TableColumn<BusbarSection, VoltageViolation> voltageViolationColumn;
+    TableColumn<BusbarSection, VoltageRange> voltageRangeColumn;
 
     @FXML
     private void initialize() {
@@ -74,12 +75,15 @@ public class BusbarSectionsController extends AbstractEquipmentTableController<B
         nameColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getNameOrId()));
         TableColumnSupport.configureNullableDoubleColumn(vColumn, BusbarSection::getV, format(GuiParameters.Quantity.VOLTAGE));
         TableColumnSupport.configureNullableDoubleColumn(angleColumn, BusbarSection::getAngle, format(GuiParameters.Quantity.ANGLE));
-        TableColumnSupport.configureVoltageViolationColumn(voltageViolationColumn,
-                BusbarSection::getV, busbarSection -> busbarSection.getTerminal().getVoltageLevel(), this::guiParameters);
+        TableColumnSupport.configureVoltageRangeColumn(voltageRangeColumn, busbarSection -> {
+            Bus bus = busbarSection.getTerminal().getBusView().getBus();
+            return VoltageRange.of(busbarSection.getV(), busbarSection.getTerminal().getVoltageLevel(),
+                    bus == null ? null : violations().getVoltageViolation(bus.getId()));
+        }, this::guiParameters);
 
         columnVisibilityToolbarController.configure(List.of(
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,
-                        vColumn, angleColumn, voltageViolationColumn)));
+                        vColumn, angleColumn, voltageRangeColumn)));
     }
 
     @Override

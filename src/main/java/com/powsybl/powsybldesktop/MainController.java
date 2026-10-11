@@ -13,6 +13,7 @@ import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.contingency.list.ListOfContingencyLists;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.iidm.network.limitmodification.LimitsComputer;
 import com.powsybl.loadflow.LoadFlow;
 import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.loadflow.LoadFlowResult;
@@ -42,6 +43,7 @@ import com.powsybl.powsybldesktop.network.tables.StaticVarCompensatorsController
 import com.powsybl.powsybldesktop.network.tables.SubstationsTableController;
 import com.powsybl.powsybldesktop.network.tables.TieLinesController;
 import com.powsybl.powsybldesktop.network.tables.TransformersController;
+import com.powsybl.powsybldesktop.network.tables.ViolationsController;
 import com.powsybl.powsybldesktop.network.tables.VoltageLevelsController;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
@@ -54,6 +56,7 @@ import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.DisposableController;
 import com.powsybl.powsybldesktop.utils.LanguagePreferences;
 import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.powsybldesktop.violations.NetworkViolations;
 import com.powsybl.powsybldesktop.window.SeparateWindows;
 import com.powsybl.security.SecurityAnalysis;
 import com.powsybl.security.SecurityAnalysisParameters;
@@ -316,7 +319,8 @@ public class MainController extends AbstractDisposableController {
                         CompletableFuture<LoadFlowResult> future = LoadFlow.runAsync(network, runParameters);
                         try {
                             LoadFlowResult loadFlowResult = future.get();
-                            return new LoadFlowResultAndReport(loadFlowResult, reportNode);
+                            return new LoadFlowResultAndReport(loadFlowResult, reportNode,
+                                    NetworkViolations.compute(network, LimitsComputer.NO_MODIFICATIONS));
                         } catch (InterruptedException e) {
                             future.cancel(true);
                             Thread.currentThread().interrupt();
@@ -337,6 +341,7 @@ public class MainController extends AbstractDisposableController {
         loadFlowService.setOnSucceeded(event -> {
             LoadFlowResultAndReport loadFlowResultAndReport = (LoadFlowResultAndReport) event.getSource().getValue();
             mainModel.getStudy(network).setLoadFlowResult(loadFlowResultAndReport.loadFlowResult());
+            mainModel.getStudy(network).setViolations(loadFlowResultAndReport.violations());
             mainModel.setUpdate();
             mainModel.addReport(loadFlowResultAndReport.reportNode());
             mainModel.getNotificationsModel().replace(runningNotification,
@@ -540,6 +545,35 @@ public class MainController extends AbstractDisposableController {
         searchIndexService.start();
     }
 
+    // Every loaded network (imported, merged, detached...) gets its violations computed once, in the background; load
+    // flow runs recompute them afterwards (see onLoadFlow). A detached subnetwork's former root keeps its cache: the
+    // views skip the violations of equipment no longer in the network.
+    private void computeViolations(Network network) {
+        Service<NetworkViolations> violationsService = new Service<>() {
+            @Override
+            protected Task<NetworkViolations> createTask() {
+                return new AbstractNetworkTask<>(mainModel, network) {
+                    @Override
+                    protected NetworkViolations compute() {
+                        return NetworkViolations.compute(network, LimitsComputer.NO_MODIFICATIONS);
+                    }
+                };
+            }
+        };
+        violationsService.setOnSucceeded(event -> {
+            if (mainModel.getNetworks().contains(network)) {
+                mainModel.getStudy(network).setViolations((NetworkViolations) event.getSource().getValue());
+                mainModel.setUpdate();
+            }
+        });
+        violationsService.setOnFailed(event -> {
+            Throwable exception = event.getSource().getException();
+            LOGGER.error(exception.toString(), exception);
+        });
+        mainModel.getStudy(network).trackComputation(violationsService);
+        violationsService.start();
+    }
+
     // Bus-view merged buses are recalculated on every topology change (switch open/close, terminal
     // connect/disconnect) - both of which route through mainModel.setUpdate() - so the cached index's BUS entries
     // need refreshing too, unlike every other equipment kind (see NetworkSearchIndex's class javadoc). Cheap
@@ -627,6 +661,11 @@ public class MainController extends AbstractDisposableController {
         });
         updateMapButtonVisibility();
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refreshSearchIndexBuses());
+        listenerManager.listen(mainModel.getNetworks(), (ListChangeListener<Network>) change -> {
+            while (change.next()) {
+                change.getAddedSubList().forEach(this::computeViolations);
+            }
+        });
         listenerManager.listen(separateWindows.getOpenWindows(), (ListChangeListener<SeparateWindows.DetachedWindow>) change -> updateWindowsMenu());
         // also on showing: windows' names and tabs change without changing the list
         windowsMenu.setOnShowing(event -> updateWindowsMenu());
@@ -898,6 +937,9 @@ public class MainController extends AbstractDisposableController {
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS) {
             ensureSceneView(SecurityAnalysisResultsController.class,
                     "network/tables/security-analysis-results-view.fxml", NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS);
+        } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_VIOLATIONS) {
+            ensureSceneView(ViolationsController.class,
+                    "network/tables/violations-view.fxml", NavigationType.NETWORK_TABLE_VIOLATIONS);
         } else if (newValue.navigationType() == NavigationType.PARAMETERS) {
             ensureController(ParametersController.class, "parameters/parameters-view.fxml", c -> c.setMainModel(mainModel),
                     root -> separateWindows.addOpenButton(root, this::detachParameters));
@@ -1042,6 +1084,10 @@ public class MainController extends AbstractDisposableController {
 
     public void onSecurityAnalysisResults() {
         mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS));
+    }
+
+    public void onViolations() {
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_VIOLATIONS));
     }
 
     public void onReports() {

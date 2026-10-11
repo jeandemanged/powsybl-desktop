@@ -104,6 +104,11 @@ public class BusesBusBreakerViewController extends AbstractBusesController {
     }
 
     @Override
+    String busViewBusId(Bus bus) {
+        return busViewBusOf(bus).map(Bus::getId).orElse(null);
+    }
+
+    @Override
     Stream<Bus> networkItems(Network network) {
         return network.getBusBreakerView().getBusStream();
     }

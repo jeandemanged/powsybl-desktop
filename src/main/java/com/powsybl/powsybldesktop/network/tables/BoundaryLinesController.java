@@ -11,6 +11,7 @@ import com.powsybl.iidm.network.BoundaryLine;
 import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.ThreeSides;
 import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.BoundaryLineNavigationState;
@@ -21,6 +22,7 @@ import com.powsybl.powsybldesktop.navigation.TieLineNavigationState;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.powsybldesktop.violations.Loading;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
@@ -110,7 +112,7 @@ public class BoundaryLinesController extends AbstractEquipmentTableController<Bo
     @FXML
     TableColumn<BoundaryLine, Double> angleBoundaryColumn;
     @FXML
-    TableColumn<BoundaryLine, Boolean> patlIViolationColumn;
+    TableColumn<BoundaryLine, Loading> loadingColumn;
 
     @FXML
     private void initialize() {
@@ -192,22 +194,27 @@ public class BoundaryLinesController extends AbstractEquipmentTableController<Bo
         TableColumnSupport.configureNullableDoubleColumn(iBoundaryColumn, boundaryLine -> boundaryLine.getBoundary().getI(), format(GuiParameters.Quantity.CURRENT));
         TableColumnSupport.configureNullableDoubleColumn(vBoundaryColumn, boundaryLine -> boundaryLine.getBoundary().getV(), format(GuiParameters.Quantity.VOLTAGE));
         TableColumnSupport.configureNullableDoubleColumn(angleBoundaryColumn, boundaryLine -> boundaryLine.getBoundary().getAngle(), format(GuiParameters.Quantity.ANGLE));
-        TableColumnSupport.configureOverloadColumn(patlIViolationColumn, BoundaryLinesController::isOverloaded);
+        TableColumnSupport.configureLoadingColumn(loadingColumn, this::loading, this::guiParameters,
+                (window, boundaryLine) -> showFlowViolations(window, boundaryLine.getTieLine().<Identifiable<?>>map(t -> t).orElse(boundaryLine)));
 
         columnVisibilityToolbarController.configure(List.of(
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.parameters", false,
                         rColumn, xColumn, gColumn, bColumn),
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,
-                        pNetColumn, qNetColumn, iNetColumn, patlIViolationColumn),
+                        pNetColumn, qNetColumn, iNetColumn, loadingColumn),
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValuesAtBoundary", false,
                         pBoundaryColumn, qBoundaryColumn, iBoundaryColumn, vBoundaryColumn, angleBoundaryColumn)));
     }
 
-    // BoundaryLine has no isOverloaded() of its own (unlike Branch/ThreeWindingsTransformer) - it only exposes
-    // FlowsLimitsHolder's current limits plus a single Terminal, so the permanent-limit check is done by hand here.
-    private static boolean isOverloaded(BoundaryLine boundaryLine) {
-        double i = boundaryLine.getTerminal().getI();
-        return !Double.isNaN(i) && boundaryLine.getCurrentLimits().map(limits -> i > limits.getPermanentLimit()).orElse(false);
+    // A paired boundary line's limits are its tie line's on its side, so they're checked as the tie line's
+    // (see NetworkViolations)
+    private Loading loading(BoundaryLine boundaryLine) {
+        Optional<TieLine> tieLine = boundaryLine.getTieLine();
+        if (tieLine.isEmpty()) {
+            return violations().getLoading(boundaryLine.getId());
+        }
+        ThreeSides side = tieLine.get().getBoundaryLine1() == boundaryLine ? ThreeSides.ONE : ThreeSides.TWO;
+        return violations().getLoading(tieLine.get().getId(), side);
     }
 
     private static Double generationDouble(BoundaryLine boundaryLine, ToDoubleFunction<BoundaryLine.Generation> getter) {

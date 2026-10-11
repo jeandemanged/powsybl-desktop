@@ -23,11 +23,13 @@ Not a textbook MVC/MVVM. The actual structure is:
 | `navigation` | `NavigationType`, `NavigationEvent` (record), `NavigationState` + one subclass per restorable selection, `NavigationHistory` |
 | `network` | `NetworksController` (load/import/export/merge/detach networks), `SubstationsController` (tree + SLD/NAD tabs + embedded tables), diagram renderers, `DropImportDialog` |
 | `network/tables` | One controller per equipment table, `AbstractEquipmentTableController`, `EmbeddableEquipmentTable`, `TableColumnSupport` (cell factories), `ColumnVisibilityToolbarController`, edit dialogs |
+| `network/limits` | `OperationalLimitsPane`: read-only detail of an equipment's selected operational limits groups (reused by `FlowViolationsDialog`) |
 | `network/search` | `NetworkSearch` (kinds, container resolution), `NetworkSearchIndex` (Lucene), `SearchBoxController` (reusable search box) |
 | `diagram` | `DiagramPaneController`: reusable WebView viewport (zoom, fit, PNG/SVG export) |
 | `map` | Map view: `MapController`, `MapNetworkData` snapshot, `MapTileRenderer`, `map.js` + Leaflet |
 | `contingency` | Contingency lists editor and JSON I/O |
 | `loadflow`, `security` | Result/report records and helpers (`LoadFlowConvergence`) |
+| `violations` | `NetworkViolations` (flow and voltage limit violations of the network's state), `FlowViolation`, `VoltageViolation` |
 | `parameters` | Parameters window (tabs), `ParametersModel`, `ApplicationParameters` record, `ApplicationParametersJson`, `ParametersConfigFile` |
 | `notification` | `Notification` record, `NotificationsModel`, overlay popup and history panel |
 | `report`, `reports` | Report viewer; `PowsyblDesktopReportResourceBundle` registering `reports(_fr).properties` |
@@ -61,7 +63,7 @@ a subnetwork), an `updateProperty()` timestamp fired after any network mutation 
 settings, the network change guard, and the sub-models `NavigationHistory`, `ParametersModel`, `NotificationsModel`,
 `LogsModel`.
 
-`…/NetworkStudy.java` holds everything per loaded root network: LF/SA results, contingency lists and their enabled
+`…/NetworkStudy.java` holds everything per loaded root network: LF/SA results, cached limit violations, contingency lists and their enabled
 flags, running computation and index-build services, search indexes, Map views, busy count. `MainModel.getStudy(n)`
 resolves a subnetwork to its root and throws if the network is not loaded. Studies are created by
 `addNetwork`/`detachSubnetworks` and disposed (services cancelled, indexes closed) by `removeNetwork`.

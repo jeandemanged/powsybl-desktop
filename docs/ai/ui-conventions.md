@@ -89,7 +89,7 @@ Pattern for "one row per equipment of a kind" tables (Loads, Generators, Lines, 
 
 Not every table uses this base: bus views extend `AbstractBusesController` (itself an
 `AbstractEquipmentTableController<Bus>`); `SubstationsTableController`, `VoltageLevelsController`,
-`ComponentsController`, `SecurityAnalysisResultsController` extend `AbstractDisposableController` directly;
+`ComponentsController`, `SecurityAnalysisResultsController`, `ViolationsController` extend `AbstractDisposableController` directly;
 `SwitchesController` does too and implements `EmbeddableEquipmentTable` (embedded only, no standalone view). Read the
 closest one before adding a similar view.
 
