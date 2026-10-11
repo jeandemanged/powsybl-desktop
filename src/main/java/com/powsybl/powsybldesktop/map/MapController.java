@@ -458,6 +458,10 @@ public class MapController extends AbstractDisposableController implements Scene
      */
     @SuppressWarnings("unused") // called from map.js
     public void requestTile(int id, int zoom, int x, int y, double ratio) {
+        // the WebView outlives dispose() and Leaflet keeps requesting tiles from it
+        if (tileExecutor.isShutdown()) {
+            return;
+        }
         MapNetworkData data = networkData;
         boolean showCountries = basemapComboBox.getValue() == Basemap.OFFLINE;
         Set<String> hidden = hiddenBaseVoltages;

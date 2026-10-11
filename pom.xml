@@ -37,6 +37,10 @@
         <ikonli.version>12.4.0</ikonli.version>
         <logback.version>1.6.3</logback.version>
         <leaflet.version>1.9.4</leaflet.version>
+        <!-- surefire forks test classes in parallel JVMs, not JUnit's in-JVM parallel mode: a JVM has a
+             single JavaFX toolkit and TestFX shares one primary stage between test classes. A property
+             rather than plugin configuration so that -DforkCount=N overrides it -->
+        <forkCount>1C</forkCount>
     </properties>
 
     <dependencies>
