@@ -232,6 +232,14 @@
                 <artifactId>buildnumber-maven-plugin</artifactId>
             </plugin>
             <plugin>
+                <!-- checkstyle scans every resource directory for *.properties ignoring the resource includes,
+                     so the ${project.basedir} resource above would otherwise pull in target/ -->
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <configuration>
+                    <resourceExcludes>target/**</resourceExcludes>
+                </configuration>
+            </plugin>
+            <plugin>
                 <!-- configured by the com.powsybl:powsybl grandparent POM; writes THIRD-PARTY.txt at the repo root
                      during generate-resources, before process-resources picks it up -->
                 <groupId>org.codehaus.mojo</groupId>
