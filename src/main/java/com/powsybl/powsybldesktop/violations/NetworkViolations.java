@@ -150,10 +150,17 @@ public final class NetworkViolations {
      * The value a {@code type} flow limit applies to: the current, |P| or the apparent power.
      */
     public static double flowValue(Terminal terminal, LimitType type) {
+        return flowValue(terminal.getI(), terminal.getP(), terminal.getQ(), type);
+    }
+
+    /**
+     * Like {@link #flowValue(Terminal, LimitType)}, from a computation's result, e.g. a security analysis'.
+     */
+    public static double flowValue(double i, double p, double q, LimitType type) {
         return switch (type) {
-            case CURRENT -> terminal.getI();
-            case ACTIVE_POWER -> Math.abs(terminal.getP());
-            case APPARENT_POWER -> Math.hypot(terminal.getP(), terminal.getQ());
+            case CURRENT -> i;
+            case ACTIVE_POWER -> Math.abs(p);
+            case APPARENT_POWER -> Math.hypot(p, q);
             default -> throw new IllegalArgumentException("Not a flow limit type: " + type);
         };
     }

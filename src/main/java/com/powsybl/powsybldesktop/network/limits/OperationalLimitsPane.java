@@ -49,6 +49,7 @@ public final class OperationalLimitsPane extends VBox {
 
     private static final List<LimitType> FLOW_LIMIT_TYPES = List.of(LimitType.CURRENT, LimitType.ACTIVE_POWER, LimitType.APPARENT_POWER);
     private static final double CELL_SIZE = 24;
+    private static final double LIMIT_TOLERANCE = 1e-9;
 
     private final GuiParameters guiParameters;
 
@@ -67,6 +68,14 @@ public final class OperationalLimitsPane extends VBox {
     }
 
     public void setEquipment(Identifiable<?> equipment, List<FlowViolation> violations) {
+        setEquipment(equipment, violations, true);
+    }
+
+    /**
+     * @param presentValues whether to show the sides' present values, e.g. not along a post-contingency state's
+     *                      violations, as the network holds its base case's
+     */
+    public void setEquipment(Identifiable<?> equipment, List<FlowViolation> violations, boolean presentValues) {
         getChildren().clear();
         List<Side> sides = sides(equipment);
         if (sides.isEmpty()) {
@@ -85,7 +94,7 @@ public final class OperationalLimitsPane extends VBox {
                         .map(FlowViolation::violation)
                         .filter(v -> v.getSide() == side.side() && group.getId().equals(v.getOperationalLimitsGroupId()))
                         .toList();
-                getChildren().add(groupNode(side, group, groupViolations));
+                getChildren().add(groupNode(side, group, groupViolations, presentValues));
             }
         }
     }
@@ -103,7 +112,7 @@ public final class OperationalLimitsPane extends VBox {
         };
     }
 
-    private VBox groupNode(Side side, OperationalLimitsGroup group, List<LimitViolation> groupViolations) {
+    private VBox groupNode(Side side, OperationalLimitsGroup group, List<LimitViolation> groupViolations, boolean presentValues) {
         Label title = new Label(Messages.get("limits.group", group.getId()));
         title.getStyleClass().add("limits-group-title");
         VBox box = new VBox(6, title);
@@ -119,7 +128,7 @@ public final class OperationalLimitsPane extends VBox {
                 List<LimitViolation> typeViolations = groupViolations.stream()
                         .filter(v -> v.getLimitType().name().equals(type.name()))
                         .toList();
-                box.getChildren().addAll(limitsHeader(side, type), limitsTable(limits.get(), quantity(type), typeViolations));
+                box.getChildren().addAll(limitsHeader(side, type, presentValues), limitsTable(limits.get(), quantity(type), typeViolations));
             }
         }
         if (empty) {
@@ -128,10 +137,13 @@ public final class OperationalLimitsPane extends VBox {
         return box;
     }
 
-    private Label limitsHeader(Side side, LimitType type) {
+    private Label limitsHeader(Side side, LimitType type, boolean presentValue) {
+        String typeText = Messages.get("desktop.common.limitViolationType." + type.name());
+        if (!presentValue) {
+            return new Label(typeText);
+        }
         double value = NetworkViolations.flowValue(side.terminal(), type);
-        return new Label(Messages.get("limits.header", Messages.get("desktop.common.limitViolationType." + type.name()),
-                Double.isNaN(value) ? "-" : guiParameters.format(quantity(type), value)));
+        return new Label(Messages.get("limits.header", typeText, Double.isNaN(value) ? "-" : guiParameters.format(quantity(type), value)));
     }
 
     private static GuiParameters.Quantity quantity(LimitType type) {
@@ -180,9 +192,11 @@ public final class OperationalLimitsPane extends VBox {
         return value == Double.MAX_VALUE ? "∞" : guiParameters.format(quantity, value);
     }
 
-    // a violation's limit is the crossed one's original value, the permanent or a temporary limit
+    // a violation's limit is the crossed one's original value, the permanent or a temporary limit - up to rounding:
+    // OpenLoadFlow's goes through per-unit conversions
     static boolean isCrossed(LimitRow row, List<LimitViolation> violations) {
-        return violations.stream().anyMatch(v -> v.getLimit() == row.value() && Objects.equals(v.getLimitName(), row.name()));
+        return violations.stream().anyMatch(v -> Objects.equals(v.getLimitName(), row.name())
+                && Math.abs(v.getLimit() - row.value()) <= LIMIT_TOLERANCE * Math.abs(row.value()));
     }
 
     private static TableColumn<LimitRow, String> column(String key, Function<LimitRow, String> getter) {

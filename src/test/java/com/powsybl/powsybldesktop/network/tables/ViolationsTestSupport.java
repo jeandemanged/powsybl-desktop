@@ -14,6 +14,8 @@ import com.powsybl.powsybldesktop.violations.NetworkViolations;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Label;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 
 /**
  * Stands in for MainController, which computes the violations of a loaded network and after each load flow run.
@@ -29,6 +31,12 @@ final class ViolationsTestSupport {
     static void recompute(MainModel mainModel, Network network) {
         mainModel.getStudy(network).setViolations(NetworkViolations.compute(network.getNetwork(), LimitsComputer.NO_MODIFICATIONS));
         mainModel.setUpdate();
+    }
+
+    // the columns of the violation tables are built by ViolationColumns, identified by their ids
+    @SuppressWarnings("unchecked")
+    static <S, T> TableColumn<S, T> column(TableView<S> table, String id) {
+        return (TableColumn<S, T>) table.getColumns().stream().filter(c -> id.equals(c.getId())).findFirst().orElseThrow();
     }
 
     static TableColumnSupport.LoadingBar loadingBar(Node flowViolationGraphic) {

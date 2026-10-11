@@ -8,7 +8,6 @@
 -->
 
 <?import javafx.scene.control.Tab?>
-<?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TabPane?>
 <?import javafx.scene.layout.*?>
@@ -19,36 +18,12 @@
          <tabs>
             <Tab fx:id="flowTab">
                <content>
-                  <TableView fx:id="flowTableView" tableMenuButtonVisible="true">
-                     <columns>
-                        <TableColumn fx:id="flowSubjectColumn" text="%securityAnalysisResults.column.subject" prefWidth="150"/>
-                        <TableColumn fx:id="flowTypeColumn" text="%desktop.common.column.type" prefWidth="180"/>
-                        <TableColumn fx:id="flowSideColumn" styleClass="centered-column" text="%desktop.common.column.side"/>
-                        <TableColumn fx:id="flowLimitTypeColumn" styleClass="centered-column" text="%securityAnalysisResults.column.limitType"/>
-                        <TableColumn fx:id="flowLimitNameColumn" text="%securityAnalysisResults.column.limitName" prefWidth="150"/>
-                        <TableColumn fx:id="flowAcceptableDurationColumn" styleClass="centered-column" text="%securityAnalysisResults.column.acceptableDuration"/>
-                        <TableColumn fx:id="flowValueColumn" styleClass="right-aligned-column" text="%securityAnalysisResults.column.value"/>
-                        <TableColumn fx:id="flowPermanentLimitColumn" styleClass="right-aligned-column" text="%violations.column.permanentLimit"/>
-                        <TableColumn fx:id="flowLimitReductionColumn" styleClass="right-aligned-column" text="%securityAnalysisResults.column.limitReduction" visible="false"/>
-                        <TableColumn fx:id="flowLoadingColumn" text="%desktop.common.column.loading" prefWidth="230"/>
-                     </columns>
-                  </TableView>
+                  <TableView fx:id="flowTableView" tableMenuButtonVisible="true"/>
                </content>
             </Tab>
             <Tab fx:id="voltageTab">
                <content>
-                  <TableView fx:id="voltageTableView" tableMenuButtonVisible="true">
-                     <columns>
-                        <TableColumn fx:id="voltageSubjectColumn" text="%desktop.common.equipment.voltageLevel" prefWidth="150"/>
-                        <TableColumn fx:id="voltageBusColumn" text="%desktop.common.equipment.bus" prefWidth="150"/>
-                        <TableColumn fx:id="voltageLimitTypeColumn" styleClass="centered-column" text="%securityAnalysisResults.column.limitType"/>
-                        <TableColumn fx:id="voltageValueColumn" styleClass="right-aligned-column" text="%securityAnalysisResults.column.value"/>
-                        <TableColumn fx:id="voltageLimitColumn" styleClass="right-aligned-column" text="%securityAnalysisResults.column.limit"/>
-                        <TableColumn fx:id="voltageNominalColumn" styleClass="right-aligned-column" text="%desktop.common.column.nominalVoltage"/>
-                        <TableColumn fx:id="voltagePercentOfNominalColumn" styleClass="right-aligned-column" text="%violations.column.percentOfNominal"/>
-                        <TableColumn fx:id="voltageRangeColumn" text="%buses.column.voltageRange" prefWidth="310"/>
-                     </columns>
-                  </TableView>
+                  <TableView fx:id="voltageTableView" tableMenuButtonVisible="true"/>
                </content>
             </Tab>
          </tabs>

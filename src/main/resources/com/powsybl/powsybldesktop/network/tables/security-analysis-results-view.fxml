@@ -7,26 +7,36 @@
   SPDX-License-Identifier: MPL-2.0
 -->
 
-<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TabPane?>
 <?import javafx.scene.layout.*?>
 
 <VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.network.tables.SecurityAnalysisResultsController">
    <children>
-      <TableView fx:id="resultsTableView" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">
-         <columns>
-            <TableColumn fx:id="contingencyColumn" text="%securityAnalysisResults.column.contingency" prefWidth="150"/>
-            <TableColumn fx:id="statusColumn" text="%desktop.common.column.status" prefWidth="180"/>
-            <TableColumn fx:id="subjectColumn" text="%securityAnalysisResults.column.subject" prefWidth="150"/>
-            <TableColumn fx:id="limitTypeColumn" styleClass="centered-column" text="%securityAnalysisResults.column.limitType"/>
-            <TableColumn fx:id="sideColumn" styleClass="centered-column" text="%desktop.common.column.side"/>
-            <TableColumn fx:id="valueColumn" styleClass="right-aligned-column" text="%securityAnalysisResults.column.value"/>
-            <TableColumn fx:id="limitColumn" styleClass="right-aligned-column" text="%securityAnalysisResults.column.limit"/>
-            <TableColumn fx:id="limitReductionColumn" styleClass="right-aligned-column" text="%securityAnalysisResults.column.limitReduction"/>
-            <TableColumn fx:id="limitNameColumn" text="%securityAnalysisResults.column.limitName" prefWidth="150"/>
-            <TableColumn fx:id="acceptableDurationColumn" styleClass="centered-column" text="%securityAnalysisResults.column.acceptableDuration"/>
-            <TableColumn fx:id="operationalLimitsGroupIdColumn" text="%securityAnalysisResults.column.operationalLimitsGroupId" prefWidth="180"/>
-         </columns>
-      </TableView>
+      <TabPane tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+         <tabs>
+            <Tab fx:id="contingenciesTab">
+               <content>
+                  <TableView fx:id="contingenciesTableView" tableMenuButtonVisible="true"/>
+               </content>
+            </Tab>
+            <Tab fx:id="flowByContingencyTab">
+               <content>
+                  <TableView fx:id="flowByContingencyTableView" tableMenuButtonVisible="true"/>
+               </content>
+            </Tab>
+            <Tab fx:id="flowByEquipmentTab">
+               <content>
+                  <TableView fx:id="flowByEquipmentTableView" tableMenuButtonVisible="true"/>
+               </content>
+            </Tab>
+            <Tab fx:id="voltageTab">
+               <content>
+                  <TableView fx:id="voltageTableView" tableMenuButtonVisible="true"/>
+               </content>
+            </Tab>
+         </tabs>
+      </TabPane>
    </children>
 </VBox>

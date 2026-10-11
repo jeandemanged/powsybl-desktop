@@ -20,10 +20,12 @@ import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.violations.FlowViolation;
+import com.powsybl.powsybldesktop.violations.Loading;
 import com.powsybl.powsybldesktop.violations.VoltageViolation;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.TableColumn;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -51,8 +53,11 @@ class ViolationsControllerTest extends AbstractHeadlessApplicationTest {
         Line line1 = eurostag.getLine("NHV1_NHV2_1");
         double i1 = line1.getTerminal1().getI();
         double i2 = line1.getTerminal2().getI();
-        // side 1: permanent limit violation, 130 %; side 2: 60 s temporary limit violation, 120 %
-        line1.newCurrentLimits1().setPermanentLimit(i1 / 1.3).add();
+        // side 1: 600 s temporary limit violation, 130 %; side 2: 60 s temporary limit violation, 120 %
+        line1.newCurrentLimits1()
+                .setPermanentLimit(i1 / 1.3)
+                .beginTemporaryLimit().setName("TL600").setAcceptableDuration(600).setValue(i1 * 1.1).endTemporaryLimit()
+                .add();
         line1.newCurrentLimits2()
                 .setPermanentLimit(i2 / 1.2)
                 .beginTemporaryLimit().setName("TL600").setAcceptableDuration(600).setValue(i2 * 0.9).endTemporaryLimit()
@@ -100,19 +105,22 @@ class ViolationsControllerTest extends AbstractHeadlessApplicationTest {
 
     @Test
     void oneFlowRowPerEquipmentSortedMostSevereFirst() {
-        // the 60 s temporary limit violation first, then the permanent limit violations by percentage
-        assertEquals(List.of("NHV1_NHV2_1", "3WT", "NHV1_NHV2_2"), flowSubjects());
+        // the permanent limit violations (of permanent limits only, not to be exceeded at all) by percentage first, then
+        // the 60 s temporary limit violation
+        assertEquals(List.of("3WT", "NHV1_NHV2_2", "NHV1_NHV2_1"), flowSubjects());
         assertEquals(Messages.get("violations.tab.flow", 3), controller.flowTab.getText());
 
-        ViolationsController.FlowRow line1 = controller.flowTableView.getItems().getFirst();
+        ViolationsController.FlowRow line1 = controller.flowTableView.getItems().get(2);
         assertEquals(2, line1.violations().size());
         FlowViolation worst = line1.worst();
         assertEquals(ThreeSides.TWO, worst.violation().getSide());
         assertEquals(60, worst.violation().getAcceptableDuration());
-        assertEquals(worst, controller.flowLoadingColumn.getCellObservableValue(0).getValue().violation());
-        assertEquals(60, controller.flowAcceptableDurationColumn.getCellObservableValue(0).getValue());
+        TableColumn<ViolationsController.FlowRow, Loading> loadingColumn = ViolationsTestSupport.column(controller.flowTableView, "loading");
+        TableColumn<ViolationsController.FlowRow, Integer> durationColumn = ViolationsTestSupport.column(controller.flowTableView, "acceptableDuration");
+        assertEquals(worst, loadingColumn.getCellObservableValue(2).getValue().violation());
+        assertEquals(60, durationColumn.getCellObservableValue(2).getValue());
         // a permanent limit violation has no acceptable duration to show
-        assertNull(controller.flowAcceptableDurationColumn.getCellObservableValue(1).getValue());
+        assertNull(durationColumn.getCellObservableValue(0).getValue());
     }
 
     @Test
@@ -131,7 +139,7 @@ class ViolationsControllerTest extends AbstractHeadlessApplicationTest {
 
         interact(() -> mainModel.setNetwork(network.getSubnetwork(eurostagId)));
 
-        assertEquals(List.of("NHV1_NHV2_1", "NHV1_NHV2_2"), flowSubjects());
+        assertEquals(List.of("NHV1_NHV2_2", "NHV1_NHV2_1"), flowSubjects());
         assertEquals(2, controller.voltageTableView.getItems().size());
     }
 }

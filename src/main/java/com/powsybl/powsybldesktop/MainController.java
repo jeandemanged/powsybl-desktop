@@ -434,6 +434,7 @@ public class MainController extends AbstractDisposableController {
                         List<Contingency> contingencies = ContingencyNames.deduplicate(contingencyList.getContingencies(network));
                         SecurityAnalysisRunParameters runParameters = SecurityAnalysisRunParameters.getDefault()
                                 .setSecurityAnalysisParameters(parameters)
+                                .addMonitor(SecurityAnalysisResultsController.preContingencyMonitor(network))
                                 .setReportNode(reportNode);
                         // SecurityAnalysis.run() blocks on CompletableFuture.join(), which ignores thread interruption,
                         // so cancelling this task wouldn't stop the underlying computation - runAsync()+get() honors it

@@ -34,6 +34,11 @@ are pinned to `powsybl-core.version` (7.3.0) because they are outside the BOM. R
   Edits don't recompute them. Every violation indication (Violations view, the equipment tables' "Loading" and
   "Voltage Range" columns) reads this cache; never check limits on the fly in a cell.
   Detection takes a `LimitsComputer` (`NO_MODIFICATIONS` for now) so limit reductions can be plugged in later.
+  The Security Analysis Results view shows the security analysis' own violations the same way, converted by
+  `FlowViolation.of`/`VoltageViolation.of` (permanent limit and bus-view bus resolved against the network). Its
+  post-contingency rows also show the pre-contingency values: the security analysis runs with a pre-contingency only
+  `StateMonitor` of all equipment (`SecurityAnalysisResultsController.preContingencyMonitor`), whose bus results are
+  mapped to bus-view buses whatever their id kind (bus breaker view bus, busbar section, bus view bus).
 
 ## Computations
 

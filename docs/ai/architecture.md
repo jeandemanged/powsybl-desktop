@@ -22,14 +22,14 @@ Not a textbook MVC/MVVM. The actual structure is:
 | root (`…/`) | `Launcher`, `MainApplication`, `SplashScreen`, `MainController` (shell), `MainModel`, `NetworkStudy`, `AbstractNetworkTask` |
 | `navigation` | `NavigationType`, `NavigationEvent` (record), `NavigationState` + one subclass per restorable selection, `NavigationHistory` |
 | `network` | `NetworksController` (load/import/export/merge/detach networks), `SubstationsController` (tree + SLD/NAD tabs + embedded tables), diagram renderers, `DropImportDialog` |
-| `network/tables` | One controller per equipment table, `AbstractEquipmentTableController`, `EmbeddableEquipmentTable`, `TableColumnSupport` (cell factories), `ColumnVisibilityToolbarController`, edit dialogs |
+| `network/tables` | One controller per equipment table, `AbstractEquipmentTableController`, `EmbeddableEquipmentTable`, `TableColumnSupport` (cell factories), `ViolationColumns` (columns of the Violations and Security Analysis Results views), `ColumnVisibilityToolbarController`, edit dialogs |
 | `network/limits` | `OperationalLimitsPane`: read-only detail of an equipment's selected operational limits groups (reused by `FlowViolationsDialog`) |
 | `network/search` | `NetworkSearch` (kinds, container resolution), `NetworkSearchIndex` (Lucene), `SearchBoxController` (reusable search box) |
 | `diagram` | `DiagramPaneController`: reusable WebView viewport (zoom, fit, PNG/SVG export) |
 | `map` | Map view: `MapController`, `MapNetworkData` snapshot, `MapTileRenderer`, `map.js` + Leaflet |
 | `contingency` | Contingency lists editor and JSON I/O |
 | `loadflow`, `security` | Result/report records and helpers (`LoadFlowConvergence`) |
-| `violations` | `NetworkViolations` (flow and voltage limit violations of the network's state), `FlowViolation`, `VoltageViolation` |
+| `violations` | `NetworkViolations` (flow and voltage limit violations of the network's state), `FlowViolation`, `VoltageViolation` (also built from a security analysis' violations) |
 | `parameters` | Parameters window (tabs), `ParametersModel`, `ApplicationParameters` record, `ApplicationParametersJson`, `ParametersConfigFile` |
 | `notification` | `Notification` record, `NotificationsModel`, overlay popup and history panel |
 | `report`, `reports` | Report viewer; `PowsyblDesktopReportResourceBundle` registering `reports(_fr).properties` |

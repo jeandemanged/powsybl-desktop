@@ -138,25 +138,50 @@ class NetworkViolationsTest {
         Line line = network.getLine("NHV1_NHV2_1");
         double i1 = line.getTerminal1().getI();
         double i2 = line.getTerminal2().getI();
-        // side 1: permanent limit violation, 130 %
-        line.newCurrentLimits1().setPermanentLimit(i1 / 1.3).add();
-        // side 2: 60 s temporary limit violation, 120 % only
+        // side 1: 60 s temporary limit violation, 120 %
+        line.newCurrentLimits1()
+                .setPermanentLimit(i1 / 1.2)
+                .beginTemporaryLimit().setName("TL600").setAcceptableDuration(600).setValue(i1 * 0.9).endTemporaryLimit()
+                .beginTemporaryLimit().setName("TL60").setAcceptableDuration(60).setValue(i1 * 1.1).endTemporaryLimit()
+                .add();
+        // side 2: 600 s temporary limit violation, 130 %
         line.newCurrentLimits2()
-                .setPermanentLimit(i2 / 1.2)
-                .beginTemporaryLimit().setName("TL600").setAcceptableDuration(600).setValue(i2 * 0.9).endTemporaryLimit()
+                .setPermanentLimit(i2 / 1.3)
+                .beginTemporaryLimit().setName("TL600").setAcceptableDuration(600).setValue(i2 * 1.1).endTemporaryLimit()
+                .add();
+
+        NetworkViolations violations = compute(network);
+
+        List<FlowViolation> lineViolations = violations.getFlowViolations("NHV1_NHV2_1");
+        assertEquals(List.of(ThreeSides.ONE, ThreeSides.TWO), lineViolations.stream().map(v -> v.violation().getSide()).toList());
+        assertEquals(60, lineViolations.getFirst().violation().getAcceptableDuration());
+        assertEquals(lineViolations.getFirst(), violations.getWorstFlowViolation("NHV1_NHV2_1"));
+    }
+
+    @Test
+    void permanentLimitViolationIsMoreSevereThanAnyTemporaryLimitViolation() {
+        Network network = EurostagTutorialExample1Factory.createWithLFResults();
+        Line line = network.getLine("NHV1_NHV2_1");
+        double i1 = line.getTerminal1().getI();
+        double i2 = line.getTerminal2().getI();
+        // side 1: permanent limit only, which can't be exceeded at all: 120 %
+        line.newCurrentLimits1().setPermanentLimit(i1 / 1.2).add();
+        // side 2: 60 s temporary limit violation, 102 %
+        line.newCurrentLimits2()
+                .setPermanentLimit(i2 / 1.02)
+                .beginTemporaryLimit().setName("TL600").setAcceptableDuration(600).setValue(i2 * 0.99).endTemporaryLimit()
                 .beginTemporaryLimit().setName("TL60").setAcceptableDuration(60).setValue(i2 * 1.1).endTemporaryLimit()
                 .add();
 
         NetworkViolations violations = compute(network);
 
         List<FlowViolation> lineViolations = violations.getFlowViolations("NHV1_NHV2_1");
-        assertEquals(2, lineViolations.size());
-        assertEquals(ThreeSides.TWO, lineViolations.get(0).violation().getSide());
-        assertEquals(120, lineViolations.get(0).percent(), 1e-9);
-        assertEquals(ThreeSides.ONE, lineViolations.get(1).violation().getSide());
-        assertEquals(Integer.MAX_VALUE, lineViolations.get(1).violation().getAcceptableDuration());
-        assertEquals(130, lineViolations.get(1).percent(), 1e-9);
-        assertEquals(lineViolations.get(0), violations.getWorstFlowViolation("NHV1_NHV2_1"));
+        assertEquals(List.of(ThreeSides.ONE, ThreeSides.TWO), lineViolations.stream().map(v -> v.violation().getSide()).toList());
+        FlowViolation worst = violations.getWorstFlowViolation("NHV1_NHV2_1");
+        assertEquals(Integer.MAX_VALUE, worst.violation().getAcceptableDuration());
+        assertEquals(120, worst.percent(), 1e-9);
+        assertEquals(60, lineViolations.get(1).violation().getAcceptableDuration());
+        assertEquals(102, lineViolations.get(1).percent(), 1e-9);
     }
 
     @Test

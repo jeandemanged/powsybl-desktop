@@ -9,6 +9,9 @@ package com.powsybl.powsybldesktop.violations;
 
 import com.powsybl.contingency.violations.LimitViolation;
 import com.powsybl.contingency.violations.LimitViolationType;
+import com.powsybl.iidm.network.Bus;
+import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.VoltageLevel;
 
 import java.util.Comparator;
 import java.util.Objects;
@@ -38,6 +41,23 @@ public record VoltageViolation(LimitViolation violation, String busId, double no
     @Override
     public int compareTo(VoltageViolation other) {
         return SEVERITY.compare(this, other);
+    }
+
+    /**
+     * A voltage violation reported by a computation, e.g. a security analysis, located on the bus of the bus view its
+     * violation location resolves to in the network (the voltage level if it has no location). Null if the voltage
+     * level isn't in the network.
+     */
+    public static VoltageViolation of(LimitViolation violation, Network network) {
+        VoltageLevel voltageLevel = network.getVoltageLevel(violation.getSubjectId());
+        if (voltageLevel == null) {
+            return null;
+        }
+        String busId = violation.getViolationLocation()
+                .flatMap(location -> location.getBusView(network).getBusStream().findFirst())
+                .map(Bus::getId)
+                .orElse(voltageLevel.getId());
+        return new VoltageViolation(violation, busId, voltageLevel.getNominalV());
     }
 
     public boolean isHigh() {
