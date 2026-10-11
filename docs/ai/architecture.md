@@ -49,7 +49,9 @@ Not a textbook MVC/MVVM. The actual structure is:
   center view. It also hosts the toolbar actions for load flow / security analysis and search index building.
 - Language change (`onLanguageChange` → `reloadShell`) rebuilds `main-view.fxml` with a fresh bundle, keeps the
   same `MainModel`, disposes the old `MainController`, and re-fires the current `NavigationEvent` so the center view
-  is reloaded too.
+  is reloaded too. The `SeparateWindows` instance is handed over to the new controller and `relocalize()`d: windows
+  and tabs stay open, each tab's view is rebuilt from the factory it was opened with (titles are `Supplier`s for the
+  same reason), losing only the view's own UI state.
 
 ## Shared state: `MainModel` and `NetworkStudy`
 

@@ -150,8 +150,14 @@ public class MainController extends AbstractDisposableController {
     private Stage memoryStage;
 
     public MainController(MainModel mainModel) {
+        this(mainModel, new SeparateWindows(mainModel, () -> null));
+    }
+
+    // separateWindows: kept open across a language change, see reloadShell
+    private MainController(MainModel mainModel, SeparateWindows separateWindows) {
         this.mainModel = Objects.requireNonNull(mainModel);
-        this.separateWindows = new SeparateWindows(mainModel, () -> borderPane.getScene() == null ? null : borderPane.getScene().getWindow());
+        this.separateWindows = separateWindows;
+        separateWindows.setMainWindow(() -> borderPane.getScene() == null ? null : borderPane.getScene().getWindow());
         this.sceneModel = SceneModel.main(mainModel, separateWindows);
         mainModel.setNetworkChangeGuard(separateWindows::confirmNetworkChange);
     }
@@ -239,12 +245,12 @@ public class MainController extends AbstractDisposableController {
      * the existing {@link Stage}'s scene, carrying {@link #mainModel} over to the new controller so
      * loaded networks, notifications, reports and navigation history survive the reload. The current
      * center view is re-resolved too (see the end of {@link #initialize()}), since it was loaded from
-     * FXML under the old bundle as well.
+     * FXML under the old bundle as well. Separate windows are kept, their views rebuilt the same way.
      */
     private void reloadShell() {
         Stage stage = (Stage) borderPane.getScene().getWindow();
-        dispose();
-        MainController newController = new MainController(mainModel);
+        disposeShell();
+        MainController newController = new MainController(mainModel, separateWindows);
         FXMLLoader loader = new FXMLLoader(getClass().getResource("main-view.fxml"), Messages.bundle());
         loader.setControllerFactory(type -> newController);
         try {
@@ -252,11 +258,16 @@ public class MainController extends AbstractDisposableController {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+        separateWindows.relocalize();
     }
 
     @Override
     public void dispose() {
         separateWindows.closeAll();
+        disposeShell();
+    }
+
+    private void disposeShell() {
         disposeCurrentController();
         if (notificationsController != null) {
             notificationsController.dispose();
@@ -588,7 +599,7 @@ public class MainController extends AbstractDisposableController {
     // whole network
     private <T extends SceneView> T ensureSceneView(Class<T> controllerClass, String fxml, NavigationType type) {
         return ensureController(controllerClass, fxml, c -> c.setSceneModel(sceneModel),
-                root -> separateWindows.addOpenButton(root, () -> separateWindows.open(type.name(), viewTitle(type),
+                root -> separateWindows.addOpenButton(root, () -> separateWindows.open(type.name(), () -> viewTitle(type),
                         scene -> SeparateWindows.<T>load(fxml, c -> c.setSceneModel(scene)))));
     }
 
@@ -760,7 +771,7 @@ public class MainController extends AbstractDisposableController {
         }
         if (newValue.navigationType() == NavigationType.LOGS) {
             ensureController(LogsViewController.class, "logs/logs-view.fxml", c -> c.setModels(mainModel.getLogsModel(), mainModel.getParametersModel()),
-                    root -> separateWindows.addOpenButton(root, () -> separateWindows.openSingleInstance(LOGS_WINDOW, NavigationEvent.create(NavigationType.LOGS).describe(),
+                    root -> separateWindows.addOpenButton(root, () -> separateWindows.openSingleInstance(LOGS_WINDOW, () -> NavigationEvent.create(NavigationType.LOGS).describe(),
                             scene -> SeparateWindows.<LogsViewController>load("logs/logs-view.fxml",
                                     c -> c.setModels(mainModel.getLogsModel(), mainModel.getParametersModel())))));
         } else if (newValue.navigationType() == NavigationType.NETWORKS) {
@@ -892,7 +903,7 @@ public class MainController extends AbstractDisposableController {
                     root -> separateWindows.addOpenButton(root, this::detachParameters));
         } else if (newValue.navigationType() == NavigationType.REPORTS) {
             ReportsController controller = ensureController(ReportsController.class, "report/reports-view.fxml", c -> c.setSceneModel(sceneModel),
-                    root -> separateWindows.addOpenButton(root, () -> separateWindows.openSingleInstance(REPORTS_WINDOW, NavigationEvent.create(NavigationType.REPORTS).describe(),
+                    root -> separateWindows.addOpenButton(root, () -> separateWindows.openSingleInstance(REPORTS_WINDOW, () -> NavigationEvent.create(NavigationType.REPORTS).describe(),
                             scene -> SeparateWindows.<ReportsController>load("report/reports-view.fxml", c -> c.setSceneModel(scene)))));
             if (newValue.state() instanceof ReportNavigationState state) {
                 controller.selectReport(state.getReportNode());
@@ -960,7 +971,7 @@ public class MainController extends AbstractDisposableController {
     }
 
     private void detachParameters() {
-        separateWindows.openSingleInstance(PARAMETERS_WINDOW, Messages.get("desktop.common.parameters"), scene -> {
+        separateWindows.openSingleInstance(PARAMETERS_WINDOW, () -> Messages.get("desktop.common.parameters"), scene -> {
             SeparateWindows.View view = SeparateWindows.<ParametersController>load("parameters/parameters-view.fxml", c -> c.setMainModel(mainModel));
             return new SeparateWindows.View(view.root(), view.controller(), 1000, 700);
         });

@@ -132,10 +132,10 @@ public class SubstationsController extends AbstractDisposableController implemen
 
     /**
      * One embedded equipment table tab: which {@link ContainerNavigationState.ContainerTab} it is, its
-     * {@link Tab}, and its controller (used to filter it to the selected container and to decide whether
-     * it currently has rows to show).
+     * {@link Tab}, its text's key (for a separate window's title to follow language changes), and its controller
+     * (used to filter it to the selected container and to decide whether it currently has rows to show).
      */
-    private record EquipmentTab(ContainerNavigationState.ContainerTab kind, Tab tab, EmbeddableEquipmentTable controller, String fxml) {
+    private record EquipmentTab(ContainerNavigationState.ContainerTab kind, Tab tab, String titleKey, EmbeddableEquipmentTable controller, String fxml) {
     }
 
     private List<EquipmentTab> equipmentTabs;
@@ -215,8 +215,8 @@ public class SubstationsController extends AbstractDisposableController implemen
         if (container == null) {
             return;
         }
-        String title = Messages.get(kind == ContainerDiagram.Kind.SINGLE_LINE ? "desktop.common.singleLineDiagram" : "desktop.common.networkAreaDiagram");
-        separateWindows.open(kind + "/" + container.getId(), title + " - " + container.getNameOrId(), scene -> {
+        String titleKey = kind == ContainerDiagram.Kind.SINGLE_LINE ? "desktop.common.singleLineDiagram" : "desktop.common.networkAreaDiagram";
+        separateWindows.open(kind + "/" + container.getId(), () -> Messages.get(titleKey) + " - " + container.getNameOrId(), scene -> {
             FXMLLoader loader = new FXMLLoader(DiagramPaneController.class.getResource("diagram-pane.fxml"), Messages.bundle());
             try {
                 Parent root = loader.load();
@@ -235,7 +235,7 @@ public class SubstationsController extends AbstractDisposableController implemen
         if (container == null) {
             return;
         }
-        separateWindows.open(equipmentTab.kind() + "/" + container.getId(), equipmentTab.tab().getText() + " - " + container.getNameOrId(),
+        separateWindows.open(equipmentTab.kind() + "/" + container.getId(), () -> Messages.get(equipmentTab.titleKey()) + " - " + container.getNameOrId(),
                 scene -> SeparateWindows.<EmbeddableEquipmentTable>load(equipmentTab.fxml(), controller -> {
                     controller.setSceneModel(scene);
                     controller.setContainer(container);
@@ -468,20 +468,30 @@ public class SubstationsController extends AbstractDisposableController implemen
     @FXML
     private void initialize() {
         equipmentTabs = List.of(
-                new EquipmentTab(ContainerNavigationState.ContainerTab.SWITCHES, switchesTab, switchesEmbeddedController, "network/tables/switches-view.fxml"),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.GENERATORS, generatorsTab, generatorsEmbeddedController, "network/tables/generators-view.fxml"),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.SHUNT_COMPENSATORS, shuntCompensatorsTab, shuntCompensatorsEmbeddedController, "network/tables/shunt-compensators-view.fxml"),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.STATIC_VAR_COMPENSATORS, staticVarCompensatorsTab, staticVarCompensatorsEmbeddedController,
-                        "network/tables/static-var-compensators-view.fxml"),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.LOADS, loadsTab, loadsEmbeddedController, "network/tables/loads-view.fxml"),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.LINES, linesTab, linesEmbeddedController, "network/tables/lines-view.fxml"),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.TRANSFORMERS, transformersTab, transformersEmbeddedController, "network/tables/transformers-view.fxml"),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.TIE_LINES, tieLinesTab, tieLinesEmbeddedController, "network/tables/tie-lines-view.fxml"),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.BOUNDARY_LINES, boundaryLinesTab, boundaryLinesEmbeddedController, "network/tables/boundary-lines-view.fxml"),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.BUSBAR_SECTIONS, busbarSectionsTab, busbarSectionsEmbeddedController, "network/tables/busbar-sections-view.fxml"),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.BUSES_BUS_VIEW, busesBusViewTab, busesBusViewEmbeddedController, "network/tables/buses-bus-view.fxml"),
-                new EquipmentTab(ContainerNavigationState.ContainerTab.BUSES_BUS_BREAKER_VIEW, busesBusBreakerViewTab, busesBusBreakerViewEmbeddedController,
-                        "network/tables/buses-bus-breaker-view.fxml"));
+                new EquipmentTab(ContainerNavigationState.ContainerTab.SWITCHES, switchesTab, "desktop.common.equipment.switch.plural",
+                        switchesEmbeddedController, "network/tables/switches-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.GENERATORS, generatorsTab, "desktop.common.equipment.generator.plural",
+                        generatorsEmbeddedController, "network/tables/generators-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.SHUNT_COMPENSATORS, shuntCompensatorsTab, "desktop.common.equipment.shuntCompensator.plural",
+                        shuntCompensatorsEmbeddedController, "network/tables/shunt-compensators-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.STATIC_VAR_COMPENSATORS, staticVarCompensatorsTab, "desktop.common.equipment.staticVarCompensator.plural",
+                        staticVarCompensatorsEmbeddedController, "network/tables/static-var-compensators-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.LOADS, loadsTab, "desktop.common.equipment.load.plural",
+                        loadsEmbeddedController, "network/tables/loads-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.LINES, linesTab, "desktop.common.equipment.line.plural",
+                        linesEmbeddedController, "network/tables/lines-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.TRANSFORMERS, transformersTab, "desktop.common.equipment.transformer.plural",
+                        transformersEmbeddedController, "network/tables/transformers-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.TIE_LINES, tieLinesTab, "desktop.common.equipment.tieLine.plural",
+                        tieLinesEmbeddedController, "network/tables/tie-lines-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.BOUNDARY_LINES, boundaryLinesTab, "desktop.common.equipment.boundaryLine.plural",
+                        boundaryLinesEmbeddedController, "network/tables/boundary-lines-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.BUSBAR_SECTIONS, busbarSectionsTab, "desktop.common.equipment.busbarSection.plural",
+                        busbarSectionsEmbeddedController, "network/tables/busbar-sections-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.BUSES_BUS_VIEW, busesBusViewTab, "desktop.common.equipment.busesBusBranchView",
+                        busesBusViewEmbeddedController, "network/tables/buses-bus-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.BUSES_BUS_BREAKER_VIEW, busesBusBreakerViewTab, "desktop.common.equipment.busesBusBreakerView",
+                        busesBusBreakerViewEmbeddedController, "network/tables/buses-bus-breaker-view.fxml"));
 
         diagramTabPane.getSelectionModel().selectedItemProperty().addListener((observable, oldTab, newTab) -> updateDiagramsShowing());
 

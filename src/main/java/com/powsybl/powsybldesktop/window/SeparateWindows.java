@@ -105,21 +105,41 @@ public final class SeparateWindows {
 
     private static final class SeparateView {
         private final String key;
-        private final String title;
+        // re-resolved, as is the content, on a language change, see relocalize
+        private final Supplier<String> titleSupplier;
+        private final Function<SceneModel, View> viewFactory;
+        private final SceneModel sceneModel;
         private final boolean bound;
         private final Network network;
-        private final DisposableController controller;
         private final Tab tab = new Tab();
+        private final Label label = new Label();
+        private String title;
+        private DisposableController controller;
         private DetachedWindow window;
 
-        private SeparateView(String key, String title, boolean bound, Network network, View view) {
+        private SeparateView(String key, Supplier<String> titleSupplier, Function<SceneModel, View> viewFactory, SceneModel sceneModel,
+                             boolean bound, View view) {
             this.key = key;
-            this.title = title;
+            this.titleSupplier = titleSupplier;
+            this.viewFactory = viewFactory;
+            this.sceneModel = sceneModel;
             this.bound = bound;
-            this.network = network;
+            this.network = sceneModel.getNetwork();
+            this.title = titleSupplier.get();
             this.controller = view.controller();
+            label.setText(title);
+            tab.setGraphic(label);
             tab.setContent(view.root());
             tab.setUserData(this);
+        }
+
+        private void reload() {
+            title = titleSupplier.get();
+            label.setText(title);
+            controller.dispose();
+            View view = viewFactory.apply(sceneModel);
+            controller = view.controller();
+            tab.setContent(view.root());
         }
     }
 
@@ -132,7 +152,9 @@ public final class SeparateWindows {
      */
     public final class DetachedWindow {
         private final Stage stage = new Stage();
-        private final StringProperty name = new SimpleStringProperty(defaultName());
+        // while the window has its default name, its number, to translate it on a language change; 0 once renamed
+        private int defaultNumber = defaultNumber();
+        private final StringProperty name = new SimpleStringProperty(defaultName(defaultNumber));
         private final TabPane tabPane = new TabPane();
         private final Label nameLabel = new Label();
         private final HBox nameBox = new HBox(nameLabel);
@@ -170,10 +192,9 @@ public final class SeparateWindows {
             StackPane root = new StackPane(tabPane, nameBox);
             StackPane.setAlignment(nameBox, Pos.TOP_LEFT);
 
-            stage.titleProperty().bind(Bindings.createStringBinding(() -> {
-                Tab selected = tabPane.getSelectionModel().getSelectedItem();
-                return MainApplication.APP_TITLE + " - " + name.get() + (selected == null ? "" : " - " + view(selected).title);
-            }, name, tabPane.getSelectionModel().selectedItemProperty()));
+            name.addListener((observable, oldName, newName) -> updateTitle());
+            tabPane.getSelectionModel().selectedItemProperty().addListener((observable, oldTab, newTab) -> updateTitle());
+            updateTitle();
             stage.getIcons().add(new Image(Objects.requireNonNull(MainApplication.class.getResourceAsStream("logo.png"))));
             Scene scene = new Scene(root, width, height);
             scene.getStylesheets().add(Objects.requireNonNull(MainApplication.class.getResource("styles.css")).toExternalForm());
@@ -205,6 +226,7 @@ public final class SeparateWindows {
             if (trimmed.isEmpty() || windows.stream().anyMatch(window -> window != this && window.getName().equals(trimmed))) {
                 return false;
             }
+            defaultNumber = 0;
             name.set(trimmed);
             return true;
         }
@@ -220,6 +242,20 @@ public final class SeparateWindows {
         public void showTab(int index) {
             tabPane.getSelectionModel().select(index);
             focus(stage);
+        }
+
+        private void updateTitle() {
+            Tab selected = tabPane.getSelectionModel().getSelectedItem();
+            stage.setTitle(MainApplication.APP_TITLE + " - " + name.get() + (selected == null ? "" : " - " + view(selected).title));
+        }
+
+        private void relocalize() {
+            if (defaultNumber > 0) {
+                name.set(defaultName(defaultNumber));
+            }
+            nameLabel.setTooltip(new Tooltip(Messages.get("separateWindows.renameHint")));
+            tabPane.getTabs().forEach(tab -> view(tab).reload());
+            updateTitle();
         }
 
         private void add(SeparateView view, int index) {
@@ -277,7 +313,7 @@ public final class SeparateWindows {
     }
 
     private final MainModel mainModel;
-    private final Supplier<Window> mainWindow;
+    private Supplier<Window> mainWindow;
     private final List<SeparateView> views = new ArrayList<>();
     private final ObservableList<DetachedWindow> windows = FXCollections.observableArrayList();
     // cached, see NavigationHistory's unmodifiable views
@@ -292,6 +328,21 @@ public final class SeparateWindows {
         this.mainWindow = Objects.requireNonNull(mainWindow);
         networkListener = (observable, oldNetwork, newNetwork) -> close(boundToOtherThan(newNetwork));
         mainModel.networkProperty().addListener(networkListener);
+    }
+
+    /**
+     * The main window's shell, which supplies it, is rebuilt on a language change, see {@link #relocalize}.
+     */
+    public void setMainWindow(Supplier<Window> mainWindow) {
+        this.mainWindow = Objects.requireNonNull(mainWindow);
+    }
+
+    /**
+     * Rebuilds the open views, and re-resolves the windows' texts, under the now-current locale: the windows, their
+     * tabs and the views' scenes are kept, but the views' own state (e.g. a table's sorting) isn't.
+     */
+    public void relocalize() {
+        windows.forEach(DetachedWindow::relocalize);
     }
 
     /**
@@ -312,29 +363,30 @@ public final class SeparateWindows {
     /**
      * Opens a view bound to the selected network, built for its window's scene.
      */
-    public void open(String title, Function<SceneModel, View> viewFactory) {
+    public void open(Supplier<String> title, Function<SceneModel, View> viewFactory) {
         open(null, title, viewFactory);
     }
 
     /**
-     * Same as {@link #open(String, Function)}, but brings the view of {@code key} to front instead if already open:
+     * Same as {@link #open(Supplier, Function)}, but brings the view of {@code key} to front instead if already open:
      * a view of the whole network, or of a given container, is shown once.
      */
-    public void open(String key, String title, Function<SceneModel, View> viewFactory) {
+    public void open(String key, Supplier<String> title, Function<SceneModel, View> viewFactory) {
         if (!focusOpen(key)) {
             SceneModel sceneModel = SceneModel.separate(mainModel, this::bringMainWindowToFront);
             View view = viewFactory.apply(sceneModel);
-            show(new SeparateView(key, title, true, sceneModel.getNetwork(), view), view);
+            show(new SeparateView(key, title, viewFactory, sceneModel, true, view), view);
         }
     }
 
     /**
      * Opens the single view of {@code key} not bound to a network, or brings it to front if already open.
      */
-    public void openSingleInstance(String key, String title, Function<SceneModel, View> viewFactory) {
+    public void openSingleInstance(String key, Supplier<String> title, Function<SceneModel, View> viewFactory) {
         if (!focusOpen(Objects.requireNonNull(key))) {
-            View view = viewFactory.apply(SceneModel.separate(mainModel, this::bringMainWindowToFront));
-            show(new SeparateView(key, title, false, null, view), view);
+            SceneModel sceneModel = SceneModel.separate(mainModel, this::bringMainWindowToFront);
+            View view = viewFactory.apply(sceneModel);
+            show(new SeparateView(key, title, viewFactory, sceneModel, false, view), view);
         }
     }
 
@@ -390,7 +442,7 @@ public final class SeparateWindows {
     }
 
     private void show(SeparateView view, View content) {
-        Label label = new Label(view.title);
+        Label label = view.label;
         label.setOnDragDetected(event -> {
             Dragboard dragboard = label.startDragAndDrop(TransferMode.MOVE);
             ClipboardContent clipboardContent = new ClipboardContent();
@@ -408,7 +460,6 @@ public final class SeparateWindows {
             }
             event.consume();
         });
-        view.tab.setGraphic(label);
         view.tab.setOnClosed(event -> {
             dispose(view);
             view.window.closeIfEmpty();
@@ -455,13 +506,16 @@ public final class SeparateWindows {
         }
     }
 
-    // the lowest "Window N" no window is named
-    private String defaultName() {
+    // the lowest N such that no window is named "Window N"
+    private int defaultNumber() {
         return IntStream.iterate(1, n -> n + 1)
-                .mapToObj(n -> Messages.get("separateWindows.defaultName", n))
-                .filter(candidate -> windows.stream().noneMatch(window -> window.getName().equals(candidate)))
+                .filter(n -> windows.stream().noneMatch(window -> window.getName().equals(defaultName(n))))
                 .findFirst()
                 .orElseThrow();
+    }
+
+    private static String defaultName(int number) {
+        return Messages.get("separateWindows.defaultName", number);
     }
 
     private void bringMainWindowToFront() {

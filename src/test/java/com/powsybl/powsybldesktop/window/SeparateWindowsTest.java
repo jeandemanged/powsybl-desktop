@@ -31,12 +31,14 @@ import org.junit.jupiter.api.Test;
 import org.testfx.util.WaitForAsyncUtils;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -74,7 +76,7 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
     }
 
     private void openLines() {
-        interact(() -> separateWindows.open("Lines", scene -> SeparateWindows.<LinesController>load("network/tables/lines-view.fxml",
+        interact(() -> separateWindows.open(() -> "Lines", scene -> SeparateWindows.<LinesController>load("network/tables/lines-view.fxml",
                 controller -> controller.setSceneModel(scene))));
     }
 
@@ -123,7 +125,7 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
 
     @Test
     void singleInstanceWindowIsReusedAndSurvivesNetworkChanges() {
-        Runnable openLogs = () -> separateWindows.openSingleInstance("logs", "Logs", scene -> SeparateWindows.<LogsViewController>load("logs/logs-view.fxml",
+        Runnable openLogs = () -> separateWindows.openSingleInstance("logs", () -> "Logs", scene -> SeparateWindows.<LogsViewController>load("logs/logs-view.fxml",
                 controller -> controller.setModels(mainModel.getLogsModel(), mainModel.getParametersModel())));
         interact(openLogs);
         interact(openLogs);
@@ -136,7 +138,7 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
 
     @Test
     void wholeNetworkViewIsOpenedOnceAndListed() {
-        Runnable openLines = () -> separateWindows.open("lines", "Lines", scene -> SeparateWindows.<LinesController>load("network/tables/lines-view.fxml",
+        Runnable openLines = () -> separateWindows.open("lines", () -> "Lines", scene -> SeparateWindows.<LinesController>load("network/tables/lines-view.fxml",
                 controller -> controller.setSceneModel(scene)));
         interact(openLines);
         interact(openLines);
@@ -152,7 +154,7 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
     @Test
     void windowsCanBeFocusedOrClosedByKey() throws Exception {
         assertFalse(WaitForAsyncUtils.asyncFx(() -> separateWindows.focusOpen("lines")).get());
-        interact(() -> separateWindows.open("lines", "Lines", scene -> SeparateWindows.<LinesController>load("network/tables/lines-view.fxml",
+        interact(() -> separateWindows.open("lines", () -> "Lines", scene -> SeparateWindows.<LinesController>load("network/tables/lines-view.fxml",
                 controller -> controller.setSceneModel(scene))));
 
         assertTrue(WaitForAsyncUtils.asyncFx(() -> separateWindows.focusOpen("lines")).get());
@@ -175,9 +177,9 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
     private void openPlain(String key, boolean bound, AtomicInteger disposed) {
         Function<SceneModel, SeparateWindows.View> factory = scene -> new SeparateWindows.View(new StackPane(), disposed::incrementAndGet);
         if (bound) {
-            separateWindows.open(key, key, factory);
+            separateWindows.open(key, () -> key, factory);
         } else {
-            separateWindows.openSingleInstance(key, key, factory);
+            separateWindows.openSingleInstance(key, () -> key, factory);
         }
     }
 
@@ -299,6 +301,39 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
 
         assertTrue(separateWindows.getOpenWindows().isEmpty());
         assertEquals(3, disposed.get());
+    }
+
+    @Test
+    void relocalizeRebuildsTheViewsAndTranslatesTheirTitlesAndDefaultNames() {
+        AtomicInteger built = new AtomicInteger();
+        AtomicInteger disposed = new AtomicInteger();
+        Function<SceneModel, SeparateWindows.View> factory = scene -> {
+            built.incrementAndGet();
+            return new SeparateWindows.View(new StackPane(), disposed::incrementAndGet);
+        };
+        interact(() -> {
+            separateWindows.open("a", () -> Messages.get("separateWindows.newWindow"), factory);
+            separateWindows.openSingleInstance("b", () -> "b", factory);
+        });
+        SeparateWindows.DetachedWindow first = separateWindows.getOpenWindows().getFirst();
+        SeparateWindows.DetachedWindow second = separateWindows.getOpenWindows().getLast();
+        interact(() -> second.rename("Mine"));
+        String oldName = defaultName(1);
+
+        Locale previous = Locale.getDefault();
+        try {
+            Locale.setDefault("fr".equals(previous.getLanguage()) ? Locale.ENGLISH : Locale.FRENCH);
+            interact(separateWindows::relocalize);
+
+            assertNotEquals(oldName, defaultName(1));
+            assertEquals(List.of(defaultName(1), "Mine"), names());
+            assertEquals(List.of(Messages.get("separateWindows.newWindow")), first.getTabTitles());
+            assertEquals(1, windows(defaultName(1) + " - " + Messages.get("separateWindows.newWindow")).size());
+            assertEquals(4, built.get());
+            assertEquals(2, disposed.get());
+        } finally {
+            Locale.setDefault(previous);
+        }
     }
 
     @Test
