@@ -14,13 +14,16 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.awt.Desktop;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -29,13 +32,15 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.SignStyle;
 import java.util.Comparator;
 import java.util.Locale;
+import java.util.Objects;
 
 import static java.time.temporal.ChronoField.*;
 
 /**
  * Content of the "About" dialog: the app logo, links to the PowSyBl website/documentation/GitHub, and a
  * table of every PowSyBl module on the classpath - {@link Version#list()} discovers one entry per
- * repository (including this app's own, registered by {@code PowsyblDesktopVersion}) via {@code @AutoService}.
+ * repository (including this app's own, registered by {@code PowsyblDesktopVersion}) via {@code @AutoService},
+ * and the THIRD-PARTY.txt license list that license-maven-plugin generates at build time.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -83,6 +88,9 @@ public class AboutController {
     private TableColumn<Version, String> buildTimestampColumn;
 
     @FXML
+    private TextArea thirdPartyTextArea;
+
+    @FXML
     private void initialize() {
         websiteLink.setOnAction(event -> openLink(websiteLink.getText()));
         documentationLink.setOnAction(event -> openLink(documentationLink.getText()));
@@ -95,6 +103,16 @@ public class AboutController {
 
         versionsTableView.setItems(FXCollections.observableArrayList(
                 Version.list().stream().sorted(Comparator.comparing(Version::getRepositoryName)).toList()));
+
+        thirdPartyTextArea.setText(readThirdPartyLicenses());
+    }
+
+    private String readThirdPartyLicenses() {
+        try (var stream = getClass().getResourceAsStream("THIRD-PARTY.txt")) {
+            return new String(Objects.requireNonNull(stream).readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private static String shortCommit(String gitVersion) {

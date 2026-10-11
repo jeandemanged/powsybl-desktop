@@ -110,3 +110,12 @@ app-images and creates a GitHub release.
 `mvn package` → `jdeps` → `jlink` (JDK + separately downloaded JavaFX 27 jmods) → `jpackage --type app-image`. The
 `copy-dependencies` execution excludes `org.openjfx` on purpose (JavaFX is jlinked as modules; having the jars on the
 classpath too breaks startup) — do not remove that exclusion. Full details in `README.md`.
+
+## Third-party licenses
+
+`license-maven-plugin` (configured in the `com.powsybl:powsybl` grandparent POM) regenerates `THIRD-PARTY.txt` at the
+repo root on every build (`generate-resources`); it is committed, so dependency changes show up in diffs. It is also
+copied into the jar (shown in the About dialog's "Third-Party Licenses" tab) and into `target/app-libs` (shipped in the
+app-image). `excludedScopes` is overridden to `test` only so the `provided` Leaflet webjar, whose files we
+redistribute, is listed. The build fails on a dependency without license metadata (`failOnMissing`): declare it in
+`THIRD-PARTY.properties` at the repo root.

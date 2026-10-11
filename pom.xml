@@ -213,10 +213,47 @@
     </profiles>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <!-- on the classpath so the About dialog can display it -->
+                <directory>${project.basedir}</directory>
+                <includes>
+                    <include>THIRD-PARTY.txt</include>
+                </includes>
+                <targetPath>com/powsybl/powsybldesktop/about</targetPath>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>buildnumber-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <!-- configured by the com.powsybl:powsybl grandparent POM; writes THIRD-PARTY.txt at the repo root
+                     during generate-resources, before process-resources picks it up -->
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>add-third-party</id>
+                        <goals>
+                            <goal>add-third-party</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <!-- the parent also excludes "provided", which would drop Leaflet: its webjar is provided
+                         but leaflet.js/leaflet.css are unpacked into our jar and redistributed -->
+                    <excludedScopes>test</excludedScopes>
+                    <licenseMerges combine.children="append">
+                        <licenseMerge>BSD 3-clause License|The 3-Clause BSD License</licenseMerge>
+                        <licenseMerge>GNU Lesser General Public License v2.1|LGPL-2.1-only</licenseMerge>
+                        <licenseMerge>GNU General Public License v2.0 with Classpath exception|GPLv2+CE</licenseMerge>
+                    </licenseMerges>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -278,6 +315,31 @@
                         </manifest>
                     </archive>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <!-- jpackage copies everything in target/app-libs into the app-image -->
+                        <id>copy-third-party-to-app-libs</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/app-libs</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}</directory>
+                                    <includes>
+                                        <include>THIRD-PARTY.txt</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
