@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.web.WebView?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.powsybl.powsybldesktop.diagram.DiagramPaneController">
+    <children>
+        <ToolBar fx:id="toolBar">
+            <items>
+                <Button onAction="#onZoomOut">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2m-magnify-minus-outline" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%substations.diagram.zoomOut"/>
+                    </tooltip>
+                </Button>
+                <ComboBox fx:id="zoomComboBox" onAction="#onZoomPresetSelected"/>
+                <Button onAction="#onZoomIn">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2m-magnify-plus-outline" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%substations.diagram.zoomIn"/>
+                    </tooltip>
+                </Button>
+                <Separator orientation="VERTICAL"/>
+                <ToggleButton fx:id="fitToScreenToggleButton" mnemonicParsing="false" onAction="#onFitToScreenToggle">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2f-fit-to-page-outline" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%substations.diagram.fitToScreen"/>
+                    </tooltip>
+                </ToggleButton>
+                <Separator orientation="VERTICAL"/>
+                <MenuButton fx:id="exportMenuButton" mnemonicParsing="false">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2c-camera" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%substations.diagram.export.tooltip"/>
+                    </tooltip>
+                    <items>
+                        <MenuItem onAction="#onCopyDiagramPng" text="%substations.diagram.export.copyPng"/>
+                        <MenuItem onAction="#onCopyDiagramSvg" text="%substations.diagram.export.copySvg"/>
+                        <MenuItem onAction="#onSaveDiagramPng" text="%substations.diagram.export.savePng"/>
+                        <MenuItem onAction="#onSaveDiagramSvg" text="%substations.diagram.export.saveSvg"/>
+                    </items>
+                </MenuButton>
+            </items>
+        </ToolBar>
+        <StackPane VBox.vgrow="ALWAYS">
+            <children>
+                <WebView fx:id="webView" prefHeight="375.2" prefWidth="360.0"/>
+                <Label fx:id="noSelectionLabel" mouseTransparent="true" text="%substations.noSelection"/>
+            </children>
+        </StackPane>
+    </children>
+</VBox>
