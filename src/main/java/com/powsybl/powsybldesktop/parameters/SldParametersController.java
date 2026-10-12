@@ -29,7 +29,8 @@ import java.util.function.Function;
  * every render, not user-editable) - see {@link AbstractDiagramParametersController} for the shared shape.
  * {@code componentsSize} (a non-fluent, {@code @JsonIgnore}d component-type-to-size lookup table) is likewise excluded.
  * Of the {@link SldParameters} factories, the label provider and legend writer ones are left out (PowSyBl's only
- * alternative, {@code CustomLabelProvider}, needs per-equipment label maps), as are the zone layout ones (zone diagrams aren't drawn by this app).
+ * alternative, {@code CustomLabelProvider}, needs per-equipment label maps), as are the zone layout ones (zone diagrams aren't drawn by this app);
+ * only the default label provider's display flags are exposed, via {@link DesktopSldParameters}.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -155,6 +156,14 @@ public class SldParametersController extends AbstractDiagramParametersController
                 p -> p.getSvgParameters().getFeederInfosOuterMargin(), (p, v) -> p.getSvgParameters().setFeederInfosOuterMargin(v));
         addBooleanField(CAT_BUS_FEEDER, label("feederInfoSymmetry"), tooltip("feederInfoSymmetry"),
                 p -> p.getSvgParameters().isFeederInfoSymmetry(), (p, v) -> p.getSvgParameters().setFeederInfoSymmetry(v));
+        addBooleanField(CAT_BUS_FEEDER, label("displayCurrent"), tooltip("displayCurrent"),
+                DesktopSldParameters::isDisplayCurrent, DesktopSldParameters::setDisplayCurrent);
+        addBooleanField(CAT_BUS_FEEDER, label("displayArrowForCurrent"), tooltip("displayArrowForCurrent"),
+                DesktopSldParameters::isDisplayArrowForCurrent, DesktopSldParameters::setDisplayArrowForCurrent);
+        addBooleanField(CAT_BUS_FEEDER, label("displayPermanentLimitPercentage"), tooltip("displayPermanentLimitPercentage"),
+                DesktopSldParameters::isDisplayPermanentLimitPercentage, DesktopSldParameters::setDisplayPermanentLimitPercentage);
+        addBooleanField(CAT_BUS_FEEDER, label("displayWithAbs"), tooltip("displayWithAbs"),
+                DesktopSldParameters::isDisplayWithAbs, DesktopSldParameters::setDisplayWithAbs);
         addBooleanField(CAT_BUS_FEEDER, label("busesLegendAdded"), tooltip("busesLegendAdded"),
                 p -> p.getSvgParameters().isBusesLegendAdded(), (p, v) -> p.getSvgParameters().setBusesLegendAdded(v));
     }

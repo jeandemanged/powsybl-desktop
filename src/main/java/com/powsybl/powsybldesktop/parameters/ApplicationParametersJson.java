@@ -251,6 +251,10 @@ public final class ApplicationParametersJson {
         b.enumeration("voltageLevelLayout", DesktopSldParameters.VoltageLevelLayout.class, p::getVoltageLevelLayout, p::setVoltageLevelLayout);
         b.enumeration("componentLibrary", DesktopSldParameters.ComponentLibraryChoice.class, p::getComponentLibraryChoice, p::setComponentLibraryChoice);
         b.enumeration("styleProvider", DesktopSldParameters.StyleChoice.class, p::getStyleChoice, p::setStyleChoice);
+        b.bool("displayCurrent", p::isDisplayCurrent, p::setDisplayCurrent);
+        b.bool("displayArrowForCurrent", p::isDisplayArrowForCurrent, p::setDisplayArrowForCurrent);
+        b.bool("displayPermanentLimitPercentage", p::isDisplayPermanentLimitPercentage, p::setDisplayPermanentLimitPercentage);
+        b.bool("displayWithAbs", p::isDisplayWithAbs, p::setDisplayWithAbs);
         sldPositionLayout(b.child("positionLayout"), p.getPositionLayoutParameters());
         sldSvg(b.child("svg"), p.getSvgParameters());
         // SLD's LayoutParameters is Jackson-serializable as is (@JsonCreator constructor)

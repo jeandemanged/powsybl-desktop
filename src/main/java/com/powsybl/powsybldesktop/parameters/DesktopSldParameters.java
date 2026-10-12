@@ -16,6 +16,7 @@ import com.powsybl.sld.layout.VerticalSubstationLayoutFactory;
 import com.powsybl.sld.layout.position.clustering.PositionByClustering;
 import com.powsybl.sld.library.ConvergenceComponentLibrary;
 import com.powsybl.sld.library.FlatDesignLibrary;
+import com.powsybl.sld.svg.DefaultLabelProvider;
 import com.powsybl.sld.svg.styles.BusHighlightStyleProviderFactory;
 import com.powsybl.sld.svg.styles.DefaultStyleProviderFactory;
 import com.powsybl.sld.svg.styles.NominalVoltageStyleProviderFactory;
@@ -26,6 +27,8 @@ import com.powsybl.sld.svg.styles.NominalVoltageStyleProviderFactory;
  * {@link SldParametersController}. The creator reads them at render time, so edits apply on the next render.
  * The substation layout, component library and style provider factories are opaque objects too: they're exposed
  * here as closed choices, recognized back by type, for the form and the saved parameters file to share.
+ * The current and value display flags live on {@link DefaultLabelProvider} rather than on its parameters, so they're held here
+ * and applied by the label provider factory on each render.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -55,12 +58,24 @@ public class DesktopSldParameters extends SldParameters {
 
     private VoltageLevelLayout voltageLevelLayout = VoltageLevelLayout.SMART;
     private final PositionVoltageLevelLayoutFactoryParameters positionLayoutParameters = new PositionVoltageLevelLayoutFactoryParameters();
+    private boolean displayCurrent = false;
+    private boolean displayArrowForCurrent = true;
+    private boolean displayPermanentLimitPercentage = false;
+    private boolean displayWithAbs = false;
 
     public DesktopSldParameters() {
         super.setVoltageLevelLayoutFactoryCreator(network -> switch (voltageLevelLayout) {
             case SMART -> new SmartVoltageLevelLayoutFactory(network);
             case POSITION_FROM_EXTENSIONS -> new PositionVoltageLevelLayoutFactory(positionLayoutParameters);
             case POSITION_BY_CLUSTERING -> new PositionVoltageLevelLayoutFactory(new PositionByClustering(), positionLayoutParameters);
+        });
+        super.setLabelProviderFactory((network, componentLibrary, layoutParameters, svgParameters) -> {
+            DefaultLabelProvider labelProvider = new DefaultLabelProvider(network, componentLibrary, layoutParameters, svgParameters);
+            labelProvider.setDisplayCurrent(displayCurrent);
+            labelProvider.setDisplayArrowForCurrent(displayArrowForCurrent);
+            labelProvider.setDisplayPermanentLimitPercentage(displayPermanentLimitPercentage);
+            labelProvider.setDisplayWithAbs(displayWithAbs);
+            return labelProvider;
         });
     }
 
@@ -75,6 +90,42 @@ public class DesktopSldParameters extends SldParameters {
 
     public PositionVoltageLevelLayoutFactoryParameters getPositionLayoutParameters() {
         return positionLayoutParameters;
+    }
+
+    public boolean isDisplayCurrent() {
+        return displayCurrent;
+    }
+
+    public DesktopSldParameters setDisplayCurrent(boolean displayCurrent) {
+        this.displayCurrent = displayCurrent;
+        return this;
+    }
+
+    public boolean isDisplayArrowForCurrent() {
+        return displayArrowForCurrent;
+    }
+
+    public DesktopSldParameters setDisplayArrowForCurrent(boolean displayArrowForCurrent) {
+        this.displayArrowForCurrent = displayArrowForCurrent;
+        return this;
+    }
+
+    public boolean isDisplayPermanentLimitPercentage() {
+        return displayPermanentLimitPercentage;
+    }
+
+    public DesktopSldParameters setDisplayPermanentLimitPercentage(boolean displayPermanentLimitPercentage) {
+        this.displayPermanentLimitPercentage = displayPermanentLimitPercentage;
+        return this;
+    }
+
+    public boolean isDisplayWithAbs() {
+        return displayWithAbs;
+    }
+
+    public DesktopSldParameters setDisplayWithAbs(boolean displayWithAbs) {
+        this.displayWithAbs = displayWithAbs;
+        return this;
     }
 
     public SubstationLayoutChoice getSubstationLayoutChoice() {

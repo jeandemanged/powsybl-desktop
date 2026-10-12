@@ -64,6 +64,7 @@ public record ApplicationParameters(Map<String, Properties> networkImport,
                         .setBusesLegendAdded(true)
                         .setTooltipEnabled(true))
                 .setLayoutParameters(new LayoutParameters());
+        parameters.setDisplayCurrent(true).setDisplayArrowForCurrent(false).setDisplayPermanentLimitPercentage(true).setDisplayWithAbs(true);
         return parameters;
     }
 }
