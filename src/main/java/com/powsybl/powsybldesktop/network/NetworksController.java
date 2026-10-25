@@ -565,8 +565,6 @@ public class NetworksController extends AbstractDisposableController {
                 new Pair<>("createWithRemoteVoltageGenerator", EurostagTutorialExample1Factory::createWithRemoteVoltageGenerator),
                 new Pair<>("createWithRemoteReactiveGenerator", EurostagTutorialExample1Factory::createWithRemoteReactiveGenerator),
                 new Pair<>("createWithLocalReactiveGenerator", EurostagTutorialExample1Factory::createWithLocalReactiveGenerator),
-                new Pair<>("createWithRemoteReactiveAndVoltageGenerators", EurostagTutorialExample1Factory::createWithRemoteReactiveAndVoltageGenerators),
-                new Pair<>("createWithLocalReactiveAndVoltageGenerator", EurostagTutorialExample1Factory::createWithLocalReactiveAndVoltageGenerator),
                 new Pair<>("createWithoutControl", EurostagTutorialExample1Factory::createWithoutControl),
                 new Pair<>("createRemoteWithoutControl", EurostagTutorialExample1Factory::createRemoteWithoutControl)));
         addSampleItem(miscellaneousMenu, "Fictitious Switch", FictitiousSwitchFactory::create);
@@ -601,9 +599,9 @@ public class NetworksController extends AbstractDisposableController {
                 new Pair<>("createDisabledLocalLinear", ShuntTestCaseFactory::createDisabledLocalLinear),
                 new Pair<>("createDisabledRemoteNonLinear", ShuntTestCaseFactory::createDisabledRemoteNonLinear),
                 new Pair<>("createDisabledLocalNonLinear", ShuntTestCaseFactory::createDisabledLocalNonLinear),
-                new Pair<>("createRemoteLinearNoTarget", ShuntTestCaseFactory::createRemoteLinearNoTarget),
+                new Pair<>("createDisabledRemoteLinearNoTarget", ShuntTestCaseFactory::createDisabledRemoteLinearNoTarget),
                 new Pair<>("createRemoteNonLinearNoTarget", ShuntTestCaseFactory::createRemoteNonLinearNoTarget),
-                new Pair<>("createLocalLinearNoTarget", ShuntTestCaseFactory::createLocalLinearNoTarget),
+                new Pair<>("createDisabledLocalLinearNoTarget", ShuntTestCaseFactory::createDisabledLocalLinearNoTarget),
                 new Pair<>("createLocalNonLinearNoTarget", ShuntTestCaseFactory::createLocalNonLinearNoTarget),
                 new Pair<>("createLocalNonLinear", ShuntTestCaseFactory::createLocalNonLinear)));
         addFactoryMenu(miscellaneousMenu, "SvcTestCaseFactory", List.of(

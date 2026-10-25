@@ -8,6 +8,7 @@
 package com.powsybl.powsybldesktop.report;
 
 import com.powsybl.commons.report.ReportNode;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import javafx.fxml.FXML;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
@@ -28,7 +29,7 @@ public class ReportNodeViewController {
 
     // A node is kept if its own severity meets the threshold, or a descendant's does - so raising the
     // threshold only prunes branches that are entirely below it, rather than orphaning matching descendants.
-    private String minSeverity = ReportNodeTreeCell.SEVERITIES.get(0);
+    private String minSeverity = GuiParameters.REPORT_SEVERITIES.get(0);
 
     @FXML
     private void initialize() {
@@ -65,7 +66,7 @@ public class ReportNodeViewController {
     }
 
     private boolean meetsMinSeverity(ReportNode reportNode) {
-        return ReportNodeTreeCell.SEVERITIES.indexOf(ReportNodeTreeCell.severityOf(reportNode))
-                >= ReportNodeTreeCell.SEVERITIES.indexOf(minSeverity);
+        return GuiParameters.REPORT_SEVERITIES.indexOf(ReportNodeTreeCell.severityOf(reportNode))
+                >= GuiParameters.REPORT_SEVERITIES.indexOf(minSeverity);
     }
 }

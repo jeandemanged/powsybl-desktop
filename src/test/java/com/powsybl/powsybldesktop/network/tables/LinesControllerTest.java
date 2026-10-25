@@ -288,7 +288,7 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
         Line line = network.getLineStream().findFirst().orElseThrow();
         line.getTerminal1().getBusView().getBus().setV(100);
         line.getTerminal1().setP(1000).setQ(1000);
-        line.newCurrentLimits1().setPermanentLimit(0.001).add();
+        line.getOrCreateSelectedOperationalLimitsGroup1().newCurrentLimits().setPermanentLimit(0.001).add();
         interact(() -> ViolationsTestSupport.recompute(mainModel, network));
 
         Node graphic = cellGraphic(controller.loadingColumn, rowOf(line));
@@ -304,7 +304,7 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
         Line line = network.getLineStream().findFirst().orElseThrow();
         line.getTerminal1().getBusView().getBus().setV(100);
         line.getTerminal1().setP(1000).setQ(1000);
-        line.newCurrentLimits1().setPermanentLimit(line.getTerminal1().getI() * 2).add();
+        line.getOrCreateSelectedOperationalLimitsGroup1().newCurrentLimits().setPermanentLimit(line.getTerminal1().getI() * 2).add();
         interact(() -> ViolationsTestSupport.recompute(mainModel, network));
 
         Node graphic = cellGraphic(controller.loadingColumn, rowOf(line));

@@ -15,6 +15,7 @@ import com.powsybl.iidm.network.ShuntCompensatorLinearModel;
 import com.powsybl.iidm.network.ShuntCompensatorModelType;
 import com.powsybl.iidm.network.ShuntCompensatorNonLinearModel;
 import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.ShuntCompensatorNavigationState;
@@ -111,15 +112,15 @@ public class ShuntCompensatorsController extends AbstractEquipmentTableControlle
         TableColumnSupport.configureNullableIntColumn(maximumSectionColumn, ShuntCompensator::getMaximumSectionCount);
 
         TableColumnSupport.configureEditableBooleanColumn(voltageRegulatorOnColumn,
-                ShuntCompensator::isVoltageRegulatorOn, ShuntCompensator::setVoltageRegulatorOn);
+                ShuntCompensator::isRegulating, (shuntCompensator, on) -> VoltageRegulations.setRegulating(shuntCompensator, RegulationMode.VOLTAGE, on));
 
-        targetVColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTargetV()));
+        targetVColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getRegulatingTargetV()));
         TableColumnSupport.configureDoubleColumn(targetVColumn, format(GuiParameters.Quantity.VOLTAGE));
-        targetVColumn.setOnEditCommit(event -> event.getRowValue().setTargetV(event.getNewValue()));
+        targetVColumn.setOnEditCommit(event -> VoltageRegulations.setRegulatingTargetV(event.getRowValue(), event.getNewValue()));
 
-        targetDeadbandColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTargetDeadband()));
+        targetDeadbandColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(VoltageRegulations.targetDeadband(cellData.getValue())));
         TableColumnSupport.configureDoubleColumn(targetDeadbandColumn, format(GuiParameters.Quantity.VOLTAGE));
-        targetDeadbandColumn.setOnEditCommit(event -> event.getRowValue().setTargetDeadband(event.getNewValue()));
+        targetDeadbandColumn.setOnEditCommit(event -> VoltageRegulations.setTargetDeadband(event.getRowValue(), RegulationMode.VOLTAGE, event.getNewValue()));
 
         TableColumnSupport.configureNullableDoubleColumn(regulatedBusVoltageColumn, shuntCompensator -> {
             Bus bus = shuntCompensator.getRegulatingTerminal().getBusView().getBus();

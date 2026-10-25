@@ -12,21 +12,19 @@ import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.StaticVarCompensator;
 import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.StaticVarCompensatorNavigationState;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
-import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
-import javafx.util.StringConverter;
 
-import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
@@ -40,20 +38,6 @@ import java.util.stream.Stream;
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 public class StaticVarCompensatorsController extends AbstractEquipmentTableController<StaticVarCompensator> {
-
-    private static final StringConverter<StaticVarCompensator.RegulationMode> REGULATION_MODE_FORMAT = new StringConverter<>() {
-        @Override
-        public String toString(StaticVarCompensator.RegulationMode value) {
-            return value == null ? "" : regulationModeLabel(value);
-        }
-
-        @Override
-        public StaticVarCompensator.RegulationMode fromString(String text) {
-            return Arrays.stream(StaticVarCompensator.RegulationMode.values())
-                    .filter(mode -> toString(mode).equals(text))
-                    .findFirst().orElseThrow();
-        }
-    };
 
     @FXML
     public TableView<StaticVarCompensator> staticVarCompensatorsTableView;
@@ -77,7 +61,7 @@ public class StaticVarCompensatorsController extends AbstractEquipmentTableContr
     @FXML
     TableColumn<StaticVarCompensator, Boolean> regulatingColumn;
     @FXML
-    TableColumn<StaticVarCompensator, StaticVarCompensator.RegulationMode> regulationModeColumn;
+    TableColumn<StaticVarCompensator, RegulationMode> regulationModeColumn;
     @FXML
     TableColumn<StaticVarCompensator, Double> targetVColumn;
     @FXML
@@ -104,18 +88,19 @@ public class StaticVarCompensatorsController extends AbstractEquipmentTableContr
         TableColumnSupport.configureComponentColumn(synchronousComponentColumn,
                 staticVarCompensator -> staticVarCompensator.getTerminal().getBusView().getBus(), Bus::getSynchronousComponent);
 
-        TableColumnSupport.configureEditableBooleanColumn(regulatingColumn, StaticVarCompensator::isRegulating, StaticVarCompensator::setRegulating);
+        TableColumnSupport.configureEditableBooleanColumn(regulatingColumn, StaticVarCompensator::isRegulating,
+                (staticVarCompensator, regulating) -> VoltageRegulations.setRegulating(staticVarCompensator, RegulationMode.REACTIVE_POWER, regulating));
 
-        TableColumnSupport.configureChoiceColumn(regulationModeColumn, StaticVarCompensator::getRegulationMode, StaticVarCompensator::setRegulationMode,
-                List.of(StaticVarCompensator.RegulationMode.values()), REGULATION_MODE_FORMAT);
+        TableColumnSupport.configureChoiceColumn(regulationModeColumn, VoltageRegulations::mode, VoltageRegulations::setMode,
+                List.of(RegulationMode.values()), VoltageRegulations.MODE_FORMAT);
 
-        targetVColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getVoltageSetpoint()));
+        targetVColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getRegulatingTargetV()));
         TableColumnSupport.configureDoubleColumn(targetVColumn, format(GuiParameters.Quantity.VOLTAGE));
-        targetVColumn.setOnEditCommit(event -> event.getRowValue().setVoltageSetpoint(event.getNewValue()));
+        targetVColumn.setOnEditCommit(event -> VoltageRegulations.setRegulatingTargetV(event.getRowValue(), event.getNewValue()));
 
-        targetQColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getReactivePowerSetpoint()));
+        targetQColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(VoltageRegulations.regulatingTargetQ(cellData.getValue())));
         TableColumnSupport.configureDoubleColumn(targetQColumn, format(GuiParameters.Quantity.POWER));
-        targetQColumn.setOnEditCommit(event -> event.getRowValue().setReactivePowerSetpoint(event.getNewValue()));
+        targetQColumn.setOnEditCommit(event -> VoltageRegulations.setRegulatingTargetQ(event.getRowValue(), event.getNewValue()));
 
         qColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTerminal().getQ()));
         TableColumnSupport.configureDoubleColumn(qColumn, format(GuiParameters.Quantity.POWER));
@@ -131,11 +116,6 @@ public class StaticVarCompensatorsController extends AbstractEquipmentTableContr
         columnVisibilityToolbarController.configure(List.of(
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,
                         qColumn, iColumn, regulatedBusVoltageColumn)));
-    }
-
-    private static String regulationModeLabel(StaticVarCompensator.RegulationMode mode) {
-        return Messages.get(mode == StaticVarCompensator.RegulationMode.VOLTAGE
-                ? "desktop.common.regulationMode.voltage" : "desktop.common.regulationMode.reactivePower");
     }
 
     @Override

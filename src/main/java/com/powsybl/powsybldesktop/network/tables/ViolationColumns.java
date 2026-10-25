@@ -109,7 +109,7 @@ final class ViolationColumns<S> {
     }
 
     /**
-     * Side, limit type, limit name, acceptable duration, value, permanent limit and limit reduction (hidden) of the
+     * Side, limit type, limit name, acceptable duration, value, permanent limit and limit scaling (hidden) of the
      * row's flow violation.
      */
     ViolationColumns<S> flowViolation(Function<S, FlowViolation> violationGetter) {
@@ -127,10 +127,10 @@ final class ViolationColumns<S> {
                 row -> limitViolation.apply(row).getValue(), format);
         TableColumnSupport.configureNullableDoubleColumn(add("permanentLimit", "violations.column.permanentLimit", 0, "right-aligned-column"),
                 row -> violationGetter.apply(row).permanentLimit(), format);
-        TableColumn<S, Double> limitReductionColumn = add("limitReduction", "securityAnalysisResults.column.limitReduction", 0, "right-aligned-column");
-        TableColumnSupport.configureNullableDoubleColumn(limitReductionColumn, row -> limitViolation.apply(row).getLimitReduction(),
-                format(GuiParameters.Quantity.LIMIT_REDUCTION));
-        limitReductionColumn.setVisible(false);
+        TableColumn<S, Double> limitScalingColumn = add("limitScaling", "securityAnalysisResults.column.limitScaling", 0, "right-aligned-column");
+        TableColumnSupport.configureNullableDoubleColumn(limitScalingColumn, row -> limitViolation.apply(row).getLimitScaling(),
+                format(GuiParameters.Quantity.LIMIT_SCALING));
+        limitScalingColumn.setVisible(false);
         return this;
     }
 

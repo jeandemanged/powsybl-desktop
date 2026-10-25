@@ -63,7 +63,8 @@ public record ApplicationParameters(Map<String, Properties> networkImport,
                         .setCurrentUnit("A")
                         .setBusesLegendAdded(true)
                         .setTooltipEnabled(true))
-                .setLayoutParameters(new LayoutParameters());
+                .setLayoutParameters(new LayoutParameters()
+                        .setThreeWindingsTransformerFeederInfoMode(LayoutParameters.ThreeWindingsTransformerFeederInfoMode.ONLY_INSIDE_VOLTAGE_LEVEL));
         parameters.setDisplayCurrent(true).setDisplayArrowForCurrent(false).setDisplayPermanentLimitPercentage(true).setDisplayWithAbs(true);
         return parameters;
     }

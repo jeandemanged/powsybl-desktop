@@ -14,6 +14,7 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
@@ -137,9 +138,8 @@ class GeneratorsControllerTest extends AbstractHeadlessApplicationTest {
                 .setId("G_NO_SUBSTATION")
                 .setBus("BUS_NO_SUBSTATION")
                 .setConnectableBus("BUS_NO_SUBSTATION")
-                .setVoltageRegulatorOn(false)
                 .setTargetP(50)
-                .setTargetQ(0)
+                .setLocalTargetQ(0)
                 .setMinP(0)
                 .setMaxP(100)
                 .add();
@@ -160,6 +160,19 @@ class GeneratorsControllerTest extends AbstractHeadlessApplicationTest {
 
         interact(checkBox::fire);
         assertTrue(generator.getTerminal().isConnected());
+    }
+
+    @Test
+    void regulationModeEditCommitUpdatesGenerator() {
+        Generator generator = generator("B1-G");
+        int row = rowOf(generator);
+        assertEquals(RegulationMode.VOLTAGE, cellValue(controller.regulationModeColumn, row));
+        // a regulating generator without a remote terminal only accepts the voltage mode
+        generator.getVoltageRegulation().setRegulating(false);
+
+        interact(() -> fireEditCommit(controller.generatorsTableView, controller.regulationModeColumn, row, RegulationMode.REACTIVE_POWER));
+
+        assertEquals(RegulationMode.REACTIVE_POWER, generator.getVoltageRegulation().getMode());
     }
 
     @Test

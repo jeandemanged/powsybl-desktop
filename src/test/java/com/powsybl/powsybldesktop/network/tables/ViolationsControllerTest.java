@@ -54,17 +54,17 @@ class ViolationsControllerTest extends AbstractHeadlessApplicationTest {
         double i1 = line1.getTerminal1().getI();
         double i2 = line1.getTerminal2().getI();
         // side 1: 600 s temporary limit violation, 130 %; side 2: 60 s temporary limit violation, 120 %
-        line1.newCurrentLimits1()
+        line1.getOrCreateSelectedOperationalLimitsGroup1().newCurrentLimits()
                 .setPermanentLimit(i1 / 1.3)
                 .beginTemporaryLimit().setName("TL600").setAcceptableDuration(600).setValue(i1 * 1.1).endTemporaryLimit()
                 .add();
-        line1.newCurrentLimits2()
+        line1.getOrCreateSelectedOperationalLimitsGroup2().newCurrentLimits()
                 .setPermanentLimit(i2 / 1.2)
                 .beginTemporaryLimit().setName("TL600").setAcceptableDuration(600).setValue(i2 * 0.9).endTemporaryLimit()
                 .beginTemporaryLimit().setName("TL60").setAcceptableDuration(60).setValue(i2 * 1.1).endTemporaryLimit()
                 .add();
         Line line2 = eurostag.getLine("NHV1_NHV2_2");
-        line2.newCurrentLimits1().setPermanentLimit(line2.getTerminal1().getI() / 1.5).add();
+        line2.getOrCreateSelectedOperationalLimitsGroup1().newCurrentLimits().setPermanentLimit(line2.getTerminal1().getI() / 1.5).add();
         Bus high = eurostag.getVoltageLevel("VLHV1").getBusView().getBuses().iterator().next();
         high.getVoltageLevel().setHighVoltageLimit(high.getV() - 1);
         Bus low = eurostag.getVoltageLevel("VLHV2").getBusView().getBuses().iterator().next();
@@ -75,7 +75,7 @@ class ViolationsControllerTest extends AbstractHeadlessApplicationTest {
         // also an undervoltage: VL_132's low limit is higher
         leg1.getTerminal().getBusView().getBus().setV(100);
         leg1.getTerminal().setP(1000).setQ(1000);
-        leg1.newCurrentLimits().setPermanentLimit(leg1.getTerminal().getI() / 3).add();
+        leg1.getOrCreateSelectedOperationalLimitsGroup().newCurrentLimits().setPermanentLimit(leg1.getTerminal().getI() / 3).add();
 
         eurostagId = eurostag.getId();
         threeWindingsId = threeWindings.getId();

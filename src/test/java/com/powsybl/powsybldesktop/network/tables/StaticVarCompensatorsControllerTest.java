@@ -13,6 +13,7 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.StaticVarCompensator;
 import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
@@ -62,10 +63,12 @@ class StaticVarCompensatorsControllerTest extends AbstractHeadlessApplicationTes
                 .setConnectableBus("B1")
                 .setBmin(-0.01)
                 .setBmax(0.01)
-                .setRegulating(true)
-                .setRegulationMode(StaticVarCompensator.RegulationMode.VOLTAGE)
-                .setVoltageSetpoint(110)
-                .setReactivePowerSetpoint(5)
+                .setLocalTargetV(110)
+                .setLocalTargetQ(5)
+                .newVoltageRegulation()
+                    .withMode(RegulationMode.VOLTAGE)
+                    .withRegulating(true)
+                    .add()
                 .add();
 
         FXMLLoader loader = new FXMLLoader(getClass().getResource(
@@ -134,9 +137,9 @@ class StaticVarCompensatorsControllerTest extends AbstractHeadlessApplicationTes
         int row = rowOf(staticVarCompensator);
 
         assertEquals(staticVarCompensator.getNameOrId(), cellValue(controller.nameColumn, row));
-        assertEquals(StaticVarCompensator.RegulationMode.VOLTAGE, cellValue(controller.regulationModeColumn, row));
-        assertEquals(staticVarCompensator.getVoltageSetpoint(), ((Double) cellValue(controller.targetVColumn, row)).doubleValue());
-        assertEquals(staticVarCompensator.getReactivePowerSetpoint(), ((Double) cellValue(controller.targetQColumn, row)).doubleValue());
+        assertEquals(RegulationMode.VOLTAGE, cellValue(controller.regulationModeColumn, row));
+        assertEquals(staticVarCompensator.getRegulatingTargetV(), ((Double) cellValue(controller.targetVColumn, row)).doubleValue());
+        assertEquals(staticVarCompensator.getRegulatingTargetQ(), ((Double) cellValue(controller.targetQColumn, row)).doubleValue());
 
         Hyperlink voltageLevelLink = (Hyperlink) cellGraphic(controller.voltageLevelColumn, row);
         assertEquals(voltageLevel.getNameOrId(), voltageLevelLink.getText());
@@ -175,9 +178,9 @@ class StaticVarCompensatorsControllerTest extends AbstractHeadlessApplicationTes
         int row = rowOf(staticVarCompensator);
 
         interact(() -> fireEditCommit(controller.staticVarCompensatorsTableView, controller.regulationModeColumn, row,
-                StaticVarCompensator.RegulationMode.REACTIVE_POWER));
+                RegulationMode.REACTIVE_POWER));
 
-        assertEquals(StaticVarCompensator.RegulationMode.REACTIVE_POWER, staticVarCompensator.getRegulationMode());
+        assertEquals(RegulationMode.REACTIVE_POWER, staticVarCompensator.getVoltageRegulation().getMode());
     }
 
     @Test
@@ -186,10 +189,10 @@ class StaticVarCompensatorsControllerTest extends AbstractHeadlessApplicationTes
         int row = rowOf(staticVarCompensator);
 
         interact(() -> fireEditCommit(controller.staticVarCompensatorsTableView, controller.targetVColumn, row, 120.0));
-        assertEquals(120.0, staticVarCompensator.getVoltageSetpoint());
+        assertEquals(120.0, staticVarCompensator.getRegulatingTargetV());
 
         interact(() -> fireEditCommit(controller.staticVarCompensatorsTableView, controller.targetQColumn, row, 8.0));
-        assertEquals(8.0, staticVarCompensator.getReactivePowerSetpoint());
+        assertEquals(8.0, staticVarCompensator.getRegulatingTargetQ());
     }
 
     @Test

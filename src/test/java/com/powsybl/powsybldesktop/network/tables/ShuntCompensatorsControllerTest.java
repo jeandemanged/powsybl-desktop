@@ -13,6 +13,7 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.ShuntCompensator;
 import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
@@ -71,9 +72,12 @@ class ShuntCompensatorsControllerTest extends AbstractHeadlessApplicationTest {
                 .setBus("B1")
                 .setConnectableBus("B1")
                 .setSectionCount(2)
-                .setVoltageRegulatorOn(true)
-                .setTargetV(110)
-                .setTargetDeadband(2)
+                .setLocalTargetV(110)
+                .newVoltageRegulation()
+                    .withMode(RegulationMode.VOLTAGE)
+                    .withTargetDeadband(2)
+                    .withRegulating(true)
+                    .add()
                 .newLinearModel()
                     .setMaximumSectionCount(3)
                     .setBPerSection(1e-5)
@@ -203,8 +207,8 @@ class ShuntCompensatorsControllerTest extends AbstractHeadlessApplicationTest {
         HBox modelTypeBox = (HBox) cellGraphic(controller.modelTypeColumn, row);
         assertEquals(Messages.get("shuntCompensators.modelType.linear"), ((Label) modelTypeBox.getChildren().get(1)).getText());
         assertEquals(3, cellValue(controller.maximumSectionColumn, row));
-        assertEquals(shuntCompensator.getTargetV(), ((Double) cellValue(controller.targetVColumn, row)).doubleValue());
-        assertEquals(shuntCompensator.getTargetDeadband(), ((Double) cellValue(controller.targetDeadbandColumn, row)).doubleValue());
+        assertEquals(shuntCompensator.getRegulatingTargetV(), ((Double) cellValue(controller.targetVColumn, row)).doubleValue());
+        assertEquals(shuntCompensator.getVoltageRegulation().getTargetDeadband(), ((Double) cellValue(controller.targetDeadbandColumn, row)).doubleValue());
         assertEquals(1, cellValue(controller.solvedSectionColumn, row));
 
         Hyperlink voltageLevelLink = (Hyperlink) cellGraphic(controller.voltageLevelColumn, row);
@@ -309,11 +313,11 @@ class ShuntCompensatorsControllerTest extends AbstractHeadlessApplicationTest {
     void voltageRegulatorOnEditUpdatesShuntCompensator() {
         ShuntCompensator shuntCompensator = shuntCompensator("B1-SH2");
         CheckBox checkBox = (CheckBox) cellGraphic(controller.voltageRegulatorOnColumn, rowOf(shuntCompensator));
-        assertTrue(shuntCompensator.isVoltageRegulatorOn());
+        assertTrue(shuntCompensator.isRegulating());
 
         interact(checkBox::fire);
 
-        assertFalse(shuntCompensator.isVoltageRegulatorOn());
+        assertFalse(shuntCompensator.isRegulating());
     }
 
     @Test
@@ -322,10 +326,10 @@ class ShuntCompensatorsControllerTest extends AbstractHeadlessApplicationTest {
         int row = rowOf(shuntCompensator);
 
         interact(() -> fireEditCommit(controller.shuntCompensatorsTableView, controller.targetVColumn, row, 120.0));
-        assertEquals(120.0, shuntCompensator.getTargetV());
+        assertEquals(120.0, shuntCompensator.getRegulatingTargetV());
 
         interact(() -> fireEditCommit(controller.shuntCompensatorsTableView, controller.targetDeadbandColumn, row, 3.0));
-        assertEquals(3.0, shuntCompensator.getTargetDeadband());
+        assertEquals(3.0, shuntCompensator.getVoltageRegulation().getTargetDeadband());
     }
 
     @Test

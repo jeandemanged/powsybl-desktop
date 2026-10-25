@@ -237,7 +237,7 @@ class TieLinesControllerTest extends AbstractHeadlessApplicationTest {
         TieLine tieLine = network.getTieLineStream().findFirst().orElseThrow();
         tieLine.getTerminal1().getBusView().getBus().setV(100);
         tieLine.getTerminal1().setP(1000).setQ(1000);
-        tieLine.newCurrentLimits1().setPermanentLimit(0.001).add();
+        tieLine.getOrCreateSelectedOperationalLimitsGroup1().newCurrentLimits().setPermanentLimit(0.001).add();
         interact(() -> ViolationsTestSupport.recompute(mainModel, network));
 
         Node graphic = cellGraphic(controller.loadingColumn, rowOf(tieLine));

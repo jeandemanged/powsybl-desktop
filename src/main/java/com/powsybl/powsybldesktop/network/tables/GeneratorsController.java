@@ -12,6 +12,7 @@ import com.powsybl.iidm.network.Generator;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.powsybldesktop.navigation.GeneratorNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
@@ -66,7 +67,9 @@ public class GeneratorsController extends AbstractEquipmentTableController<Gener
     @FXML
     TableColumn<Generator, Double> maxPColumn;
     @FXML
-    TableColumn<Generator, Boolean> voltageControlEnabledColumn;
+    TableColumn<Generator, Boolean> regulatingColumn;
+    @FXML
+    TableColumn<Generator, RegulationMode> regulationModeColumn;
     @FXML
     TableColumn<Generator, Double> targetVColumn;
     @FXML
@@ -97,9 +100,9 @@ public class GeneratorsController extends AbstractEquipmentTableController<Gener
         TableColumnSupport.configureDoubleColumn(targetPColumn, format(GuiParameters.Quantity.POWER));
         targetPColumn.setOnEditCommit(event -> event.getRowValue().setTargetP(event.getNewValue()));
 
-        targetQColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTargetQ()));
+        targetQColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(VoltageRegulations.regulatingTargetQ(cellData.getValue())));
         TableColumnSupport.configureDoubleColumn(targetQColumn, format(GuiParameters.Quantity.POWER));
-        targetQColumn.setOnEditCommit(event -> event.getRowValue().setTargetQ(event.getNewValue()));
+        targetQColumn.setOnEditCommit(event -> VoltageRegulations.setRegulatingTargetQ(event.getRowValue(), event.getNewValue()));
 
         minPColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getMinP()));
         TableColumnSupport.configureDoubleColumn(minPColumn, format(GuiParameters.Quantity.POWER));
@@ -109,12 +112,15 @@ public class GeneratorsController extends AbstractEquipmentTableController<Gener
         TableColumnSupport.configureDoubleColumn(maxPColumn, format(GuiParameters.Quantity.POWER));
         maxPColumn.setOnEditCommit(event -> event.getRowValue().setMaxP(event.getNewValue()));
 
-        TableColumnSupport.configureEditableBooleanColumn(voltageControlEnabledColumn,
-                Generator::isVoltageRegulatorOn, Generator::setVoltageRegulatorOn);
+        TableColumnSupport.configureEditableBooleanColumn(regulatingColumn,
+                Generator::isRegulating, (generator, on) -> VoltageRegulations.setRegulating(generator, RegulationMode.VOLTAGE, on));
 
-        targetVColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTargetV()));
+        TableColumnSupport.configureChoiceColumn(regulationModeColumn, VoltageRegulations::mode, VoltageRegulations::setMode,
+                List.of(RegulationMode.VOLTAGE, RegulationMode.REACTIVE_POWER), VoltageRegulations.MODE_FORMAT);
+
+        targetVColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getRegulatingTargetV()));
         TableColumnSupport.configureDoubleColumn(targetVColumn, format(GuiParameters.Quantity.VOLTAGE));
-        targetVColumn.setOnEditCommit(event -> event.getRowValue().setTargetV(event.getNewValue()));
+        targetVColumn.setOnEditCommit(event -> VoltageRegulations.setRegulatingTargetV(event.getRowValue(), event.getNewValue()));
 
         pColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTerminal().getP()));
         TableColumnSupport.configureDoubleColumn(pColumn, format(GuiParameters.Quantity.POWER));

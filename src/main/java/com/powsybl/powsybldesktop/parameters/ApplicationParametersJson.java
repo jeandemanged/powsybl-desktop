@@ -389,6 +389,7 @@ public final class ApplicationParametersJson {
         b.number("timeoutSeconds", p::getTimeoutSeconds, p::setTimeoutSeconds);
         b.number("textNodeEdgeConnectionYShift", p::getTextNodeEdgeConnectionYShift, p::setTextNodeEdgeConnectionYShift);
         b.bool("injectionsAdded", p::isInjectionsAdded, p::setInjectionsAdded);
+        b.bool("edgesToInvisibleNodesDisplayed", p::isEdgesToInvisibleNodesDisplayed, p::setEdgesToInvisibleNodesDisplayed);
         b.number("scaleFactor", p::getScaleFactor, p::setScaleFactor);
         b.integer("maxSteps", p::getMaxSteps, p::setMaxSteps);
     }
@@ -436,7 +437,7 @@ public final class ApplicationParametersJson {
         }
     }
 
-    // e.g. LIMIT_REDUCTION -> limitReduction, like every other key of the file
+    // e.g. LIMIT_SCALING -> limitScaling, like every other key of the file
     private static String camelCase(String constant) {
         StringBuilder sb = new StringBuilder();
         for (String word : constant.toLowerCase(Locale.ROOT).split("_")) {

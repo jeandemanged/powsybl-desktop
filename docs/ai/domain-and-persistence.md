@@ -33,7 +33,7 @@ are pinned to `powsybl-core.version` (7.3.0) because they are outside the BOM. R
   `NetworkStudy.setViolations`, with every equipment's loading (percentage of its permanent limits, violated or not).
   Edits don't recompute them. Every violation indication (Violations view, the equipment tables' "Loading" and
   "Voltage Range" columns) reads this cache; never check limits on the fly in a cell.
-  Detection takes a `LimitsComputer` (`NO_MODIFICATIONS` for now) so limit reductions can be plugged in later.
+  Detection takes a `LimitsComputer` (`NO_MODIFICATIONS` for now) so limit scalings can be plugged in later.
   The Security Analysis Results view shows the security analysis' own violations the same way, converted by
   `FlowViolation.of`/`VoltageViolation.of` (permanent limit and bus-view bus resolved against the network). Its
   post-contingency rows also show the pre-contingency values: the security analysis runs with a pre-contingency only
@@ -88,7 +88,7 @@ are pinned to `powsybl-core.version` (7.3.0) because they are outside the BOM. R
   (also after a reset or import, which replace the instance). Read them through
   `ParametersModel.getGuiParameters()` each time rather than keeping a reference.
 - `GuiParameters` also hold the decimal places of every displayed quantity (`GuiParameters.Quantity`: voltage, angle,
-  power (MW, MVAr and MVA alike), current, percentage, Ω, S, rho, limit reduction), the **single source** for tables,
+  power (MW, MVAr and MVA alike), current, percentage, Ω, S, rho, limit scaling), the **single source** for tables,
   dialogs, tooltips, the substations tree and both diagrams. SLD/NAD `SvgParameters` precisions are neither edited nor
   saved: `SubstationsController` copies the GUI decimals into each render's parameters copy. Tables format through `TableColumnSupport.doubleFormat(supplier,
   quantity)`, which reads the decimals on every render, and refresh on each GUI parameters revision. Never hardcode a

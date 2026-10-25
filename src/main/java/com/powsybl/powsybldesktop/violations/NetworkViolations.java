@@ -75,7 +75,7 @@ public final class NetworkViolations {
 
     /**
      * @param limitsComputer the limits to check against, e.g. {@link LimitsComputer#NO_MODIFICATIONS} or limits
-     *                       reduced by a {@code DefaultLimitReductionsApplier}
+     *                       scaled by a {@code DefaultLimitScalingsApplier}
      */
     public static NetworkViolations compute(Network network, LimitsComputer<Identifiable<?>, LoadingLimits> limitsComputer) {
         Objects.requireNonNull(limitsComputer);
@@ -175,7 +175,7 @@ public final class NetworkViolations {
             LimitViolationUtils.getOverload(limits, value).ifPresent(overload -> {
                 consumer.accept(new FlowViolation(new LimitViolation(equipment.getId(), name, overload.getOperationalLimitsGroupId(),
                         violationType, overload.getPreviousLimitName(), overload.getTemporaryLimit().getAcceptableDuration(),
-                        overload.getPreviousLimit(), overload.getLimitReductionCoefficient(), value, side, null),
+                        overload.getPreviousLimit(), overload.getLimitScalingCoefficient(), value, side, null),
                         permanentLimit(limits)));
                 temporaryOverloadGroupIds.add(overload.getOperationalLimitsGroupId());
             });
@@ -189,7 +189,7 @@ public final class NetworkViolations {
             if (result.isOverload()) {
                 consumer.accept(new FlowViolation(new LimitViolation(equipment.getId(), name, result.operationalLimitsGroupId(),
                         violationType, result.permanentLimitName(), Integer.MAX_VALUE, result.permanentLimitValue(),
-                        result.limitReductionValue(), value, side, null),
+                        result.limitScalingValue(), value, side, null),
                         permanentLimit(limits)));
             }
         }

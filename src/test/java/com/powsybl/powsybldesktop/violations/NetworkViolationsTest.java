@@ -69,7 +69,7 @@ class NetworkViolationsTest {
         Line line = network.getLine("NHV1_NHV2_1");
         double i = line.getTerminal1().getI();
         assertFalse(Double.isNaN(i));
-        line.newCurrentLimits1()
+        line.getOrCreateSelectedOperationalLimitsGroup1().newCurrentLimits()
                 .setPermanentLimit(i / 1.25)
                 .beginTemporaryLimit().setName("TL600").setAcceptableDuration(600).setValue(i * 0.9).endTemporaryLimit()
                 .beginTemporaryLimit().setName("TL60").setAcceptableDuration(60).setValue(i * 1.1).endTemporaryLimit()
@@ -92,7 +92,7 @@ class NetworkViolationsTest {
         Network network = EurostagTutorialExample1Factory.createWithLFResults();
         Line line = network.getLine("NHV1_NHV2_1");
         double i = line.getTerminal1().getI();
-        line.newCurrentLimits1()
+        line.getOrCreateSelectedOperationalLimitsGroup1().newCurrentLimits()
                 .setDetectionKind(DetectionKind.LOW)
                 .beginTemporaryLimit().setName("TL600").setAcceptableDuration(600).setValue(i * 0.8).endTemporaryLimit()
                 .beginTemporaryLimit().setName("TL60").setAcceptableDuration(60).setValue(i * 1.2).endTemporaryLimit()
@@ -109,8 +109,8 @@ class NetworkViolationsTest {
     void loadingIsKnownForEquipmentsWithinTheirLimitsToo() {
         Network network = EurostagTutorialExample1Factory.createWithLFResults();
         Line line = network.getLine("NHV1_NHV2_1");
-        line.newCurrentLimits1().setPermanentLimit(line.getTerminal1().getI() * 2).add();
-        line.newCurrentLimits2().setPermanentLimit(line.getTerminal2().getI() * 4).add();
+        line.getOrCreateSelectedOperationalLimitsGroup1().newCurrentLimits().setPermanentLimit(line.getTerminal1().getI() * 2).add();
+        line.getOrCreateSelectedOperationalLimitsGroup2().newCurrentLimits().setPermanentLimit(line.getTerminal2().getI() * 4).add();
 
         NetworkViolations violations = compute(network);
 
@@ -139,13 +139,13 @@ class NetworkViolationsTest {
         double i1 = line.getTerminal1().getI();
         double i2 = line.getTerminal2().getI();
         // side 1: 60 s temporary limit violation, 120 %
-        line.newCurrentLimits1()
+        line.getOrCreateSelectedOperationalLimitsGroup1().newCurrentLimits()
                 .setPermanentLimit(i1 / 1.2)
                 .beginTemporaryLimit().setName("TL600").setAcceptableDuration(600).setValue(i1 * 0.9).endTemporaryLimit()
                 .beginTemporaryLimit().setName("TL60").setAcceptableDuration(60).setValue(i1 * 1.1).endTemporaryLimit()
                 .add();
         // side 2: 600 s temporary limit violation, 130 %
-        line.newCurrentLimits2()
+        line.getOrCreateSelectedOperationalLimitsGroup2().newCurrentLimits()
                 .setPermanentLimit(i2 / 1.3)
                 .beginTemporaryLimit().setName("TL600").setAcceptableDuration(600).setValue(i2 * 1.1).endTemporaryLimit()
                 .add();
@@ -165,9 +165,9 @@ class NetworkViolationsTest {
         double i1 = line.getTerminal1().getI();
         double i2 = line.getTerminal2().getI();
         // side 1: permanent limit only, which can't be exceeded at all: 120 %
-        line.newCurrentLimits1().setPermanentLimit(i1 / 1.2).add();
+        line.getOrCreateSelectedOperationalLimitsGroup1().newCurrentLimits().setPermanentLimit(i1 / 1.2).add();
         // side 2: 60 s temporary limit violation, 102 %
-        line.newCurrentLimits2()
+        line.getOrCreateSelectedOperationalLimitsGroup2().newCurrentLimits()
                 .setPermanentLimit(i2 / 1.02)
                 .beginTemporaryLimit().setName("TL600").setAcceptableDuration(600).setValue(i2 * 0.99).endTemporaryLimit()
                 .beginTemporaryLimit().setName("TL60").setAcceptableDuration(60).setValue(i2 * 1.1).endTemporaryLimit()
@@ -189,8 +189,8 @@ class NetworkViolationsTest {
         Network network = EurostagTutorialExample1Factory.createWithLFResults();
         Line line1 = network.getLine("NHV1_NHV2_1");
         Line line2 = network.getLine("NHV1_NHV2_2");
-        line1.newCurrentLimits1().setPermanentLimit(line1.getTerminal1().getI() / 1.1).add();
-        line2.newCurrentLimits1().setPermanentLimit(line2.getTerminal1().getI() / 1.5).add();
+        line1.getOrCreateSelectedOperationalLimitsGroup1().newCurrentLimits().setPermanentLimit(line1.getTerminal1().getI() / 1.1).add();
+        line2.getOrCreateSelectedOperationalLimitsGroup1().newCurrentLimits().setPermanentLimit(line2.getTerminal1().getI() / 1.5).add();
 
         NetworkViolations violations = compute(network);
 
@@ -223,7 +223,7 @@ class NetworkViolationsTest {
         ThreeWindingsTransformer.Leg leg2 = transformer.getLeg2();
         leg2.getTerminal().getBusView().getBus().setV(100);
         leg2.getTerminal().setP(1000).setQ(1000);
-        leg2.newCurrentLimits().setPermanentLimit(leg2.getTerminal().getI() / 2).add();
+        leg2.getOrCreateSelectedOperationalLimitsGroup().newCurrentLimits().setPermanentLimit(leg2.getTerminal().getI() / 2).add();
 
         FlowViolation violation = compute(network).getWorstFlowViolation(transformer.getId());
 
@@ -237,7 +237,7 @@ class NetworkViolationsTest {
         BoundaryLine boundaryLine = network.getBoundaryLineStream().findFirst().orElseThrow();
         boundaryLine.getTerminal().getBusView().getBus().setV(100);
         boundaryLine.getTerminal().setP(1000).setQ(1000);
-        boundaryLine.newCurrentLimits().setPermanentLimit(boundaryLine.getTerminal().getI() / 2).add();
+        boundaryLine.getOrCreateSelectedOperationalLimitsGroup().newCurrentLimits().setPermanentLimit(boundaryLine.getTerminal().getI() / 2).add();
 
         FlowViolation violation = compute(network).getWorstFlowViolation(boundaryLine.getId());
 
@@ -251,7 +251,7 @@ class NetworkViolationsTest {
         BoundaryLine boundaryLine = network.getBoundaryLineStream().filter(BoundaryLine::isPaired).findFirst().orElseThrow();
         boundaryLine.getTerminal().getBusView().getBus().setV(100);
         boundaryLine.getTerminal().setP(1000).setQ(1000);
-        boundaryLine.newCurrentLimits().setPermanentLimit(0.001).add();
+        boundaryLine.getOrCreateSelectedOperationalLimitsGroup().newCurrentLimits().setPermanentLimit(0.001).add();
 
         NetworkViolations violations = compute(network);
 

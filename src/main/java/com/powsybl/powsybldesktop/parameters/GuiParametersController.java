@@ -9,7 +9,6 @@ package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.powsybldesktop.map.MapBaseVoltages;
 import com.powsybl.powsybldesktop.map.MapController;
-import com.powsybl.powsybldesktop.report.ReportNodeTreeCell;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -74,7 +73,7 @@ public class GuiParametersController extends AbstractDiagramParametersController
         addChoiceField(CAT_LOGS, label("logsOrder"), List.of(true, false),
                 newestOnTop -> Messages.get(newestOnTop ? "logs.order.newestOnTop" : "logs.order.newestOnBottom"),
                 GuiParameters::isLogsNewestOnTop, GuiParameters::setLogsNewestOnTop);
-        addChoiceField(CAT_REPORTS, label("reportsMinSeverity"), ReportNodeTreeCell.SEVERITIES,
+        addChoiceField(CAT_REPORTS, label("reportsMinSeverity"), GuiParameters.REPORT_SEVERITIES,
                 severity -> Messages.get("reports.filter." + severity.toLowerCase(Locale.ROOT)),
                 GuiParameters::getReportsMinSeverity, GuiParameters::setReportsMinSeverity);
     }

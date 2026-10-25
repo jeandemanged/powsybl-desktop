@@ -10,6 +10,7 @@ package com.powsybl.powsybldesktop.report;
 import com.powsybl.commons.report.ReportConstants;
 import com.powsybl.commons.report.ReportNode;
 import com.powsybl.commons.report.TypedValue;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.geometry.Pos;
 import javafx.scene.control.ContextMenu;
@@ -31,9 +32,7 @@ import java.util.Map;
  */
 public class ReportNodeTreeCell extends TreeCell<ReportNode> {
 
-    public static final List<String> SEVERITIES = List.of("TRACE", "DEBUG", "INFO", "DETAIL", "WARN", "ERROR");
-
-    private static final List<String> SEVERITY_STYLE_CLASSES = SEVERITIES.stream()
+    private static final List<String> SEVERITY_STYLE_CLASSES = GuiParameters.REPORT_SEVERITIES.stream()
             .map(severity -> "severity-" + severity.toLowerCase(Locale.ROOT))
             .toList();
 

@@ -213,7 +213,7 @@ class BoundaryLinesControllerTest extends AbstractHeadlessApplicationTest {
         BoundaryLine boundaryLine = network.getBoundaryLineStream().findFirst().orElseThrow();
         boundaryLine.getTerminal().getBusView().getBus().setV(100);
         boundaryLine.getTerminal().setP(1000).setQ(1000);
-        boundaryLine.newCurrentLimits().setPermanentLimit(0.001).add();
+        boundaryLine.getOrCreateSelectedOperationalLimitsGroup().newCurrentLimits().setPermanentLimit(0.001).add();
         interact(() -> ViolationsTestSupport.recompute(mainModel, network));
 
         Node graphic = cell(controller.loadingColumn, rowOf(boundaryLine)).getGraphic();

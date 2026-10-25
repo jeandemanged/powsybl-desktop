@@ -350,6 +350,8 @@ public class NadParametersController extends AbstractDiagramParametersController
                 p -> p.getLayoutParameters().getTextNodeEdgeConnectionYShift(), (p, v) -> p.getLayoutParameters().setTextNodeEdgeConnectionYShift(v));
         addBooleanField(CAT_LAYOUT, label("injectionsAdded"), tooltip("injectionsAdded"),
                 p -> p.getLayoutParameters().isInjectionsAdded(), (p, v) -> p.getLayoutParameters().setInjectionsAdded(v));
+        addBooleanField(CAT_LAYOUT, label("edgesToInvisibleNodesDisplayed"), tooltip("edgesToInvisibleNodesDisplayed"),
+                p -> p.getLayoutParameters().isEdgesToInvisibleNodesDisplayed(), (p, v) -> p.getLayoutParameters().setEdgesToInvisibleNodesDisplayed(v));
         addDoubleField(CAT_LAYOUT, label("scaleFactor"), tooltip("scaleFactor"),
                 p -> p.getLayoutParameters().getScaleFactor(), (p, v) -> p.getLayoutParameters().setScaleFactor(v));
     }

@@ -344,7 +344,7 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         TwoWindingsTransformer transformer = network.getTwoWindingsTransformerStream().findFirst().orElseThrow();
         transformer.getTerminal1().getBusView().getBus().setV(100);
         transformer.getTerminal1().setP(1000).setQ(1000);
-        transformer.newCurrentLimits1().setPermanentLimit(0.001).add();
+        transformer.getOrCreateSelectedOperationalLimitsGroup1().newCurrentLimits().setPermanentLimit(0.001).add();
         interact(() -> ViolationsTestSupport.recompute(mainModel, network));
 
         Node graphic = cellGraphic(controller.loadingColumn, rowOf(transformer));
@@ -362,7 +362,7 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         ThreeWindingsTransformer.Leg leg1 = transformer.getLeg1();
         leg1.getTerminal().getBusView().getBus().setV(100);
         leg1.getTerminal().setP(1000).setQ(1000);
-        leg1.newCurrentLimits().setPermanentLimit(0.001).add();
+        leg1.getOrCreateSelectedOperationalLimitsGroup().newCurrentLimits().setPermanentLimit(0.001).add();
         interact(() -> ViolationsTestSupport.recompute(mainModel, threeWindingsNetwork));
 
         Node graphic = cellGraphic(controller.loadingColumn, rowOf(transformer));

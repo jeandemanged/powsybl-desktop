@@ -8,9 +8,9 @@
 package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.powsybldesktop.map.MapController;
-import com.powsybl.powsybldesktop.report.ReportNodeTreeCell;
 
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -47,7 +47,7 @@ public class GuiParameters {
         IMPEDANCE(2),
         ADMITTANCE(6),
         RHO(6),
-        LIMIT_REDUCTION(2);
+        LIMIT_SCALING(2);
 
         private final int defaultDecimals;
 
@@ -58,12 +58,15 @@ public class GuiParameters {
 
     public static final int MAX_DECIMALS = 10;
 
+    // PowSyBl report severities, lowest first
+    public static final List<String> REPORT_SEVERITIES = List.of("TRACE", "DEBUG", "INFO", "DETAIL", "WARN", "ERROR");
+
     private MapController.Basemap mapBasemap = MapController.Basemap.OFFLINE;
     // names of the base voltages (see BaseVoltagesConfig) whose substations and lines the map view hides
     private Set<String> mapHiddenBaseVoltages = Set.of();
     private LogLevel logsMinLevel = LogLevel.INFO;
     private boolean logsNewestOnTop = true;
-    private String reportsMinSeverity = ReportNodeTreeCell.SEVERITIES.getFirst();
+    private String reportsMinSeverity = REPORT_SEVERITIES.getFirst();
     private final Map<Quantity, Integer> decimals = new EnumMap<>(Quantity.class);
 
     public GuiParameters() {
@@ -109,7 +112,7 @@ public class GuiParameters {
     }
 
     public void setReportsMinSeverity(String reportsMinSeverity) {
-        if (!ReportNodeTreeCell.SEVERITIES.contains(reportsMinSeverity)) {
+        if (!REPORT_SEVERITIES.contains(reportsMinSeverity)) {
             throw new IllegalArgumentException("Unknown report severity: " + reportsMinSeverity);
         }
         this.reportsMinSeverity = reportsMinSeverity;

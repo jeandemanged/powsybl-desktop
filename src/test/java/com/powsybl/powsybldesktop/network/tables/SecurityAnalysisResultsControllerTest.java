@@ -68,7 +68,7 @@ class SecurityAnalysisResultsControllerTest extends AbstractHeadlessApplicationT
         double i1 = line1.getTerminal1().getI();
         permanentLimit = i1 / 1.2;
         // pre-contingency: 600 s temporary limit violation; after LINE_2's loss, carrying about twice as much: 60 s
-        line1.newCurrentLimits1()
+        line1.getOrCreateSelectedOperationalLimitsGroup1().newCurrentLimits()
                 .setPermanentLimit(permanentLimit)
                 .beginTemporaryLimit().setName("TL600").setAcceptableDuration(600).setValue(i1 * 1.5).endTemporaryLimit()
                 .beginTemporaryLimit().setName("TL60").setAcceptableDuration(60).setValue(i1 * 3).endTemporaryLimit()
@@ -166,7 +166,7 @@ class SecurityAnalysisResultsControllerTest extends AbstractHeadlessApplicationT
         double v2 = vlhv2.getBusView().getBuses().iterator().next().getV();
         interact(() -> {
             Line line2 = network.getLine(LINE_2);
-            line2.newCurrentLimits1().setPermanentLimit(line2.getTerminal1().getI() * 1.5).add();
+            line2.getOrCreateSelectedOperationalLimitsGroup1().newCurrentLimits().setPermanentLimit(line2.getTerminal1().getI() * 1.5).add();
             vlhv2.setLowVoltageLimit(v2 - 1);
             mainModel.getStudy(network).setSecurityAnalysisResult(SecurityAnalysis.find("OpenLoadFlow")
                     .run(network, List.of(Contingency.line(LINE_1)), new SecurityAnalysisRunParameters()

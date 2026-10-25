@@ -19,6 +19,7 @@ import com.powsybl.iidm.network.Terminal;
 import com.powsybl.iidm.network.ThreeWindingsTransformer;
 import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.TransformerNavigationState;
@@ -54,15 +55,15 @@ import java.util.stream.Stream;
  */
 public class TransformersController extends AbstractEquipmentTableController<Identifiable<?>> {
 
-    private static final StringConverter<RatioTapChanger.RegulationMode> RATIO_REGULATION_MODE_FORMAT = new StringConverter<>() {
+    private static final StringConverter<RegulationMode> RATIO_REGULATION_MODE_FORMAT = new StringConverter<>() {
         @Override
-        public String toString(RatioTapChanger.RegulationMode value) {
+        public String toString(RegulationMode value) {
             return value == null ? "" : ratioRegulationModeLabel(value);
         }
 
         @Override
-        public RatioTapChanger.RegulationMode fromString(String text) {
-            return Arrays.stream(RatioTapChanger.RegulationMode.values())
+        public RegulationMode fromString(String text) {
+            return Arrays.stream(RegulationMode.values())
                     .filter(mode -> toString(mode).equals(text))
                     .findFirst().orElseThrow();
         }
@@ -169,22 +170,24 @@ public class TransformersController extends AbstractEquipmentTableController<Ide
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(bColumn, TransformersController::bsOf, TransformersController::setB, format(GuiParameters.Quantity.ADMITTANCE));
         TableColumnSupport.configureMultiSidedTapChangerColumn(ratioTapChangerColumn, Identifiable::getNameOrId, TransformersController::ratioTapChangersOf, this::guiParameters);
         TableColumnSupport.configureMultiSidedTapChangerBooleanColumn(ratioTapChangerRegulatingColumn, TransformersController::ratioTapChangersOf,
-                tapChanger -> tapChanger.isRegulating(), (tapChanger, regulating) -> tapChanger.setRegulating(regulating));
+                tapChanger -> tapChanger.isRegulating(),
+                (tapChanger, regulating) -> VoltageRegulations.setRegulating((RatioTapChanger) tapChanger, RegulationMode.VOLTAGE, regulating));
         TableColumnSupport.configureMultiSidedTapChangerChoiceColumn(ratioTapChangerRegulationModeColumn, TransformersController::ratioTapChangersOf,
-                tapChanger -> ((RatioTapChanger) tapChanger).getRegulationMode(),
-                (tapChanger, mode) -> ((RatioTapChanger) tapChanger).setRegulationMode(mode),
-                List.of(RatioTapChanger.RegulationMode.values()), RATIO_REGULATION_MODE_FORMAT);
+                tapChanger -> VoltageRegulations.mode((RatioTapChanger) tapChanger),
+                (tapChanger, mode) -> VoltageRegulations.setMode((RatioTapChanger) tapChanger, mode),
+                List.of(RegulationMode.VOLTAGE, RegulationMode.REACTIVE_POWER), RATIO_REGULATION_MODE_FORMAT);
         TableColumnSupport.configureMultiSidedTapChangerDoubleColumn(ratioTapChangerRegulationValueColumn, TransformersController::ratioTapChangersOf,
-                tapChanger -> ((RatioTapChanger) tapChanger).getRegulationValue(),
-                (tapChanger, value) -> ((RatioTapChanger) tapChanger).setRegulationValue(value), this::ratioRegulationFormat);
+                tapChanger -> VoltageRegulations.targetValue((RatioTapChanger) tapChanger),
+                (tapChanger, value) -> VoltageRegulations.setTargetValue((RatioTapChanger) tapChanger, RegulationMode.VOLTAGE, value), this::ratioRegulationFormat);
         TableColumnSupport.configureMultiSidedTapChangerDoubleColumn(ratioTapChangerTargetDeadbandColumn, TransformersController::ratioTapChangersOf,
-                tapChanger -> tapChanger.getTargetDeadband(), (tapChanger, value) -> tapChanger.setTargetDeadband(value), this::ratioRegulationFormat);
+                tapChanger -> VoltageRegulations.targetDeadband((RatioTapChanger) tapChanger),
+                (tapChanger, value) -> VoltageRegulations.setTargetDeadband((RatioTapChanger) tapChanger, RegulationMode.VOLTAGE, value), this::ratioRegulationFormat);
         TableColumnSupport.configureMultiSidedTapChangerNullableIntColumn(ratioTapChangerSolvedTapColumn, TransformersController::ratioTapChangersOf,
                 tapChanger -> tapChanger.getSolvedTapPosition());
 
         TableColumnSupport.configureMultiSidedTapChangerColumn(phaseTapChangerColumn, Identifiable::getNameOrId, TransformersController::phaseTapChangersOf, this::guiParameters);
         TableColumnSupport.configureMultiSidedTapChangerBooleanColumn(phaseTapChangerRegulatingColumn, TransformersController::phaseTapChangersOf,
-                tapChanger -> tapChanger.isRegulating(), (tapChanger, regulating) -> tapChanger.setRegulating(regulating));
+                tapChanger -> tapChanger.isRegulating(), (tapChanger, regulating) -> ((PhaseTapChanger) tapChanger).setRegulating(regulating));
         TableColumnSupport.configureMultiSidedTapChangerChoiceColumn(phaseTapChangerRegulationModeColumn, TransformersController::phaseTapChangersOf,
                 tapChanger -> ((PhaseTapChanger) tapChanger).getRegulationMode(),
                 (tapChanger, mode) -> ((PhaseTapChanger) tapChanger).setRegulationMode(mode),
@@ -193,7 +196,8 @@ public class TransformersController extends AbstractEquipmentTableController<Ide
                 tapChanger -> ((PhaseTapChanger) tapChanger).getRegulationValue(),
                 (tapChanger, value) -> ((PhaseTapChanger) tapChanger).setRegulationValue(value), this::phaseRegulationFormat);
         TableColumnSupport.configureMultiSidedTapChangerDoubleColumn(phaseTapChangerTargetDeadbandColumn, TransformersController::phaseTapChangersOf,
-                tapChanger -> tapChanger.getTargetDeadband(), (tapChanger, value) -> tapChanger.setTargetDeadband(value), this::phaseRegulationFormat);
+                tapChanger -> ((PhaseTapChanger) tapChanger).getTargetDeadband(),
+                (tapChanger, value) -> ((PhaseTapChanger) tapChanger).setTargetDeadband(value), this::phaseRegulationFormat);
         TableColumnSupport.configureMultiSidedTapChangerNullableIntColumn(phaseTapChangerSolvedTapColumn, TransformersController::phaseTapChangersOf,
                 tapChanger -> tapChanger.getSolvedTapPosition());
         TableColumnSupport.configureMultiSidedDoubleColumn(pColumn,
@@ -397,7 +401,7 @@ public class TransformersController extends AbstractEquipmentTableController<Ide
 
     // the regulation value and target deadband are in the unit of the regulation mode
     private StringConverter<Double> ratioRegulationFormat(TapChanger<?, ?, ?, ?> tapChanger) {
-        return format(((RatioTapChanger) tapChanger).getRegulationMode() == RatioTapChanger.RegulationMode.REACTIVE_POWER
+        return format(VoltageRegulations.mode((RatioTapChanger) tapChanger) == RegulationMode.REACTIVE_POWER
                 ? GuiParameters.Quantity.POWER : GuiParameters.Quantity.VOLTAGE);
     }
 
@@ -406,8 +410,8 @@ public class TransformersController extends AbstractEquipmentTableController<Ide
                 ? GuiParameters.Quantity.POWER : GuiParameters.Quantity.CURRENT);
     }
 
-    private static String ratioRegulationModeLabel(RatioTapChanger.RegulationMode mode) {
-        return Messages.get(mode == RatioTapChanger.RegulationMode.VOLTAGE
+    private static String ratioRegulationModeLabel(RegulationMode mode) {
+        return Messages.get(mode == RegulationMode.VOLTAGE
                 ? "desktop.common.regulationMode.voltage" : "desktop.common.regulationMode.reactivePower");
     }
 

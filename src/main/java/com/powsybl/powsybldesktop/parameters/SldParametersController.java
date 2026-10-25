@@ -164,6 +164,10 @@ public class SldParametersController extends AbstractDiagramParametersController
                 DesktopSldParameters::isDisplayPermanentLimitPercentage, DesktopSldParameters::setDisplayPermanentLimitPercentage);
         addBooleanField(CAT_BUS_FEEDER, label("displayWithAbs"), tooltip("displayWithAbs"),
                 DesktopSldParameters::isDisplayWithAbs, DesktopSldParameters::setDisplayWithAbs);
+        addEnumField(CAT_BUS_FEEDER, label("threeWindingsTransformerFeederInfoMode"), tooltip("threeWindingsTransformerFeederInfoMode"),
+                LayoutParameters.ThreeWindingsTransformerFeederInfoMode.class,
+                p -> p.getLayoutParameters().getThreeWindingsTransformerFeederInfoMode(),
+                (p, v) -> p.getLayoutParameters().setThreeWindingsTransformerFeederInfoMode(v));
         addBooleanField(CAT_BUS_FEEDER, label("busesLegendAdded"), tooltip("busesLegendAdded"),
                 p -> p.getSvgParameters().isBusesLegendAdded(), (p, v) -> p.getSvgParameters().setBusesLegendAdded(v));
     }

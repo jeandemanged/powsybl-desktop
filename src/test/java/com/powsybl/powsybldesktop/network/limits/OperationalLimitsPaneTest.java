@@ -103,7 +103,7 @@ class OperationalLimitsPaneTest extends AbstractHeadlessApplicationTest {
         // a computation's limit, rounded through per-unit conversions
         LimitViolation rounded = groupViolations.getFirst();
         List<LimitViolation> roundedViolations = List.of(new LimitViolation(rounded.getSubjectId(), null, rounded.getOperationalLimitsGroupId(), rounded.getLimitType(), rounded.getLimitName(),
-                rounded.getAcceptableDuration(), Math.nextUp(rounded.getLimit()), rounded.getLimitReduction(), rounded.getValue(), rounded.getSide(), null));
+                rounded.getAcceptableDuration(), Math.nextUp(rounded.getLimit()), rounded.getLimitScaling(), rounded.getValue(), rounded.getSide(), null));
         assertEquals(List.of(false, true, false), rows.stream().map(row -> OperationalLimitsPane.isCrossed(row, roundedViolations)).toList());
         // side 2 carries no current
         assertTrue(groups.stream().filter(g -> title(g).equals(Messages.get("limits.group", "activated_2_1")))

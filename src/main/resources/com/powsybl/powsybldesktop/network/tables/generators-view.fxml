@@ -27,7 +27,8 @@
             <TableColumn fx:id="targetQColumn" styleClass="right-aligned-column" text="%desktop.common.column.targetQ"/>
             <TableColumn fx:id="minPColumn" styleClass="right-aligned-column" text="%desktop.common.column.minP"/>
             <TableColumn fx:id="maxPColumn" styleClass="right-aligned-column" text="%desktop.common.column.maxP"/>
-            <TableColumn fx:id="voltageControlEnabledColumn" styleClass="centered-column" text="%desktop.common.column.voltageRegulation"/>
+            <TableColumn fx:id="regulatingColumn" styleClass="centered-column" text="%desktop.common.column.regulating"/>
+            <TableColumn fx:id="regulationModeColumn" text="%desktop.common.column.regulationMode"/>
             <TableColumn fx:id="targetVColumn" styleClass="right-aligned-column" text="%desktop.common.column.targetV"/>
             <TableColumn fx:id="pColumn" styleClass="right-aligned-column" text="%desktop.common.column.p" editable="false"/>
             <TableColumn fx:id="qColumn" styleClass="right-aligned-column" text="%desktop.common.column.q" editable="false"/>
