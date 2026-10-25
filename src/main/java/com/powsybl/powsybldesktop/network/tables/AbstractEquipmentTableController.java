@@ -110,7 +110,7 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
     /**
      * Whether the substation/voltage level link columns render as plain text once embedded (see class
      * doc). {@code true} by default; overridden to {@code false} by equipment that can span two
-     * different substations/voltage levels (Lines, TieLines, Transformers), where the far side stays a
+     * different substations/voltage levels (Lines, TieLines, HvdcLines, Transformers), where the far side stays a
      * useful link even when the near side is the container we're already positioned on.
      */
     protected boolean disableContainerLinks() {

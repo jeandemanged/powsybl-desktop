@@ -7,13 +7,17 @@
  */
 package com.powsybl.powsybldesktop.network.search;
 
+import com.powsybl.iidm.network.Battery;
 import com.powsybl.iidm.network.BoundaryLine;
 import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.BusbarSection;
 import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Generator;
+import com.powsybl.iidm.network.HvdcConverterStation;
+import com.powsybl.iidm.network.HvdcLine;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Injection;
+import com.powsybl.iidm.network.LccConverterStation;
 import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Load;
 import com.powsybl.iidm.network.Network;
@@ -25,17 +29,17 @@ import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.iidm.network.VscConverterStation;
 
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
 /**
- * Searches a network by id/name across substations, voltage levels, buses, generators, shunt compensators, static
- * var compensators, loads, lines, transformers, tie lines, boundary lines and busbar sections, ranked by best
- * match via a {@link NetworkSearchIndex} built for the call. Shared by the substations, generators, shunt
- * compensators, static var compensators, loads, lines, transformers, tie lines, boundary lines, buses and busbar
- * sections views; each restricts matches to the equipment kinds relevant to it via the {@code kinds} parameter
+ * Searches a network by id/name across substations, voltage levels, buses, generators, batteries, shunt compensators,
+ * static var compensators, VSC/LCC converter stations, loads, lines, transformers, tie lines, boundary lines, HVDC lines
+ * and busbar sections, ranked by best match via a {@link NetworkSearchIndex} built for the call. Shared by the
+ * substations view and every equipment table view; each restricts matches to the equipment kinds relevant to it via the {@code kinds} parameter
  * (substations/voltage levels stay searchable everywhere so a container match can still be revealed). {@link Kind#BUS}
  * matches are the bus/branch view's merged buses ({@link VoltageLevel#getBusView()}); {@link Kind#CONFIGURED_BUS}
  * matches are the bus/breaker view's own buses ({@link VoltageLevel#getBusBreakerView()}) of a BUS_BREAKER-topology
@@ -52,14 +56,14 @@ import java.util.Set;
 public final class NetworkSearch {
 
     public enum Kind {
-        SUBSTATION, VOLTAGE_LEVEL, BUS, CONFIGURED_BUS, GENERATOR, SHUNT_COMPENSATOR, STATIC_VAR_COMPENSATOR, LOAD, LINE,
-        TRANSFORMER, TIE_LINE, BOUNDARY_LINE, BUSBAR_SECTION
+        SUBSTATION, VOLTAGE_LEVEL, BUS, CONFIGURED_BUS, GENERATOR, BATTERY, SHUNT_COMPENSATOR, STATIC_VAR_COMPENSATOR,
+        VSC_CONVERTER_STATION, LCC_CONVERTER_STATION, LOAD, LINE, TRANSFORMER, TIE_LINE, BOUNDARY_LINE, HVDC_LINE, BUSBAR_SECTION
     }
 
     public static final Set<Kind> ALL_KINDS = EnumSet.allOf(Kind.class);
-    private static final Set<Kind> EQUIPMENT_KINDS = EnumSet.of(Kind.BUS, Kind.CONFIGURED_BUS, Kind.GENERATOR,
-            Kind.SHUNT_COMPENSATOR, Kind.STATIC_VAR_COMPENSATOR, Kind.LOAD, Kind.LINE, Kind.TRANSFORMER, Kind.TIE_LINE,
-            Kind.BOUNDARY_LINE, Kind.BUSBAR_SECTION);
+    private static final Set<Kind> EQUIPMENT_KINDS = EnumSet.of(Kind.BUS, Kind.CONFIGURED_BUS, Kind.GENERATOR, Kind.BATTERY,
+            Kind.SHUNT_COMPENSATOR, Kind.STATIC_VAR_COMPENSATOR, Kind.VSC_CONVERTER_STATION, Kind.LCC_CONVERTER_STATION, Kind.LOAD,
+            Kind.LINE, Kind.TRANSFORMER, Kind.TIE_LINE, Kind.BOUNDARY_LINE, Kind.HVDC_LINE, Kind.BUSBAR_SECTION);
 
     private NetworkSearch() {
     }
@@ -93,14 +97,19 @@ public final class NetworkSearch {
                 || kinds.contains(Kind.CONFIGURED_BUS) && voltageLevel.getTopologyKind() == TopologyKind.BUS_BREAKER
                         && voltageLevel.getBusBreakerView().getBusStream().findAny().isPresent()
                 || kinds.contains(Kind.GENERATOR) && voltageLevel.getGeneratorCount() > 0
+                || kinds.contains(Kind.BATTERY) && voltageLevel.getBatteryCount() > 0
                 || kinds.contains(Kind.SHUNT_COMPENSATOR) && voltageLevel.getShuntCompensatorCount() > 0
                 || kinds.contains(Kind.STATIC_VAR_COMPENSATOR) && voltageLevel.getStaticVarCompensatorCount() > 0
+                || kinds.contains(Kind.VSC_CONVERTER_STATION) && voltageLevel.getVscConverterStationCount() > 0
+                || kinds.contains(Kind.LCC_CONVERTER_STATION) && voltageLevel.getLccConverterStationCount() > 0
                 || kinds.contains(Kind.LOAD) && voltageLevel.getLoadCount() > 0
                 || kinds.contains(Kind.LINE) && voltageLevel.getConnectableCount(Line.class) > 0
                 || kinds.contains(Kind.TRANSFORMER) && (voltageLevel.getConnectableCount(TwoWindingsTransformer.class) > 0
                         || voltageLevel.getConnectableCount(ThreeWindingsTransformer.class) > 0)
                 || kinds.contains(Kind.TIE_LINE) && voltageLevel.getConnectableStream(BoundaryLine.class).anyMatch(BoundaryLine::isPaired)
                 || kinds.contains(Kind.BOUNDARY_LINE) && voltageLevel.getBoundaryLineCount() > 0
+                || kinds.contains(Kind.HVDC_LINE) && voltageLevel.getConnectableStream(HvdcConverterStation.class)
+                        .anyMatch(station -> station.getHvdcLine() != null)
                 || kinds.contains(Kind.BUSBAR_SECTION) && voltageLevel.getConnectableCount(BusbarSection.class) > 0;
     }
 
@@ -120,11 +129,20 @@ public final class NetworkSearch {
         if (identifiable instanceof Generator) {
             return Kind.GENERATOR;
         }
+        if (identifiable instanceof Battery) {
+            return Kind.BATTERY;
+        }
         if (identifiable instanceof ShuntCompensator) {
             return Kind.SHUNT_COMPENSATOR;
         }
         if (identifiable instanceof StaticVarCompensator) {
             return Kind.STATIC_VAR_COMPENSATOR;
+        }
+        if (identifiable instanceof VscConverterStation) {
+            return Kind.VSC_CONVERTER_STATION;
+        }
+        if (identifiable instanceof LccConverterStation) {
+            return Kind.LCC_CONVERTER_STATION;
         }
         if (identifiable instanceof Load) {
             return Kind.LOAD;
@@ -140,6 +158,9 @@ public final class NetworkSearch {
         }
         if (identifiable instanceof BoundaryLine) {
             return Kind.BOUNDARY_LINE;
+        }
+        if (identifiable instanceof HvdcLine) {
+            return Kind.HVDC_LINE;
         }
         if (identifiable instanceof BusbarSection) {
             return Kind.BUSBAR_SECTION;
@@ -172,6 +193,9 @@ public final class NetworkSearch {
         }
         if (identifiable instanceof TieLine tieLine) {
             return tieLine.getTerminal1().getVoltageLevel();
+        }
+        if (identifiable instanceof HvdcLine hvdcLine) {
+            return hvdcLine.getConverterStation1().getTerminal().getVoltageLevel();
         }
         throw new IllegalArgumentException("Unsupported searchable type: " + identifiable.getClass());
     }

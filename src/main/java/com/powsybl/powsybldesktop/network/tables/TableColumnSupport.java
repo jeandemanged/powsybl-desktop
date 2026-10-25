@@ -28,6 +28,7 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
+import javafx.scene.control.Control;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
@@ -70,12 +71,13 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
- * Cell value/factory wiring shared by the Loads, Generators, ShuntCompensators, StaticVarCompensators, Lines,
- * Transformers, TieLines, BoundaryLines, Components, Substations and VoltageLevels tables, which display the same substation/voltage-level
+ * Cell value/factory wiring shared by the Loads, Generators, Batteries, ShuntCompensators, StaticVarCompensators,
+ * VscConverterStations, LccConverterStations, Lines, Transformers, TieLines, BoundaryLines, HvdcLines, Components,
+ * Substations and VoltageLevels tables, which display the same substation/voltage-level
  * link, connected checkbox, component, and formatted-double column shapes for their respective row entity type.
  * The connected checkbox toggles its terminal's connection (disconnect if connected, connect otherwise). The
  * "two-sided" variants stack a value per terminal (or per side's substation/voltage level) in a single cell,
- * for the Lines and TieLines tables. The
+ * for the Lines, TieLines and HvdcLines tables. The
  * "multi-sided" variants do the same for a variable number of sides (2 or 3), for the Transformers table, whose
  * editable variant gives each side its own double-click-to-edit Label, the same look/behavior as
  * configureDoubleColumn's TextFieldTableCell but reimplemented on a plain Node since one TableCell here holds
@@ -1027,7 +1029,7 @@ final class TableColumnSupport {
         return new StackPane(label, field);
     }
 
-    private static void showEditor(Label label, TextField field, boolean editing) {
+    private static void showEditor(Label label, Control field, boolean editing) {
         label.setVisible(!editing);
         label.setManaged(!editing);
         field.setVisible(editing);
@@ -1264,7 +1266,7 @@ final class TableColumnSupport {
                 }
                 List<Node> nodes = tapChangersGetter.apply(item).stream()
                         .<Node>map(opt -> tapChangerFieldEnabled(opt)
-                                ? editableChoiceField(getter.apply(opt.get()), choices, converter, value -> setter.accept(opt.get(), value))
+                                ? editableChoiceField(() -> getter.apply(opt.get()), choices, converter, value -> setter.accept(opt.get(), value))
                                 : new Label())
                         .toList();
                 setGraphic(sidedBox(nodes, Pos.CENTER));
@@ -1273,32 +1275,75 @@ final class TableColumnSupport {
         disableUnlessTableEditable(column);
     }
 
-    // A plain ChoiceBox rather than editableDoubleField's double-click-to-edit Label/TextField swap - a dropdown
-    // is already a single always-visible control, so there's no "at rest" display to swap out of. The revert
-    // on a rejected edit re-selects oldValue, which re-fires this same listener - reverting is guarded so that
-    // doesn't re-run the setter with oldValue as if it were a new edit.
-    private static <T> ChoiceBox<T> editableChoiceField(T value, List<T> choices, StringConverter<T> converter, Consumer<T> setter) {
-        ChoiceBox<T> choiceBox = new ChoiceBox<>(FXCollections.observableArrayList(choices));
-        choiceBox.getStyleClass().add(EDITABLE_CELL_STYLE_CLASS);
-        choiceBox.setMaxWidth(Double.MAX_VALUE);
-        choiceBox.setConverter(converter);
-        choiceBox.getSelectionModel().select(value);
-        boolean[] reverting = {false};
-        choiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
-            if (reverting[0] || Objects.equals(newValue, oldValue)) {
-                return;
-            }
-            try {
-                setter.accept(newValue);
-                flashEditSuccess(choiceBox);
-            } catch (PowsyblException e) {
-                notifyEditError(choiceBox, e);
-                reverting[0] = true;
-                choiceBox.getSelectionModel().select(oldValue);
-                reverting[0] = false;
+    // A single value rendered as a one-slot multi-sided column, so that in a table with two-sided rows its editable
+    // box keeps the fixed per-side height (like configureMultiSidedEditableDoubleColumn) instead of stretching to the
+    // row's full height as configureChoiceColumn's ChoiceBoxTableCell does.
+    static <S, T> void configureSingleSlotChoiceColumn(TableColumn<S, S> column, Function<S, T> getter, BiConsumer<S, T> setter,
+                                                        List<T> choices, StringConverter<T> converter) {
+        column.setSortable(false);
+        column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
+        column.setCellFactory(col -> new TableCell<S, S>() {
+            @Override
+            protected void updateItem(S item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty || item == null ? null
+                        : sidedBox(List.of(editableChoiceField(() -> getter.apply(item), choices, converter, value -> setter.accept(item, value))), Pos.CENTER_LEFT));
             }
         });
-        return choiceBox;
+        disableUnlessTableEditable(column);
+    }
+
+    // Per-side counterpart of configureChoiceColumn's ChoiceBoxTableCell, with the same look: the value as text in
+    // the editable-cell box at rest, swapped for a ChoiceBox on double-click (like editableDoubleField's Label/
+    // TextField swap); picking a value commits it, Escape or leaving the ChoiceBox cancels.
+    private static <T> StackPane editableChoiceField(Supplier<T> getter, List<T> choices, StringConverter<T> converter, Consumer<T> setter) {
+        Label label = new Label(converter.toString(getter.get()));
+        label.getStyleClass().add(EDITABLE_CELL_STYLE_CLASS);
+        label.setMaxWidth(Double.MAX_VALUE);
+
+        ChoiceBox<T> choiceBox = new ChoiceBox<>(FXCollections.observableArrayList(choices));
+        choiceBox.setMaxWidth(Double.MAX_VALUE);
+        choiceBox.setConverter(converter);
+        choiceBox.setVisible(false);
+        choiceBox.setManaged(false);
+
+        // selecting the current value when opening the editor must not commit it
+        boolean[] opening = {false};
+        label.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) {
+                opening[0] = true;
+                choiceBox.getSelectionModel().select(getter.get());
+                opening[0] = false;
+                showEditor(label, choiceBox, true);
+                choiceBox.requestFocus();
+            }
+        });
+        choiceBox.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.ESCAPE) {
+                showEditor(label, choiceBox, false);
+            }
+        });
+        choiceBox.focusedProperty().addListener((observable, wasFocused, isFocused) -> {
+            if (!isFocused && !choiceBox.isShowing() && choiceBox.isVisible()) {
+                showEditor(label, choiceBox, false);
+            }
+        });
+        choiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+            if (opening[0] || !choiceBox.isVisible()) {
+                return;
+            }
+            if (!Objects.equals(newValue, getter.get())) {
+                try {
+                    setter.accept(newValue);
+                    flashEditSuccess(label);
+                } catch (PowsyblException e) {
+                    notifyEditError(label, e);
+                }
+            }
+            label.setText(converter.toString(getter.get()));
+            showEditor(label, choiceBox, false);
+        });
+        return new StackPane(label, choiceBox);
     }
 
     // Single-value counterpart of configureMultiSidedTapChangerColumn's per-side info button: a Label plus a

@@ -30,12 +30,15 @@ import com.powsybl.powsybldesktop.navigation.*;
 import com.powsybl.powsybldesktop.network.NetworksController;
 import com.powsybl.powsybldesktop.network.SubstationsController;
 import com.powsybl.powsybldesktop.network.search.NetworkSearchIndex;
+import com.powsybl.powsybldesktop.network.tables.BatteriesController;
 import com.powsybl.powsybldesktop.network.tables.BoundaryLinesController;
 import com.powsybl.powsybldesktop.network.tables.BusbarSectionsController;
 import com.powsybl.powsybldesktop.network.tables.BusesBusBreakerViewController;
 import com.powsybl.powsybldesktop.network.tables.BusesBusViewController;
 import com.powsybl.powsybldesktop.network.tables.ComponentsController;
 import com.powsybl.powsybldesktop.network.tables.GeneratorsController;
+import com.powsybl.powsybldesktop.network.tables.HvdcLinesController;
+import com.powsybl.powsybldesktop.network.tables.LccConverterStationsController;
 import com.powsybl.powsybldesktop.network.tables.LinesController;
 import com.powsybl.powsybldesktop.network.tables.LoadsController;
 import com.powsybl.powsybldesktop.network.tables.SecurityAnalysisResultsController;
@@ -46,6 +49,7 @@ import com.powsybl.powsybldesktop.network.tables.TieLinesController;
 import com.powsybl.powsybldesktop.network.tables.TransformersController;
 import com.powsybl.powsybldesktop.network.tables.ViolationsController;
 import com.powsybl.powsybldesktop.network.tables.VoltageLevelsController;
+import com.powsybl.powsybldesktop.network.tables.VscConverterStationsController;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
 import com.powsybl.powsybldesktop.notification.NotificationOverlay;
@@ -910,6 +914,14 @@ public class MainController extends AbstractDisposableController {
             } else if (newValue.state() == null) {
                 controller.goToGenerator(null);
             }
+        } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_BATTERIES) {
+            BatteriesController controller = ensureSceneView(BatteriesController.class,
+                    "network/tables/batteries-view.fxml", NavigationType.NETWORK_TABLE_BATTERIES);
+            if (newValue.state() instanceof BatteryNavigationState state) {
+                controller.goToBattery(state.getBattery());
+            } else if (newValue.state() == null) {
+                controller.goToBattery(null);
+            }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SHUNT_COMPENSATORS) {
             ShuntCompensatorsController controller = ensureSceneView(ShuntCompensatorsController.class,
                     "network/tables/shunt-compensators-view.fxml", NavigationType.NETWORK_TABLE_SHUNT_COMPENSATORS);
@@ -925,6 +937,22 @@ public class MainController extends AbstractDisposableController {
                 controller.goToStaticVarCompensator(state.getStaticVarCompensator());
             } else if (newValue.state() == null) {
                 controller.goToStaticVarCompensator(null);
+            }
+        } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_VSC_CONVERTER_STATIONS) {
+            VscConverterStationsController controller = ensureSceneView(VscConverterStationsController.class,
+                    "network/tables/vsc-converter-stations-view.fxml", NavigationType.NETWORK_TABLE_VSC_CONVERTER_STATIONS);
+            if (newValue.state() instanceof VscConverterStationNavigationState state) {
+                controller.goToVscConverterStation(state.getVscConverterStation());
+            } else if (newValue.state() == null) {
+                controller.goToVscConverterStation(null);
+            }
+        } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_LCC_CONVERTER_STATIONS) {
+            LccConverterStationsController controller = ensureSceneView(LccConverterStationsController.class,
+                    "network/tables/lcc-converter-stations-view.fxml", NavigationType.NETWORK_TABLE_LCC_CONVERTER_STATIONS);
+            if (newValue.state() instanceof LccConverterStationNavigationState state) {
+                controller.goToLccConverterStation(state.getLccConverterStation());
+            } else if (newValue.state() == null) {
+                controller.goToLccConverterStation(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_LOADS) {
             LoadsController controller = ensureSceneView(LoadsController.class, "network/tables/loads-view.fxml", NavigationType.NETWORK_TABLE_LOADS);
@@ -962,6 +990,13 @@ public class MainController extends AbstractDisposableController {
                 controller.goToBoundaryLine(state.getBoundaryLine());
             } else if (newValue.state() == null) {
                 controller.goToBoundaryLine(null);
+            }
+        } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_HVDC_LINES) {
+            HvdcLinesController controller = ensureSceneView(HvdcLinesController.class, "network/tables/hvdc-lines-view.fxml", NavigationType.NETWORK_TABLE_HVDC_LINES);
+            if (newValue.state() instanceof HvdcLineNavigationState state) {
+                controller.goToHvdcLine(state.getHvdcLine());
+            } else if (newValue.state() == null) {
+                controller.goToHvdcLine(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_COMPONENTS) {
             ensureSceneView(ComponentsController.class, "network/tables/components-view.fxml", NavigationType.NETWORK_TABLE_COMPONENTS);
@@ -1079,6 +1114,10 @@ public class MainController extends AbstractDisposableController {
         mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_GENERATORS, GeneratorNavigationState.createNoGenerator(mainModel.getNetwork())));
     }
 
+    public void onBatteries() {
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_BATTERIES, BatteryNavigationState.createNoBattery(mainModel.getNetwork())));
+    }
+
     public void onShuntCompensators() {
         mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_SHUNT_COMPENSATORS,
                 ShuntCompensatorNavigationState.createNoShuntCompensator(mainModel.getNetwork())));
@@ -1087,6 +1126,16 @@ public class MainController extends AbstractDisposableController {
     public void onStaticVarCompensators() {
         mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_STATIC_VAR_COMPENSATORS,
                 StaticVarCompensatorNavigationState.createNoStaticVarCompensator(mainModel.getNetwork())));
+    }
+
+    public void onVscConverterStations() {
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_VSC_CONVERTER_STATIONS,
+                VscConverterStationNavigationState.createNoVscConverterStation(mainModel.getNetwork())));
+    }
+
+    public void onLccConverterStations() {
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_LCC_CONVERTER_STATIONS,
+                LccConverterStationNavigationState.createNoLccConverterStation(mainModel.getNetwork())));
     }
 
     public void onLoads() {
@@ -1107,6 +1156,10 @@ public class MainController extends AbstractDisposableController {
 
     public void onBoundaryLines() {
         mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_BOUNDARY_LINES, BoundaryLineNavigationState.createNoBoundaryLine(mainModel.getNetwork())));
+    }
+
+    public void onHvdcLines() {
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_HVDC_LINES, HvdcLineNavigationState.createNoHvdcLine(mainModel.getNetwork())));
     }
 
     public void onComponents() {

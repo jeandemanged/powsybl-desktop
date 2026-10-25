@@ -103,7 +103,7 @@ table uses it too).
   `mainModel.setUpdate()` (connected-checkbox toggles call `mainModel.setUpdate(terminal.getVoltageLevel())`).
   There is no form object/DTO layer.
 - Use the factories in `…/network/tables/TableColumnSupport.java` (`configureDoubleColumn`,
-  `configureEditableBooleanColumn`, `configureChoiceColumn`, `configureNullableEditable*`, `configureMultiSided*`,
+  `configureEditableBooleanColumn`, `configureChoiceColumn`, `configureSingleSlotChoiceColumn`, `configureNullableEditable*`, `configureMultiSided*`,
   `configureInfoButtonColumn`, `configureSpinnerIntColumn`, ...). They handle:
   - validation errors: a `PowsyblException` from the setter is caught, the old value restored, and
     `notifyEditError` shows a ControlsFX popup + red flash;
@@ -112,6 +112,12 @@ table uses it too).
   - the busy lock: custom editor cells are disabled when the table isn't editable (`disableUnlessTableEditable`).
 - A new kind of editor goes into `TableColumnSupport` (or at least calls `disableUnlessTableEditable`), never as an
   ad-hoc cell factory in a controller.
+- In tables with two-sided (or three-sided) rows (Lines, HVDC lines, Transformers), a single editable value goes
+  through a one-slot multi-sided factory (`configureMultiSidedEditableDoubleColumn` with `List.of(value)`,
+  `configureSingleSlotChoiceColumn`), so its editable box keeps the fixed per-side height instead of stretching to
+  the full row. Per-side editors look like their single-row counterparts: the value as text in the `editable-cell`
+  box at rest, swapped for a `TextField`/`ChoiceBox` on double-click (`editableDoubleField`, `editableChoiceField`) -
+  never an always-visible control.
 
 ## Dialogs and secondary windows
 

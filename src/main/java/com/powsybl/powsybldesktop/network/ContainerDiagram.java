@@ -8,14 +8,17 @@
 package com.powsybl.powsybldesktop.network;
 
 import com.google.common.io.ByteStreams;
+import com.powsybl.iidm.network.Battery;
 import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Generator;
 import com.powsybl.iidm.network.Identifiable;
+import com.powsybl.iidm.network.LccConverterStation;
 import com.powsybl.iidm.network.Load;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.ShuntCompensator;
 import com.powsybl.iidm.network.StaticVarCompensator;
 import com.powsybl.iidm.network.Switch;
+import com.powsybl.iidm.network.VscConverterStation;
 import com.powsybl.powsybldesktop.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.SceneModel;
@@ -283,9 +286,12 @@ public final class ContainerDiagram extends AbstractDisposableController {
     private static ContainerNavigationState.ContainerTab equipmentTab(Identifiable<?> equipment) {
         return switch (equipment) {
             case Generator _ -> ContainerNavigationState.ContainerTab.GENERATORS;
+            case Battery _ -> ContainerNavigationState.ContainerTab.BATTERIES;
             case Load _ -> ContainerNavigationState.ContainerTab.LOADS;
             case ShuntCompensator _ -> ContainerNavigationState.ContainerTab.SHUNT_COMPENSATORS;
             case StaticVarCompensator _ -> ContainerNavigationState.ContainerTab.STATIC_VAR_COMPENSATORS;
+            case VscConverterStation _ -> ContainerNavigationState.ContainerTab.VSC_CONVERTER_STATIONS;
+            case LccConverterStation _ -> ContainerNavigationState.ContainerTab.LCC_CONVERTER_STATIONS;
             case null, default -> ContainerNavigationState.ContainerTab.SINGLE_LINE;
         };
     }

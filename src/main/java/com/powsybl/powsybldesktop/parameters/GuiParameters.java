@@ -42,6 +42,7 @@ public class GuiParameters {
         ANGLE(2),
         // active, reactive and apparent
         POWER(1),
+        POWER_FACTOR(2),
         CURRENT(1),
         PERCENTAGE(1),
         IMPEDANCE(2),

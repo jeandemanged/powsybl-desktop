@@ -15,12 +15,15 @@ import com.powsybl.powsybldesktop.diagram.DiagramPaneController;
 import com.powsybl.powsybldesktop.navigation.*;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
+import com.powsybl.powsybldesktop.network.tables.BatteriesController;
 import com.powsybl.powsybldesktop.network.tables.BoundaryLinesController;
 import com.powsybl.powsybldesktop.network.tables.BusbarSectionsController;
 import com.powsybl.powsybldesktop.network.tables.BusesBusBreakerViewController;
 import com.powsybl.powsybldesktop.network.tables.BusesBusViewController;
 import com.powsybl.powsybldesktop.network.tables.EmbeddableEquipmentTable;
 import com.powsybl.powsybldesktop.network.tables.GeneratorsController;
+import com.powsybl.powsybldesktop.network.tables.HvdcLinesController;
+import com.powsybl.powsybldesktop.network.tables.LccConverterStationsController;
 import com.powsybl.powsybldesktop.network.tables.LinesController;
 import com.powsybl.powsybldesktop.network.tables.LoadsController;
 import com.powsybl.powsybldesktop.network.tables.ShuntCompensatorsController;
@@ -28,6 +31,7 @@ import com.powsybl.powsybldesktop.network.tables.StaticVarCompensatorsController
 import com.powsybl.powsybldesktop.network.tables.SwitchesController;
 import com.powsybl.powsybldesktop.network.tables.TieLinesController;
 import com.powsybl.powsybldesktop.network.tables.TransformersController;
+import com.powsybl.powsybldesktop.network.tables.VscConverterStationsController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Labels;
@@ -86,9 +90,15 @@ public class SubstationsController extends AbstractDisposableController implemen
     @FXML
     private Tab generatorsTab;
     @FXML
+    private Tab batteriesTab;
+    @FXML
     private Tab shuntCompensatorsTab;
     @FXML
     private Tab staticVarCompensatorsTab;
+    @FXML
+    private Tab vscConverterStationsTab;
+    @FXML
+    private Tab lccConverterStationsTab;
     @FXML
     private Tab loadsTab;
     @FXML
@@ -100,6 +110,8 @@ public class SubstationsController extends AbstractDisposableController implemen
     @FXML
     private Tab boundaryLinesTab;
     @FXML
+    private Tab hvdcLinesTab;
+    @FXML
     private Tab busbarSectionsTab;
     @FXML
     private Tab busesBusViewTab;
@@ -110,9 +122,15 @@ public class SubstationsController extends AbstractDisposableController implemen
     @FXML
     private GeneratorsController generatorsEmbeddedController;
     @FXML
+    private BatteriesController batteriesEmbeddedController;
+    @FXML
     private ShuntCompensatorsController shuntCompensatorsEmbeddedController;
     @FXML
     private StaticVarCompensatorsController staticVarCompensatorsEmbeddedController;
+    @FXML
+    private VscConverterStationsController vscConverterStationsEmbeddedController;
+    @FXML
+    private LccConverterStationsController lccConverterStationsEmbeddedController;
     @FXML
     private LoadsController loadsEmbeddedController;
     @FXML
@@ -123,6 +141,8 @@ public class SubstationsController extends AbstractDisposableController implemen
     private TieLinesController tieLinesEmbeddedController;
     @FXML
     private BoundaryLinesController boundaryLinesEmbeddedController;
+    @FXML
+    private HvdcLinesController hvdcLinesEmbeddedController;
     @FXML
     private BusbarSectionsController busbarSectionsEmbeddedController;
     @FXML
@@ -472,10 +492,16 @@ public class SubstationsController extends AbstractDisposableController implemen
                         switchesEmbeddedController, "network/tables/switches-view.fxml"),
                 new EquipmentTab(ContainerNavigationState.ContainerTab.GENERATORS, generatorsTab, "desktop.common.equipment.generator.plural",
                         generatorsEmbeddedController, "network/tables/generators-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.BATTERIES, batteriesTab, "desktop.common.equipment.battery.plural",
+                        batteriesEmbeddedController, "network/tables/batteries-view.fxml"),
                 new EquipmentTab(ContainerNavigationState.ContainerTab.SHUNT_COMPENSATORS, shuntCompensatorsTab, "desktop.common.equipment.shuntCompensator.plural",
                         shuntCompensatorsEmbeddedController, "network/tables/shunt-compensators-view.fxml"),
                 new EquipmentTab(ContainerNavigationState.ContainerTab.STATIC_VAR_COMPENSATORS, staticVarCompensatorsTab, "desktop.common.equipment.staticVarCompensator.plural",
                         staticVarCompensatorsEmbeddedController, "network/tables/static-var-compensators-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.VSC_CONVERTER_STATIONS, vscConverterStationsTab, "desktop.common.equipment.vscConverterStation.plural",
+                        vscConverterStationsEmbeddedController, "network/tables/vsc-converter-stations-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.LCC_CONVERTER_STATIONS, lccConverterStationsTab, "desktop.common.equipment.lccConverterStation.plural",
+                        lccConverterStationsEmbeddedController, "network/tables/lcc-converter-stations-view.fxml"),
                 new EquipmentTab(ContainerNavigationState.ContainerTab.LOADS, loadsTab, "desktop.common.equipment.load.plural",
                         loadsEmbeddedController, "network/tables/loads-view.fxml"),
                 new EquipmentTab(ContainerNavigationState.ContainerTab.LINES, linesTab, "desktop.common.equipment.line.plural",
@@ -486,6 +512,8 @@ public class SubstationsController extends AbstractDisposableController implemen
                         tieLinesEmbeddedController, "network/tables/tie-lines-view.fxml"),
                 new EquipmentTab(ContainerNavigationState.ContainerTab.BOUNDARY_LINES, boundaryLinesTab, "desktop.common.equipment.boundaryLine.plural",
                         boundaryLinesEmbeddedController, "network/tables/boundary-lines-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.HVDC_LINES, hvdcLinesTab, "desktop.common.equipment.hvdcLine.plural",
+                        hvdcLinesEmbeddedController, "network/tables/hvdc-lines-view.fxml"),
                 new EquipmentTab(ContainerNavigationState.ContainerTab.BUSBAR_SECTIONS, busbarSectionsTab, "desktop.common.equipment.busbarSection.plural",
                         busbarSectionsEmbeddedController, "network/tables/busbar-sections-view.fxml"),
                 new EquipmentTab(ContainerNavigationState.ContainerTab.BUSES_BUS_VIEW, busesBusViewTab, "desktop.common.equipment.busesBusBranchView",

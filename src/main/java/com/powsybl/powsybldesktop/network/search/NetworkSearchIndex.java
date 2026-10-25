@@ -226,13 +226,17 @@ public final class NetworkSearchIndex implements Closeable {
                     .filter(vl -> vl.getTopologyKind() == TopologyKind.BUS_BREAKER)
                     .flatMap(vl -> vl.getBusBreakerView().getBusStream()).map(i -> i);
             case GENERATOR -> network.getGeneratorStream().map(i -> i);
+            case BATTERY -> network.getBatteryStream().map(i -> i);
             case SHUNT_COMPENSATOR -> network.getShuntCompensatorStream().map(i -> i);
             case STATIC_VAR_COMPENSATOR -> network.getStaticVarCompensatorStream().map(i -> i);
+            case VSC_CONVERTER_STATION -> network.getVscConverterStationStream().map(i -> i);
+            case LCC_CONVERTER_STATION -> network.getLccConverterStationStream().map(i -> i);
             case LOAD -> network.getLoadStream().map(i -> i);
             case LINE -> network.getLineStream().map(i -> i);
             case TRANSFORMER -> Stream.<Identifiable<?>>concat(network.getTwoWindingsTransformerStream(), network.getThreeWindingsTransformerStream());
             case TIE_LINE -> network.getTieLineStream().map(i -> i);
             case BOUNDARY_LINE -> network.getBoundaryLineStream().map(i -> i);
+            case HVDC_LINE -> network.getHvdcLineStream().map(i -> i);
             case BUSBAR_SECTION -> network.getBusbarSectionStream().map(i -> i);
         };
     }

@@ -85,6 +85,11 @@
                                 <fx:include fx:id="generatorsEmbedded" source="tables/generators-view.fxml"/>
                             </content>
                         </Tab>
+                        <Tab fx:id="batteriesTab" text="%desktop.common.equipment.battery.plural">
+                            <content>
+                                <fx:include fx:id="batteriesEmbedded" source="tables/batteries-view.fxml"/>
+                            </content>
+                        </Tab>
                         <Tab fx:id="shuntCompensatorsTab" text="%desktop.common.equipment.shuntCompensator.plural">
                             <content>
                                 <fx:include fx:id="shuntCompensatorsEmbedded" source="tables/shunt-compensators-view.fxml"/>
@@ -93,6 +98,16 @@
                         <Tab fx:id="staticVarCompensatorsTab" text="%desktop.common.equipment.staticVarCompensator.plural">
                             <content>
                                 <fx:include fx:id="staticVarCompensatorsEmbedded" source="tables/static-var-compensators-view.fxml"/>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="vscConverterStationsTab" text="%desktop.common.equipment.vscConverterStation.plural">
+                            <content>
+                                <fx:include fx:id="vscConverterStationsEmbedded" source="tables/vsc-converter-stations-view.fxml"/>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="lccConverterStationsTab" text="%desktop.common.equipment.lccConverterStation.plural">
+                            <content>
+                                <fx:include fx:id="lccConverterStationsEmbedded" source="tables/lcc-converter-stations-view.fxml"/>
                             </content>
                         </Tab>
                         <Tab fx:id="loadsTab" text="%desktop.common.equipment.load.plural">
@@ -118,6 +133,11 @@
                         <Tab fx:id="boundaryLinesTab" text="%desktop.common.equipment.boundaryLine.plural">
                             <content>
                                 <fx:include fx:id="boundaryLinesEmbedded" source="tables/boundary-lines-view.fxml"/>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="hvdcLinesTab" text="%desktop.common.equipment.hvdcLine.plural">
+                            <content>
+                                <fx:include fx:id="hvdcLinesEmbedded" source="tables/hvdc-lines-view.fxml"/>
                             </content>
                         </Tab>
                         <Tab fx:id="busbarSectionsTab" text="%desktop.common.equipment.busbarSection.plural">

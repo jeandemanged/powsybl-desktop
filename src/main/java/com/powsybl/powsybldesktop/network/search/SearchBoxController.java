@@ -116,9 +116,10 @@ public class SearchBoxController {
 
     private static String promptKindsLabel(Set<NetworkSearch.Kind> kinds) {
         return List.of(NetworkSearch.Kind.SUBSTATION, NetworkSearch.Kind.VOLTAGE_LEVEL, NetworkSearch.Kind.BUS, NetworkSearch.Kind.CONFIGURED_BUS,
-                        NetworkSearch.Kind.GENERATOR, NetworkSearch.Kind.SHUNT_COMPENSATOR, NetworkSearch.Kind.STATIC_VAR_COMPENSATOR, NetworkSearch.Kind.LOAD,
+                        NetworkSearch.Kind.GENERATOR, NetworkSearch.Kind.BATTERY, NetworkSearch.Kind.SHUNT_COMPENSATOR, NetworkSearch.Kind.STATIC_VAR_COMPENSATOR,
+                        NetworkSearch.Kind.VSC_CONVERTER_STATION, NetworkSearch.Kind.LCC_CONVERTER_STATION, NetworkSearch.Kind.LOAD,
                         NetworkSearch.Kind.LINE, NetworkSearch.Kind.TRANSFORMER, NetworkSearch.Kind.TIE_LINE, NetworkSearch.Kind.BOUNDARY_LINE,
-                        NetworkSearch.Kind.BUSBAR_SECTION)
+                        NetworkSearch.Kind.HVDC_LINE, NetworkSearch.Kind.BUSBAR_SECTION)
                 .stream()
                 .filter(kinds::contains)
                 .map(kind -> Messages.get(pluralKindMessageKey(kind)))
@@ -132,13 +133,17 @@ public class SearchBoxController {
             case BUS -> "desktop.common.equipment.bus.plural";
             case CONFIGURED_BUS -> "desktop.common.equipment.configuredBus.plural";
             case GENERATOR -> "desktop.common.equipment.generator.plural";
+            case BATTERY -> "desktop.common.equipment.battery.plural";
             case SHUNT_COMPENSATOR -> "desktop.common.equipment.shuntCompensator.plural";
             case STATIC_VAR_COMPENSATOR -> "desktop.common.equipment.staticVarCompensator.plural";
+            case VSC_CONVERTER_STATION -> "desktop.common.equipment.vscConverterStation.plural";
+            case LCC_CONVERTER_STATION -> "desktop.common.equipment.lccConverterStation.plural";
             case LOAD -> "desktop.common.equipment.load.plural";
             case LINE -> "desktop.common.equipment.line.plural";
             case TRANSFORMER -> "desktop.common.equipment.transformer.plural";
             case TIE_LINE -> "desktop.common.equipment.tieLine.plural";
             case BOUNDARY_LINE -> "desktop.common.equipment.boundaryLine.plural";
+            case HVDC_LINE -> "desktop.common.equipment.hvdcLine.plural";
             case BUSBAR_SECTION -> "desktop.common.equipment.busbarSection.plural";
         };
     }
@@ -278,13 +283,17 @@ public class SearchBoxController {
             // own javadoc), but the switch must stay exhaustive over every Kind constant
             case CONFIGURED_BUS -> "desktop.common.equipment.bus";
             case GENERATOR -> "desktop.common.equipment.generator";
+            case BATTERY -> "desktop.common.equipment.battery";
             case SHUNT_COMPENSATOR -> "desktop.common.equipment.shuntCompensator";
             case STATIC_VAR_COMPENSATOR -> "desktop.common.equipment.staticVarCompensator";
+            case VSC_CONVERTER_STATION -> "desktop.common.equipment.vscConverterStation";
+            case LCC_CONVERTER_STATION -> "desktop.common.equipment.lccConverterStation";
             case LOAD -> "desktop.common.equipment.load";
             case LINE -> "desktop.common.equipment.line";
             case TRANSFORMER -> "desktop.common.equipment.transformer";
             case TIE_LINE -> "desktop.common.equipment.tieLine";
             case BOUNDARY_LINE -> "desktop.common.equipment.boundaryLine";
+            case HVDC_LINE -> "desktop.common.equipment.hvdcLine";
             case BUSBAR_SECTION -> "desktop.common.equipment.busbarSection";
         };
     }

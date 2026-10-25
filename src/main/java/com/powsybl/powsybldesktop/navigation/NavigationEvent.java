@@ -35,13 +35,17 @@ public record NavigationEvent(NavigationType navigationType, NavigationState sta
             case NETWORK_TABLE_BUSES_BUS_VIEW -> Messages.get("desktop.common.equipment.busesBusBranchView");
             case NETWORK_TABLE_BUSES_BUS_BREAKER_VIEW -> Messages.get("desktop.common.equipment.busesBusBreakerView");
             case NETWORK_TABLE_GENERATORS -> Messages.get("desktop.common.equipment.generator.plural");
+            case NETWORK_TABLE_BATTERIES -> Messages.get("desktop.common.equipment.battery.plural");
             case NETWORK_TABLE_SHUNT_COMPENSATORS -> Messages.get("desktop.common.equipment.shuntCompensator.plural");
             case NETWORK_TABLE_STATIC_VAR_COMPENSATORS -> Messages.get("desktop.common.equipment.staticVarCompensator.plural");
+            case NETWORK_TABLE_VSC_CONVERTER_STATIONS -> Messages.get("desktop.common.equipment.vscConverterStation.plural");
+            case NETWORK_TABLE_LCC_CONVERTER_STATIONS -> Messages.get("desktop.common.equipment.lccConverterStation.plural");
             case NETWORK_TABLE_LOADS -> Messages.get("desktop.common.equipment.load.plural");
             case NETWORK_TABLE_LINES -> Messages.get("desktop.common.equipment.line.plural");
             case NETWORK_TABLE_TRANSFORMERS -> Messages.get("desktop.common.equipment.transformer.plural");
             case NETWORK_TABLE_TIE_LINES -> Messages.get("desktop.common.equipment.tieLine.plural");
             case NETWORK_TABLE_BOUNDARY_LINES -> Messages.get("desktop.common.equipment.boundaryLine.plural");
+            case NETWORK_TABLE_HVDC_LINES -> Messages.get("desktop.common.equipment.hvdcLine.plural");
             case NETWORK_TABLE_COMPONENTS -> Messages.get("main.toolbar.loadflowresult");
             case NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS -> Messages.get("main.toolbar.securityAnalysisResults");
             case NETWORK_TABLE_VIOLATIONS -> Messages.get("main.toolbar.violations");
@@ -59,10 +63,16 @@ public record NavigationEvent(NavigationType navigationType, NavigationState sta
             selection = s.getBusbarSection().getNameOrId();
         } else if (state instanceof GeneratorNavigationState s && s.getGenerator() != null) {
             selection = s.getGenerator().getNameOrId();
+        } else if (state instanceof BatteryNavigationState s && s.getBattery() != null) {
+            selection = s.getBattery().getNameOrId();
         } else if (state instanceof ShuntCompensatorNavigationState s && s.getShuntCompensator() != null) {
             selection = s.getShuntCompensator().getNameOrId();
         } else if (state instanceof StaticVarCompensatorNavigationState s && s.getStaticVarCompensator() != null) {
             selection = s.getStaticVarCompensator().getNameOrId();
+        } else if (state instanceof VscConverterStationNavigationState s && s.getVscConverterStation() != null) {
+            selection = s.getVscConverterStation().getNameOrId();
+        } else if (state instanceof LccConverterStationNavigationState s && s.getLccConverterStation() != null) {
+            selection = s.getLccConverterStation().getNameOrId();
         } else if (state instanceof LoadNavigationState s && s.getLoad() != null) {
             selection = s.getLoad().getNameOrId();
         } else if (state instanceof LineNavigationState s && s.getLine() != null) {
@@ -73,6 +83,8 @@ public record NavigationEvent(NavigationType navigationType, NavigationState sta
             selection = s.getTieLine().getNameOrId();
         } else if (state instanceof BoundaryLineNavigationState s && s.getBoundaryLine() != null) {
             selection = s.getBoundaryLine().getNameOrId();
+        } else if (state instanceof HvdcLineNavigationState s && s.getHvdcLine() != null) {
+            selection = s.getHvdcLine().getNameOrId();
         } else if (state instanceof ContainerNavigationState s && s.getContainer() != null) {
             selection = s.getContainer().getNameOrId();
         } else if (state instanceof ReportNavigationState s) {

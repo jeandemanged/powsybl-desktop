@@ -93,6 +93,7 @@
                                         <MenuItem mnemonicParsing="false" onAction="#onBusesBusView" text="%desktop.common.equipment.busesBusBranchView" />
                                         <MenuItem mnemonicParsing="false" onAction="#onBusesBusBreakerView" text="%desktop.common.equipment.busesBusBreakerView" />
                                         <MenuItem mnemonicParsing="false" onAction="#onGenerators" text="%desktop.common.equipment.generator.plural" />
+                                        <MenuItem mnemonicParsing="false" onAction="#onBatteries" text="%desktop.common.equipment.battery.plural" />
                                         <MenuItem mnemonicParsing="false" onAction="#onLoads" text="%desktop.common.equipment.load.plural" />
                                         <MenuItem mnemonicParsing="false" onAction="#onLines" text="%desktop.common.equipment.line.plural" />
                                         <MenuItem mnemonicParsing="false" onAction="#onTieLines" text="%desktop.common.equipment.tieLine.plural" />
@@ -100,6 +101,9 @@
                                         <MenuItem mnemonicParsing="false" onAction="#onTransformers" text="%desktop.common.equipment.transformer.plural" />
                                         <MenuItem mnemonicParsing="false" onAction="#onShuntCompensators" text="%desktop.common.equipment.shuntCompensator.plural" />
                                         <MenuItem mnemonicParsing="false" onAction="#onStaticVarCompensators" text="%desktop.common.equipment.staticVarCompensator.plural" />
+                                        <MenuItem mnemonicParsing="false" onAction="#onHvdcLines" text="%desktop.common.equipment.hvdcLine.plural" />
+                                        <MenuItem mnemonicParsing="false" onAction="#onVscConverterStations" text="%desktop.common.equipment.vscConverterStation.plural" />
+                                        <MenuItem mnemonicParsing="false" onAction="#onLccConverterStations" text="%desktop.common.equipment.lccConverterStation.plural" />
                                     </items>
                                 </Menu>
                                 <MenuItem mnemonicParsing="false" onAction="#onComponents" text="%main.toolbar.loadflowresult" />
