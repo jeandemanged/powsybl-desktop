@@ -16,6 +16,7 @@ import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.powsybldesktop.navigation.GeneratorNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
+import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
@@ -90,6 +91,7 @@ public class GeneratorsController extends AbstractEquipmentTableController<Gener
         TableColumnSupport.configureContainerColumn(voltageLevelColumn,
                 generator -> Optional.of(generator.getTerminal().getVoltageLevel()), this::containerCell);
         nameColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getNameOrId()));
+        TableColumnSupport.configureDetailNameColumn(nameColumn, generator -> EquipmentDetails.open(sceneModel, generator));
         TableColumnSupport.configureConnectedColumn(connectedColumn, Generator::getTerminal, terminal -> mainModel.setUpdate(terminal.getVoltageLevel()));
         TableColumnSupport.configureComponentColumn(connectedComponentColumn,
                 generator -> generator.getTerminal().getBusView().getBus(), Bus::getConnectedComponent);

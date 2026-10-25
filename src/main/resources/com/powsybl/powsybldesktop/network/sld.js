@@ -17,3 +17,11 @@ document.addEventListener('click', function (event) {
         controller.onSwitchClick(event.target.parentElement.id);
     }
 }, false);
+
+document.addEventListener('contextmenu', function (event) {
+    if (event.target.closest('.sld-top-feeder')    ||
+        event.target.closest('.sld-bottom-feeder')) {
+        event.preventDefault();
+        controller.onFeederContextMenu(event.target.parentElement.id);
+    }
+}, false);

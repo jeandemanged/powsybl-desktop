@@ -26,6 +26,7 @@ import com.powsybl.powsybldesktop.diagram.DiagramPaneController;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
+import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.parameters.ApplicationParametersJson;
 import com.powsybl.powsybldesktop.parameters.DesktopNadParameters;
@@ -38,10 +39,14 @@ import javafx.animation.PauseTransition;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import javafx.geometry.Orientation;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Slider;
 import javafx.scene.control.Tooltip;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.util.Duration;
 import netscape.javascript.JSObject;
 import org.slf4j.Logger;
@@ -58,7 +63,8 @@ import java.util.Objects;
  * the FX thread (latest wins), again on every network update, diagram parameters or decimals change - lazily, only
  * while showing. The single line diagram is interactive: a switch click toggles the switch, a feeder click navigates
  * to the feeder's equipment (see {@link SceneModel#navigate}). Used by {@link SubstationsController}'s two diagram
- * tabs and by separate diagram windows.
+ * tabs and by separate diagram windows. A generator feeder click opens its detail view instead (see
+ * {@link EquipmentDetails}), its right-click offers both.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -96,6 +102,10 @@ public final class ContainerDiagram extends AbstractDisposableController {
 
     private final Kind kind;
     private final DiagramPaneController pane;
+    private final ContextMenu contextMenu = new ContextMenu();
+    // screen location of the last secondary button press, where the feeder context menu shows (see sld.js)
+    private double contextMenuX;
+    private double contextMenuY;
     private final SceneModel sceneModel;
     private final MainModel mainModel;
     private Container<?> container;
@@ -133,6 +143,13 @@ public final class ContainerDiagram extends AbstractDisposableController {
         if (kind == Kind.SINGLE_LINE) {
             pane.setOnEngineLoaded(() -> ((JSObject) pane.getWebView().getEngine().executeScript("window")).setMember("controller", this));
             pane.loadShell(SLD_HTML_SHELL.replace("%__JS__%", readSldJs()));
+            pane.getWebView().addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
+                contextMenu.hide();
+                if (event.getButton() == MouseButton.SECONDARY) {
+                    contextMenuX = event.getScreenX();
+                    contextMenuY = event.getScreenY();
+                }
+            });
             // remembered across navigation/views (see SceneModel)
             listenerManager.listen(pane.zoomProperty(), (observable, oldValue, newValue) -> sceneModel.diagramZoomProperty().set(newValue.doubleValue()));
             listenerManager.listen(pane.fitToScreenProperty(), (observable, oldValue, newValue) -> sceneModel.diagramFitToScreenProperty().set(newValue));
@@ -272,8 +289,37 @@ public final class ContainerDiagram extends AbstractDisposableController {
         if (node == null) {
             return;
         }
+        Identifiable<?> equipment = container.getNetwork().getIdentifiable(node.getEquipmentId());
+        if (node.getNextVId() == null && EquipmentDetails.supports(equipment)) {
+            EquipmentDetails.open(sceneModel, equipment);
+        } else {
+            showEquipment(node, equipment);
+        }
+    }
+
+    /**
+     * Offers the feeder's detail view, and its row in the equipment tables, at the right-click location.
+     */
+    @SuppressWarnings("unused") // used by JS
+    public void onFeederContextMenu(String id) {
+        GraphMetadata.NodeMetadata node = sldMetadata == null ? null : sldMetadata.getNodeMetadata(id);
+        if (node == null || node.getNextVId() != null) {
+            return;
+        }
+        Identifiable<?> equipment = container.getNetwork().getIdentifiable(node.getEquipmentId());
+        if (!EquipmentDetails.supports(equipment)) {
+            return;
+        }
+        MenuItem detailsItem = new MenuItem(Messages.get("substations.diagram.feeder.details"));
+        detailsItem.setOnAction(event -> EquipmentDetails.open(sceneModel, equipment));
+        MenuItem showItem = new MenuItem(Messages.get("substations.diagram.feeder.showInTable"));
+        showItem.setOnAction(event -> showEquipment(node, equipment));
+        contextMenu.getItems().setAll(detailsItem, showItem);
+        contextMenu.show(pane.getWebView(), contextMenuX, contextMenuY);
+    }
+
+    private void showEquipment(GraphMetadata.NodeMetadata node, Identifiable<?> equipment) {
         Network network = container.getNetwork();
-        Identifiable<?> equipment = network.getIdentifiable(node.getEquipmentId());
         Container<?> target = node.getNextVId() != null ? network.getVoltageLevel(node.getNextVId()) : container;
         ContainerNavigationState.ContainerTab tab = node.getNextVId() != null ? ContainerNavigationState.ContainerTab.SINGLE_LINE : equipmentTab(equipment);
         // this state isn't guaranteed to already be in history (e.g. reached via search, which doesn't record one):

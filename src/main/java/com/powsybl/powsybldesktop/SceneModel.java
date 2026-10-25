@@ -45,12 +45,15 @@ public final class SceneModel {
     private final IntegerProperty diagramAreaDepth;
     // null where views can't be opened in separate windows: separate windows themselves, tests
     private final SeparateWindows separateWindows;
+    // where equipment detail views open, also from separate windows; null in tests
+    private final SeparateWindows detailWindows;
 
     private SceneModel(MainModel mainModel, ReadOnlyObjectProperty<Network> network, boolean separate, Runnable onNavigate,
                        DoubleProperty diagramZoom, BooleanProperty diagramFitToScreen, IntegerProperty diagramAreaDepth,
-                       SeparateWindows separateWindows) {
+                       SeparateWindows separateWindows, SeparateWindows detailWindows) {
         this.mainModel = Objects.requireNonNull(mainModel);
         this.separateWindows = separateWindows;
+        this.detailWindows = detailWindows;
         this.network = network;
         this.separate = separate;
         this.onNavigate = onNavigate;
@@ -66,7 +69,7 @@ public final class SceneModel {
     public static SceneModel main(MainModel mainModel, SeparateWindows separateWindows) {
         return new SceneModel(mainModel, mainModel.networkProperty(), false, () -> { },
                 mainModel.diagramZoomProperty(), mainModel.diagramFitToScreenProperty(), mainModel.diagramAreaDepthProperty(),
-                separateWindows);
+                separateWindows, separateWindows);
     }
 
     /**
@@ -74,10 +77,17 @@ public final class SceneModel {
      * window's.
      */
     public static SceneModel separate(MainModel mainModel, Runnable onNavigate) {
+        return separate(mainModel, onNavigate, null);
+    }
+
+    /**
+     * @param detailWindows where the scene's views open equipment detail views
+     */
+    public static SceneModel separate(MainModel mainModel, Runnable onNavigate, SeparateWindows detailWindows) {
         return new SceneModel(mainModel, new ReadOnlyObjectWrapper<>(mainModel.getNetwork()).getReadOnlyProperty(), true,
                 Objects.requireNonNull(onNavigate),
                 new SimpleDoubleProperty(mainModel.getDiagramZoom()), new SimpleBooleanProperty(mainModel.isDiagramFitToScreen()),
-                new SimpleIntegerProperty(mainModel.getDiagramAreaDepth()), null);
+                new SimpleIntegerProperty(mainModel.getDiagramAreaDepth()), null, detailWindows);
     }
 
     public MainModel getMainModel() {
@@ -93,6 +103,13 @@ public final class SceneModel {
      */
     public Optional<SeparateWindows> getSeparateWindows() {
         return Optional.ofNullable(separateWindows);
+    }
+
+    /**
+     * Where this scene's views open equipment detail views, from any window.
+     */
+    public Optional<SeparateWindows> getDetailWindows() {
+        return Optional.ofNullable(detailWindows);
     }
 
     public Network getNetwork() {

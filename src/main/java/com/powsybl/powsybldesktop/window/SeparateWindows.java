@@ -373,7 +373,7 @@ public final class SeparateWindows {
      */
     public void open(String key, Supplier<String> title, Function<SceneModel, View> viewFactory) {
         if (!focusOpen(key)) {
-            SceneModel sceneModel = SceneModel.separate(mainModel, this::bringMainWindowToFront);
+            SceneModel sceneModel = SceneModel.separate(mainModel, this::bringMainWindowToFront, this);
             View view = viewFactory.apply(sceneModel);
             show(new SeparateView(key, title, viewFactory, sceneModel, true, view), view);
         }
@@ -384,7 +384,7 @@ public final class SeparateWindows {
      */
     public void openSingleInstance(String key, Supplier<String> title, Function<SceneModel, View> viewFactory) {
         if (!focusOpen(Objects.requireNonNull(key))) {
-            SceneModel sceneModel = SceneModel.separate(mainModel, this::bringMainWindowToFront);
+            SceneModel sceneModel = SceneModel.separate(mainModel, this::bringMainWindowToFront, this);
             View view = viewFactory.apply(sceneModel);
             show(new SeparateView(key, title, viewFactory, sceneModel, false, view), view);
         }

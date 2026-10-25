@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+  -->
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.powsybl.powsybldesktop.network.detail.GeneratorDetailController" styleClass="detail-view">
+    <HBox spacing="8" alignment="CENTER_LEFT">
+        <padding>
+            <Insets top="8" right="8" bottom="4" left="8"/>
+        </padding>
+        <Label fx:id="titleLabel" styleClass="detail-title"/>
+        <Hyperlink fx:id="voltageLevelLink" styleClass="container-link"/>
+    </HBox>
+    <TabPane fx:id="tabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+        <Tab fx:id="mainTab" text="%detail.tab.main">
+            <SplitPane fx:id="mainSplitPane" dividerPositions="0.55">
+                <ScrollPane fx:id="mainScrollPane" fitToWidth="true">
+                    <padding>
+                        <Insets top="8" right="8" bottom="8" left="8"/>
+                    </padding>
+                </ScrollPane>
+                <BorderPane fx:id="mainChartHost">
+                    <padding>
+                        <Insets top="8" right="8" bottom="8" left="8"/>
+                    </padding>
+                </BorderPane>
+            </SplitPane>
+        </Tab>
+        <Tab fx:id="reactiveLimitsTab" text="%detail.tab.reactiveLimits"/>
+        <Tab fx:id="extensionsTab" text="%detail.tab.extensions">
+            <ScrollPane fx:id="extensionsScrollPane" fitToWidth="true">
+                <padding>
+                    <Insets top="8" right="8" bottom="8" left="8"/>
+                </padding>
+            </ScrollPane>
+        </Tab>
+        <Tab fx:id="propertiesTab" text="%detail.tab.propertiesAndAliases">
+            <VBox fx:id="propertiesBox" spacing="12">
+                <padding>
+                    <Insets top="8" right="8" bottom="8" left="8"/>
+                </padding>
+            </VBox>
+        </Tab>
+    </TabPane>
+</VBox>

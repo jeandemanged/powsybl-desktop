@@ -23,6 +23,7 @@ Not a textbook MVC/MVVM. The actual structure is:
 | `navigation` | `NavigationType`, `NavigationEvent` (record), `NavigationState` + one subclass per restorable selection, `NavigationHistory` |
 | `network` | `NetworksController` (load/import/export/merge/detach networks), `SubstationsController` (tree + SLD/NAD tabs + embedded tables), diagram renderers, `DropImportDialog` |
 | `network/tables` | One controller per equipment table, `AbstractEquipmentTableController`, `EmbeddableEquipmentTable`, `TableColumnSupport` (cell factories), `ViolationColumns` (columns of the Violations and Security Analysis Results views), `ColumnVisibilityToolbarController`, edit dialogs |
+| `network/detail` | Equipment detail views (`GeneratorDetailController`), opened by `EquipmentDetails.open` as separate-window tabs, and their reusable parts: `DetailForm`, `ReactiveLimitsPane` + `CapabilityChart`, `ExtensionsPane` + `ExtensionEditors`, `KeyValueTablePane` (properties, aliases), `TerminalPickerDialog` |
 | `network/limits` | `OperationalLimitsPane`: read-only detail of an equipment's selected operational limits groups (reused by `FlowViolationsDialog`) |
 | `network/search` | `NetworkSearch` (kinds, container resolution), `NetworkSearchIndex` (Lucene), `SearchBoxController` (reusable search box) |
 | `diagram` | `DiagramPaneController`: reusable WebView viewport (zoom, fit, PNG/SVG export) |
@@ -71,7 +72,7 @@ resolves a subnetwork to its root and throws if the network is not loaded. Studi
 `…/SceneModel.java` is what a view controller receives (`SceneView.setSceneModel`): the shared `MainModel` plus what
 depends on the window showing the view - the network (the main window's follows the selection; a separate window's is
 fixed to the network selected when it was opened, and closed before the selection changes, so the selection-derived
-`MainModel` state - busy, search index - applies to it too), the navigation entry points (`navigate`: drives the main
+`MainModel` state - busy, search index - applies to it too), where equipment detail views open (`getDetailWindows`, from any window), the navigation entry points (`navigate`: drives the main
 window; `record`: main window only) and the diagram zoom/fit/depth (the main scene's are kept in `MainModel` across
 view swaps and language reloads).
 

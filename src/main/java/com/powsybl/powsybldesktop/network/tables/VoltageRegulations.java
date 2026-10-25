@@ -23,9 +23,9 @@ import java.util.Arrays;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-final class VoltageRegulations {
+public final class VoltageRegulations {
 
-    static final StringConverter<RegulationMode> MODE_FORMAT = new StringConverter<>() {
+    public static final StringConverter<RegulationMode> MODE_FORMAT = new StringConverter<>() {
         @Override
         public String toString(RegulationMode value) {
             return value == null ? "" : modeLabel(value);
@@ -55,7 +55,7 @@ final class VoltageRegulations {
         return regulation == null ? null : regulation.getMode();
     }
 
-    static void setMode(VoltageRegulationHolder<?> holder, RegulationMode mode) {
+    public static void setMode(VoltageRegulationHolder<?> holder, RegulationMode mode) {
         VoltageRegulation regulation = holder.getVoltageRegulation();
         if (regulation != null) {
             regulation.setMode(mode);
@@ -64,7 +64,7 @@ final class VoltageRegulations {
         }
     }
 
-    static void setRegulating(VoltageRegulationHolder<?> holder, RegulationMode defaultMode, boolean regulating) {
+    public static void setRegulating(VoltageRegulationHolder<?> holder, RegulationMode defaultMode, boolean regulating) {
         VoltageRegulation regulation = holder.getVoltageRegulation();
         if (regulation != null) {
             regulation.setRegulating(regulating);
@@ -78,7 +78,7 @@ final class VoltageRegulations {
         return regulation == null ? Double.NaN : regulation.getTargetValue();
     }
 
-    static void setTargetValue(VoltageRegulationHolder<?> holder, RegulationMode defaultMode, double targetValue) {
+    public static void setTargetValue(VoltageRegulationHolder<?> holder, RegulationMode defaultMode, double targetValue) {
         VoltageRegulation regulation = holder.getVoltageRegulation();
         if (regulation != null) {
             regulation.setTargetValue(targetValue);
@@ -92,7 +92,7 @@ final class VoltageRegulations {
         return regulation == null ? Double.NaN : regulation.getTargetDeadband();
     }
 
-    static void setTargetDeadband(VoltageRegulationHolder<?> holder, RegulationMode defaultMode, double targetDeadband) {
+    public static void setTargetDeadband(VoltageRegulationHolder<?> holder, RegulationMode defaultMode, double targetDeadband) {
         VoltageRegulation regulation = holder.getVoltageRegulation();
         if (regulation != null) {
             regulation.setTargetDeadband(targetDeadband);

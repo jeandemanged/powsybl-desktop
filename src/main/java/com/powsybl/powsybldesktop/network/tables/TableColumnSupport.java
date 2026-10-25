@@ -90,7 +90,7 @@ import java.util.function.Supplier;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-final class TableColumnSupport {
+public final class TableColumnSupport {
 
     // Marks a cell as belonging to an editable column so styles.css can give it a visual affordance
     // (e.g. a background tint) - plain TextField/ChoiceBox-backed cells otherwise look identical to read-only ones.
@@ -109,7 +109,7 @@ final class TableColumnSupport {
 
     // Decimal places read on every call rather than captured: GuiParameters is edited in place, or replaced on a
     // parameters reset/import, and the tables are refreshed then (see AbstractEquipmentTableController.setSceneModel).
-    static StringConverter<Double> doubleFormat(Supplier<GuiParameters> guiParameters, GuiParameters.Quantity quantity) {
+    public static StringConverter<Double> doubleFormat(Supplier<GuiParameters> guiParameters, GuiParameters.Quantity quantity) {
         return new StringConverter<>() {
             @Override
             public String toString(Double value) {
@@ -126,7 +126,7 @@ final class TableColumnSupport {
     // TextFieldTableCell commits converter.fromString(text) straight from its text field's key handler, so an
     // unparsable entry (e.g. "1,5", or the "-" shown for a missing value) would throw out of it and leave the cell
     // stuck in edit mode: mapped to null instead, which the editable double cells treat as a cancelled edit.
-    static StringConverter<Double> lenient(StringConverter<Double> format) {
+    public static StringConverter<Double> lenient(StringConverter<Double> format) {
         return new StringConverter<>() {
             @Override
             public String toString(Double value) {
@@ -1400,6 +1400,44 @@ final class TableColumnSupport {
         }
     }
 
+    // The name of an equipment with a detail view, after an info button opening it. Unlike configureInfoButtonColumn's,
+    // the button stays enabled while the network is busy: the (non-modal) detail view has its own busy lock.
+    static <S> void configureDetailNameColumn(TableColumn<S, String> column, Consumer<S> onDetail) {
+        column.setCellFactory(col -> new DetailNameTableCell<>(onDetail));
+    }
+
+    private static final class DetailNameTableCell<S> extends TableCell<S, String> {
+        private final Label label = new Label();
+        private final HBox box;
+
+        DetailNameTableCell(Consumer<S> onDetail) {
+            Button infoButton = new Button();
+            infoButton.setGraphic(new FontIcon("mdi2i-information-outline"));
+            // detail-button: tells EditLockTest this button opens a view, not an editing dialog
+            infoButton.getStyleClass().addAll("icon-button", "detail-button");
+            infoButton.setTooltip(new Tooltip(Messages.get("detail.open.tooltip")));
+            infoButton.setOnAction(event -> {
+                S item = getTableRow() == null ? null : getTableRow().getItem();
+                if (item != null) {
+                    onDetail.accept(item);
+                }
+            });
+            box = new HBox(4, infoButton, label);
+            box.setAlignment(Pos.CENTER_LEFT);
+        }
+
+        @Override
+        protected void updateItem(String name, boolean empty) {
+            super.updateItem(name, empty);
+            if (empty || name == null) {
+                setGraphic(null);
+            } else {
+                label.setText(name);
+                setGraphic(box);
+            }
+        }
+    }
+
     // The section field's [min, max] range is per-row (clamped to each shunt compensator's own maximum section
     // count), so each cell binds its own bounds rather than sharing one across the column.
     static <S> void configureSpinnerIntColumn(TableColumn<S, S> column, Function<S, Integer> valueGetter,
@@ -1749,7 +1787,7 @@ final class TableColumnSupport {
     // brief red flash on it. Does not revert the displayed value - callers do that themselves, since how to revert
     // (re-run updateItem, reselect a checkbox, reset a spinner) differs per cell type. Takes a plain Node rather than
     // a TableCell so the multi-sided editable double column's per-side text fields can share it too.
-    static void notifyEditError(Node node, PowsyblException exception) {
+    public static void notifyEditError(Node node, PowsyblException exception) {
         showEditErrorPopup(node, exception);
         flash(node, EDIT_ERROR_STYLE_CLASS);
     }
@@ -1763,7 +1801,7 @@ final class TableColumnSupport {
     }
 
     // Briefly flashes a cell/field green after a setter call applied successfully.
-    static void flashEditSuccess(Node node) {
+    public static void flashEditSuccess(Node node) {
         flash(node, EDIT_SUCCESS_STYLE_CLASS);
     }
 

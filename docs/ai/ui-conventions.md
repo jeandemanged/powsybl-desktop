@@ -143,6 +143,27 @@ Two established forms:
 - Inline forms inside a view (contingency list forms) are FXML sub-controllers swapped in by the parent controller
   (`contingency/CriterionListFormController`, `DefaultContingencyListFormController`).
 
+## Equipment detail views
+
+Non-modal, all-fields view of one equipment (`…/network/detail/`), canonical example `GeneratorDetailController` +
+`generator-detail-view.fxml`:
+
+- Opened by `EquipmentDetails.open(sceneModel, equipment)` (a no-op for an unsupported type) as a `SeparateWindows` tab
+  keyed by equipment id, from the SLD (feeder click, feeder context menu in `ContainerDiagram` / `sld.js`) and from the
+  equipment table's name column info button (`TableColumnSupport.configureDetailNameColumn`). Works from separate
+  windows too, through `SceneModel.getDetailWindows()`. Add a type by extending `EquipmentDetails.supports`/`open`.
+- Tabs: main data (form + small `CapabilityChart` when applicable), then secondary tabs (reactive limits, extensions,
+  properties and aliases).
+- Build forms with `DetailForm` (sections of label/editor/unit rows; commits on Enter or focus loss, Escape reverts;
+  same error/flash feedback as tables; `refresh()` skips the field being typed in). Solved values are read-only
+  `value(...)` rows. Show IIDM attributes as IIDM holds them (e.g. `VoltageRegulation` fields), not the tables'
+  simplified columns.
+- Reuse `ReactiveLimitsPane` (staged edits + Apply/Revert, since IIDM reactive limits are replaced as a whole),
+  `ExtensionsPane` with editors from `ExtensionEditors` (shared ones are generic over `Injection`/`Connectable`), and
+  `KeyValueTablePane.properties/aliases`.
+- Bind every part's `editableProperty()` to `networkBusyProperty().not()`, run edits' `onEdit` as
+  `mainModel.setUpdate(voltageLevel)`, and refresh all parts on `updateProperty()` and GUI parameters changes.
+
 ## WebView-based views (diagrams, map)
 
 - Diagrams are SVG produced off the FX thread by `SubstationDiagramRenderer` / `NetworkAreaDiagramRenderer` and

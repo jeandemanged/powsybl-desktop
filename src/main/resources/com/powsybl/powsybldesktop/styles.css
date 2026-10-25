@@ -405,6 +405,23 @@
     -fx-text-fill: black;
 }
 
+/* ===== Equipment detail views (network/detail, e.g. generator-detail-view.fxml) ===== */
+
+/* Equipment name heading above the tabs. */
+.detail-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+/* Edit feedback on DetailForm fields and the detail panes' buttons/tables, as .table-view's above for table cells. */
+.detail-view .edit-error {
+    -fx-background-color: derive(red, 60%);
+}
+
+.detail-view .edit-success {
+    -fx-background-color: derive(green, 60%);
+}
+
 /* ===== Logs view (LogsViewController) ===== */
 
 /* Full message tooltip of an ellipsized log cell: monospace like the cell, so multi-line tables (e.g. load flow
