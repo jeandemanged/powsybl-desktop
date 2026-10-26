@@ -77,9 +77,11 @@ import java.util.stream.IntStream;
  * be dragged to another window, reordered, or dropped outside any window to get its own. A window closes with its
  * last tab.
  * <p>
- * A network-bound view shows the network selected when it was opened: before the main window selects another
- * network, {@link #confirmNetworkChange} asks whether to close them, and they are closed anyway once it changes (e.g.
- * the network was closed). Logs and reports views aren't bound, and are single-instance.
+ * A network-bound view shows the network selected when it was opened, a root network or one of its subnetworks: it
+ * stays open while the main window moves within that root network (navigation crosses subnetworks, e.g. to a tie line
+ * held by the root network), and before the main window selects another root network, {@link #confirmNetworkChange}
+ * asks whether to close it, closed anyway once the selection changes (e.g. the network was closed). Logs and reports
+ * views aren't bound, and are single-instance.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -544,8 +546,10 @@ public final class SeparateWindows {
         return true;
     }
 
+    // the views of another root network than network's
     private List<SeparateView> boundToOtherThan(Network network) {
-        return views.stream().filter(view -> view.bound && view.network != network).toList();
+        Network root = network == null ? null : network.getNetwork();
+        return views.stream().filter(view -> view.bound && view.network.getNetwork() != root).toList();
     }
 
     private void close(List<SeparateView> toClose) {

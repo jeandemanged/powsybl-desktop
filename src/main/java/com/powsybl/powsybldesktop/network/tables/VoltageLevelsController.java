@@ -116,7 +116,7 @@ public class VoltageLevelsController extends AbstractDisposableController implem
         listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> updateVoltageLevels());
         // for the decimal places, read by the cells on every render
         listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> voltageLevelsTableView.refresh());
-        searchBoxController.bind(mainModel, this::onSearchMatch);
+        searchBoxController.bind(sceneModel, this::onSearchMatch);
     }
 
     @Override

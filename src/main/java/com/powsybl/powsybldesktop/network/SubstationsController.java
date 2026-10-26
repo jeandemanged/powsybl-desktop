@@ -206,7 +206,7 @@ public class SubstationsController extends AbstractDisposableController implemen
             refreshAreaTypesMenu(newNetwork);
             setGroupingMode(defaultGroupingMode(newNetwork));
         });
-        searchBoxController.bind(mainModel, this::onSearchMatch);
+        searchBoxController.bind(sceneModel, this::onSearchMatch);
 
         // registered before our own updateProperty listener below, so that a topology change (switch open/
         // close) refreshes each embedded table's full equipment list (dropping now-invalidated bus-view

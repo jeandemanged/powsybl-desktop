@@ -28,8 +28,9 @@ import java.util.Optional;
  * <p>
  * The main window's scene follows the selected network and records its own navigation. A separate window's scene
  * shows one view in a fixed context: its network is the one selected when it was opened - such windows are closed
- * before the selection changes to another network, so the selection-derived {@link MainModel} state (busy, search
- * index) still applies to it - and its navigation drives the main window without recording its own state.
+ * before the selection changes to another root network, so the root network's {@link MainModel} state (busy) still
+ * applies to it, while its search boxes search its own network (see {@link #getNetwork}) - and its navigation drives
+ * the main window without recording its own state.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */

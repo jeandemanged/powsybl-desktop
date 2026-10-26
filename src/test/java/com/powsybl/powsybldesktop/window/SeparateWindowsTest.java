@@ -15,8 +15,10 @@ import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.logs.LogsViewController;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
+import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
 import com.powsybl.powsybldesktop.network.tables.LinesController;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
+import com.powsybl.powsybldesktop.testutil.SubnetworksTestFactory;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.scene.Scene;
 import javafx.scene.control.Hyperlink;
@@ -97,6 +99,46 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
         interact(() -> mainModel.removeNetwork(network));
 
         assertTrue(windows("Lines").isEmpty());
+    }
+
+    // navigation crosses subnetworks, e.g. to a tie line held by the root network
+    @Test
+    void subnetworkBoundWindowStaysOpenWhileTheSelectionStaysInItsRootNetwork() {
+        Network root = SubnetworksTestFactory.create();
+        Network nodeBreaker = root.getSubnetwork(SubnetworksTestFactory.NODE_BREAKER);
+        Network busBreaker = root.getSubnetwork(SubnetworksTestFactory.BUS_BREAKER);
+        interact(() -> {
+            mainModel.addNetwork(root);
+            mainModel.setNetwork(nodeBreaker);
+        });
+        openLines();
+
+        assertTrue(separateWindows.confirmNetworkChange(root));
+        assertTrue(separateWindows.confirmNetworkChange(busBreaker));
+        interact(() -> mainModel.setNetwork(root));
+        interact(() -> mainModel.setNetwork(busBreaker));
+        assertEquals(1, windows("Lines").size());
+
+        interact(() -> mainModel.setNetwork(otherNetwork));
+        assertTrue(windows("Lines").isEmpty());
+    }
+
+    // what the subnetwork holds, its root network shows too
+    @Test
+    void detailViewOpenedOnASubnetworkStaysOpenOnceItsRootNetworkIsSelected() {
+        Network root = SubnetworksTestFactory.create();
+        Network nodeBreaker = root.getSubnetwork(SubnetworksTestFactory.NODE_BREAKER);
+        interact(() -> {
+            mainModel.addNetwork(root);
+            mainModel.setNetwork(nodeBreaker);
+            EquipmentDetails.open(SceneModel.main(mainModel, separateWindows), nodeBreaker.getBusbarSectionStream().findFirst().orElseThrow());
+        });
+        assertEquals(1, separateWindows.getOpenWindows().size());
+
+        assertTrue(separateWindows.confirmNetworkChange(root));
+        interact(() -> mainModel.setNetwork(root));
+
+        assertEquals(1, separateWindows.getOpenWindows().size());
     }
 
     @Test

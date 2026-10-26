@@ -71,8 +71,9 @@ resolves a subnetwork to its root and throws if the network is not loaded. Studi
 
 `…/SceneModel.java` is what a view controller receives (`SceneView.setSceneModel`): the shared `MainModel` plus what
 depends on the window showing the view - the network (the main window's follows the selection; a separate window's is
-fixed to the network selected when it was opened, and closed before the selection changes, so the selection-derived
-`MainModel` state - busy, search index - applies to it too), where equipment detail views open (`getDetailWindows`, from any window), the navigation entry points (`navigate`: drives the main
+fixed to the network selected when it was opened, and closed before the selection changes to another root network, so
+the root network's `MainModel` state - busy - applies to it too, while its search boxes search its own network's index),
+where equipment detail views open (`getDetailWindows`, from any window), the navigation entry points (`navigate`: drives the main
 window; `record`: main window only) and the diagram zoom/fit/depth (the main scene's are kept in `MainModel` across
 view swaps and language reloads).
 
@@ -119,7 +120,8 @@ menu, blank and taken names rejected):
   `SubstationsController` for its diagram panes (`network/ContainerDiagram`, shared with its own tabs) and equipment
   tabs (fixed to the selected container), and for logs/reports (single-instance, not network-bound);
 - the window's view gets a `SceneModel.separate` scene: its navigation drives the main window and brings it to front;
-- network-bound views (tabs) close when the selected network changes; `confirmNetworkChange` asks first;
+- network-bound views (tabs) close when the selection changes to another root network (`confirmNetworkChange` asks
+  first), not while it moves between a root network and its subnetworks;
 - a tab can be dragged to another window's tab strip, reordered, or dropped outside any window to get its own window
   (moved with its controller, not disposed); a window closes with its last tab, disposing its views' controllers;
 - one view per key: whole-network views (tables, map, contingencies) are keyed by `NavigationType`, container

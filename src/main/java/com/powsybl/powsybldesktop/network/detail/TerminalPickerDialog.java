@@ -11,7 +11,7 @@ import com.powsybl.iidm.network.Connectable;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Terminal;
 import com.powsybl.powsybldesktop.MainApplication;
-import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Modal dialog choosing a terminal of the selected network: an equipment found with the search box, then one of its
+ * Modal dialog choosing a terminal of a view's network: an equipment found with the search box, then one of its
  * terminals (side). Used to set a regulated terminal.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -50,7 +50,10 @@ final class TerminalPickerDialog {
     private TerminalPickerDialog() {
     }
 
-    static Optional<Terminal> show(Window owner, MainModel mainModel) {
+    /**
+     * @param sceneModel the network of its view, searched for the equipment
+     */
+    static Optional<Terminal> show(Window owner, SceneModel sceneModel) {
         FXMLLoader loader = new FXMLLoader(MainApplication.class.getResource("network/search/search-box.fxml"), Messages.bundle());
         Parent searchBox;
         try {
@@ -73,7 +76,7 @@ final class TerminalPickerDialog {
                 throw new UnsupportedOperationException();
             }
         });
-        searchBoxController.bind(mainModel, KINDS, match -> {
+        searchBoxController.bind(sceneModel, KINDS, match -> {
             List<? extends Terminal> terminals = match instanceof Connectable<?> connectable ? connectable.getTerminals() : List.of();
             equipmentLabel.setText(terminals.isEmpty() ? Messages.get("detail.terminalPicker.none") : match.getNameOrId());
             terminalChoiceBox.getItems().setAll(terminals);

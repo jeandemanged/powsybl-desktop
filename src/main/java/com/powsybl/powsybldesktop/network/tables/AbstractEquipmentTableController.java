@@ -138,7 +138,7 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
         listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> refreshAll());
         // for the decimal places, read by the cells on every render
         listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> tableView().refresh());
-        searchBox().bind(mainModel, searchKinds(), this::onSearchMatch);
+        searchBox().bind(sceneModel, searchKinds(), this::onSearchMatch);
     }
 
     // read fresh: a parameters reset/import replaces the instance

@@ -10,6 +10,8 @@ package com.powsybl.powsybldesktop.network.search;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.NetworkStudy;
+import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.animation.PauseTransition;
 import javafx.beans.value.ChangeListener;
@@ -63,13 +65,14 @@ public class SearchBoxController {
 
     private final PauseTransition searchDebounce = new PauseTransition(SEARCH_DEBOUNCE);
     private final SearchService searchService = new SearchService();
-    private final ChangeListener<NetworkSearchIndex.State> indexStateListener = (observable, oldState, newState) -> updateIndexState(newState);
+    private final ChangeListener<NetworkSearchIndex.State> indexStateListener = (observable, oldState, newState) -> updateIndexState();
     // the cached index is mutated in place by NetworkSearchIndex.refreshBuses() (see MainController) after a
     // topology change, which doesn't touch searchIndexStateProperty (it stays READY throughout) - so a query
     // currently in progress needs its own nudge to pick up buses added/removed/invalidated by that change
     private final ChangeListener<Instant> updateListener = (observable, oldValue, newValue) -> refreshIfSearching();
 
     private MainModel mainModel;
+    private SceneModel sceneModel;
     private Set<NetworkSearch.Kind> kinds = NetworkSearch.ALL_KINDS;
     private Consumer<Identifiable<?>> onMatchSelected;
     private Runnable onNoMatch = () -> { };
@@ -87,20 +90,23 @@ public class SearchBoxController {
     }
 
     /**
-     * @param mainModel       the currently selected network is read fresh on each search, via its shared index
+     * @param sceneModel      its network, read fresh on each search, is searched via its shared index
      * @param onMatchSelected called with the current match whenever it changes (initial search, previous, next)
      */
-    public void bind(MainModel mainModel, Consumer<Identifiable<?>> onMatchSelected) {
-        bind(mainModel, NetworkSearch.ALL_KINDS, onMatchSelected);
+    public void bind(SceneModel sceneModel, Consumer<Identifiable<?>> onMatchSelected) {
+        bind(sceneModel, NetworkSearch.ALL_KINDS, onMatchSelected);
     }
 
     /**
-     * @param mainModel       the currently selected network is read fresh on each search, via its shared index
+     * @param sceneModel      its network, read fresh on each search, is searched via its shared index: a separate
+     *                        window's, not the main window's selected one
      * @param kinds           the equipment kinds this view can match (substations/voltage levels should normally
      *                        stay included so a container match can still be revealed)
      * @param onMatchSelected called with the current match whenever it changes (initial search, previous, next)
      */
-    public void bind(MainModel mainModel, Set<NetworkSearch.Kind> kinds, Consumer<Identifiable<?>> onMatchSelected) {
+    public void bind(SceneModel sceneModel, Set<NetworkSearch.Kind> kinds, Consumer<Identifiable<?>> onMatchSelected) {
+        MainModel mainModel = sceneModel.getMainModel();
+        this.sceneModel = sceneModel;
         if (this.mainModel != null) {
             this.mainModel.searchIndexStateProperty().removeListener(indexStateListener);
             this.mainModel.updateProperty().removeListener(updateListener);
@@ -111,7 +117,7 @@ public class SearchBoxController {
         searchField.setPromptText(Messages.get("network.search.prompt", promptKindsLabel(kinds)));
         mainModel.searchIndexStateProperty().addListener(indexStateListener);
         mainModel.updateProperty().addListener(updateListener);
-        updateIndexState(mainModel.searchIndexStateProperty().getValue());
+        updateIndexState();
     }
 
     private static String promptKindsLabel(Set<NetworkSearch.Kind> kinds) {
@@ -175,8 +181,19 @@ public class SearchBoxController {
         }
     }
 
-    private void updateIndexState(NetworkSearchIndex.State state) {
-        boolean building = state == NetworkSearchIndex.State.BUILDING;
+    // the index state is the selected network's: a separate window showing another network (of the same root
+    // network, see SceneModel) has its index from when it was selected, built or still building
+    private boolean isIndexBuilding() {
+        Network network = sceneModel.getNetwork();
+        if (network == null || network == mainModel.getNetwork()) {
+            return mainModel.searchIndexStateProperty().getValue() == NetworkSearchIndex.State.BUILDING;
+        }
+        NetworkStudy study = mainModel.getStudy(network);
+        return study.getSearchIndex(network) == null && study.isSearchIndexBuilding(network);
+    }
+
+    private void updateIndexState() {
+        boolean building = isIndexBuilding();
         searchField.setDisable(building);
         if (building) {
             matches = List.of();
@@ -202,7 +219,7 @@ public class SearchBoxController {
     }
 
     private void runSearch(String query) {
-        if (mainModel.searchIndexStateProperty().getValue() == NetworkSearchIndex.State.BUILDING) {
+        if (isIndexBuilding()) {
             return;
         }
         if (query == null || query.isBlank()) {
@@ -210,7 +227,7 @@ public class SearchBoxController {
             onSearchResult(new NetworkSearchIndex.Result(List.of(), false));
             return;
         }
-        Network network = mainModel.getNetwork();
+        Network network = sceneModel.getNetwork();
         NetworkSearchIndex index = network == null ? null : mainModel.getStudy(network).getSearchIndex(network);
         if (index == null) {
             onSearchResult(new NetworkSearchIndex.Result(List.of(), false));

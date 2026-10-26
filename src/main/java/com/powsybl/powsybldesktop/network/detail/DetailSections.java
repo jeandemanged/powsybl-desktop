@@ -226,7 +226,7 @@ public final class DetailSections {
         });
         Button pickButton = iconButton("mdi2p-pencil", "detail.voltageRegulation.pickTerminal");
         pickButton.disableProperty().bind(form.editableProperty().not());
-        pickButton.setOnAction(event -> TerminalPickerDialog.show(pickButton.getScene().getWindow(), sceneModel.getMainModel())
+        pickButton.setOnAction(event -> TerminalPickerDialog.show(pickButton.getScene().getWindow(), sceneModel)
                 .ifPresent(terminal -> form.apply(pickButton, () -> setter.accept(terminal))));
         Button localButton = iconButton("mdi2m-map-marker-off-outline", "detail.voltageRegulation.setLocal");
         localButton.disableProperty().bind(form.editableProperty().not());

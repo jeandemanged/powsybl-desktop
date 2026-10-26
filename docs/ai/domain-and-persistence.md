@@ -19,6 +19,11 @@ are pinned to `powsybl-core.version` (7.3.0) because they are outside the BOM. R
 
 - `MainModel.getNetworks()` contains **root** networks only. The selected network (`MainModel.getNetwork()`) may be a
   subnetwork; `network.getNetwork()` gives its root. `MainModel.getStudy(n)` accepts either.
+- Navigation states hold the equipment's own network (`getParentNetwork()`). `MainController.networkToSelect` keeps
+  the user's selection within a root network: a selected subnetwork stays selected for its own equipment, a root network
+  selected by the user stays selected for its subnetworks' equipment. Only equipment held by the root network (e.g. a
+  tie line between subnetworks, which a subnetwork's views don't list) selects the root network, left again for the
+  next subnetwork equipment navigated to; another subnetwork's equipment selects that subnetwork.
 - Merging and detaching are done in `NetworksController`; detaching goes through `MainModel.detachSubnetworks`, which
   drops navigation entries, search indexes and map views referring to the detached subnetworks (the subnetwork object is
   left empty by `Subnetwork.detach()`).

@@ -334,7 +334,7 @@ public class MapController extends AbstractDisposableController implements Scene
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
         createBaseVoltageCheckBoxes();
         listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> applyGuiParameters());
-        searchBoxController.bind(mainModel, this::onSearchMatch);
+        searchBoxController.bind(sceneModel, this::onSearchMatch);
         searchBoxController.setOnNoMatch(this::clearSearchHighlight);
     }
 

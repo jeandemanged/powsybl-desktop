@@ -22,7 +22,7 @@ Lifecycle
    raise them from a focus listener, it steals the activation from the clicked window), showing views as tabs,
    disposing a view's controller when its tab closes or its window hides (not when the tab moves to another window),
    closed with their last tab, with the main window and on language reload; network-bound views close when the
-   selected network changes. Never create a `Stage` for a view elsewhere.
+   selection changes to another root network, never while it moves within the same root network. Never create a `Stage` for a view elsewhere.
 
 Threading
 7. No slow PowSyBl call on the FX thread. Background network reads/writes are `AbstractNetworkTask`s created in

@@ -146,6 +146,9 @@ public class MainController extends AbstractDisposableController {
 
     private final MainModel mainModel;
     private final SeparateWindows separateWindows;
+    // the selected root network, when selected by navigation to show its own equipment rather than by the user, see
+    // networkToSelect
+    private Network implicitlySelectedRoot;
     private final SceneModel sceneModel;
 
     private DisposableController currentController;
@@ -691,6 +694,10 @@ public class MainController extends AbstractDisposableController {
             }
         });
         listenerManager.listen(mainModel.networkProperty(), (observable, oldValue, newValue) -> {
+            // selected otherwise, e.g. by the user in the networks view
+            if (newValue != implicitlySelectedRoot) {
+                implicitlySelectedRoot = null;
+            }
             ensureSearchIndex(newValue);
             updateMapButtonVisibility();
         });
@@ -787,16 +794,29 @@ public class MainController extends AbstractDisposableController {
         }
     }
 
-    // the network navigating to event selects, or null if it keeps the selected one
+    // the network navigating to event selects, or null if it keeps the selected one. A network state (networks view)
+    // selects its network as asked; an equipment or container state holds the equipment's own network: within the
+    // selected root network, the selection stays where the user put it - a root network, which shows its subnetworks'
+    // equipment too, or a subnetwork - except to show equipment held by the root network (e.g. a tie line between
+    // two subnetworks), only shown with the root network selected, or by another subnetwork. A root network selected
+    // that way, not asked by the user, is left again for the subnetwork of the next equipment navigated to.
     private Network networkToSelect(NavigationEvent event) {
         if (event.state() == null || event.state().getSelectedNetwork() == null) {
             return null;
         }
         Network target = event.state().getSelectedNetwork();
-        // equipment states hold the equipment's own (sub)network: when its root network is selected, which
-        // shows that equipment too, keep it rather than narrowing the view down to the subnetwork
-        boolean rootSelected = !(event.state() instanceof NetworkNavigationState) && mainModel.getNetwork() == target.getNetwork();
-        return rootSelected ? null : target;
+        Network selected = mainModel.getNetwork();
+        if (event.state().getClass() == NetworkNavigationState.class || selected == null || selected.getNetwork() != target.getNetwork()) {
+            return target;
+        }
+        if (selected == target) {
+            return null;
+        }
+        boolean rootSelected = selected == selected.getNetwork();
+        if (rootSelected) {
+            return selected == implicitlySelectedRoot ? target : null;
+        }
+        return target;
     }
 
     private void updateWindowsMenu() {
@@ -841,7 +861,12 @@ public class MainController extends AbstractDisposableController {
         Objects.requireNonNull(newValue);
         Network target = networkToSelect(newValue);
         if (target != null) {
+            Network previous = mainModel.getNetwork();
             this.mainModel.setNetwork(target);
+            // a root network selected to show its own equipment, from one of its subnetworks
+            boolean implicitRoot = target == target.getNetwork() && newValue.state().getClass() != NetworkNavigationState.class
+                    && previous != null && previous != target && previous.getNetwork() == target;
+            implicitlySelectedRoot = implicitRoot ? target : null;
         }
         if (newValue.navigationType() == NavigationType.LOGS) {
             ensureController(LogsViewController.class, "logs/logs-view.fxml", c -> c.setModels(mainModel.getLogsModel(), mainModel.getParametersModel()),

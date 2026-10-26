@@ -125,7 +125,7 @@ public class SubstationsTableController extends AbstractDisposableController imp
         updateSubstations();
         listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> updateSubstations());
         listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> updateSubstations());
-        searchBoxController.bind(mainModel, this::onSearchMatch);
+        searchBoxController.bind(sceneModel, this::onSearchMatch);
     }
 
     @Override
