@@ -679,12 +679,12 @@ public final class TableColumnSupport {
         });
     }
 
-    // Tall enough for a per-side ChoiceBox (the Regulation Mode columns) rendered in the table's monospace font.
+    // Tall enough for a per-side field or ChoiceBox (the Regulation Mode columns), as compacted in styles.css, plus a gap.
     // Pinning every side of a row with several to this same height (rather than each side's own natural size, e.g. a
     // Label next to a taller control) is what keeps side 1 values horizontally aligned across columns, side 2 as well,
     // side 3 too. A row's single value (e.g. a line's R, or a two-windings transformer's) keeps its own height instead,
     // centered in the row like any single-valued column.
-    private static final double SIDE_ROW_HEIGHT = 31;
+    private static final double SIDE_ROW_HEIGHT = 20;
 
     static void sideHeight(Node side, int sideCount) {
         if (side instanceof Region region) {

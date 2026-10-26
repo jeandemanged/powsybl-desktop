@@ -111,9 +111,22 @@
     -fx-font-weight: bold;
 }
 
-/* In-cell fields (CellFields): compact, so that a row of fields stays about as dense as a row of text. */
+/* In-cell fields (CellFields): compact, so that a row of fields stays about as dense as a row of text, and fits
+   TableColumnSupport.SIDE_ROW_HEIGHT. */
 .table-cell .text-field {
     -fx-padding: 1 4 1 4;
+}
+
+.table-cell .choice-box {
+    -fx-padding: 0;
+}
+
+.table-cell .choice-box > .label {
+    -fx-padding: 1 4 1 4;
+}
+
+.table-cell .choice-box > .open-button {
+    -fx-padding: 0 4 0 2;
 }
 
 .right-aligned-column .text-field {
