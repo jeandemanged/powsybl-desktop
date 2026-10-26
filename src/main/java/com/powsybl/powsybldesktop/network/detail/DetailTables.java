@@ -7,9 +7,7 @@
  */
 package com.powsybl.powsybldesktop.network.detail;
 
-import com.powsybl.commons.PowsyblException;
-import com.powsybl.powsybldesktop.network.tables.TableColumnSupport;
-import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.powsybldesktop.network.tables.CellFields;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -17,20 +15,16 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
-import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.util.StringConverter;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 /**
- * Columns of the detail views' row tables (tap changer steps, shunt sections, limits), editing straight into IIDM
- * with {@link DetailForm}'s edit feedback. The flash is keyed by row index rather than held on the cell: the edit's
- * network update refreshes the table, which can recycle the cell to another row before the flash fades.
+ * Columns of the detail views' row tables (tap changer steps, shunt sections, limits, properties, reactive capability
+ * curve points), editing in {@link CellFields} fields. Rows are keyed by index: some are records recreated by every
+ * refresh, which would not match the edited row anymore.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -44,11 +38,7 @@ public final class DetailTables {
 
         @Override
         public Integer fromString(String text) {
-            try {
-                return Integer.valueOf(text.trim());
-            } catch (NumberFormatException e) {
-                return null;
-            }
+            return Integer.valueOf(text.trim());
         }
     };
 
@@ -67,19 +57,18 @@ public final class DetailTables {
     private DetailTables() {
     }
 
-    /**
-     * Unparsable text cancels the edit.
-     */
-    public static StringConverter<Double> doubleFormat(Supplier<GuiParameters> guiParameters, GuiParameters.Quantity quantity) {
-        return TableColumnSupport.lenient(TableColumnSupport.doubleFormat(guiParameters, quantity));
-    }
-
     public static <R, T> TableColumn<R, T> readOnlyColumn(String titleKey, StringConverter<T> format, Function<R, T> getter) {
         TableColumn<R, T> column = new TableColumn<>(Messages.get(titleKey));
         column.setSortable(false);
         column.setEditable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
-        column.setCellFactory(col -> new TextFieldTableCell<>(format));
+        column.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(T value, boolean empty) {
+                super.updateItem(value, empty);
+                setText(empty ? null : format.toString(value));
+            }
+        });
         return column;
     }
 
@@ -99,8 +88,11 @@ public final class DetailTables {
         TableColumn<R, T> column = new TableColumn<>(Messages.get(titleKey));
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
-        Map<Integer, String> flashStyles = new HashMap<>();
-        column.setCellFactory(col -> new EditableCell<>(format, setter, onEdit, rowEditable, flashStyles));
+        CellFields.textColumn(column, format, rowEditable, CellFields.RowKey.INDEX);
+        column.setOnEditCommit(event -> {
+            setter.accept(event.getRowValue(), event.getNewValue());
+            onEdit.run();
+        });
         return column;
     }
 
@@ -150,61 +142,4 @@ public final class DetailTables {
         }
     }
 
-    private static final class EditableCell<R, T> extends TextFieldTableCell<R, T> {
-        private final BiConsumer<R, T> setter;
-        private final Runnable onEdit;
-        private final Predicate<R> rowEditable;
-        private final Map<Integer, String> flashStyles;
-
-        private EditableCell(StringConverter<T> format, BiConsumer<R, T> setter, Runnable onEdit, Predicate<R> rowEditable,
-                             Map<Integer, String> flashStyles) {
-            super(format);
-            this.setter = setter;
-            this.onEdit = onEdit;
-            this.rowEditable = rowEditable;
-            this.flashStyles = flashStyles;
-        }
-
-        @Override
-        public void startEdit() {
-            R row = getTableRow() == null ? null : getTableRow().getItem();
-            if (row != null && rowEditable.test(row)) {
-                super.startEdit();
-            }
-        }
-
-        @Override
-        public void commitEdit(T newValue) {
-            if (newValue == null) {
-                cancelEdit();
-                return;
-            }
-            R row = getTableRow().getItem();
-            int index = getIndex();
-            super.cancelEdit();
-            try {
-                setter.accept(row, newValue);
-            } catch (PowsyblException | IllegalArgumentException e) {
-                TableColumnSupport.notifyEditError(this, e instanceof PowsyblException p ? p : new PowsyblException(e.getMessage(), e));
-                updateItem(getItem(), false);
-                return;
-            }
-            TableColumnSupport.flashKeyed(this, index, flashStyles, TableColumnSupport.EDIT_SUCCESS_STYLE_CLASS);
-            onEdit.run();
-            if (getTableView() != null) {
-                getTableView().refresh();
-            }
-        }
-
-        @Override
-        public void updateItem(T value, boolean empty) {
-            super.updateItem(value, empty);
-            getStyleClass().remove("editable-cell");
-            R row = getTableRow() == null ? null : getTableRow().getItem();
-            if (!empty && row != null && rowEditable.test(row)) {
-                getStyleClass().add("editable-cell");
-            }
-            TableColumnSupport.applyKeyedFlash(this, empty ? null : getIndex(), flashStyles);
-        }
-    }
 }

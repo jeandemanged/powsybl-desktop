@@ -130,14 +130,11 @@ class EditLockTest extends AbstractHeadlessApplicationTest {
                 .toList();
     }
 
-    // shown as editable (the editable-cell box), or holding an input control (buttons included: they open edit
-    // dialogs) - hyperlinks only navigate, detail buttons open a detail view with its own busy lock
+    // holding an input control (buttons included: they open edit dialogs) - hyperlinks only navigate, detail buttons
+    // open a detail view with its own busy lock
     private static boolean isEditor(TableCell<?, ?> cell) {
-        if (cell.getStyleClass().contains("editable-cell")) {
-            return true;
-        }
-        return cell.lookupAll("*").stream().anyMatch(node -> node.getStyleClass().contains("editable-cell")
-                || node instanceof ButtonBase && !(node instanceof Hyperlink) && !node.getStyleClass().contains("detail-button")
+        return cell.lookupAll("*").stream().anyMatch(node ->
+                node instanceof ButtonBase && !(node instanceof Hyperlink) && !node.getStyleClass().contains("detail-button")
                 || node instanceof ChoiceBox<?> || node instanceof ComboBoxBase<?> || node instanceof TextInputControl
                 || node instanceof Spinner<?>);
     }

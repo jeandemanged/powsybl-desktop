@@ -29,15 +29,12 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Hyperlink;
-import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TablePosition;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
-import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -163,15 +160,15 @@ class ShuntCompensatorsControllerTest extends AbstractHeadlessApplicationTest {
         column.getOnEditCommit().handle(new TableColumn.CellEditEvent<>(tableView, position, TableColumn.editCommitEvent(), newValue));
     }
 
-    // The section column's cell graphic is an IntStepperField (TableColumnSupport): an HBox holding a StackPane
-    // with the double-click-to-edit Label/TextField pair (same as editableDoubleField's ratedU/ratedS cells)
-    // followed by a VBox with the increment (top) and decrement (bottom) buttons.
-    private static Label sectionLabelOf(HBox stepperBox) {
-        return (Label) ((StackPane) stepperBox.getChildren().get(0)).getChildren().get(0);
+    // The section column's cell graphic holds a stepper (CellFields.IntStepper): an HBox with its field followed by a
+    // VBox with the increment (top) and decrement (bottom) buttons.
+    private HBox stepperOf(ShuntCompensator shuntCompensator) {
+        VBox box = (VBox) cellGraphic(controller.sectionColumn, rowOf(shuntCompensator));
+        return (HBox) ((StackPane) box.getChildren().get(0)).getChildren().get(0);
     }
 
     private static TextField sectionFieldOf(HBox stepperBox) {
-        return (TextField) ((StackPane) stepperBox.getChildren().get(0)).getChildren().get(1);
+        return (TextField) stepperBox.getChildren().get(0);
     }
 
     private static Button sectionIncrementButtonOf(HBox stepperBox) {
@@ -180,11 +177,6 @@ class ShuntCompensatorsControllerTest extends AbstractHeadlessApplicationTest {
 
     private static Button sectionDecrementButtonOf(HBox stepperBox) {
         return (Button) ((VBox) stepperBox.getChildren().get(1)).getChildren().get(1);
-    }
-
-    private static void doubleClick(Label label) {
-        label.getOnMouseClicked().handle(new MouseEvent(MouseEvent.MOUSE_CLICKED, 0, 0, 0, 0, MouseButton.PRIMARY, 2,
-                false, false, false, false, true, false, false, false, false, false, null));
     }
 
     @Test
@@ -250,17 +242,15 @@ class ShuntCompensatorsControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void sectionFieldIsClampedBetweenZeroAndMaximumSectionCount() {
         ShuntCompensator shuntCompensator = shuntCompensator("B1-SH2");
-        HBox stepperBox = (HBox) cellGraphic(controller.sectionColumn, rowOf(shuntCompensator));
-        Label label = sectionLabelOf(stepperBox);
+        HBox stepperBox = stepperOf(shuntCompensator);
         TextField textField = sectionFieldOf(stepperBox);
         Button incrementButton = sectionIncrementButtonOf(stepperBox);
         Button decrementButton = sectionDecrementButtonOf(stepperBox);
 
-        assertEquals(String.valueOf(shuntCompensator.getSectionCount()), label.getText());
+        assertEquals(String.valueOf(shuntCompensator.getSectionCount()), textField.getText());
         assertTrue(incrementButton.isVisible());
         assertTrue(decrementButton.isVisible());
 
-        interact(() -> doubleClick(label));
         interact(() -> {
             textField.setText("99");
             textField.getOnAction().handle(new ActionEvent());
@@ -268,7 +258,6 @@ class ShuntCompensatorsControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals(shuntCompensator.getMaximumSectionCount(), shuntCompensator.getSectionCount());
         assertFalse(incrementButton.isVisible());
 
-        interact(() -> doubleClick(label));
         interact(() -> {
             textField.setText("-5");
             textField.getOnAction().handle(new ActionEvent());
@@ -280,11 +269,9 @@ class ShuntCompensatorsControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void sectionFieldEditUpdatesShuntCompensator() {
         ShuntCompensator shuntCompensator = shuntCompensator("B1-SH2");
-        HBox stepperBox = (HBox) cellGraphic(controller.sectionColumn, rowOf(shuntCompensator));
-        Label label = sectionLabelOf(stepperBox);
+        HBox stepperBox = stepperOf(shuntCompensator);
         TextField textField = sectionFieldOf(stepperBox);
 
-        interact(() -> doubleClick(label));
         interact(() -> {
             textField.setText("3");
             textField.getOnAction().handle(new ActionEvent());
@@ -294,9 +281,9 @@ class ShuntCompensatorsControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
-    void sectionIncrementAndDecrementButtonsUpdateShuntCompensatorWithoutEnteringEditMode() {
+    void sectionIncrementAndDecrementButtonsUpdateShuntCompensator() {
         ShuntCompensator shuntCompensator = shuntCompensator("B1-SH2");
-        HBox stepperBox = (HBox) cellGraphic(controller.sectionColumn, rowOf(shuntCompensator));
+        HBox stepperBox = stepperOf(shuntCompensator);
         Button incrementButton = sectionIncrementButtonOf(stepperBox);
         Button decrementButton = sectionDecrementButtonOf(stepperBox);
 

@@ -352,7 +352,7 @@ public class NetworksController extends AbstractDisposableController {
             try {
                 network.setForecastDistance(Integer.parseInt(forecastDistanceField.getText().trim()));
             } catch (NumberFormatException e) {
-                throw new PowsyblException(Messages.get("detail.editError.invalidNumber", forecastDistanceField.getText().trim()), e);
+                throw new PowsyblException(Messages.get("desktop.common.editError.invalidNumber", forecastDistanceField.getText().trim()), e);
             }
         }, mainModel::setUpdate);
         showCaseDateAndForecastDistance(network);

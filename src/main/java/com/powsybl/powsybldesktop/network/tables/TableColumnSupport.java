@@ -21,28 +21,19 @@ import com.powsybl.powsybldesktop.violations.FlowViolation;
 import com.powsybl.powsybldesktop.violations.Loading;
 import javafx.animation.PauseTransition;
 import javafx.beans.property.ReadOnlyObjectWrapper;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.ChoiceBox;
-import javafx.scene.control.Control;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
-import javafx.scene.control.cell.ChoiceBoxTableCell;
-import javafx.scene.control.cell.TextFieldTableCell;
-import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
-import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Polygon;
 import javafx.stage.Window;
@@ -54,18 +45,13 @@ import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
-import java.util.function.DoubleConsumer;
-import java.util.function.DoubleSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -79,35 +65,30 @@ import java.util.function.Supplier;
  * "two-sided" variants stack a value per terminal (or per side's substation/voltage level) in a single cell,
  * for the Lines, TieLines and HvdcLines tables. The
  * "multi-sided" variants do the same for a variable number of sides (2 or 3), for the Transformers table, whose
- * editable variant gives each side its own double-click-to-edit Label, the same look/behavior as
- * configureDoubleColumn's TextFieldTableCell but reimplemented on a plain Node since one TableCell here holds
- * several independently editable values. The
- * "nullable editable" variants show "-" and refuse to enter edit mode for a field that only exists on some rows,
- * for the BoundaryLines table's optional generation part. configureMultiSidedTapChangerColumn combines both: a
- * per-side IntStepperField, blank on a side without that tap changer type, for the Transformers table's ratio/phase
- * tap changer columns (their steps are edited in the transformer's detail view).
+ * editable variants give each side its own field (see {@link CellFields}). The
+ * "nullable editable" variants show "-" as text for a field that only exists on some rows, for the BoundaryLines
+ * table's optional generation part. configureMultiSidedTapChangerColumn combines both: a per-side stepper, blank on a
+ * side without that tap changer type, for the Transformers table's ratio/phase tap changer columns (their steps are
+ * edited in the transformer's detail view).
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 public final class TableColumnSupport {
 
-    // Marks a cell as belonging to an editable column so styles.css can give it a visual affordance
-    // (e.g. a background tint) - plain TextField/ChoiceBox-backed cells otherwise look identical to read-only ones.
-    private static final String EDITABLE_CELL_STYLE_CLASS = "editable-cell";
-
-    // Briefly marks a cell after an edit, so styles.css can flash it red (rejected, e.g. an IIDM validation
+    // Briefly marks a field or cell after an edit, so styles.css can flash it red (rejected, e.g. an IIDM validation
     // exception) or green (applied), both removed again after their respective duration below.
     public static final String EDIT_ERROR_STYLE_CLASS = "edit-error";
     public static final String EDIT_SUCCESS_STYLE_CLASS = "edit-success";
     private static final Duration EDIT_SUCCESS_FLASH_DURATION = Duration.millis(200);
     private static final Duration EDIT_ERROR_FLASH_DURATION = Duration.seconds(1.5);
 
-    private static Duration flashDuration(String styleClass) {
+    static Duration flashDuration(String styleClass) {
         return EDIT_ERROR_STYLE_CLASS.equals(styleClass) ? EDIT_ERROR_FLASH_DURATION : EDIT_SUCCESS_FLASH_DURATION;
     }
 
     // Decimal places read on every call rather than captured: GuiParameters is edited in place, or replaced on a
     // parameters reset/import, and the tables are refreshed then (see AbstractEquipmentTableController.setSceneModel).
+    // Blank or "-" parses to NaN, which IIDM refuses where a value is mandatory, like DetailForm's double fields.
     public static StringConverter<Double> doubleFormat(Supplier<GuiParameters> guiParameters, GuiParameters.Quantity quantity) {
         return new StringConverter<>() {
             @Override
@@ -117,28 +98,8 @@ public final class TableColumnSupport {
 
             @Override
             public Double fromString(String text) {
-                return Double.valueOf(text.trim());
-            }
-        };
-    }
-
-    // TextFieldTableCell commits converter.fromString(text) straight from its text field's key handler, so an
-    // unparsable entry (e.g. "1,5", or the "-" shown for a missing value) would throw out of it and leave the cell
-    // stuck in edit mode: mapped to null instead, which the editable double cells treat as a cancelled edit.
-    public static StringConverter<Double> lenient(StringConverter<Double> format) {
-        return new StringConverter<>() {
-            @Override
-            public String toString(Double value) {
-                return format.toString(value);
-            }
-
-            @Override
-            public Double fromString(String text) {
-                try {
-                    return format.fromString(text);
-                } catch (NumberFormatException e) {
-                    return null;
-                }
+                String trimmed = text.trim();
+                return trimmed.isEmpty() || "-".equals(trimmed) ? Double.NaN : Double.valueOf(trimmed);
             }
         };
     }
@@ -195,46 +156,33 @@ public final class TableColumnSupport {
     }
 
     static <S> void configureConnectedColumn(TableColumn<S, S> column, Function<S, Terminal> terminalGetter, Consumer<Terminal> onToggle) {
-        column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        // Shared by every cell this column creates (captured by the cellFactory lambda below), keyed by Terminal
-        // rather than by cell instance - see flashConnected()'s comment for why.
-        Map<Terminal, String> flashStyles = new HashMap<>();
-        column.setCellFactory(col -> new TableCell<S, S>() {
-            @Override
-            protected void updateItem(S item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setGraphic(null);
-                    applyConnectedFlash(this, List.of(), flashStyles);
-                } else {
-                    Terminal terminal = terminalGetter.apply(item);
-                    setGraphic(connectedCheckBox(this, terminal, onToggle, flashStyles));
-                    applyConnectedFlash(this, List.of(terminal), flashStyles);
-                }
-            }
-        });
-        disableUnlessTableEditable(column);
+        connectedColumn(column, item -> List.of(terminalGetter.apply(item)), onToggle, checkBoxes -> checkBoxes.getFirst());
     }
 
     static <S> void configureTwoSidedConnectedColumn(TableColumn<S, S> column, Function<S, Terminal> terminal1Getter,
                                                        Function<S, Terminal> terminal2Getter, Consumer<Terminal> onToggle) {
+        configureMultiSidedConnectedColumn(column, item -> List.of(terminal1Getter.apply(item), terminal2Getter.apply(item)), onToggle);
+    }
+
+    static <S> void configureMultiSidedConnectedColumn(TableColumn<S, S> column, Function<S, List<Terminal>> terminalsGetter, Consumer<Terminal> onToggle) {
         column.setSortable(false);
+        connectedColumn(column, terminalsGetter, onToggle, checkBoxes -> sidedBox(checkBoxes, Pos.CENTER));
+    }
+
+    // The flash is keyed by row (see CellFields.KeyedFlash): onToggle (wired by every caller to
+    // mainModel.setUpdate(terminal.getVoltageLevel())) refreshes the table, which can rebind this cell to another row.
+    private static <S> void connectedColumn(TableColumn<S, S> column, Function<S, List<Terminal>> terminalsGetter, Consumer<Terminal> onToggle,
+                                            Function<List<Node>, Node> layout) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        Map<Terminal, String> flashStyles = new HashMap<>();
+        CellFields.KeyedFlash flash = new CellFields.KeyedFlash();
         column.setCellFactory(col -> new TableCell<S, S>() {
             @Override
             protected void updateItem(S item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setGraphic(null);
-                    applyConnectedFlash(this, List.of(), flashStyles);
-                } else {
-                    Terminal terminal1 = terminal1Getter.apply(item);
-                    Terminal terminal2 = terminal2Getter.apply(item);
-                    setGraphic(twoSidedBox(connectedCheckBox(this, terminal1, onToggle, flashStyles),
-                            connectedCheckBox(this, terminal2, onToggle, flashStyles), Pos.CENTER));
-                    applyConnectedFlash(this, List.of(terminal1, terminal2), flashStyles);
-                }
+                S row = empty ? null : item;
+                setGraphic(row == null ? null
+                        : layout.apply(terminalsGetter.apply(row).stream().<Node>map(terminal -> connectedCheckBox(this, row, terminal, onToggle, flash)).toList()));
+                flash.show(this, row);
             }
         });
         disableUnlessTableEditable(column);
@@ -277,161 +225,49 @@ public final class TableColumnSupport {
         return component == null ? "-" : String.valueOf(component.getNum());
     }
 
+    // also used for read-only values, in columns made non-editable
     static <S> void configureDoubleColumn(TableColumn<S, Double> column, StringConverter<Double> format) {
-        // Keyed by row item rather than held on the TableCell instance: some callers' onEditCommit handler
-        // triggers a wider refresh (e.g. buses' fictitious P0/Q0, which fire mainModel.setUpdate()), which can
-        // recycle this exact TableCell to a different row before the flash fades - same fix as
-        // flashConnected/flashKeyed below.
-        Map<S, String> flashStyles = new HashMap<>();
-        column.setCellFactory(col -> {
-            TableCell<S, Double> cell = new EditableDoubleTableCell<>(format, flashStyles);
-            // also used for read-only values, in columns made non-editable
-            if (col.isEditable()) {
-                cell.getStyleClass().add(EDITABLE_CELL_STYLE_CLASS);
-                disableUnlessTableEditable(cell);
-            }
-            return cell;
-        });
+        if (column.isEditable()) {
+            CellFields.textColumn(column, format, row -> true, CellFields.RowKey.ITEM);
+        } else {
+            column.setCellFactory(col -> new TableCell<>() {
+                @Override
+                protected void updateItem(Double value, boolean empty) {
+                    super.updateItem(value, empty);
+                    setText(empty ? null : format.toString(value));
+                }
+            });
+        }
     }
 
     // An editing cell is disabled (greyed, inert) while its table isn't editable, which a table is made while its
-    // network is busy with a background job (see AbstractEquipmentTableController.setSceneModel) - so that custom
-    // editors (check boxes, steppers, ...), whose columns aren't editable in TableView's sense, follow the same rule
-    // TextFieldTableCell already does.
+    // network is busy with a background job (see AbstractEquipmentTableController.setSceneModel).
     static <S, T> void disableUnlessTableEditable(TableColumn<S, T> column) {
         Callback<TableColumn<S, T>, TableCell<S, T>> factory = column.getCellFactory();
-        column.setCellFactory(col -> disableUnlessTableEditable(factory.call(col)));
-    }
-
-    private static <S, T> TableCell<S, T> disableUnlessTableEditable(TableCell<S, T> cell) {
-        cell.disableProperty().bind(cell.tableViewProperty()
-                .flatMap(TableView::editableProperty)
-                .map(editable -> !editable)
-                .orElse(false));
-        return cell;
-    }
-
-    // Same rendering as TextFieldTableCell.forTableColumn(format), but catches a setter exception thrown
-    // by the column's onEditCommit handler (e.g. an IIDM validation exception) instead of letting it propagate:
-    // TableCell.commitEdit fires that handler via Event.fireEvent before it updates the cell's displayed value,
-    // so wrapping super.commitEdit both stops the rejected value from ever being shown and lets us restore the
-    // cell's pre-edit display by re-running updateItem with the unchanged item.
-    private static final class EditableDoubleTableCell<S> extends TextFieldTableCell<S, Double> {
-        private final Map<S, String> flashStyles;
-
-        EditableDoubleTableCell(StringConverter<Double> format, Map<S, String> flashStyles) {
-            super(lenient(format));
-            this.flashStyles = flashStyles;
-        }
-
-        @Override
-        public void commitEdit(Double newValue) {
-            if (newValue == null) {
-                cancelEdit();
-                return;
-            }
-            S row = getTableRow() == null ? null : getTableRow().getItem();
-            try {
-                super.commitEdit(newValue);
-                if (row != null) {
-                    flashKeyed(this, row, flashStyles, EDIT_SUCCESS_STYLE_CLASS);
-                }
-            } catch (PowsyblException e) {
-                notifyEditError(this, e);
-                updateItem(getItem(), false);
-            }
-        }
-
-        // Runs unconditionally, even when empty: a cell recycled to an empty filler row otherwise keeps
-        // whatever flash class a previous row left on it forever, since nothing else ever revisits it to clear it.
-        @Override
-        public void updateItem(Double value, boolean empty) {
-            super.updateItem(value, empty);
-            S row = empty || getTableRow() == null ? null : getTableRow().getItem();
-            applyKeyedFlash(this, row, flashStyles);
-        }
+        column.setCellFactory(col -> {
+            TableCell<S, T> cell = factory.call(col);
+            cell.disableProperty().bind(cell.tableViewProperty()
+                    .flatMap(TableView::editableProperty)
+                    .map(editable -> !editable)
+                    .orElse(false));
+            return cell;
+        });
     }
 
     // Nullable like doubleFormat's "-": unlike configureNullableEditableDoubleColumn, every row can be edited here
     // (the field just may hold no value), so clearing the text field back to "-"/blank is how a value gets unset.
     static <S> void configureEditableTextColumn(TableColumn<S, String> column) {
-        column.setCellFactory(col -> {
-            TableCell<S, String> cell = new EditableStringTableCell<>();
-            if (col.isEditable()) {
-                cell.getStyleClass().add(EDITABLE_CELL_STYLE_CLASS);
-                disableUnlessTableEditable(cell);
-            }
-            return cell;
-        });
+        CellFields.textColumn(column, STRING_FORMAT, row -> true, CellFields.RowKey.ITEM);
     }
 
-    private static final class EditableStringTableCell<S> extends TextFieldTableCell<S, String> {
-        EditableStringTableCell() {
-            super(STRING_FORMAT);
-        }
-
-        @Override
-        public void commitEdit(String newValue) {
-            try {
-                super.commitEdit(newValue);
-                flashEditSuccess(this);
-            } catch (PowsyblException e) {
-                notifyEditError(this, e);
-                updateItem(getItem(), false);
-            }
-        }
-    }
-
-    // For a field that only exists on some rows (e.g. a boundary line's optional generation part): shows "-" and
-    // refuses to enter edit mode where the getter returns null, editable like configureDoubleColumn otherwise.
+    // For a field that only exists on some rows (e.g. a boundary line's optional generation part): shows "-" where the
+    // getter returns null, editable like configureDoubleColumn otherwise.
     static <S> void configureNullableEditableDoubleColumn(TableColumn<S, Double> column, Function<S, Double> getter,
                                                             BiConsumer<S, Double> setter, StringConverter<Double> format) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
-        column.setCellFactory(col -> new NullableEditableDoubleTableCell<>(format));
-        disableUnlessTableEditable(column);
+        CellFields.textColumn(column, format, row -> getter.apply(row) != null, CellFields.RowKey.ITEM);
         column.setOnEditCommit(event -> setter.accept(event.getRowValue(), event.getNewValue()));
         column.setComparator(missingLast(column, TableColumnSupport::isMissing));
-    }
-
-    private static final class NullableEditableDoubleTableCell<S> extends TextFieldTableCell<S, Double> {
-        NullableEditableDoubleTableCell(StringConverter<Double> format) {
-            super(lenient(format));
-        }
-
-        @Override
-        public void startEdit() {
-            if (getItem() == null) {
-                return;
-            }
-            super.startEdit();
-        }
-
-        @Override
-        public void commitEdit(Double newValue) {
-            if (newValue == null) {
-                cancelEdit();
-                return;
-            }
-            try {
-                super.commitEdit(newValue);
-                flashEditSuccess(this);
-            } catch (PowsyblException e) {
-                notifyEditError(this, e);
-                updateItem(getItem(), false);
-            }
-        }
-
-        @Override
-        public void updateItem(Double item, boolean empty) {
-            super.updateItem(item, empty);
-            if (!empty && item == null) {
-                setText("-");
-            }
-            getStyleClass().remove(EDITABLE_CELL_STYLE_CLASS);
-            if (!empty && item != null) {
-                getStyleClass().add(EDITABLE_CELL_STYLE_CLASS);
-            }
-        }
     }
 
     // Same "-" when absent as configureNullableEditableDoubleColumn, for a field that only exists on some rows.
@@ -843,26 +679,23 @@ public final class TableColumnSupport {
         });
     }
 
-    // Tall enough for a per-side ChoiceBox (the Regulation Mode columns) rendered in the table's Consolas
-    // font - its own computed preferred height at that font, ~31px, exceeds the 25px that used to be enough
-    // for every other per-side control (Label/TextField/CheckBox/IntStepperField), and forcing it down to 25
-    // clipped its text at the bottom instead of centering it. Pinning every side of every such column to this
-    // same height (rather than each side's own natural size, e.g. a 17px Label next to a taller control)
-    // is what keeps side 1 values horizontally aligned across columns, side 2 as well, side 3 too.
+    // Tall enough for a per-side ChoiceBox (the Regulation Mode columns) rendered in the table's monospace font.
+    // Pinning every side of a row with several to this same height (rather than each side's own natural size, e.g. a
+    // Label next to a taller control) is what keeps side 1 values horizontally aligned across columns, side 2 as well,
+    // side 3 too. A row's single value (e.g. a line's R, or a two-windings transformer's) keeps its own height instead,
+    // centered in the row like any single-valued column.
     private static final double SIDE_ROW_HEIGHT = 31;
 
-    private static <T extends Node> T fixedSideHeight(T node) {
-        if (node instanceof Region region) {
-            region.setMinHeight(SIDE_ROW_HEIGHT);
-            region.setPrefHeight(SIDE_ROW_HEIGHT);
+    static void sideHeight(Node side, int sideCount) {
+        if (side instanceof Region region) {
+            double height = sideCount > 1 ? SIDE_ROW_HEIGHT : Region.USE_COMPUTED_SIZE;
+            region.setMinHeight(height);
+            region.setPrefHeight(height);
         }
-        return node;
     }
 
     private static VBox twoSidedBox(Node first, Node second, Pos alignment) {
-        VBox box = new VBox(fixedSideHeight(first), fixedSideHeight(second));
-        box.setAlignment(alignment);
-        return box;
+        return sidedBox(List.of(first, second), alignment);
     }
 
     static <S> void configureMultiSidedContainerColumn(TableColumn<S, S> column,
@@ -878,27 +711,6 @@ public final class TableColumnSupport {
                         : sidedBox(containersGetter.apply(item).stream().<Node>map(container -> linkFactory.apply(container, item)).toList(), Pos.CENTER_LEFT));
             }
         });
-    }
-
-    static <S> void configureMultiSidedConnectedColumn(TableColumn<S, S> column, Function<S, List<Terminal>> terminalsGetter, Consumer<Terminal> onToggle) {
-        column.setSortable(false);
-        column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        Map<Terminal, String> flashStyles = new HashMap<>();
-        column.setCellFactory(col -> new TableCell<S, S>() {
-            @Override
-            protected void updateItem(S item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setGraphic(null);
-                    applyConnectedFlash(this, List.of(), flashStyles);
-                } else {
-                    List<Terminal> terminals = terminalsGetter.apply(item);
-                    setGraphic(sidedBox(terminals.stream().<Node>map(terminal -> connectedCheckBox(this, terminal, onToggle, flashStyles)).toList(), Pos.CENTER));
-                    applyConnectedFlash(this, terminals, flashStyles);
-                }
-            }
-        });
-        disableUnlessTableEditable(column);
     }
 
     static <S> void configureMultiSidedComponentColumn(TableColumn<S, S> column, Function<S, List<Bus>> busesGetter,
@@ -931,7 +743,7 @@ public final class TableColumnSupport {
 
     private static VBox sidedBox(List<Node> nodes, Pos alignment) {
         VBox box = new VBox();
-        nodes.forEach(TableColumnSupport::fixedSideHeight);
+        nodes.forEach(node -> sideHeight(node, nodes.size()));
         box.getChildren().addAll(nodes);
         box.setAlignment(alignment);
         return box;
@@ -945,94 +757,13 @@ public final class TableColumnSupport {
         void set(S item, int index, double value);
     }
 
-    // Editable counterpart of configureMultiSidedDoubleColumn: since a single TableCell here holds a variable
-    // number of independently editable values, one TextFieldTableCell-style double-click-to-edit Label per side is
-    // used instead of a plain read-only Label, rather than the whole cell's built-in edit state (which only tracks
-    // one value per cell).
+    // Editable counterpart of configureMultiSidedDoubleColumn, a field per side.
     static <S> void configureMultiSidedEditableDoubleColumn(TableColumn<S, S> column, Function<S, List<Double>> valuesGetter,
                                                               IndexedDoubleSetter<S> setter, StringConverter<Double> format) {
-        column.setSortable(false);
-        column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new TableCell<S, S>() {
-            @Override
-            protected void updateItem(S item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setGraphic(null);
-                    return;
-                }
-                int sideCount = valuesGetter.apply(item).size();
-                List<Node> fields = new ArrayList<>();
-                for (int index = 0; index < sideCount; index++) {
-                    int side = index;
-                    fields.add(editableDoubleField(format, () -> valuesGetter.apply(item).get(side), value -> setter.set(item, side, value)));
-                }
-                setGraphic(sidedBox(fields, Pos.CENTER_RIGHT));
-            }
+        CellFields.sidedColumn(column, row -> valuesGetter.apply(row).size(), CellFields.CellTextField::new, (field, key, row, side) -> {
+            field.bind(key, () -> format.toString(valuesGetter.apply(row).get(side)), text -> setter.set(row, side, format.fromString(text)));
+            return true;
         });
-        disableUnlessTableEditable(column);
-    }
-
-    // A StackPane holding a Label (shown at rest) and a TextField (shown while editing) swapped in place, so the
-    // per-side value looks and behaves like a plain configureDoubleColumn cell: double-click to edit, Enter/losing
-    // focus commits, Escape cancels.
-    private static StackPane editableDoubleField(StringConverter<Double> format, DoubleSupplier getter, DoubleConsumer setter) {
-        Label label = new Label(format.toString(getter.getAsDouble()));
-        label.getStyleClass().add(EDITABLE_CELL_STYLE_CLASS);
-        label.setMaxWidth(Double.MAX_VALUE);
-        label.setAlignment(Pos.CENTER_RIGHT);
-
-        TextField field = new TextField();
-        field.setAlignment(Pos.CENTER_RIGHT);
-        field.setVisible(false);
-        field.setManaged(false);
-
-        label.setOnMouseClicked(event -> {
-            if (event.getClickCount() == 2) {
-                field.setText(format.toString(getter.getAsDouble()));
-                showEditor(label, field, true);
-                field.requestFocus();
-                field.selectAll();
-            }
-        });
-        field.setOnKeyPressed(event -> {
-            if (event.getCode() == KeyCode.ESCAPE) {
-                showEditor(label, field, false);
-            }
-        });
-        Runnable commit = () -> {
-            Double newValue;
-            try {
-                newValue = format.fromString(field.getText());
-            } catch (NumberFormatException e) {
-                showEditor(label, field, false);
-                return;
-            }
-            if (Double.compare(newValue, getter.getAsDouble()) != 0) {
-                try {
-                    setter.accept(newValue);
-                    flashEditSuccess(label);
-                } catch (PowsyblException e) {
-                    notifyEditError(label, e);
-                }
-            }
-            label.setText(format.toString(getter.getAsDouble()));
-            showEditor(label, field, false);
-        };
-        field.setOnAction(event -> commit.run());
-        field.focusedProperty().addListener((observable, wasFocused, isFocused) -> {
-            if (!isFocused && field.isVisible()) {
-                commit.run();
-            }
-        });
-        return new StackPane(label, field);
-    }
-
-    private static void showEditor(Label label, Control field, boolean editing) {
-        label.setVisible(!editing);
-        label.setManaged(!editing);
-        field.setVisible(editing);
-        field.setManaged(editing);
     }
 
     // TableView's descending sort doesn't negate the column comparator, it swaps the compared values
@@ -1057,72 +788,16 @@ public final class TableColumnSupport {
         };
     }
 
-    // Editable counterpart of a multi-sided column for a value that may not exist on every side (e.g. a
-    // transformer leg without a ratio/phase tap changer): a blank slot where tapChangersGetter's list holds
-    // Optional.empty(), an IntStepperField bounded to [low, high] tap position otherwise.
-    // Unlike configureMultiSidedEditableDoubleColumn, no separate setter is needed - each present value is the
-    // mutable TapChanger itself, so the field writes straight through to it.
-    //
-    // Unlike every other multi-sided column, the per-side nodes here are pooled per TableCell (one TapChangerSlot
-    // per side, created lazily and never discarded) and only rebound in updateItem, the same way SpinnerTableCell
-    // reuses its single IntStepperField - it's expensive to construct (buttons/icons/CSS applied), so rebuilding
-    // one per side on every updateItem call (as configureMultiSidedEditableDoubleColumn's plain Labels can afford
-    // to) made scrolling/refreshing the Transformers table noticeably slow.
+    // Editable counterpart of a multi-sided column for a value that may not exist on every side (e.g. a transformer leg
+    // without a ratio/phase tap changer): a blank slot where tapChangersGetter's list holds Optional.empty(), a stepper
+    // bounded to [low, high] tap position otherwise, writing straight through to the mutable TapChanger.
     static <S> void configureMultiSidedTapChangerColumn(TableColumn<S, S> column,
                                                           Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter) {
-        column.setSortable(false);
-        column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new MultiSidedTapChangerTableCell<>(tapChangersGetter));
-        disableUnlessTableEditable(column);
-    }
-
-    private static final class MultiSidedTapChangerTableCell<S> extends TableCell<S, S> {
-        private final Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter;
-        private final List<TapChangerSlot> slots = new ArrayList<>();
-
-        MultiSidedTapChangerTableCell(Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter) {
-            this.tapChangersGetter = tapChangersGetter;
-        }
-
-        @Override
-        protected void updateItem(S item, boolean empty) {
-            super.updateItem(item, empty);
-            if (empty || item == null) {
-                setGraphic(null);
-                return;
-            }
-            List<Optional<? extends TapChanger<?, ?, ?, ?>>> tapChangers = tapChangersGetter.apply(item);
-            while (slots.size() < tapChangers.size()) {
-                slots.add(new TapChangerSlot());
-            }
-            for (int side = 0; side < tapChangers.size(); side++) {
-                slots.get(side).bind(tapChangers.get(side));
-            }
-            setGraphic(sidedBox(slots.subList(0, tapChangers.size()).stream().<Node>map(slot -> slot.root).toList(), Pos.CENTER));
-        }
-    }
-
-    // One side's reusable node pair: a blank Label (shown at rest, when this side has no such tap changer) and
-    // an IntStepperField (shown otherwise), swapped in place by bind() rather than rebuilt, so the field is
-    // constructed once per TableCell and merely rebound to a different TapChanger as the cell is recycled to a
-    // different row.
-    private static final class TapChangerSlot {
-        private final Label blankLabel = new Label();
-        private final IntStepperField stepperField = new IntStepperField();
-        private final StackPane root = new StackPane(blankLabel, stepperField.root);
-
-        void bind(Optional<? extends TapChanger<?, ?, ?, ?>> tapChangerOpt) {
-            TapChanger<?, ?, ?, ?> tapChanger = tapChangerOpt.orElse(null);
-            boolean present = tapChanger != null;
-            blankLabel.setVisible(!present);
-            blankLabel.setManaged(!present);
-            stepperField.root.setVisible(present);
-            stepperField.root.setManaged(present);
-            if (present) {
-                stepperField.bind(tapChanger.getLowTapPosition(), tapChanger.getHighTapPosition(),
-                        tapChanger.getTapPosition(), tapChanger::setTapPosition);
-            }
-        }
+        CellFields.sidedColumn(column, row -> tapChangersGetter.apply(row).size(), CellFields.IntStepper::new, (stepper, key, row, side) -> {
+            Optional<? extends TapChanger<?, ?, ?, ?>> tapChanger = tapChangersGetter.apply(row).get(side);
+            tapChanger.ifPresent(tc -> stepper.bind(key, tc.getLowTapPosition(), tc.getHighTapPosition(), tc::getTapPosition, tc::setTapPosition));
+            return tapChanger.isPresent();
+        });
     }
 
     // Shared blank-slot rule for every per-side tap changer sub-field column below (Regulating, Regulation Mode,
@@ -1163,25 +838,15 @@ public final class TableColumnSupport {
                                                                 Function<TapChanger<?, ?, ?, ?>, Double> getter,
                                                                 BiConsumer<TapChanger<?, ?, ?, ?>, Double> setter,
                                                                 Function<TapChanger<?, ?, ?, ?>, StringConverter<Double>> formatGetter) {
-        column.setSortable(false);
-        column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new TableCell<S, S>() {
-            @Override
-            protected void updateItem(S item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setGraphic(null);
-                    return;
-                }
-                List<Node> nodes = tapChangersGetter.apply(item).stream()
-                        .<Node>map(opt -> tapChangerFieldEnabled(opt)
-                                ? editableDoubleField(formatGetter.apply(opt.get()), () -> getter.apply(opt.get()), value -> setter.accept(opt.get(), value))
-                                : new Label())
-                        .toList();
-                setGraphic(sidedBox(nodes, Pos.CENTER_RIGHT));
+        CellFields.sidedColumn(column, row -> tapChangersGetter.apply(row).size(), CellFields.CellTextField::new, (field, key, row, side) -> {
+            Optional<? extends TapChanger<?, ?, ?, ?>> tapChanger = tapChangersGetter.apply(row).get(side);
+            if (!tapChangerFieldEnabled(tapChanger)) {
+                return false;
             }
+            TapChanger<?, ?, ?, ?> tc = tapChanger.get();
+            field.bind(key, () -> formatGetter.apply(tc).toString(getter.apply(tc)), text -> setter.accept(tc, formatGetter.apply(tc).fromString(text)));
+            return true;
         });
-        disableUnlessTableEditable(column);
     }
 
     static <S> void configureMultiSidedTapChangerNullableIntColumn(TableColumn<S, S> column,
@@ -1210,96 +875,26 @@ public final class TableColumnSupport {
                                                                    Function<TapChanger<?, ?, ?, ?>, T> getter,
                                                                    BiConsumer<TapChanger<?, ?, ?, ?>, T> setter,
                                                                    List<T> choices, StringConverter<T> converter) {
-        column.setSortable(false);
-        column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new TableCell<S, S>() {
-            @Override
-            protected void updateItem(S item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setGraphic(null);
-                    return;
+        CellFields.sidedColumn(column, row -> tapChangersGetter.apply(row).size(),
+            (cell, flash) -> new CellFields.CellChoiceBox<>(cell, flash, choices, converter), (choiceBox, key, row, side) -> {
+                Optional<? extends TapChanger<?, ?, ?, ?>> tapChanger = tapChangersGetter.apply(row).get(side);
+                if (!tapChangerFieldEnabled(tapChanger)) {
+                    return false;
                 }
-                List<Node> nodes = tapChangersGetter.apply(item).stream()
-                        .<Node>map(opt -> tapChangerFieldEnabled(opt)
-                                ? editableChoiceField(() -> getter.apply(opt.get()), choices, converter, value -> setter.accept(opt.get(), value))
-                                : new Label())
-                        .toList();
-                setGraphic(sidedBox(nodes, Pos.CENTER));
-            }
-        });
-        disableUnlessTableEditable(column);
+                TapChanger<?, ?, ?, ?> tc = tapChanger.get();
+                choiceBox.bind(key, () -> getter.apply(tc), value -> setter.accept(tc, value));
+                return true;
+            });
     }
 
-    // A single value rendered as a one-slot multi-sided column, so that in a table with two-sided rows its editable
-    // box keeps the fixed per-side height (like configureMultiSidedEditableDoubleColumn) instead of stretching to the
-    // row's full height as configureChoiceColumn's ChoiceBoxTableCell does.
+    // A single value of a table with multi-sided rows, as a one-slot multi-sided column like its editable doubles.
     static <S, T> void configureSingleSlotChoiceColumn(TableColumn<S, S> column, Function<S, T> getter, BiConsumer<S, T> setter,
                                                         List<T> choices, StringConverter<T> converter) {
-        column.setSortable(false);
-        column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new TableCell<S, S>() {
-            @Override
-            protected void updateItem(S item, boolean empty) {
-                super.updateItem(item, empty);
-                setGraphic(empty || item == null ? null
-                        : sidedBox(List.of(editableChoiceField(() -> getter.apply(item), choices, converter, value -> setter.accept(item, value))), Pos.CENTER_LEFT));
-            }
-        });
-        disableUnlessTableEditable(column);
-    }
-
-    // Per-side counterpart of configureChoiceColumn's ChoiceBoxTableCell, with the same look: the value as text in
-    // the editable-cell box at rest, swapped for a ChoiceBox on double-click (like editableDoubleField's Label/
-    // TextField swap); picking a value commits it, Escape or leaving the ChoiceBox cancels.
-    private static <T> StackPane editableChoiceField(Supplier<T> getter, List<T> choices, StringConverter<T> converter, Consumer<T> setter) {
-        Label label = new Label(converter.toString(getter.get()));
-        label.getStyleClass().add(EDITABLE_CELL_STYLE_CLASS);
-        label.setMaxWidth(Double.MAX_VALUE);
-
-        ChoiceBox<T> choiceBox = new ChoiceBox<>(FXCollections.observableArrayList(choices));
-        choiceBox.setMaxWidth(Double.MAX_VALUE);
-        choiceBox.setConverter(converter);
-        choiceBox.setVisible(false);
-        choiceBox.setManaged(false);
-
-        // selecting the current value when opening the editor must not commit it
-        boolean[] opening = {false};
-        label.setOnMouseClicked(event -> {
-            if (event.getClickCount() == 2) {
-                opening[0] = true;
-                choiceBox.getSelectionModel().select(getter.get());
-                opening[0] = false;
-                showEditor(label, choiceBox, true);
-                choiceBox.requestFocus();
-            }
-        });
-        choiceBox.setOnKeyPressed(event -> {
-            if (event.getCode() == KeyCode.ESCAPE) {
-                showEditor(label, choiceBox, false);
-            }
-        });
-        choiceBox.focusedProperty().addListener((observable, wasFocused, isFocused) -> {
-            if (!isFocused && !choiceBox.isShowing() && choiceBox.isVisible()) {
-                showEditor(label, choiceBox, false);
-            }
-        });
-        choiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
-            if (opening[0] || !choiceBox.isVisible()) {
-                return;
-            }
-            if (!Objects.equals(newValue, getter.get())) {
-                try {
-                    setter.accept(newValue);
-                    flashEditSuccess(label);
-                } catch (PowsyblException e) {
-                    notifyEditError(label, e);
-                }
-            }
-            label.setText(converter.toString(getter.get()));
-            showEditor(label, choiceBox, false);
-        });
-        return new StackPane(label, choiceBox);
+        CellFields.sidedColumn(column, row -> 1, (cell, flash) -> new CellFields.CellChoiceBox<>(cell, flash, choices, converter),
+            (choiceBox, key, row, side) -> {
+                choiceBox.bind(key, () -> getter.apply(row), value -> setter.accept(row, value));
+                return true;
+            });
     }
 
     // The name of an equipment with a detail view, after an info button opening it. Unlike editing controls, the button
@@ -1351,156 +946,13 @@ public final class TableColumnSupport {
         }
     }
 
-    // The section field's [min, max] range is per-row (clamped to each shunt compensator's own maximum section
-    // count), so each cell binds its own bounds rather than sharing one across the column.
+    // The section field's [min, max] range is per-row (clamped to each shunt compensator's own maximum section count).
     static <S> void configureSpinnerIntColumn(TableColumn<S, S> column, Function<S, Integer> valueGetter,
                                                Function<S, Integer> maxGetter, BiConsumer<S, Integer> setter) {
-        column.setSortable(false);
-        column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new SpinnerTableCell<>(valueGetter, maxGetter, setter));
-        disableUnlessTableEditable(column);
-    }
-
-    private static final class SpinnerTableCell<S> extends TableCell<S, S> {
-        private final Function<S, Integer> valueGetter;
-        private final Function<S, Integer> maxGetter;
-        private final BiConsumer<S, Integer> setter;
-        private final IntStepperField stepperField = new IntStepperField();
-
-        SpinnerTableCell(Function<S, Integer> valueGetter, Function<S, Integer> maxGetter, BiConsumer<S, Integer> setter) {
-            this.valueGetter = valueGetter;
-            this.maxGetter = maxGetter;
-            this.setter = setter;
-        }
-
-        @Override
-        protected void updateItem(S item, boolean empty) {
-            super.updateItem(item, empty);
-            if (empty || item == null) {
-                setGraphic(null);
-            } else {
-                stepperField.bind(0, maxGetter.apply(item), valueGetter.apply(item), newValue -> setter.accept(item, newValue));
-                setGraphic(stepperField.root);
-            }
-        }
-    }
-
-    // Editable int field used in place of a Spinner<Integer>: the same double-click-to-edit Label/TextField pair
-    // as editableDoubleField (so it looks and is sized exactly like the RatedU/RatedS columns), plus a plus/minus
-    // icon button pair stacked to its right, one hidden whenever the current value is already at that bound.
-    // Only setVisible is toggled on those buttons (never setManaged), so each keeps its fixed top/bottom slot
-    // instead of the remaining one re-centering into the hidden one's place.
-    private static final class IntStepperField {
-        // Fixed rather than content-driven (e.g. a plain Label's natural width, or a parent's leftover-space
-        // growth), so the field is exactly as wide in the Transformers tap changer columns - nested inside an
-        // extra info-button HBox and StackPane slot - as in the Shunt Compensators section column, and doesn't
-        // resize as the value gains or loses digits.
-        private static final double FIELD_WIDTH = 32;
-
-        private final Label label = new Label();
-        private final TextField textField = new TextField();
-        private final Button incrementButton = new Button();
-        private final Button decrementButton = new Button();
-        private final HBox root;
-        private int min;
-        private int max;
-        private int value;
-        private Consumer<Integer> onChange;
-
-        IntStepperField() {
-            label.getStyleClass().add(EDITABLE_CELL_STYLE_CLASS);
-            label.setPrefWidth(FIELD_WIDTH);
-            label.setMinWidth(FIELD_WIDTH);
-            label.setMaxWidth(FIELD_WIDTH);
-            label.setAlignment(Pos.CENTER_RIGHT);
-
-            textField.setPrefWidth(FIELD_WIDTH);
-            textField.setMinWidth(FIELD_WIDTH);
-            textField.setMaxWidth(FIELD_WIDTH);
-            textField.setAlignment(Pos.CENTER_RIGHT);
-            textField.setVisible(false);
-            textField.setManaged(false);
-
-            label.setOnMouseClicked(event -> {
-                if (event.getClickCount() == 2) {
-                    textField.setText(String.valueOf(value));
-                    showEditor(label, textField, true);
-                    textField.requestFocus();
-                    textField.selectAll();
-                }
-            });
-            textField.setOnKeyPressed(event -> {
-                if (event.getCode() == KeyCode.ESCAPE) {
-                    showEditor(label, textField, false);
-                }
-            });
-            Runnable commitFromText = () -> {
-                int parsed;
-                try {
-                    parsed = Integer.parseInt(textField.getText().trim());
-                } catch (NumberFormatException e) {
-                    showEditor(label, textField, false);
-                    return;
-                }
-                commit(parsed);
-                showEditor(label, textField, false);
-            };
-            textField.setOnAction(event -> commitFromText.run());
-            textField.focusedProperty().addListener((observable, wasFocused, isFocused) -> {
-                if (!isFocused && textField.isVisible()) {
-                    commitFromText.run();
-                }
-            });
-
-            FontIcon plusIcon = new FontIcon("mdi2p-plus");
-            plusIcon.setIconSize(8);
-            incrementButton.setGraphic(plusIcon);
-            FontIcon minusIcon = new FontIcon("mdi2m-minus");
-            minusIcon.setIconSize(8);
-            decrementButton.setGraphic(minusIcon);
-            incrementButton.getStyleClass().addAll("icon-button", "stepper-button");
-            decrementButton.getStyleClass().addAll("icon-button", "stepper-button");
-            incrementButton.setFocusTraversable(false);
-            decrementButton.setFocusTraversable(false);
-            incrementButton.setOnAction(event -> commit(value + 1));
-            decrementButton.setOnAction(event -> commit(value - 1));
-
-            StackPane fieldStack = new StackPane(label, textField);
-            VBox buttons = new VBox(incrementButton, decrementButton);
-            buttons.setAlignment(Pos.CENTER);
-            root = new HBox(2, fieldStack, buttons);
-            root.setAlignment(Pos.CENTER_LEFT);
-        }
-
-        void bind(int min, int max, int value, Consumer<Integer> onChange) {
-            this.min = min;
-            this.max = max;
-            this.onChange = onChange;
-            display(value);
-        }
-
-        private void display(int newValue) {
-            value = newValue;
-            label.setText(String.valueOf(value));
-            incrementButton.setVisible(value < max);
-            decrementButton.setVisible(value > min);
-        }
-
-        private void commit(int newValue) {
-            int clamped = Math.min(max, Math.max(min, newValue));
-            if (clamped == value) {
-                display(value);
-                return;
-            }
-            try {
-                onChange.accept(clamped);
-                display(clamped);
-                flashEditSuccess(label);
-            } catch (PowsyblException e) {
-                notifyEditError(label, e);
-                display(value);
-            }
-        }
+        CellFields.sidedColumn(column, row -> 1, CellFields.IntStepper::new, (stepper, key, row, side) -> {
+            stepper.bind(key, 0, maxGetter.apply(row), () -> valueGetter.apply(row), value -> setter.accept(row, value));
+            return true;
+        });
     }
 
     // editable == null means "always editable" (no per-row disabling) - every checkbox column whose value
@@ -1514,167 +966,76 @@ public final class TableColumnSupport {
     // node/breaker voltage level): the checkbox is disabled (greyed out by the default skin) rather than
     // hidden, so the field's current value stays visible.
     //
-    // Flash state is keyed by row identity rather than held on the TableCell instance, the same fix as
-    // EditableDoubleTableCell/configureConnectedColumn: setter can trigger a wider mainModel.setUpdate()
-    // (e.g. a switch's open/retained status affecting the diagram), which refreshes this very table and
-    // can recycle this exact TableCell to a different row before the flash's duration expires - a flash
-    // applied directly to the cell would then land on whichever row got recycled into it.
+    // The flash is keyed by row (see CellFields.KeyedFlash): setter can trigger a mainModel.setUpdate() (e.g. a
+    // switch's open/retained status affecting the diagram), which refreshes this very table and can rebind this
+    // cell to another row before the flash fades.
     static <S> void configureEditableBooleanColumn(TableColumn<S, Boolean> column, Function<S, Boolean> getter,
                                                     BiConsumer<S, Boolean> setter, Predicate<S> editable) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
-        Map<S, String> flashStyles = new HashMap<>();
-        column.setCellFactory(col -> new EditableBooleanTableCell<>(setter, editable, flashStyles));
+        CellFields.KeyedFlash flash = new CellFields.KeyedFlash();
+        column.setCellFactory(col -> new EditableBooleanTableCell<>(setter, editable, flash));
         disableUnlessTableEditable(column);
     }
 
     private static final class EditableBooleanTableCell<S> extends TableCell<S, Boolean> {
         private final BiConsumer<S, Boolean> setter;
         private final Predicate<S> editable;
-        private final Map<S, String> flashStyles;
+        private final CellFields.KeyedFlash flash;
 
-        EditableBooleanTableCell(BiConsumer<S, Boolean> setter, Predicate<S> editable, Map<S, String> flashStyles) {
+        EditableBooleanTableCell(BiConsumer<S, Boolean> setter, Predicate<S> editable, CellFields.KeyedFlash flash) {
             this.setter = setter;
             this.editable = editable;
-            this.flashStyles = flashStyles;
+            this.flash = flash;
         }
 
         @Override
         protected void updateItem(Boolean value, boolean empty) {
             super.updateItem(value, empty);
-            S row = empty || getTableRow() == null ? null : getTableRow().getItem();
-            setGraphic(empty || value == null ? null : checkBox(value, row));
-            applyKeyedFlash(this, row, flashStyles);
+            S row = CellFields.rowOf(this, empty);
+            setGraphic(row == null || value == null ? null : checkBox(value, row));
+            flash.show(this, row);
         }
 
         private CheckBox checkBox(boolean value, S row) {
             CheckBox checkBox = new CheckBox();
             checkBox.setSelected(value);
-            checkBox.setDisable(editable != null && (row == null || !editable.test(row)));
-            checkBox.setOnAction(event -> onAction(checkBox));
+            checkBox.setDisable(editable != null && !editable.test(row));
+            checkBox.setOnAction(event -> {
+                try {
+                    setter.accept(row, checkBox.isSelected());
+                    flash.flash(this, row, EDIT_SUCCESS_STYLE_CLASS);
+                } catch (PowsyblException e) {
+                    checkBox.setSelected(!checkBox.isSelected());
+                    showEditErrorPopup(this, e);
+                    flash.flash(this, row, EDIT_ERROR_STYLE_CLASS);
+                }
+            });
             return checkBox;
-        }
-
-        private void onAction(CheckBox checkBox) {
-            S currentRow = getTableRow().getItem();
-            boolean newValue = checkBox.isSelected();
-            try {
-                setter.accept(currentRow, newValue);
-                flashKeyed(this, currentRow, flashStyles, EDIT_SUCCESS_STYLE_CLASS);
-            } catch (PowsyblException e) {
-                checkBox.setSelected(!newValue);
-                notifyEditError(this, e);
-            }
         }
     }
 
     static <S, T> void configureChoiceColumn(TableColumn<S, T> column, Function<S, T> getter, BiConsumer<S, T> setter,
                                               List<T> choices, StringConverter<T> converter) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
-        ObservableList<T> items = FXCollections.observableArrayList(choices);
-        column.setCellFactory(col -> {
-            TableCell<S, T> cell = new EditableChoiceTableCell<>(converter, items);
-            cell.getStyleClass().add(EDITABLE_CELL_STYLE_CLASS);
-            return cell;
-        });
-        disableUnlessTableEditable(column);
+        CellFields.choiceColumn(column, choices, converter);
         column.setOnEditCommit(event -> setter.accept(event.getRowValue(), event.getNewValue()));
     }
 
-    // Same commitEdit-wrapping as EditableDoubleTableCell, for ChoiceBoxTableCell.forTableColumn-shaped columns.
-    private static final class EditableChoiceTableCell<S, T> extends ChoiceBoxTableCell<S, T> {
-        EditableChoiceTableCell(StringConverter<T> converter, ObservableList<T> items) {
-            super(converter, items);
-        }
-
-        @Override
-        public void commitEdit(T newValue) {
-            try {
-                super.commitEdit(newValue);
-                flashEditSuccess(this);
-            } catch (PowsyblException e) {
-                notifyEditError(this, e);
-                updateItem(getItem(), false);
-            }
-        }
-    }
-
-    private static CheckBox connectedCheckBox(TableCell<?, ?> cell, Terminal terminal, Consumer<Terminal> onToggle, Map<Terminal, String> flashStyles) {
+    private static <S> CheckBox connectedCheckBox(TableCell<?, ?> cell, S row, Terminal terminal, Consumer<Terminal> onToggle, CellFields.KeyedFlash flash) {
         CheckBox checkBox = new CheckBox();
         checkBox.setSelected(terminal.isConnected());
         checkBox.setOnAction(event -> {
             try {
                 toggleConnection(terminal);
-                flashConnected(cell, terminal, flashStyles, EDIT_SUCCESS_STYLE_CLASS);
+                flash.flash(cell, row, EDIT_SUCCESS_STYLE_CLASS);
                 onToggle.accept(terminal);
             } catch (PowsyblException e) {
                 checkBox.setSelected(terminal.isConnected());
                 showEditErrorPopup(cell, e);
-                flashConnected(cell, terminal, flashStyles, EDIT_ERROR_STYLE_CLASS);
+                flash.flash(cell, row, EDIT_ERROR_STYLE_CLASS);
             }
         });
         return checkBox;
-    }
-
-    // onToggle (wired by every caller to mainModel.setUpdate(terminal.getVoltageLevel())) triggers a full-table
-    // refresh, which can make the
-    // TableView's virtualization recycle this exact TableCell instance to a different row before the flash's
-    // duration expires - unlike every other editable cell type, which never forces such a refresh
-    // mid-edit. So the flash state is keyed by Terminal in a map instead of held on the TableCell instance: applied
-    // immediately here for instant feedback, then re-derived by applyConnectedFlash() from each cell's updateItem
-    // (called again both by onToggle's refresh and by the tableView.refresh() below), so it always lands on
-    // whichever cell currently displays this terminal rather than wherever this cell ends up being recycled to.
-    private static void flashConnected(TableCell<?, ?> cell, Terminal terminal, Map<Terminal, String> flashStyles, String styleClass) {
-        flashStyles.put(terminal, styleClass);
-        applyConnectedFlash(cell, List.of(terminal), flashStyles);
-        PauseTransition pause = new PauseTransition(flashDuration(styleClass));
-        pause.setOnFinished(event -> {
-            flashStyles.remove(terminal);
-            TableView<?> tableView = cell.getTableView();
-            if (tableView != null) {
-                tableView.refresh();
-            }
-        });
-        pause.play();
-    }
-
-    // Re-derives a connected-column cell's flash style from flashStyles - error taking priority over success if
-    // both are present, which can only happen for the two-/multi-sided variants stacking several terminals in
-    // one cell. Called from every configure*ConnectedColumn's updateItem, so a recycled cell always reflects
-    // whichever terminal(s) it currently displays rather than carrying over a stale style from a previous row.
-    private static void applyConnectedFlash(TableCell<?, ?> cell, List<Terminal> terminals, Map<Terminal, String> flashStyles) {
-        cell.getStyleClass().removeAll(EDIT_SUCCESS_STYLE_CLASS, EDIT_ERROR_STYLE_CLASS);
-        if (terminals.stream().anyMatch(t -> EDIT_ERROR_STYLE_CLASS.equals(flashStyles.get(t)))) {
-            cell.getStyleClass().add(EDIT_ERROR_STYLE_CLASS);
-        } else if (terminals.stream().anyMatch(t -> EDIT_SUCCESS_STYLE_CLASS.equals(flashStyles.get(t)))) {
-            cell.getStyleClass().add(EDIT_SUCCESS_STYLE_CLASS);
-        }
-    }
-
-    // Single-key counterpart of flashConnected/applyConnectedFlash, for a column whose cell corresponds to exactly
-    // one row identity rather than a list of terminals (e.g. a row of the detail views' tables, see DetailTables, which
-    // refresh the table on commit to update sibling rows/columns derived from the edited value). Same reasoning as flashConnected:
-    // that refresh can recycle the editing TableCell to a different row before the flash fades, so the state is
-    // keyed by the row's identity (K) and re-derived in updateItem instead of held on the cell instance.
-    public static <K> void flashKeyed(TableCell<?, ?> cell, K key, Map<K, String> flashStyles, String styleClass) {
-        flashStyles.put(key, styleClass);
-        applyKeyedFlash(cell, key, flashStyles);
-        PauseTransition pause = new PauseTransition(flashDuration(styleClass));
-        pause.setOnFinished(event -> {
-            flashStyles.remove(key);
-            TableView<?> tableView = cell.getTableView();
-            if (tableView != null) {
-                tableView.refresh();
-            }
-        });
-        pause.play();
-    }
-
-    public static <K> void applyKeyedFlash(TableCell<?, ?> cell, K key, Map<K, String> flashStyles) {
-        cell.getStyleClass().removeAll(EDIT_SUCCESS_STYLE_CLASS, EDIT_ERROR_STYLE_CLASS);
-        String style = flashStyles.get(key);
-        if (style != null) {
-            cell.getStyleClass().add(style);
-        }
     }
 
     // Shared by every editable boolean column so its checkbox renders identically to connectedCheckBox's.
@@ -1695,16 +1056,14 @@ public final class TableColumnSupport {
     }
 
     // Reports a rejected edit (e.g. an IIDM validation exception from a setter such as Generator::setVoltageRegulatorOn):
-    // a ControlsFX popup with the exception message (not its stack trace), anchored to the failing cell/field, plus a
-    // brief red flash on it. Does not revert the displayed value - callers do that themselves, since how to revert
-    // (re-run updateItem, reselect a checkbox, reset a spinner) differs per cell type. Takes a plain Node rather than
-    // a TableCell so the multi-sided editable double column's per-side text fields can share it too.
+    // a ControlsFX popup with the exception message (not its stack trace), anchored to the failing node, plus a brief
+    // red flash on it. Does not revert the displayed value - callers do that themselves.
     public static void notifyEditError(Node node, PowsyblException exception) {
         showEditErrorPopup(node, exception);
         flash(node, EDIT_ERROR_STYLE_CLASS);
     }
 
-    private static void showEditErrorPopup(Node node, PowsyblException exception) {
+    static void showEditErrorPopup(Node node, PowsyblException exception) {
         Notifications.create()
                 .owner(node)
                 .title(Messages.get("desktop.common.editError.title"))

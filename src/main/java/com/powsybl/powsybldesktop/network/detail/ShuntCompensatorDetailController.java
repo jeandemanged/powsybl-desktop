@@ -15,6 +15,7 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.network.tables.ShuntCompensatorsController;
+import com.powsybl.powsybldesktop.network.tables.TableColumnSupport;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import javafx.geometry.Insets;
 import javafx.scene.control.Tab;
@@ -83,8 +84,8 @@ public class ShuntCompensatorDetailController extends AbstractEquipmentDetailCon
     @Override
     protected List<Tab> extraTabs() {
         boolean linear = equipment.getModelType() == ShuntCompensatorModelType.LINEAR;
-        StringConverter<Double> admittance = DetailTables.doubleFormat(guiParameters(), GuiParameters.Quantity.ADMITTANCE);
-        StringConverter<Double> power = DetailTables.doubleFormat(guiParameters(), GuiParameters.Quantity.POWER);
+        StringConverter<Double> admittance = TableColumnSupport.doubleFormat(guiParameters(), GuiParameters.Quantity.ADMITTANCE);
+        StringConverter<Double> power = TableColumnSupport.doubleFormat(guiParameters(), GuiParameters.Quantity.POWER);
         TableView<Integer> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.getColumns().setAll(List.of(
@@ -97,10 +98,8 @@ public class ShuntCompensatorDetailController extends AbstractEquipmentDetailCon
                                 (section, g) -> nonLinearSection(section).setG(g), onEdit()),
                 DetailTables.readOnlyColumn("shuntCompensators.sections.column.q", power, section -> -equipment.getB(section) * nominalV2()),
                 DetailTables.readOnlyColumn("shuntCompensators.sections.column.p", power, section -> equipment.getG(section) * nominalV2())));
-        table.editableProperty().bind(register(DetailPart.of(() -> {
-            table.getItems().setAll(IntStream.rangeClosed(1, equipment.getMaximumSectionCount()).boxed().toList());
-            table.refresh();
-        })).editableProperty());
+        table.editableProperty().bind(register(DetailPart.of(() ->
+            table.getItems().setAll(IntStream.rangeClosed(1, equipment.getMaximumSectionCount()).boxed().toList()))).editableProperty());
         VBox content = new VBox(table);
         VBox.setVgrow(table, Priority.ALWAYS);
         content.setPadding(new Insets(8));

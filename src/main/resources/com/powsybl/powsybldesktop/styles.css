@@ -111,44 +111,28 @@
     -fx-font-weight: bold;
 }
 
-/* Visual affordance for cells the user can edit (TextField/ChoiceBox-backed columns), which
-   otherwise render as plain text indistinguishable from read-only cells: an inset outline
-   rather than a filled background, so it doesn't paint the whole column. Not scoped to
-   .table-cell: a multi-sided editable double column (e.g. Transformers' RatedU/RatedS) applies
-   this class to a per-side Label nested inside the cell rather than to the cell itself. Set by
-   TableColumnSupport and by the shunt sections / tap changer steps dialogs. */
-.table-view .editable-cell {
-    -fx-border-color: derive(-fx-accent, 20%);
-    -fx-border-width: 1px;
-    -fx-border-insets: 3px;
-    -fx-border-radius: 2px;
+/* In-cell fields (CellFields): compact, so that a row of fields stays about as dense as a row of text. */
+.table-cell .text-field {
+    -fx-padding: 1 4 1 4;
 }
 
-.table-view .table-cell.editable-cell:empty {
-    -fx-border-width: 0;
+.right-aligned-column .text-field {
+    -fx-alignment: CENTER-RIGHT;
 }
 
-/* not editable while disabled, e.g. while its network is busy with a background job (also matches an editable-cell
-   node inside a disabled cell, which inherits the disabled state). Greyed like modena's disabled controls, which
-   doesn't dim plain-text cells and labels itself. */
-.table-view .editable-cell:disabled {
-    -fx-border-width: 0;
-    -fx-opacity: 0.4;
-}
-
-/* Brief flash applied after an edit, removed automatically after TableColumnSupport's EDIT_ERROR_FLASH_DURATION /
-   EDIT_SUCCESS_FLASH_DURATION: red when the edit was rejected (e.g. an IIDM validation exception), green when applied. */
-.table-view .edit-error {
+/* Brief flash applied to a field or table cell after an edit, removed automatically after TableColumnSupport's
+   EDIT_ERROR_FLASH_DURATION / EDIT_SUCCESS_FLASH_DURATION: red when the edit was rejected (e.g. an IIDM validation
+   exception), green when applied. */
+.edit-error {
     -fx-background-color: derive(red, 60%);
 }
 
-.table-view .edit-success {
+.edit-success {
     -fx-background-color: derive(green, 60%);
 }
 
-/* IntStepperField's increment/decrement pair (TableColumnSupport): stacked to about half the height of the
-   sibling Label each, so together they don't grow the row taller than a plain editable Label cell (e.g.
-   RatedU/RatedS) would. */
+/* CellFields.IntStepper's increment/decrement pair: stacked to about half the height of the sibling field each, so
+   together they don't grow the row taller than a plain field would. */
 .stepper-button {
     -fx-padding: 0;
     -fx-min-width: 12px;
@@ -411,15 +395,6 @@
 .detail-title {
     -fx-font-size: 15px;
     -fx-font-weight: bold;
-}
-
-/* Edit feedback on DetailForm fields and the detail panes' buttons/tables, as .table-view's above for table cells. */
-.detail-view .edit-error {
-    -fx-background-color: derive(red, 60%);
-}
-
-.detail-view .edit-success {
-    -fx-background-color: derive(green, 60%);
 }
 
 /* ===== Logs view (LogsViewController) ===== */

@@ -172,7 +172,7 @@ class BoundaryLinesControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
-    void generationColumnsShowDashAndRefuseEditWhenGenerationAbsent() {
+    void generationColumnsShowDashWithoutFieldWhenGenerationAbsent() {
         BoundaryLine boundaryLine = network.getBoundaryLineStream().findFirst().orElseThrow();
         int row = rowOf(boundaryLine);
         assertNull(boundaryLine.getGeneration());
@@ -186,8 +186,8 @@ class BoundaryLinesControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals("-", voltageRegulatorCell.getText());
         assertNull(voltageRegulatorCell.getGraphic());
 
-        interact(cell(controller.minPColumn, row)::startEdit);
-        assertFalse(cell(controller.minPColumn, row).isEditing());
+        // no field to edit
+        assertNull(cell(controller.minPColumn, row).getGraphic());
     }
 
     @Test

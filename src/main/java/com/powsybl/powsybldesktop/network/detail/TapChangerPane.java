@@ -18,6 +18,7 @@ import com.powsybl.iidm.network.TapChanger;
 import com.powsybl.iidm.network.TapChangerStep;
 import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.network.tables.TableColumnSupport;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.property.BooleanProperty;
@@ -106,7 +107,6 @@ public final class TapChangerPane extends VBox implements DetailPart {
             form.refresh();
             stepsTable.getItems().setAll(positions(shown));
             DetailTables.fitHeight(stepsTable, stepsTable.getItems().size());
-            stepsTable.refresh();
         }
     }
 
@@ -206,7 +206,7 @@ public final class TapChangerPane extends VBox implements DetailPart {
 
     private TableColumn<Integer, Double> stepColumn(String titleKey, GuiParameters.Quantity quantity, Function<Integer, Double> getter,
                                                     BiConsumer<Integer, Double> setter) {
-        StringConverter<Double> format = DetailTables.doubleFormat(guiParameters, quantity);
+        StringConverter<Double> format = TableColumnSupport.doubleFormat(guiParameters, quantity);
         TableColumn<Integer, Double> column = DetailTables.editableColumn(titleKey, format, getter, setter, onEdit);
         column.getStyleClass().add("right-aligned-column");
         return column;

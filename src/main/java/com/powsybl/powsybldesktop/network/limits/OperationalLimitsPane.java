@@ -25,6 +25,7 @@ import com.powsybl.iidm.network.TwoSides;
 import com.powsybl.powsybldesktop.network.detail.DetailForm;
 import com.powsybl.powsybldesktop.network.detail.DetailPart;
 import com.powsybl.powsybldesktop.network.detail.DetailTables;
+import com.powsybl.powsybldesktop.network.tables.TableColumnSupport;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.violations.FlowViolation;
@@ -474,10 +475,7 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
                 (row, fictitious) -> replace(group, type, rows -> rows.stream()
                         .map(r -> r == row ? new LimitRow(r.name(), r.value(), r.acceptableDuration(), fictitious) : r).toList()),
                 onEdit, editable));
-        Runnable fill = () -> {
-            table.getItems().setAll(rows(loadingLimits(group, type)));
-            table.refresh();
-        };
+        Runnable fill = () -> table.getItems().setAll(rows(loadingLimits(group, type)));
         fill.run();
         tableRefreshers.add(fill);
         table.setFixedCellSize(CELL_SIZE + 2);
@@ -507,7 +505,7 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
     }
 
     private StringConverter<Double> limitFormat(GuiParameters.Quantity quantity) {
-        StringConverter<Double> format = DetailTables.doubleFormat(guiParameters, quantity);
+        StringConverter<Double> format = TableColumnSupport.doubleFormat(guiParameters, quantity);
         return new StringConverter<>() {
             @Override
             public String toString(Double value) {

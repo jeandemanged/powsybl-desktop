@@ -34,8 +34,6 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TablePosition;
 import javafx.scene.control.TextField;
-import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
@@ -103,20 +101,9 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
         return (VBox) cellGraphic(column, row);
     }
 
-    // R/X/G1/B1/G2/B2 are single values rendered as a one-slot multi-sided column (see LinesController) - each
-    // slot is a StackPane holding a Label (shown at rest) and a TextField (shown while editing), same as
-    // TransformersController's RatedU/RatedS - see TableColumnSupport.editableDoubleField.
-    private static Label labelOf(VBox box, int index) {
-        return (Label) ((StackPane) box.getChildren().get(index)).getChildren().get(0);
-    }
-
+    // single values rendered as a one-slot multi-sided column: a StackPane slot holding the field (see CellFields.sidedColumn)
     private static TextField fieldOf(VBox box, int index) {
-        return (TextField) ((StackPane) box.getChildren().get(index)).getChildren().get(1);
-    }
-
-    private static void doubleClick(Label label) {
-        label.getOnMouseClicked().handle(new MouseEvent(MouseEvent.MOUSE_CLICKED, 0, 0, 0, 0, MouseButton.PRIMARY, 2,
-                false, false, false, false, true, false, false, false, false, false, null));
+        return (TextField) ((StackPane) box.getChildren().get(index)).getChildren().get(0);
     }
 
     @Test
@@ -218,12 +205,12 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
         Line line = network.getLineStream().findFirst().orElseThrow();
         int row = rowOf(line);
 
-        assertEquals(doubleText(line.getR()), labelOf(cellBox(controller.rColumn, row), 0).getText());
-        assertEquals(doubleText(line.getX()), labelOf(cellBox(controller.xColumn, row), 0).getText());
-        assertEquals(sixDecimalText(line.getG1()), labelOf(cellBox(controller.g1Column, row), 0).getText());
-        assertEquals(sixDecimalText(line.getB1()), labelOf(cellBox(controller.b1Column, row), 0).getText());
-        assertEquals(sixDecimalText(line.getG2()), labelOf(cellBox(controller.g2Column, row), 0).getText());
-        assertEquals(sixDecimalText(line.getB2()), labelOf(cellBox(controller.b2Column, row), 0).getText());
+        assertEquals(doubleText(line.getR()), fieldOf(cellBox(controller.rColumn, row), 0).getText());
+        assertEquals(doubleText(line.getX()), fieldOf(cellBox(controller.xColumn, row), 0).getText());
+        assertEquals(sixDecimalText(line.getG1()), fieldOf(cellBox(controller.g1Column, row), 0).getText());
+        assertEquals(sixDecimalText(line.getB1()), fieldOf(cellBox(controller.b1Column, row), 0).getText());
+        assertEquals(sixDecimalText(line.getG2()), fieldOf(cellBox(controller.g2Column, row), 0).getText());
+        assertEquals(sixDecimalText(line.getB2()), fieldOf(cellBox(controller.b2Column, row), 0).getText());
     }
 
     @Test
@@ -237,7 +224,7 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
             mainModel.getParametersModel().guiParametersChanged();
         });
 
-        assertEquals(String.format(Locale.ROOT, "%.4f", line.getR()), labelOf(cellBox(controller.rColumn, row), 0).getText());
+        assertEquals(String.format(Locale.ROOT, "%.4f", line.getR()), fieldOf(cellBox(controller.rColumn, row), 0).getText());
     }
 
     @Test
@@ -245,17 +232,15 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> controller.rColumn.setVisible(true));
         Line line = network.getLineStream().findFirst().orElseThrow();
         VBox box = cellBox(controller.rColumn, rowOf(line));
-        Label rLabel = labelOf(box, 0);
         TextField rField = fieldOf(box, 0);
 
-        interact(() -> doubleClick(rLabel));
         interact(() -> {
             rField.setText("12.34");
             rField.getOnAction().handle(new ActionEvent());
         });
 
         assertEquals(12.34, line.getR());
-        assertEquals("12.34", rLabel.getText());
+        assertEquals("12.34", rField.getText());
     }
 
     @Test
@@ -263,17 +248,15 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> controller.g1Column.setVisible(true));
         Line line = network.getLineStream().findFirst().orElseThrow();
         VBox box = cellBox(controller.g1Column, rowOf(line));
-        Label g1Label = labelOf(box, 0);
         TextField g1Field = fieldOf(box, 0);
 
-        interact(() -> doubleClick(g1Label));
         interact(() -> {
             g1Field.setText("0.000123");
             g1Field.getOnAction().handle(new ActionEvent());
         });
 
         assertEquals(0.000123, line.getG1());
-        assertEquals("0.000123", g1Label.getText());
+        assertEquals("0.000123", g1Field.getText());
     }
 
     @Test

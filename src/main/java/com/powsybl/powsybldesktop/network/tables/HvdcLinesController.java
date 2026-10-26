@@ -129,8 +129,7 @@ public class HvdcLinesController extends AbstractEquipmentTableController<HvdcLi
                 hvdcLine -> hvdcLine.getConverterStation1().getTerminal().getBusView().getBus(),
                 hvdcLine -> hvdcLine.getConverterStation2().getTerminal().getBusView().getBus(), Bus::getSynchronousComponent);
 
-        // single values rendered as single-slot multi-sided columns, like the Lines table's R/X/G/B, to keep the
-        // editable-cell affordance a small box in this table's two-sided rows
+        // single values rendered as single-slot multi-sided columns, like the Lines table's R/X/G/B
         TableColumnSupport.configureSingleSlotChoiceColumn(convertersModeColumn, HvdcLine::getConvertersMode, HvdcLine::setConvertersMode,
                 List.of(HvdcLine.ConvertersMode.values()), CONVERTERS_MODE_FORMAT);
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(activePowerSetpointColumn, hvdcLine -> List.of(hvdcLine.getActivePowerSetpoint()),

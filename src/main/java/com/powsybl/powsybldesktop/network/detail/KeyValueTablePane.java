@@ -16,15 +16,12 @@ import javafx.beans.property.SimpleBooleanProperty;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
-import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.util.converter.DefaultStringConverter;
 
 import java.util.Collection;
 import java.util.Objects;
@@ -58,22 +55,10 @@ public final class KeyValueTablePane extends VBox implements DetailPart {
         keyColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue()));
         keyColumn.setEditable(false);
         keyColumn.setPrefWidth(220);
-        TableColumn<String, String> valueColumn = new TableColumn<>(Messages.get(valueColumnKey));
-        valueColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(valueGetter.apply(cellData.getValue())));
+        TableColumn<String, String> valueColumn = valueSetter == null
+                ? DetailTables.readOnlyColumn(valueColumnKey, DetailTables.TEXT_FORMAT, valueGetter)
+                : DetailTables.editableColumn(valueColumnKey, DetailTables.TEXT_FORMAT, valueGetter, valueSetter, onEdit);
         valueColumn.setPrefWidth(320);
-        if (valueSetter != null) {
-            valueColumn.setCellFactory(column -> {
-                TableCell<String, String> cell = new TextFieldTableCell<>(new DefaultStringConverter());
-                cell.getStyleClass().add("editable-cell");
-                return cell;
-            });
-            valueColumn.setOnEditCommit(event -> {
-                DetailForm.apply(tableView, () -> valueSetter.accept(event.getRowValue(), event.getNewValue()), onEdit);
-                refresh();
-            });
-        } else {
-            valueColumn.setEditable(false);
-        }
         tableView.getColumns().setAll(keyColumn, valueColumn);
         tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         tableView.setPlaceholder(new Label(Messages.get("detail.keyValue.empty")));

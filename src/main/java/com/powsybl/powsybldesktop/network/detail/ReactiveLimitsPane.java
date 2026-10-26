@@ -18,7 +18,6 @@ import com.powsybl.powsybldesktop.network.tables.TableColumnSupport;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.property.BooleanProperty;
-import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -27,11 +26,9 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.SplitPane;
-import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
-import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -117,7 +114,7 @@ public final class ReactiveLimitsPane extends SplitPane implements DetailPart {
         this.maxP = Objects.requireNonNull(maxP);
         this.operatingPoints = Objects.requireNonNull(operatingPoints);
         this.onEdit = Objects.requireNonNull(onEdit);
-        format = TableColumnSupport.lenient(TableColumnSupport.doubleFormat(guiParameters, GuiParameters.Quantity.POWER));
+        format = TableColumnSupport.doubleFormat(guiParameters, GuiParameters.Quantity.POWER);
 
         kindChoiceBox.setConverter(new StringConverter<>() {
             @Override
@@ -259,7 +256,6 @@ public final class ReactiveLimitsPane extends SplitPane implements DetailPart {
         setVisible(shapeLabel, kind == ReactiveLimitsKind.SHAPE);
         minQField.setText(format.toString(minQ));
         maxQField.setText(format.toString(maxQ));
-        pointsTable.refresh();
         updateChart();
     }
 
@@ -293,14 +289,13 @@ public final class ReactiveLimitsPane extends SplitPane implements DetailPart {
             if (field.getText().equals(format.toString(field == minQField ? minQ : maxQ))) {
                 return;
             }
-            Double value = format.fromString(field.getText());
-            if (value == null) {
-                TableColumnSupport.notifyEditError(field, new PowsyblException(
-                        Messages.get("detail.editError.invalidNumber", field.getText().trim())));
-                show();
-            } else {
-                stage.accept(value);
+            try {
+                stage.accept(format.fromString(field.getText()));
                 staged();
+            } catch (NumberFormatException e) {
+                TableColumnSupport.notifyEditError(field, new PowsyblException(
+                        Messages.get("desktop.common.editError.invalidNumber", field.getText().trim())));
+                show();
             }
         };
         field.setOnAction(event -> commit.run());
@@ -313,23 +308,8 @@ public final class ReactiveLimitsPane extends SplitPane implements DetailPart {
 
     private TableColumn<PointRow, Double> pointColumn(String titleKey, Function<PointRow, Double> getter,
                                                       BiConsumer<PointRow, Double> setter) {
-        TableColumn<PointRow, Double> column = new TableColumn<>(Messages.get(titleKey));
-        column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
-        column.setCellFactory(col -> {
-            TableCell<PointRow, Double> cell = new TextFieldTableCell<>(format);
-            cell.getStyleClass().add("editable-cell");
-            return cell;
-        });
+        TableColumn<PointRow, Double> column = DetailTables.editableColumn(titleKey, format, getter, setter, this::staged);
         column.getStyleClass().add("right-aligned-column");
-        column.setSortable(false);
-        column.setOnEditCommit(event -> {
-            if (event.getNewValue() != null) {
-                setter.accept(event.getRowValue(), event.getNewValue());
-                staged();
-            } else {
-                pointsTable.refresh();
-            }
-        });
         return column;
     }
 

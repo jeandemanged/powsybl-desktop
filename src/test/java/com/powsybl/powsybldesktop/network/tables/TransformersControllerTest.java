@@ -37,8 +37,6 @@ import javafx.scene.control.TablePosition;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -111,39 +109,28 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         return (VBox) cellGraphic(column, row);
     }
 
-    // Each side of an editable multi-sided double column (RatedU/RatedS) is a StackPane holding a Label
-    // (shown at rest) and a TextField (shown while editing) - see TableColumnSupport.editableDoubleField.
-    private static Label labelOf(VBox box, int index) {
-        return (Label) ((StackPane) box.getChildren().get(index)).getChildren().get(0);
+    // Each side of an editable multi-sided column is a StackPane slot holding its field (see CellFields.sidedColumn),
+    // hidden on a side without such a value (e.g. a leg without tap changer).
+    private static Node editorOf(VBox box, int index) {
+        return ((StackPane) box.getChildren().get(index)).getChildren().get(0);
     }
 
     private static TextField fieldOf(VBox box, int index) {
-        return (TextField) ((StackPane) box.getChildren().get(index)).getChildren().get(1);
+        return (TextField) editorOf(box, index);
     }
 
-    // Each side of a tap changer column is a StackPane holding a blank Label (shown at rest, when this side has
-    // no such tap changer) and the IntStepperField (shown otherwise) - see TableColumnSupport.TapChangerSlot.
     private static boolean isBlankTapChangerSide(VBox box, int index) {
-        return ((StackPane) box.getChildren().get(index)).getChildren().get(0).isVisible();
+        return !editorOf(box, index).isVisible();
     }
 
-    private static HBox presentTapChangerSideOf(VBox box, int index) {
-        return (HBox) ((StackPane) box.getChildren().get(index)).getChildren().get(1);
-    }
-
-    // An IntStepperField (TableColumnSupport) is itself an HBox: a StackPane holding the double-click-to-edit
-    // Label/TextField pair (same as editableDoubleField's ratedU/ratedS cells) followed by a VBox holding the
-    // increment (top) and decrement (bottom) buttons.
+    // A stepper (CellFields.IntStepper) is an HBox: its field followed by a VBox holding the increment (top) and
+    // decrement (bottom) buttons.
     private static HBox stepperOf(VBox box, int index) {
-        return presentTapChangerSideOf(box, index);
-    }
-
-    private static Label stepperLabelOf(VBox box, int index) {
-        return (Label) ((StackPane) stepperOf(box, index).getChildren().get(0)).getChildren().get(0);
+        return (HBox) editorOf(box, index);
     }
 
     private static TextField stepperFieldOf(VBox box, int index) {
-        return (TextField) ((StackPane) stepperOf(box, index).getChildren().get(0)).getChildren().get(1);
+        return (TextField) stepperOf(box, index).getChildren().get(0);
     }
 
     private static Button stepperIncrementButtonOf(VBox box, int index) {
@@ -154,9 +141,9 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         return (Button) ((VBox) stepperOf(box, index).getChildren().get(1)).getChildren().get(1);
     }
 
-    private static void doubleClick(Label label) {
-        label.getOnMouseClicked().handle(new MouseEvent(MouseEvent.MOUSE_CLICKED, 0, 0, 0, 0, MouseButton.PRIMARY, 2,
-                false, false, false, false, true, false, false, false, false, false, null));
+    private static void enter(TextField field, String text) {
+        field.setText(text);
+        field.getOnAction().handle(new ActionEvent());
     }
 
     private static String doubleText(double value) {
@@ -190,12 +177,12 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
                 ((Hyperlink) voltageLevelBox.getChildren().get(1)).getText());
 
         VBox ratedUBox = cellBox(controller.ratedUColumn, row);
-        assertEquals(doubleText(transformer.getRatedU1()), labelOf(ratedUBox, 0).getText());
-        assertEquals(doubleText(transformer.getRatedU2()), labelOf(ratedUBox, 1).getText());
+        assertEquals(doubleText(transformer.getRatedU1()), fieldOf(ratedUBox, 0).getText());
+        assertEquals(doubleText(transformer.getRatedU2()), fieldOf(ratedUBox, 1).getText());
 
         VBox ratedSBox = cellBox(controller.ratedSColumn, row);
         assertEquals(1, ratedSBox.getChildren().size());
-        assertEquals(doubleText(transformer.getRatedS()), labelOf(ratedSBox, 0).getText());
+        assertEquals(doubleText(transformer.getRatedS()), fieldOf(ratedSBox, 0).getText());
     }
 
     @Test
@@ -227,78 +214,54 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
-    void doubleClickingRatedUEntersEditModeAndCommitOnEnterUpdatesTheTransformer() {
+    void ratedUFieldCommitsOnEnterAndUpdatesTheTransformer() {
         TwoWindingsTransformer transformer = network.getTwoWindingsTransformerStream().findFirst().orElseThrow();
         VBox box = cellBox(controller.ratedUColumn, rowOf(transformer));
-        Label ratedU1Label = labelOf(box, 0);
         TextField ratedU1Field = fieldOf(box, 0);
-        assertTrue(ratedU1Label.isVisible());
-        assertFalse(ratedU1Field.isVisible());
-
-        interact(() -> doubleClick(ratedU1Label));
-        assertFalse(ratedU1Label.isVisible());
-        assertTrue(ratedU1Field.isVisible());
         assertEquals(doubleText(transformer.getRatedU1()), ratedU1Field.getText());
 
         // The success flash is removed by a 200ms PauseTransition, which a slow CI runner can outlast between
         // interact() returning and the assertion - so check it in the same FX pulse as the commit.
         boolean[] flashed = new boolean[1];
         interact(() -> {
-            ratedU1Field.setText("123.45");
-            ratedU1Field.getOnAction().handle(new ActionEvent());
-            flashed[0] = ratedU1Label.getStyleClass().contains("edit-success");
+            enter(ratedU1Field, "123.45");
+            flashed[0] = ratedU1Field.getStyleClass().contains("edit-success");
         });
 
         assertEquals(123.45, transformer.getRatedU1());
-        assertTrue(ratedU1Label.isVisible());
-        assertFalse(ratedU1Field.isVisible());
         // the full value is stored, shown at the voltage decimal places
-        assertEquals("123.5", ratedU1Label.getText());
+        assertEquals("123.5", ratedU1Field.getText());
         assertTrue(flashed[0]);
     }
 
-    // ratedS may be unset (NaN, displayed as "-"), unlike ratedU - "NaN" is how the user clears it back.
+    // ratedS may be unset (NaN, displayed as "-"), unlike ratedU - blank or "-" is how the user clears it back.
     @Test
     void editingRatedSFieldAcceptsAValueAndNaN() {
         TwoWindingsTransformer transformer = network.getTwoWindingsTransformerStream().findFirst().orElseThrow();
-        VBox box = cellBox(controller.ratedSColumn, rowOf(transformer));
-        Label ratedSLabel = labelOf(box, 0);
-        TextField ratedSField = fieldOf(box, 0);
+        TextField ratedSField = fieldOf(cellBox(controller.ratedSColumn, rowOf(transformer)), 0);
 
-        interact(() -> doubleClick(ratedSLabel));
-        interact(() -> {
-            ratedSField.setText("50");
-            ratedSField.getOnAction().handle(new ActionEvent());
-        });
+        interact(() -> enter(ratedSField, "50"));
         assertEquals(50.0, transformer.getRatedS());
-        assertEquals("50.0", ratedSLabel.getText());
+        assertEquals("50.0", ratedSField.getText());
 
-        interact(() -> doubleClick(ratedSLabel));
-        interact(() -> {
-            ratedSField.setText("NaN");
-            ratedSField.getOnAction().handle(new ActionEvent());
-        });
+        interact(() -> enter(ratedSField, ""));
         assertTrue(Double.isNaN(transformer.getRatedS()));
-        assertEquals("-", ratedSLabel.getText());
+        assertEquals("-", ratedSField.getText());
     }
 
     @Test
-    void escapeCancelsRatedUEditWithoutCommitting() {
+    void escapeRevertsRatedUEditWithoutCommitting() {
         TwoWindingsTransformer transformer = network.getTwoWindingsTransformerStream().findFirst().orElseThrow();
-        VBox box = cellBox(controller.ratedUColumn, rowOf(transformer));
-        Label ratedU1Label = labelOf(box, 0);
-        TextField ratedU1Field = fieldOf(box, 0);
+        TextField ratedU1Field = fieldOf(cellBox(controller.ratedUColumn, rowOf(transformer)), 0);
         double originalRatedU = transformer.getRatedU1();
 
-        interact(() -> doubleClick(ratedU1Label));
         interact(() -> {
             ratedU1Field.setText("999");
-            ratedU1Field.getOnKeyPressed().handle(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.ESCAPE, false, false, false, false));
+            ratedU1Field.fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.ESCAPE, false, false, false, false));
         });
 
         assertEquals(originalRatedU, transformer.getRatedU1());
-        assertTrue(ratedU1Label.isVisible());
-        assertFalse(ratedU1Field.isVisible());
+        assertEquals(doubleText(originalRatedU), ratedU1Field.getText());
     }
 
     @Test
@@ -416,12 +379,12 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         assertTrue(isBlankTapChangerSide(ratioBox, 0));
 
         var leg2TapChanger = transformer.getLeg2().getRatioTapChanger();
-        assertEquals(String.valueOf(leg2TapChanger.getTapPosition()), stepperLabelOf(ratioBox, 1).getText());
+        assertEquals(String.valueOf(leg2TapChanger.getTapPosition()), stepperFieldOf(ratioBox, 1).getText());
         assertEquals(leg2TapChanger.getTapPosition() < leg2TapChanger.getHighTapPosition(), stepperIncrementButtonOf(ratioBox, 1).isVisible());
         assertEquals(leg2TapChanger.getTapPosition() > leg2TapChanger.getLowTapPosition(), stepperDecrementButtonOf(ratioBox, 1).isVisible());
 
         var leg3TapChanger = transformer.getLeg3().getRatioTapChanger();
-        assertEquals(String.valueOf(leg3TapChanger.getTapPosition()), stepperLabelOf(ratioBox, 2).getText());
+        assertEquals(String.valueOf(leg3TapChanger.getTapPosition()), stepperFieldOf(ratioBox, 2).getText());
 
         // no leg has a phase tap changer
         VBox phaseBox = cellBox(controller.phaseTapChangerColumn, rowOf(transformer));
@@ -439,14 +402,9 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         });
         ThreeWindingsTransformer transformer = threeWindingsNetwork.getThreeWindingsTransformerStream().findFirst().orElseThrow();
         VBox ratioBox = cellBox(controller.ratioTapChangerColumn, rowOf(transformer));
-        Label leg2Label = stepperLabelOf(ratioBox, 1);
         TextField leg2Field = stepperFieldOf(ratioBox, 1);
 
-        interact(() -> doubleClick(leg2Label));
-        interact(() -> {
-            leg2Field.setText("1");
-            leg2Field.getOnAction().handle(new ActionEvent());
-        });
+        interact(() -> enter(leg2Field, "1"));
 
         assertEquals(1, transformer.getLeg2().getRatioTapChanger().getTapPosition());
     }
@@ -460,10 +418,10 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         });
         ThreeWindingsTransformer transformer = threeWindingsNetwork.getThreeWindingsTransformerStream().findFirst().orElseThrow();
         VBox ratioBox = cellBox(controller.ratioTapChangerColumn, rowOf(transformer));
-        HBox leg2Cell = presentTapChangerSideOf(ratioBox, 1);
+        HBox leg2Cell = stepperOf(ratioBox, 1);
 
         assertEquals(2, leg2Cell.getChildren().size());
-        assertInstanceOf(StackPane.class, leg2Cell.getChildren().get(0));
+        assertInstanceOf(TextField.class, leg2Cell.getChildren().get(0));
         assertInstanceOf(VBox.class, leg2Cell.getChildren().get(1));
     }
 
@@ -487,15 +445,15 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
 
         VBox ratedUBox = cellBox(controller.ratedUColumn, row);
         assertEquals(3, ratedUBox.getChildren().size());
-        assertEquals(doubleText(transformer.getLeg1().getRatedU()), labelOf(ratedUBox, 0).getText());
-        assertEquals(doubleText(transformer.getLeg2().getRatedU()), labelOf(ratedUBox, 1).getText());
-        assertEquals(doubleText(transformer.getLeg3().getRatedU()), labelOf(ratedUBox, 2).getText());
+        assertEquals(doubleText(transformer.getLeg1().getRatedU()), fieldOf(ratedUBox, 0).getText());
+        assertEquals(doubleText(transformer.getLeg2().getRatedU()), fieldOf(ratedUBox, 1).getText());
+        assertEquals(doubleText(transformer.getLeg3().getRatedU()), fieldOf(ratedUBox, 2).getText());
 
         VBox ratedSBox = cellBox(controller.ratedSColumn, row);
         assertEquals(3, ratedSBox.getChildren().size());
-        assertEquals(doubleText(transformer.getLeg1().getRatedS()), labelOf(ratedSBox, 0).getText());
-        assertEquals(doubleText(transformer.getLeg2().getRatedS()), labelOf(ratedSBox, 1).getText());
-        assertEquals(doubleText(transformer.getLeg3().getRatedS()), labelOf(ratedSBox, 2).getText());
+        assertEquals(doubleText(transformer.getLeg1().getRatedS()), fieldOf(ratedSBox, 0).getText());
+        assertEquals(doubleText(transformer.getLeg2().getRatedS()), fieldOf(ratedSBox, 1).getText());
+        assertEquals(doubleText(transformer.getLeg3().getRatedS()), fieldOf(ratedSBox, 2).getText());
 
         VBox connectedBox = cellBox(controller.connectedColumn, row);
         assertEquals(3, connectedBox.getChildren().size());

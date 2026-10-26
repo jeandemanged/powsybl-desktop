@@ -26,13 +26,10 @@ import javafx.scene.Scene;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Hyperlink;
-import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TablePosition;
 import javafx.scene.control.TextField;
-import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
@@ -101,23 +98,14 @@ class HvdcLinesControllerTest extends AbstractHeadlessApplicationTest {
         return (VBox) cellGraphic(column, row);
     }
 
-    // single values rendered as a one-slot multi-sided column (see HvdcLinesController), like LinesControllerTest's R
-    private static Label labelOf(VBox box, int index) {
-        return (Label) ((StackPane) box.getChildren().get(index)).getChildren().get(0);
-    }
-
+    // single values rendered as a one-slot multi-sided column: a StackPane slot holding the field (see CellFields.sidedColumn)
     private static TextField fieldOf(VBox box, int index) {
-        return (TextField) ((StackPane) box.getChildren().get(index)).getChildren().get(1);
-    }
-
-    private static void doubleClick(Label label) {
-        label.getOnMouseClicked().handle(new MouseEvent(MouseEvent.MOUSE_CLICKED, 0, 0, 0, 0, MouseButton.PRIMARY, 2,
-                false, false, false, false, true, false, false, false, false, false, null));
+        return (TextField) ((StackPane) box.getChildren().get(index)).getChildren().get(0);
     }
 
     @SuppressWarnings("unchecked")
     private static ChoiceBox<HvdcLine.ConvertersMode> choiceBoxOf(VBox box, int index) {
-        return (ChoiceBox<HvdcLine.ConvertersMode>) ((StackPane) box.getChildren().get(index)).getChildren().get(1);
+        return (ChoiceBox<HvdcLine.ConvertersMode>) ((StackPane) box.getChildren().get(index)).getChildren().get(0);
     }
 
     @Test
@@ -132,7 +120,7 @@ class HvdcLinesControllerTest extends AbstractHeadlessApplicationTest {
         int row = rowOf(hvdcLine);
 
         assertEquals("HVDC", cellValue(controller.nameColumn, row));
-        assertEquals("Side 1 inverter, side 2 rectifier", labelOf(cellBox(controller.convertersModeColumn, row), 0).getText());
+        assertEquals(HvdcLine.ConvertersMode.SIDE_1_INVERTER_SIDE_2_RECTIFIER, choiceBoxOf(cellBox(controller.convertersModeColumn, row), 0).getValue());
 
         VBox voltageLevelBox = cellBox(controller.voltageLevelColumn, row);
         assertEquals("VL1", ((Hyperlink) voltageLevelBox.getChildren().get(0)).getText());
@@ -142,24 +130,19 @@ class HvdcLinesControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals("Converter1", ((Hyperlink) stationBox.getChildren().get(0)).getText());
         assertEquals("Converter2", ((Hyperlink) stationBox.getChildren().get(1)).getText());
 
-        assertEquals("280.0", labelOf(cellBox(controller.activePowerSetpointColumn, row), 0).getText());
-        assertEquals("300.0", labelOf(cellBox(controller.maxPColumn, row), 0).getText());
+        assertEquals("280.0", fieldOf(cellBox(controller.activePowerSetpointColumn, row), 0).getText());
+        assertEquals("300.0", fieldOf(cellBox(controller.maxPColumn, row), 0).getText());
     }
 
     @Test
     void convertersModeEditUpdatesTheLine() {
         HvdcLine hvdcLine = hvdcLine();
         VBox box = cellBox(controller.convertersModeColumn, rowOf(hvdcLine));
-        Label label = labelOf(box, 0);
         ChoiceBox<HvdcLine.ConvertersMode> choiceBox = choiceBoxOf(box, 0);
 
-        interact(() -> doubleClick(label));
-        assertTrue(choiceBox.isVisible());
         interact(() -> choiceBox.setValue(HvdcLine.ConvertersMode.SIDE_1_RECTIFIER_SIDE_2_INVERTER));
 
-        assertFalse(choiceBox.isVisible());
-        assertEquals("Side 1 rectifier, side 2 inverter", label.getText());
-
+        assertEquals("Side 1 rectifier, side 2 inverter", choiceBox.getConverter().toString(choiceBox.getValue()));
         assertEquals(HvdcLine.ConvertersMode.SIDE_1_RECTIFIER_SIDE_2_INVERTER, hvdcLine.getConvertersMode());
     }
 
@@ -167,10 +150,8 @@ class HvdcLinesControllerTest extends AbstractHeadlessApplicationTest {
     void editingActivePowerSetpointUpdatesTheLine() {
         HvdcLine hvdcLine = hvdcLine();
         VBox box = cellBox(controller.activePowerSetpointColumn, rowOf(hvdcLine));
-        Label label = labelOf(box, 0);
         TextField field = fieldOf(box, 0);
 
-        interact(() -> doubleClick(label));
         interact(() -> {
             field.setText("150");
             field.getOnAction().handle(new ActionEvent());

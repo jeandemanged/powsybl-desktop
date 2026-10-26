@@ -293,7 +293,7 @@ public final class DetailForm implements DetailPart {
      */
     public static int mandatory(Integer value) {
         if (value == null) {
-            throw new PowsyblException(Messages.get("detail.editError.mandatory"));
+            throw new PowsyblException(Messages.get("desktop.common.editError.mandatory"));
         }
         return value;
     }
@@ -305,7 +305,7 @@ public final class DetailForm implements DetailPart {
         try {
             return Double.parseDouble(text.trim());
         } catch (NumberFormatException e) {
-            throw new PowsyblException(Messages.get("detail.editError.invalidNumber", text.trim()));
+            throw new PowsyblException(Messages.get("desktop.common.editError.invalidNumber", text.trim()));
         }
     }
 
@@ -316,7 +316,7 @@ public final class DetailForm implements DetailPart {
         try {
             return Integer.valueOf(text.trim());
         } catch (NumberFormatException e) {
-            throw new PowsyblException(Messages.get("detail.editError.invalidNumber", text.trim()));
+            throw new PowsyblException(Messages.get("desktop.common.editError.invalidNumber", text.trim()));
         }
     }
 }

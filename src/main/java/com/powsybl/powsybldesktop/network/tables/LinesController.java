@@ -103,10 +103,8 @@ public class LinesController extends AbstractEquipmentTableController<Line> {
                 line -> line.getTerminal1().getBusView().getBus(), line -> line.getTerminal2().getBusView().getBus(),
                 Bus::getSynchronousComponent);
 
-        // R/X/G1/B1/G2/B2 are single values (not per-terminal like P/Q/I above), but rendered the same way
-        // as a multi-sided column with a single slot - like Transformers' R/X/G/B for a two-windings transformer -
-        // so the editable-cell affordance stays a small per-value box instead of stretching to fill this table's
-        // already-tall (two-sided P/Q/I/CC/SC) row height.
+        // R/X/G1/B1/G2/B2 are single values (not per-terminal like P/Q/I above), rendered as a multi-sided column
+        // with a single slot - like Transformers' R/X/G/B for a two-windings transformer - centered in the row.
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(rColumn, line -> List.of(line.getR()),
                 (line, index, value) -> line.setR(value), format(GuiParameters.Quantity.IMPEDANCE));
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(xColumn, line -> List.of(line.getX()),

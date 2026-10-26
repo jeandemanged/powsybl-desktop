@@ -29,6 +29,7 @@ import com.powsybl.iidm.criteria.TwoNominalVoltageCriterion;
 import com.powsybl.iidm.criteria.VoltageInterval;
 import com.powsybl.iidm.network.Country;
 import com.powsybl.iidm.network.IdentifiableType;
+import com.powsybl.powsybldesktop.network.tables.CellFields;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
@@ -42,11 +43,10 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
-import javafx.scene.control.cell.ChoiceBoxTableCell;
-import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.util.StringConverter;
+import javafx.util.converter.DefaultStringConverter;
 import org.controlsfx.control.CheckComboBox;
 
 import java.util.ArrayList;
@@ -121,31 +121,31 @@ public class CriterionListFormController {
     private void initialize() {
         propertyCriteriaTableView.setItems(propertyRows);
         propertyKeyColumn.setCellValueFactory(cellData -> cellData.getValue().keyProperty());
-        propertyKeyColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+        CellFields.textColumn(propertyKeyColumn, new DefaultStringConverter(), row -> true, CellFields.RowKey.ITEM);
         propertyKeyColumn.setOnEditCommit(event -> {
             event.getRowValue().keyProperty().set(event.getNewValue());
-            commit();
+            replace();
         });
         propertyValuesColumn.setCellValueFactory(cellData -> cellData.getValue().valuesProperty());
-        propertyValuesColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+        CellFields.textColumn(propertyValuesColumn, new DefaultStringConverter(), row -> true, CellFields.RowKey.ITEM);
         propertyValuesColumn.setOnEditCommit(event -> {
             event.getRowValue().valuesProperty().set(event.getNewValue());
-            commit();
+            replace();
         });
         equipmentToCheckColumn.setCellValueFactory(cellData -> cellData.getValue().equipmentToCheckProperty());
-        equipmentToCheckColumn.setCellFactory(ChoiceBoxTableCell.forTableColumn(EquipmentToCheck.values()));
+        CellFields.choiceColumn(equipmentToCheckColumn, List.of(EquipmentToCheck.values()), null);
         equipmentToCheckColumn.setOnEditCommit(event -> {
             event.getRowValue().equipmentToCheckProperty().set(event.getNewValue());
-            commit();
+            replace();
         });
         ObservableList<SideToCheck> sideChoices = FXCollections.observableArrayList();
         sideChoices.add(null);
         sideChoices.addAll(List.of(SideToCheck.values()));
         sideToCheckColumn.setCellValueFactory(cellData -> cellData.getValue().sideToCheckProperty());
-        sideToCheckColumn.setCellFactory(ChoiceBoxTableCell.forTableColumn(SIDE_TO_CHECK_CONVERTER, sideChoices));
+        CellFields.choiceColumn(sideToCheckColumn, sideChoices, SIDE_TO_CHECK_CONVERTER);
         sideToCheckColumn.setOnEditCommit(event -> {
             event.getRowValue().sideToCheckProperty().set(event.getNewValue());
-            commit();
+            replace();
         });
         removePropertyCriterionButton.disableProperty().bind(propertyCriteriaTableView.getSelectionModel().selectedItemProperty().isNull());
 
@@ -217,18 +217,19 @@ public class CriterionListFormController {
     }
 
     private void commit() {
-        if (onReplace == null) {
-            return;
-        }
-        ContingencyList replacement;
         try {
-            replacement = rebuild();
+            replace();
         } catch (IllegalArgumentException e) {
             // e.g. a voltage interval with its low bound above its high bound, or a criterion checkEvaluable
             // rejects: keep the last valid list
-            return;
         }
-        onReplace.accept(replacement);
+    }
+
+    // a table cell's commit: an invalid list is reported by its field, see CellFields
+    private void replace() {
+        if (onReplace != null) {
+            onReplace.accept(rebuild());
+        }
     }
 
     private ContingencyList rebuild() {

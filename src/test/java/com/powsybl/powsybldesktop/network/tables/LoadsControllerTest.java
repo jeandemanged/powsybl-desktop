@@ -21,6 +21,7 @@ import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
@@ -31,7 +32,7 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TablePosition;
 import javafx.scene.control.TableView;
-import javafx.scene.control.cell.TextFieldTableCell;
+import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -197,14 +199,32 @@ class LoadsControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
-    void unparsableEditTextIsMappedToNullInsteadOfThrowing() {
-        @SuppressWarnings("unchecked")
-        TextFieldTableCell<Load, Double> cell = (TextFieldTableCell<Load, Double>) controller.p0Column.getCellFactory().call(controller.p0Column);
+    void p0FieldRejectsUnparsableTextAndAppliesNumbers() {
+        Load load = load("B3-L");
+        double p0 = load.getP0();
+        TextField field = p0Field(load);
 
-        // thrown from TextFieldTableCell's key handler before commitEdit, the exception left the cell stuck in edit mode
-        assertNull(cell.getConverter().fromString("1,5"));
-        assertNull(cell.getConverter().fromString("-"));
-        assertEquals(12.5, cell.getConverter().fromString(" 12.5 "));
+        interact(() -> enter(field, "1,5"));
+        assertEquals(p0, load.getP0());
+        assertEquals(String.format(Locale.ROOT, "%.1f", p0), field.getText());
+
+        interact(() -> enter(field, " 12.5 "));
+        assertEquals(12.5, load.getP0());
+        assertEquals("12.5", field.getText());
+    }
+
+    // the field shown in the table: its error popup needs a window
+    private TextField p0Field(Load load) {
+        int row = controller.loadsTableView.getItems().indexOf(load);
+        return controller.loadsTableView.lookupAll(".cell-text-field").stream()
+                .filter(node -> node.getParent() instanceof TableCell<?, ?> cell && cell.getTableColumn() == controller.p0Column && cell.getIndex() == row)
+                .map(TextField.class::cast)
+                .findFirst().orElseThrow();
+    }
+
+    private static void enter(TextField field, String text) {
+        field.setText(text);
+        field.getOnAction().handle(new ActionEvent());
     }
 
     @Test

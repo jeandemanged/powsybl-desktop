@@ -102,22 +102,30 @@ table uses it too).
   `p0Column.setOnEditCommit(e -> e.getRowValue().setP0(e.getNewValue()))`, then the view relies on
   `mainModel.setUpdate()` (connected-checkbox toggles call `mainModel.setUpdate(terminal.getVoltageLevel())`).
   There is no form object/DTO layer.
+- Editable cells are always-visible fields, edited like the parameters and detail views' fields - never a
+  double-click-to-edit cell (no `TextFieldTableCell`/`ChoiceBoxTableCell`). The fields live in
+  `…/network/tables/CellFields.java`: `textColumn`/`choiceColumn` commit through the column's `onEditCommit`, and
+  `sidedColumn`/`editorColumn` stack one editor per side (`CellTextField`, `CellChoiceBox`, `IntStepper`). A text
+  field commits on Enter or focus loss, Escape reverts what is being typed, Up/Down commit then move to the field
+  above/below in the same column; focusing a field selects its cell.
 - Use the factories in `…/network/tables/TableColumnSupport.java` (`configureDoubleColumn`,
   `configureEditableBooleanColumn`, `configureChoiceColumn`, `configureSingleSlotChoiceColumn`, `configureNullableEditable*`, `configureMultiSided*`,
-  `configureDetailNameColumn`, `configureSpinnerIntColumn`, ...). They handle:
-  - validation errors: a `PowsyblException` from the setter is caught, the old value restored, and
-    `notifyEditError` shows a ControlsFX popup + red flash;
-  - success feedback: green flash (`flashEditSuccess` / `flashKeyed`). Cells whose setter triggers
-    `mainModel.setUpdate` must key the flash by row (`flashKeyed`/`applyKeyedFlash`), because the refresh rebuilds cells;
-  - the busy lock: custom editor cells are disabled when the table isn't editable (`disableUnlessTableEditable`).
-- A new kind of editor goes into `TableColumnSupport` (or at least calls `disableUnlessTableEditable`), never as an
-  ad-hoc cell factory in a controller.
+  `configureDetailNameColumn`, `configureSpinnerIntColumn`, ...) and, in detail views, `DetailTables.editableColumn`.
+  They handle:
+  - validation errors: a `PowsyblException` (or `IllegalArgumentException`, e.g. unparsable text) from the setter is
+    caught, the value shown again, with a ControlsFX popup + red flash;
+  - success feedback: green flash;
+  - both flashes keyed by row (`CellFields.KeyedFlash`), not held on a cell: a table rebuilds its cells on any change
+    of its items (e.g. the refresh after `mainModel.setUpdate`), which can rebind a cell to another row before the
+    flash fades. For the same reason the focus, with what is being typed, follows its row through a rebuild. Never
+    call `TableView.refresh()` after `getItems().setAll(...)`: the latter already rebuilds the cells, the former
+    recreates them;
+  - the busy lock: editor cells are disabled when the table isn't editable (`disableUnlessTableEditable`).
+- A new kind of editor goes into `CellFields`/`TableColumnSupport`, never as an ad-hoc cell factory in a controller.
 - In tables with two-sided (or three-sided) rows (Lines, HVDC lines, Transformers), a single editable value goes
   through a one-slot multi-sided factory (`configureMultiSidedEditableDoubleColumn` with `List.of(value)`,
-  `configureSingleSlotChoiceColumn`), so its editable box keeps the fixed per-side height instead of stretching to
-  the full row. Per-side editors look like their single-row counterparts: the value as text in the `editable-cell`
-  box at rest, swapped for a `TextField`/`ChoiceBox` on double-click (`editableDoubleField`, `editableChoiceField`) -
-  never an always-visible control.
+  `configureSingleSlotChoiceColumn`), a field per side: a row's several values are stacked at a fixed per-side height (aligned across columns), a single
+  value is centered in the row.
 
 ## Dialogs and secondary windows
 
@@ -170,7 +178,7 @@ shared `equipment-detail-view.fxml` (no `fx:controller`: `EquipmentDetails.load`
   Escape reverts; same error/flash feedback as tables), `DetailSections` (terminal connection, solved values, sides,
   local targets, a `VoltageRegulationHolder`'s voltage regulation as IIDM holds it - also used by ratio tap changers -,
   regulated terminal row with `TerminalPickerDialog`, links to other equipment's details), `DetailTables` (editable row
-  table columns with row-keyed flash), `ReactiveLimitsPane` (staged edits + Apply/Revert, IIDM reactive limits being
+  table columns, fields keyed by row index), `ReactiveLimitsPane` (staged edits + Apply/Revert, IIDM reactive limits being
   replaced as a whole), `TapChangerPane`, `OperationalLimitsPane.editable(...)` (also the violations popup's read-only
   pane), `ExtensionsPane` with editors from `ExtensionEditors` (per-type lists composed of shared generic ones), and
   `KeyValueTablePane.properties/aliases`.
@@ -201,7 +209,7 @@ shared `equipment-detail-view.fxml` (no `fx:controller`: `EquipmentDetails.load`
   (generic, tables, status markers, then one section per view), with a short comment saying where it is used and why,
   and apply it with `getStyleClass().add(...)` / `styleClass="..."`. Padding that varies per instance of a shared class stays a layout
   property (`<padding><Insets/></padding>`, as for the `map-overlay` panels).
-- Reusable classes: `section-title`, `right-aligned-column`, `centered-column`, `editable-cell`,
+- Reusable classes: `section-title`, `right-aligned-column`, `centered-column`,
   `edit-error`/`edit-success`, `icon-button`, `container-link`, `row-warn`/`row-error`, `alert-label`/`alert-icon`,
   `map-overlay`, `notification-*`.
 - Icons are Ikonli Material Design 2 (`ikonli-materialdesign2-pack`): `<FontIcon iconLiteral="mdi2a-arrow-left" iconSize="16"/>`

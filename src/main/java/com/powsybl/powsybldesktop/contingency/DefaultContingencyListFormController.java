@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop.contingency;
 
+import com.powsybl.commons.PowsyblException;
 import com.powsybl.contingency.Contingency;
 import com.powsybl.contingency.ContingencyBuilder;
 import com.powsybl.contingency.ContingencyElement;
@@ -14,6 +15,8 @@ import com.powsybl.contingency.ContingencyElementType;
 import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.contingency.list.DefaultContingencyList;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.powsybldesktop.network.tables.CellFields;
+import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -22,8 +25,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
-import javafx.scene.control.cell.ChoiceBoxTableCell;
-import javafx.scene.control.cell.TextFieldTableCell;
+import javafx.util.converter.DefaultStringConverter;
 
 import java.util.List;
 import java.util.Set;
@@ -80,7 +82,8 @@ public class DefaultContingencyListFormController {
     private void initialize() {
         contingenciesTableView.setItems(contingencies);
         idColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getId()));
-        idColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+        // by index: a renamed contingency is a new row
+        CellFields.textColumn(idColumn, new DefaultStringConverter(), row -> true, CellFields.RowKey.INDEX);
         idColumn.setOnEditCommit(event -> renameContingency(event.getRowValue(), event.getNewValue()));
         elementsColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(ContingencyNames.elementsSummary(cellData.getValue(), network)));
         removeContingencyButton.disableProperty().bind(contingenciesTableView.getSelectionModel().selectedItemProperty().isNull());
@@ -88,13 +91,13 @@ public class DefaultContingencyListFormController {
 
         elementsTableView.setItems(elementRows);
         elementTypeColumn.setCellValueFactory(cellData -> cellData.getValue().typeProperty());
-        elementTypeColumn.setCellFactory(ChoiceBoxTableCell.forTableColumn(ContingencyElementType.values()));
+        CellFields.choiceColumn(elementTypeColumn, List.of(ContingencyElementType.values()), null);
         elementTypeColumn.setOnEditCommit(event -> {
             event.getRowValue().typeProperty().set(event.getNewValue());
             commitElements();
         });
         elementIdColumn.setCellValueFactory(cellData -> cellData.getValue().idProperty());
-        elementIdColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+        CellFields.textColumn(elementIdColumn, new DefaultStringConverter(), row -> true, CellFields.RowKey.ITEM);
         elementIdColumn.setOnEditCommit(event -> {
             event.getRowValue().idProperty().set(event.getNewValue());
             commitElements();
@@ -129,8 +132,11 @@ public class DefaultContingencyListFormController {
 
     private void renameContingency(Contingency row, String newId) {
         int index = contingencies.indexOf(row);
-        if (index < 0 || newId == null || newId.isBlank()) {
+        if (index < 0) {
             return;
+        }
+        if (newId == null || newId.isBlank()) {
+            throw new PowsyblException(Messages.get("desktop.common.editError.mandatory"));
         }
         Contingency rebuilt = new Contingency(newId, row.getName().orElse(null), row.getElements());
         applyingElementChange = true;
