@@ -118,6 +118,7 @@ class EquipmentDetailViewsTest extends AbstractHeadlessApplicationTest {
                         fourSubstations.getStaticVarCompensatorStream(), fourSubstations.getVscConverterStationStream(),
                         fourSubstations.getLccConverterStationStream(), fourSubstations.getHvdcLineStream(), fourSubstations.getLineStream(),
                         fourSubstations.getTwoWindingsTransformerStream(), fourSubstations.getBusbarSectionStream(), fourSubstations.getSwitchStream(),
+                        fourSubstations.getSubstationStream(), fourSubstations.getVoltageLevelStream(),
                         eurostag.getTieLineStream(), threeWindings.getThreeWindingsTransformerStream(), battery.getBatteryStream(),
                         boundaryLine.getBoundaryLineStream())
                 .forEach(stream -> equipments.add(stream.findFirst().orElseThrow()));

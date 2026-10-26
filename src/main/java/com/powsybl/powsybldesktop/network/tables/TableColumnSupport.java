@@ -1308,24 +1308,35 @@ public final class TableColumnSupport {
         column.setCellFactory(col -> new DetailNameTableCell<>(onDetail));
     }
 
+    // The info button opening a detail view, before content (e.g. a container link), for name columns whose cells
+    // aren't plain text (see configureDetailNameColumn).
+    static HBox withDetailButton(Node content, Runnable onDetail) {
+        HBox box = new HBox(4, detailButton(onDetail), content);
+        box.setAlignment(Pos.CENTER_LEFT);
+        return box;
+    }
+
+    private static Button detailButton(Runnable onDetail) {
+        Button infoButton = new Button();
+        infoButton.setGraphic(new FontIcon("mdi2i-information-outline"));
+        // detail-button: tells EditLockTest this button opens a view, not an editing dialog
+        infoButton.getStyleClass().addAll("icon-button", "detail-button");
+        infoButton.setTooltip(new Tooltip(Messages.get("detail.open.tooltip")));
+        infoButton.setOnAction(event -> onDetail.run());
+        return infoButton;
+    }
+
     private static final class DetailNameTableCell<S> extends TableCell<S, String> {
         private final Label label = new Label();
         private final HBox box;
 
         DetailNameTableCell(Consumer<S> onDetail) {
-            Button infoButton = new Button();
-            infoButton.setGraphic(new FontIcon("mdi2i-information-outline"));
-            // detail-button: tells EditLockTest this button opens a view, not an editing dialog
-            infoButton.getStyleClass().addAll("icon-button", "detail-button");
-            infoButton.setTooltip(new Tooltip(Messages.get("detail.open.tooltip")));
-            infoButton.setOnAction(event -> {
+            box = withDetailButton(label, () -> {
                 S item = getTableRow() == null ? null : getTableRow().getItem();
                 if (item != null) {
                     onDetail.accept(item);
                 }
             });
-            box = new HBox(4, infoButton, label);
-            box.setAlignment(Pos.CENTER_LEFT);
         }
 
         @Override

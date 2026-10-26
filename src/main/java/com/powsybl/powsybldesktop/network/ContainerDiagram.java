@@ -45,6 +45,7 @@ import javafx.animation.PauseTransition;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import javafx.geometry.Orientation;
+import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
@@ -55,6 +56,7 @@ import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.util.Duration;
 import netscape.javascript.JSObject;
+import org.kordamp.ikonli.javafx.FontIcon;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,6 +115,8 @@ public final class ContainerDiagram extends AbstractDisposableController {
     private final Kind kind;
     private final DiagramPaneController pane;
     private final ContextMenu contextMenu = new ContextMenu();
+    // opens the shown substation's or voltage level's detail view
+    private final Button detailsButton = new Button();
     // screen location of the last context menu request, where the equipment context menu shows
     private double contextMenuX;
     private double contextMenuY;
@@ -143,6 +147,11 @@ public final class ContainerDiagram extends AbstractDisposableController {
         this.sceneModel = Objects.requireNonNull(sceneModel);
         this.mainModel = sceneModel.getMainModel();
         pane.setDiagramFileNameSupplier(() -> container == null ? null : container.getNameOrId());
+        detailsButton.setGraphic(new FontIcon("mdi2i-information-outline"));
+        detailsButton.setTooltip(new Tooltip(Messages.get("substations.diagram.details")));
+        detailsButton.setDisable(true);
+        detailsButton.setOnAction(event -> EquipmentDetails.open(sceneModel, container));
+        pane.getToolBar().getItems().addAll(new Separator(Orientation.VERTICAL), detailsButton);
         renderService.setOnSucceeded(event -> {
             sldMetadata = renderService.getValue().metadata();
             pane.showDiagram(renderService.getValue().svg());
@@ -256,6 +265,7 @@ public final class ContainerDiagram extends AbstractDisposableController {
     public void setContainer(Container<?> container) {
         if (container != this.container) {
             this.container = container;
+            detailsButton.setDisable(!EquipmentDetails.supports(container));
             refresh();
         }
     }

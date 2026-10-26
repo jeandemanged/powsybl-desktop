@@ -18,10 +18,12 @@ import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Load;
 import com.powsybl.iidm.network.ShuntCompensator;
 import com.powsybl.iidm.network.StaticVarCompensator;
+import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.Switch;
 import com.powsybl.iidm.network.ThreeWindingsTransformer;
 import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.TwoWindingsTransformer;
+import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.VscConverterStation;
 import com.powsybl.powsybldesktop.MainApplication;
 import com.powsybl.powsybldesktop.SceneModel;
@@ -66,7 +68,9 @@ public final class EquipmentDetails {
             new Kind<>(TwoWindingsTransformer.class, "desktop.common.equipment.transformer", TwoWindingsTransformerDetailController::new),
             new Kind<>(ThreeWindingsTransformer.class, "desktop.common.equipment.transformer", ThreeWindingsTransformerDetailController::new),
             new Kind<>(BusbarSection.class, "desktop.common.equipment.busbarSection", BusbarSectionDetailController::new),
-            new Kind<>(Switch.class, "desktop.common.equipment.switch", SwitchDetailController::new));
+            new Kind<>(Switch.class, "desktop.common.equipment.switch", SwitchDetailController::new),
+            new Kind<>(Substation.class, "desktop.common.equipment.substation", SubstationDetailController::new),
+            new Kind<>(VoltageLevel.class, "desktop.common.equipment.voltageLevel", VoltageLevelDetailController::new));
 
     private EquipmentDetails() {
     }

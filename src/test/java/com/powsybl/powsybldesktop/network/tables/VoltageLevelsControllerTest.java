@@ -29,6 +29,7 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TablePosition;
 import javafx.scene.control.TableView;
+import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -112,7 +113,7 @@ class VoltageLevelsControllerTest extends AbstractHeadlessApplicationTest {
         Substation substation = voltageLevel.getSubstation().orElseThrow();
         int row = rowOf(voltageLevel);
 
-        Hyperlink nameLink = (Hyperlink) cellGraphic(controller.nameColumn, row);
+        Hyperlink nameLink = nameLink(row);
         assertEquals(voltageLevel.getNameOrId(), nameLink.getText());
 
         Hyperlink substationLink = (Hyperlink) cellGraphic(controller.substationColumn, row);
@@ -186,7 +187,7 @@ class VoltageLevelsControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void clickingNameLinkNavigatesToSubstationsView() {
         VoltageLevel voltageLevel = voltageLevel("VL3");
-        Hyperlink link = (Hyperlink) cellGraphic(controller.nameColumn, rowOf(voltageLevel));
+        Hyperlink link = nameLink(rowOf(voltageLevel));
 
         interact(link::fire);
 
@@ -206,5 +207,10 @@ class VoltageLevelsControllerTest extends AbstractHeadlessApplicationTest {
         NavigationEvent event = mainModel.getNavigationHistory().currentEventProperty().getValue();
         assertEquals(NavigationType.SUBSTATIONS, event.navigationType());
         assertEquals(substation, ((ContainerNavigationState) event.state()).getContainer());
+    }
+
+    // after its detail view's info button
+    private Hyperlink nameLink(int row) {
+        return (Hyperlink) ((HBox) cellGraphic(controller.nameColumn, row)).getChildren().get(1);
     }
 }

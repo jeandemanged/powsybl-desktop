@@ -112,7 +112,7 @@ class SubstationsTableControllerTest extends AbstractHeadlessApplicationTest {
         Substation substation = substation("S1");
         int row = rowOf(substation);
 
-        Hyperlink nameLink = (Hyperlink) cellGraphic(controller.nameColumn, row);
+        Hyperlink nameLink = nameLink(row);
         assertEquals(substation.getNameOrId(), nameLink.getText());
         assertEquals(substation.getNullableCountry(), cellValue(controller.countryColumn, row));
         assertEquals(substation.getTso(), cellValue(controller.tsoColumn, row));
@@ -169,12 +169,17 @@ class SubstationsTableControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void clickingNameLinkNavigatesToSubstationsView() {
         Substation substation = substation("S3");
-        Hyperlink link = (Hyperlink) cellGraphic(controller.nameColumn, rowOf(substation));
+        Hyperlink link = nameLink(rowOf(substation));
 
         interact(link::fire);
 
         NavigationEvent event = mainModel.getNavigationHistory().currentEventProperty().getValue();
         assertEquals(NavigationType.SUBSTATIONS, event.navigationType());
         assertEquals(substation, ((ContainerNavigationState) event.state()).getContainer());
+    }
+
+    // after its detail view's info button
+    private Hyperlink nameLink(int row) {
+        return (Hyperlink) ((HBox) cellGraphic(controller.nameColumn, row)).getChildren().get(1);
     }
 }

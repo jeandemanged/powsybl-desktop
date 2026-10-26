@@ -52,6 +52,10 @@ import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.NetworkNavigationState;
 import com.powsybl.powsybldesktop.navigation.ReportNavigationState;
+import com.powsybl.powsybldesktop.network.detail.DetailForm;
+import com.powsybl.powsybldesktop.network.detail.DetailPart;
+import com.powsybl.powsybldesktop.network.detail.ExtensionsPane;
+import com.powsybl.powsybldesktop.network.detail.KeyValueTablePane;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
 import com.powsybl.powsybldesktop.parameters.NetworkFormatParametersController;
@@ -73,6 +77,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.TableColumn;
@@ -84,6 +89,7 @@ import javafx.scene.control.TreeView;
 import javafx.scene.input.DragEvent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -98,6 +104,8 @@ import java.io.File;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.IdentityHashMap;
@@ -174,6 +182,21 @@ public class NetworksController extends AbstractDisposableController {
     private Label countriesLabel;
 
     @FXML
+    private TextField caseDateField;
+
+    @FXML
+    private TextField forecastDistanceField;
+
+    @FXML
+    private Label validationLevelLabel;
+
+    @FXML
+    private ScrollPane networkExtensionsScrollPane;
+
+    @FXML
+    private VBox networkPropertiesBox;
+
+    @FXML
     private TableView<Pair<String, String>> networkInfoTable;
 
     @FXML
@@ -184,6 +207,8 @@ public class NetworksController extends AbstractDisposableController {
 
     private MainModel mainModel;
     private Network selectedNetwork;
+    // the selected network's extensions, properties and aliases, rebuilt for each selected network
+    private final List<DetailPart> networkParts = new ArrayList<>();
 
     public void setMainModel(MainModel mainModel) {
         this.mainModel = Objects.requireNonNull(mainModel);
@@ -196,6 +221,9 @@ public class NetworksController extends AbstractDisposableController {
         listenerManager.listen(mainModel.networkBusyProperty(), (obs, wasBusy, isBusy) -> updateMergeDetachButtons(getSelectedNetworks()));
         // the selected network's name, like its tables (see AbstractEquipmentTableController.setMainModel)
         nameField.disableProperty().bind(mainModel.networkBusyProperty());
+        caseDateField.disableProperty().bind(mainModel.networkBusyProperty());
+        forecastDistanceField.disableProperty().bind(mainModel.networkBusyProperty());
+        listenerManager.listen(mainModel.updateProperty(), (obs, oldValue, newValue) -> refreshNetworkDetails());
     }
 
     private void updateMergeDetachButtons(List<Network> selectedNetworks) {
@@ -261,6 +289,83 @@ public class NetworksController extends AbstractDisposableController {
         return !selectedNetworks.isEmpty() && selectedNetworks.stream().allMatch(this::isParentNetwork);
     }
 
+    // the selected network's extensions, properties and aliases, as an equipment detail view shows them
+    private void buildNetworkParts(Network network) {
+        networkParts.forEach(part -> part.editableProperty().unbind());
+        networkParts.clear();
+        if (network == null) {
+            networkExtensionsScrollPane.setContent(null);
+            networkPropertiesBox.getChildren().clear();
+            return;
+        }
+        Runnable onEdit = mainModel::setUpdate;
+        ExtensionsPane<Network> extensions = new ExtensionsPane<>(network, List.of(), () -> mainModel.getParametersModel().getGuiParameters(), onEdit);
+        KeyValueTablePane properties = KeyValueTablePane.properties(network, onEdit);
+        KeyValueTablePane aliases = KeyValueTablePane.aliases(network, onEdit);
+        VBox.setVgrow(properties, Priority.ALWAYS);
+        VBox.setVgrow(aliases, Priority.ALWAYS);
+        networkExtensionsScrollPane.setContent(extensions);
+        networkPropertiesBox.getChildren().setAll(properties, aliases);
+        networkParts.addAll(List.of(extensions, properties, aliases));
+        networkParts.forEach(part -> part.editableProperty().bind(mainModel.networkBusyProperty().not()));
+    }
+
+    private void refreshNetworkDetails() {
+        if (selectedNetwork != null) {
+            networkParts.forEach(DetailPart::refresh);
+            if (!caseDateField.isFocused() && !forecastDistanceField.isFocused()) {
+                showCaseDateAndForecastDistance(selectedNetwork);
+            }
+            validationLevelLabel.setText(selectedNetwork.getValidationLevel().name());
+        }
+    }
+
+    private void showCaseDateAndForecastDistance(Network network) {
+        caseDateField.setText(network.getCaseDate().toString());
+        forecastDistanceField.setText(String.valueOf(network.getForecastDistance()));
+    }
+
+    // an ISO date with offset and optional zone, e.g. 2026-10-26T10:00+01:00[Europe/Paris]
+    private void commitCaseDateChange() {
+        Network network = selectedNetwork;
+        if (network == null || caseDateField.getText().equals(network.getCaseDate().toString())) {
+            return;
+        }
+        DetailForm.apply(caseDateField, () -> {
+            try {
+                network.setCaseDate(ZonedDateTime.parse(caseDateField.getText().trim()));
+            } catch (DateTimeParseException e) {
+                throw new PowsyblException(Messages.get("networks.editError.invalidCaseDate", caseDateField.getText().trim()), e);
+            }
+        }, mainModel::setUpdate);
+        showCaseDateAndForecastDistance(network);
+    }
+
+    // in minutes
+    private void commitForecastDistanceChange() {
+        Network network = selectedNetwork;
+        if (network == null || forecastDistanceField.getText().equals(String.valueOf(network.getForecastDistance()))) {
+            return;
+        }
+        DetailForm.apply(forecastDistanceField, () -> {
+            try {
+                network.setForecastDistance(Integer.parseInt(forecastDistanceField.getText().trim()));
+            } catch (NumberFormatException e) {
+                throw new PowsyblException(Messages.get("detail.editError.invalidNumber", forecastDistanceField.getText().trim()), e);
+            }
+        }, mainModel::setUpdate);
+        showCaseDateAndForecastDistance(network);
+    }
+
+    private static void commitOnEnterOrFocusLoss(TextField field, Runnable commit) {
+        field.setOnAction(event -> commit.run());
+        field.focusedProperty().addListener((obs, wasFocused, isFocused) -> {
+            if (Boolean.FALSE.equals(isFocused)) {
+                commit.run();
+            }
+        });
+    }
+
     private void commitNameChange() {
         if (selectedNetwork == null) {
             return;
@@ -282,13 +387,19 @@ public class NetworksController extends AbstractDisposableController {
         closeButton.setDisable(!closable);
         networkDetailsPane.setVisible(network != null);
         noNetworkSelectedPane.setVisible(network == null);
+        buildNetworkParts(network);
         if (network == null) {
             nameField.setText("");
             sourceFormatLabel.setText("");
             countriesLabel.setText("");
+            caseDateField.setText("");
+            forecastDistanceField.setText("");
+            validationLevelLabel.setText("");
             networkInfoTable.setItems(FXCollections.observableArrayList());
             return;
         }
+        showCaseDateAndForecastDistance(network);
+        validationLevelLabel.setText(network.getValidationLevel().name());
         idLabel.setText(network.getId());
         nameField.setText(network.getOptionalName().orElse(""));
         sourceFormatLabel.setText(network.getSourceFormat());
@@ -422,12 +533,9 @@ public class NetworksController extends AbstractDisposableController {
         initializeDropImport();
         propertyColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getKey()));
         valueColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getValue()));
-        nameField.setOnAction(event -> commitNameChange());
-        nameField.focusedProperty().addListener((obs, wasFocused, isFocused) -> {
-            if (Boolean.FALSE.equals(isFocused)) {
-                commitNameChange();
-            }
-        });
+        commitOnEnterOrFocusLoss(nameField, this::commitNameChange);
+        commitOnEnterOrFocusLoss(caseDateField, this::commitCaseDateChange);
+        commitOnEnterOrFocusLoss(forecastDistanceField, this::commitForecastDistanceChange);
     }
 
     private boolean isParentNetwork(Network network) {

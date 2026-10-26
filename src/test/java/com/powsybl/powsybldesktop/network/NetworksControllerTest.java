@@ -28,6 +28,8 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TreeItem;
@@ -35,6 +37,7 @@ import javafx.scene.control.TreeView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Pair;
 import org.junit.jupiter.api.AfterEach;
@@ -45,6 +48,7 @@ import org.testfx.util.WaitForAsyncUtils;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -250,6 +254,49 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
         selectNetwork(ieee118);
 
         assertEquals(ieee118.getOptionalName().orElse(""), nameField().getText());
+    }
+
+    private void commit(String fieldId, String text) {
+        TextField field = lookup(fieldId).queryAs(TextField.class);
+        interact(() -> {
+            field.setText(text);
+            field.getOnAction().handle(null);
+        });
+    }
+
+    @Test
+    void caseDateAndForecastDistanceAreShownAndEditable() {
+        selectNetwork(ieee14);
+        assertEquals(ieee14.getCaseDate().toString(), lookup("#caseDateField").queryAs(TextField.class).getText());
+        assertEquals(String.valueOf(ieee14.getForecastDistance()), lookup("#forecastDistanceField").queryAs(TextField.class).getText());
+        assertEquals(ieee14.getValidationLevel().name(), lookup("#validationLevelLabel").queryAs(Label.class).getText());
+
+        commit("#caseDateField", "2026-10-26T10:00+01:00");
+        assertEquals(ZonedDateTime.parse("2026-10-26T10:00+01:00").toInstant(), ieee14.getCaseDate().toInstant());
+        commit("#forecastDistanceField", "60");
+        assertEquals(60, ieee14.getForecastDistance());
+
+        // rejected, unchanged
+        commit("#caseDateField", "yesterday");
+        assertEquals(ZonedDateTime.parse("2026-10-26T10:00+01:00").toInstant(), ieee14.getCaseDate().toInstant());
+        commit("#forecastDistanceField", "soon");
+        assertEquals(60, ieee14.getForecastDistance());
+    }
+
+    @Test
+    void lowerTabsShowStatisticsThenExtensionsThenPropertiesAndAliases() {
+        selectNetwork(ieee14);
+        interact(() -> {
+            ieee14.setProperty("owner", "me");
+            mainModel.setUpdate();
+        });
+
+        TabPane tabs = lookup("#networkTabPane").queryAs(TabPane.class);
+        assertEquals(List.of(Messages.get("networks.tab.statistics"), Messages.get("detail.tab.extensions"), Messages.get("detail.tab.propertiesAndAliases")),
+                tabs.getTabs().stream().map(Tab::getText).toList());
+        @SuppressWarnings("unchecked")
+        TableView<String> properties = (TableView<String>) lookup("#networkPropertiesBox").queryAs(VBox.class).lookup(".table-view");
+        assertEquals(List.of("owner"), properties.getItems());
     }
 
     @Test

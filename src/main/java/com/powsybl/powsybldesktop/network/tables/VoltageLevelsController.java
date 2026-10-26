@@ -21,6 +21,7 @@ import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.VoltageLevelNavigationState;
+import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
@@ -88,7 +89,8 @@ public class VoltageLevelsController extends AbstractDisposableController implem
         TableColumnSupport.configureNullableColumn(countryColumn,
                 voltageLevel -> voltageLevel.getSubstation().map(Substation::getNullableCountry).orElse(null));
         TableColumnSupport.configureContainerColumn(substationColumn, VoltageLevel::getSubstation, this::containerLink);
-        TableColumnSupport.configureContainerColumn(nameColumn, voltageLevel -> Optional.of(voltageLevel), this::containerLink);
+        TableColumnSupport.configureContainerColumn(nameColumn, voltageLevel -> Optional.of(voltageLevel),
+                (container, item) -> TableColumnSupport.withDetailButton(containerLink(container, item), () -> EquipmentDetails.open(sceneModel, item)));
 
         topologyKindColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTopologyKind()));
 

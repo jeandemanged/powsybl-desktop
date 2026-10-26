@@ -20,6 +20,7 @@ import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.SubstationNavigationState;
+import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
@@ -101,7 +102,8 @@ public class SubstationsTableController extends AbstractDisposableController imp
         substationsTableView.setItems(sortedSubstations);
         TableAutoFitLimiter.install(substationsTableView);
 
-        TableColumnSupport.configureContainerColumn(nameColumn, substation -> Optional.of(substation), this::containerLink);
+        TableColumnSupport.configureContainerColumn(nameColumn, substation -> Optional.of(substation),
+                (container, item) -> TableColumnSupport.withDetailButton(containerLink(container, item), () -> EquipmentDetails.open(sceneModel, item)));
 
         TableColumnSupport.configureChoiceColumn(countryColumn, Substation::getNullableCountry, Substation::setCountry, COUNTRY_CHOICES, COUNTRY_FORMAT);
 

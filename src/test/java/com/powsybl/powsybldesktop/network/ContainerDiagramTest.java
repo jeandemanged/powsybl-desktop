@@ -19,6 +19,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.geometry.Point2D;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.input.ContextMenuEvent;
@@ -35,6 +36,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -103,6 +106,17 @@ class ContainerDiagramTest extends AbstractHeadlessApplicationTest {
                 .findFirst().orElseThrow(() -> new AssertionError("No context menu"));
         assertEquals(List.of(Messages.get("detail.open.tooltip"), Messages.get("substations.diagram.equipment.showInTable")),
                 menu.getItems().stream().map(MenuItem::getText).toList());
+    }
+
+    @Test
+    void toolbarDetailsButtonIsEnabledForAShownVoltageLevel() {
+        Button details = (Button) pane.getToolBar().getItems().stream()
+                .filter(item -> item instanceof Button button && button.getTooltip() != null
+                        && Messages.get("substations.diagram.details").equals(button.getTooltip().getText()))
+                .findFirst().orElseThrow();
+        assertTrue(details.isDisabled());
+        interact(() -> diagram.setContainer(network.getVoltageLevel("VL1")));
+        assertFalse(details.isDisabled());
     }
 
     private static double number(JSObject object, String member) {

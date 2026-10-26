@@ -48,7 +48,9 @@ public class GuiParameters {
         IMPEDANCE(2),
         ADMITTANCE(6),
         RHO(6),
-        LIMIT_SCALING(2);
+        LIMIT_SCALING(2),
+        // latitude and longitude, in degrees
+        COORDINATE(6);
 
         private final int defaultDecimals;
 

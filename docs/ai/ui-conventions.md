@@ -147,14 +147,17 @@ Two established forms:
 
 Non-modal, all-fields view of one equipment (`…/network/detail/`), one `AbstractEquipmentDetailController` subclass per
 equipment type (generators, batteries, loads, shunt and static var compensators, VSC/LCC converter stations, HVDC
-lines, lines, tie lines, boundary lines, two- and three-winding transformers, busbar sections, switches), all on the
+lines, lines, tie lines, boundary lines, two- and three-winding transformers, busbar sections, switches, substations,
+voltage levels), all on the
 shared `equipment-detail-view.fxml` (no `fx:controller`: `EquipmentDetails.load` sets it). Canonical examples:
 `GeneratorDetailController` (injection), `TwoWindingsTransformerDetailController` (branch).
 
 - Opened by `EquipmentDetails.open(sceneModel, equipment)` (a no-op for an unsupported type) as a `SeparateWindows` tab
   keyed by equipment id; works from separate windows too, through `SceneModel.getDetailWindows()`. Add a type with a
   subclass and a `Kind` entry in `EquipmentDetails`. Entry points: every equipment table's name column info button
-  (`TableColumnSupport.configureDetailNameColumn`); in the SLD (`ContainerDiagram` / `sld.js`), a feeder click (unless
+  (`TableColumnSupport.configureDetailNameColumn`, or `withDetailButton` around a container link for the substations and
+  voltage levels tables); the SLD/NAD toolbar info button for the shown substation or voltage level
+  (`ContainerDiagram`); in the SLD (`ContainerDiagram` / `sld.js`), a feeder click (unless
   the feeder leads to another voltage level, which the click keeps navigating to), a click on a transformer drawn
   inside the diagram, and a right-click on any equipment (details, HVDC line details for a converter station, go to /
   show in table).
@@ -171,6 +174,8 @@ shared `equipment-detail-view.fxml` (no `fx:controller`: `EquipmentDetails.load`
   replaced as a whole), `TapChangerPane`, `OperationalLimitsPane.editable(...)` (also the violations popup's read-only
   pane), `ExtensionsPane` with editors from `ExtensionEditors` (per-type lists composed of shared generic ones), and
   `KeyValueTablePane.properties/aliases`.
+- The selected network's details are not a separate view but the networks view's details pane (`NetworksController`):
+  its fields, then tabs reusing `ExtensionsPane` and `KeyValueTablePane` after the statistics.
 - Show IIDM attributes as IIDM holds them, not the tables' simplified columns, and only the values IIDM accepts for the
   type (e.g. regulation modes per `VoltageRegulationUtils`).
 

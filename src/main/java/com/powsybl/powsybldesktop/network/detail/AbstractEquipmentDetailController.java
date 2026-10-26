@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop.network.detail;
 
+import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.ReactiveLimitsHolder;
 import com.powsybl.iidm.network.VoltageLevel;
@@ -94,12 +95,19 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
     }
 
     /**
-     * The voltage levels the equipment is connected to, linked in the header and refreshed after an edit.
+     * The voltage levels the equipment is connected to, refreshed after an edit, and by default linked in the header.
      */
     protected abstract List<VoltageLevel> voltageLevels();
 
     /**
-     * The substations view tab listing this type, where the header's voltage level links select the equipment.
+     * The containers linked in the header, opening the {@link #containerTab} of each in the substations view.
+     */
+    protected List<? extends Container<?>> linkedContainers() {
+        return voltageLevels();
+    }
+
+    /**
+     * The substations view tab listing this type, where the header's links select the equipment, or a diagram tab.
      */
     protected abstract ContainerNavigationState.ContainerTab containerTab();
 
@@ -160,11 +168,13 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
         VBox.setVgrow(aliasesPane, Priority.ALWAYS);
         propertiesBox.getChildren().setAll(propertiesPane, aliasesPane);
 
-        for (VoltageLevel voltageLevel : voltageLevels()) {
-            Hyperlink link = new Hyperlink(voltageLevel.getNameOrId());
+        ContainerNavigationState.ContainerTab tab = containerTab();
+        for (Container<?> container : linkedContainers()) {
+            Hyperlink link = new Hyperlink(container.getNameOrId());
             link.getStyleClass().add("container-link");
+            // a diagram tab selects no row
             link.setOnAction(event -> sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
-                    ContainerNavigationState.create(voltageLevel, containerTab(), equipment))));
+                    ContainerNavigationState.create(container, tab, tab == ContainerNavigationState.ContainerTab.SINGLE_LINE ? null : equipment))));
             linksBox.getChildren().add(link);
         }
 

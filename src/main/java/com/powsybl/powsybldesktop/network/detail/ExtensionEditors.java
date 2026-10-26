@@ -18,10 +18,12 @@ import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Injection;
 import com.powsybl.iidm.network.Load;
 import com.powsybl.iidm.network.StaticVarCompensator;
+import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.ThreeSides;
 import com.powsybl.iidm.network.ThreeWindingsTransformer;
 import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.TwoWindingsTransformer;
+import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.ActivePowerControl;
 import com.powsybl.iidm.network.extensions.ActivePowerControlAdder;
 import com.powsybl.iidm.network.extensions.BatteryShortCircuit;
@@ -30,6 +32,7 @@ import com.powsybl.iidm.network.extensions.BusbarSectionPosition;
 import com.powsybl.iidm.network.extensions.BusbarSectionPositionAdder;
 import com.powsybl.iidm.network.extensions.ConnectablePosition;
 import com.powsybl.iidm.network.extensions.ConnectablePositionAdder;
+import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.iidm.network.extensions.CoordinatedReactiveControl;
 import com.powsybl.iidm.network.extensions.CoordinatedReactiveControlAdder;
 import com.powsybl.iidm.network.extensions.DynamicModelInfo;
@@ -46,6 +49,8 @@ import com.powsybl.iidm.network.extensions.HvdcAngleDroopActivePowerControl;
 import com.powsybl.iidm.network.extensions.HvdcAngleDroopActivePowerControlAdder;
 import com.powsybl.iidm.network.extensions.HvdcOperatorActivePowerRange;
 import com.powsybl.iidm.network.extensions.HvdcOperatorActivePowerRangeAdder;
+import com.powsybl.iidm.network.extensions.IdentifiableShortCircuit;
+import com.powsybl.iidm.network.extensions.IdentifiableShortCircuitAdder;
 import com.powsybl.iidm.network.extensions.InjectionObservability;
 import com.powsybl.iidm.network.extensions.InjectionObservabilityAdder;
 import com.powsybl.iidm.network.extensions.LoadDetail;
@@ -59,8 +64,11 @@ import com.powsybl.iidm.network.extensions.OperatingStatus;
 import com.powsybl.iidm.network.extensions.OperatingStatusAdder;
 import com.powsybl.iidm.network.extensions.ReferencePriorities;
 import com.powsybl.iidm.network.extensions.ReferencePriority;
+import com.powsybl.iidm.network.extensions.SlackTerminal;
 import com.powsybl.iidm.network.extensions.StandbyAutomaton;
 import com.powsybl.iidm.network.extensions.StandbyAutomatonAdder;
+import com.powsybl.iidm.network.extensions.SubstationPosition;
+import com.powsybl.iidm.network.extensions.SubstationPositionAdder;
 import com.powsybl.iidm.network.extensions.ThreeWindingsTransformerPhaseAngleClock;
 import com.powsybl.iidm.network.extensions.ThreeWindingsTransformerPhaseAngleClockAdder;
 import com.powsybl.iidm.network.extensions.ThreeWindingsTransformerToBeEstimated;
@@ -169,6 +177,14 @@ public final class ExtensionEditors {
 
     public static List<ExtensionsPane.Editor<HvdcLine>> forHvdcLine() {
         return concat(List.of(hvdcAngleDroopActivePowerControl(), hvdcOperatorActivePowerRange(), operatingStatus()), forIdentifiable());
+    }
+
+    public static List<ExtensionsPane.Editor<Substation>> forSubstation() {
+        return concat(List.of(substationPosition()), forIdentifiable());
+    }
+
+    public static List<ExtensionsPane.Editor<VoltageLevel>> forVoltageLevel() {
+        return concat(List.of(identifiableShortCircuit(), slackTerminal()), forIdentifiable());
     }
 
     /**
@@ -506,5 +522,52 @@ public final class ExtensionEditors {
                                         estimate -> extension.shouldEstimatePhaseTapChanger(estimate, side));
                     }
                 });
+    }
+
+    /**
+     * Its coordinate is immutable: edited by replacing the extension.
+     */
+    public static ExtensionsPane.Editor<Substation> substationPosition() {
+        return ExtensionsPane.<Substation, SubstationPosition>editor(SubstationPosition.class, "detail.extension.substationPosition",
+                substation -> substation.newExtension(SubstationPositionAdder.class).withCoordinate(new Coordinate(0, 0)).add(),
+                (extension, form) -> {
+                    Substation substation = extension.getExtendable();
+                    form.doubleField("detail.extension.substationPosition.latitude", DetailForm.DEGREE, GuiParameters.Quantity.COORDINATE,
+                                    () -> position(substation).getCoordinate().getLatitude(),
+                                    latitude -> setPosition(substation, latitude, position(substation).getCoordinate().getLongitude()))
+                            .doubleField("detail.extension.substationPosition.longitude", DetailForm.DEGREE, GuiParameters.Quantity.COORDINATE,
+                                    () -> position(substation).getCoordinate().getLongitude(),
+                                    longitude -> setPosition(substation, position(substation).getCoordinate().getLatitude(), longitude));
+                });
+    }
+
+    private static SubstationPosition position(Substation substation) {
+        return substation.getExtension(SubstationPosition.class);
+    }
+
+    private static void setPosition(Substation substation, double latitude, double longitude) {
+        Coordinate coordinate = new Coordinate(latitude, longitude);
+        substation.removeExtension(SubstationPosition.class);
+        substation.newExtension(SubstationPositionAdder.class).withCoordinate(coordinate).add();
+    }
+
+    @SuppressWarnings("unchecked")
+    public static ExtensionsPane.Editor<VoltageLevel> identifiableShortCircuit() {
+        return ExtensionsPane.<VoltageLevel, IdentifiableShortCircuit<VoltageLevel>>editor(IdentifiableShortCircuit.class, "detail.extension.shortCircuit",
+                voltageLevel -> voltageLevel.newExtension(IdentifiableShortCircuitAdder.class).withIpMin(0).withIpMax(0).add(),
+                (extension, form) -> form
+                        .doubleField("detail.extension.shortCircuit.ipMin", DetailForm.A, GuiParameters.Quantity.CURRENT,
+                                extension::getIpMin, extension::setIpMin)
+                        .doubleField("detail.extension.shortCircuit.ipMax", DetailForm.A, GuiParameters.Quantity.CURRENT,
+                                extension::getIpMax, extension::setIpMax));
+    }
+
+    /**
+     * Read-only, and not offered in the add menu: it designates a terminal.
+     */
+    public static ExtensionsPane.Editor<VoltageLevel> slackTerminal() {
+        return ExtensionsPane.<VoltageLevel, SlackTerminal>editor(SlackTerminal.class, "detail.extension.slackTerminal", null,
+                (extension, form) -> form.text("detail.extension.slackTerminal.terminal",
+                        () -> extension.getTerminal() == null ? null : TerminalPickerDialog.terminalLabel(extension.getTerminal())));
     }
 }
