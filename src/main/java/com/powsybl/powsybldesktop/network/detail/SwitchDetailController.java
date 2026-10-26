@@ -39,6 +39,6 @@ public class SwitchDetailController extends AbstractEquipmentDetailController<Sw
 
     @Override
     protected List<ExtensionsPane.Editor<Switch>> extensionEditors() {
-        return ExtensionEditors.forIdentifiable();
+        return ExtensionEditors.forSwitch();
     }
 }

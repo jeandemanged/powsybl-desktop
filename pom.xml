@@ -77,6 +77,20 @@
             <version>${powsybl-core.version}</version>
         </dependency>
         <dependency>
+            <!-- provides the CGMES extensions (metadata models, tap changers, boundary nodes...) shown in the
+                 detail views; already pulled in transitively via powsybl-cgmes-conversion, but used directly -->
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-cgmes-extensions</artifactId>
+            <version>${powsybl-core.version}</version>
+        </dependency>
+        <dependency>
+            <!-- provides EntsoeArea, edited in the substation detail view; already pulled in transitively via
+                 powsybl-ucte-converter, but used directly -->
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-entsoe-util</artifactId>
+            <version>${powsybl-core.version}</version>
+        </dependency>
+        <dependency>
             <!-- Leaflet's leaflet.js/leaflet.css for the Map view's WebView. "provided" because the jar itself
                  isn't needed at runtime: the unpack execution below extracts those two files into the map
                  package, where MapController reads them as ordinary classpath resources. -->

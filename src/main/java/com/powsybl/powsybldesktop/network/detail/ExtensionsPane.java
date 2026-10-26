@@ -78,11 +78,12 @@ public final class ExtensionsPane<O extends Extendable<O>> extends VBox implemen
     }
 
     /**
-     * Rebuilds the sections if extensions were added or removed meanwhile, re-reads their forms otherwise.
+     * Rebuilds the sections if extensions were added or removed meanwhile, or a form's {@link DetailForm#structure}
+     * changed (e.g. a measurement added), re-reads their forms otherwise.
      */
     @Override
     public void refresh() {
-        if (!List.copyOf(extendable.getExtensions()).equals(shown)) {
+        if (!List.copyOf(extendable.getExtensions()).equals(shown) || forms.stream().anyMatch(DetailForm::isStale)) {
             rebuild();
         } else {
             forms.forEach(DetailForm::refresh);

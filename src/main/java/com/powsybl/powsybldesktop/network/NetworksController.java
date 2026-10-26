@@ -54,6 +54,7 @@ import com.powsybl.powsybldesktop.navigation.NetworkNavigationState;
 import com.powsybl.powsybldesktop.navigation.ReportNavigationState;
 import com.powsybl.powsybldesktop.network.detail.DetailForm;
 import com.powsybl.powsybldesktop.network.detail.DetailPart;
+import com.powsybl.powsybldesktop.network.detail.ExtensionEditors;
 import com.powsybl.powsybldesktop.network.detail.ExtensionsPane;
 import com.powsybl.powsybldesktop.network.detail.KeyValueTablePane;
 import com.powsybl.powsybldesktop.notification.Notification;
@@ -299,7 +300,7 @@ public class NetworksController extends AbstractDisposableController {
             return;
         }
         Runnable onEdit = mainModel::setUpdate;
-        ExtensionsPane<Network> extensions = new ExtensionsPane<>(network, List.of(), () -> mainModel.getParametersModel().getGuiParameters(), onEdit);
+        ExtensionsPane<Network> extensions = new ExtensionsPane<>(network, ExtensionEditors.forNetwork(), () -> mainModel.getParametersModel().getGuiParameters(), onEdit);
         KeyValueTablePane properties = KeyValueTablePane.properties(network, onEdit);
         KeyValueTablePane aliases = KeyValueTablePane.aliases(network, onEdit);
         VBox.setVgrow(properties, Priority.ALWAYS);

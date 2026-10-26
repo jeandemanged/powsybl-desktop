@@ -51,6 +51,6 @@ public class LineDetailController extends AbstractEquipmentDetailController<Line
 
     @Override
     protected List<ExtensionsPane.Editor<Line>> extensionEditors() {
-        return ExtensionEditors.forBranch();
+        return ExtensionEditors.forLine();
     }
 }

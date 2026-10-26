@@ -117,6 +117,6 @@ public class ShuntCompensatorDetailController extends AbstractEquipmentDetailCon
 
     @Override
     protected List<ExtensionsPane.Editor<ShuntCompensator>> extensionEditors() {
-        return ExtensionEditors.forInjection();
+        return ExtensionEditors.forShuntCompensator();
     }
 }

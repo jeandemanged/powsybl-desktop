@@ -63,6 +63,8 @@ public final class DetailForm implements DetailPart {
     private final BooleanProperty editable = new SimpleBooleanProperty(true);
     private final Supplier<GuiParameters> guiParameters;
     private final Runnable onEdit;
+    private Supplier<?> structure = () -> null;
+    private Object shownStructure;
     private int row;
 
     /**
@@ -96,6 +98,20 @@ public final class DetailForm implements DetailPart {
     @Override
     public void refresh() {
         refreshers.forEach(Runnable::run);
+    }
+
+    /**
+     * Declares what the rows were built from, e.g. a list of measurements, for {@link #isStale} to tell when its owner
+     * must rebuild the form.
+     */
+    public DetailForm structure(Supplier<?> structure) {
+        this.structure = Objects.requireNonNull(structure);
+        shownStructure = structure.get();
+        return this;
+    }
+
+    public boolean isStale() {
+        return !Objects.equals(structure.get(), shownStructure);
     }
 
     /**
