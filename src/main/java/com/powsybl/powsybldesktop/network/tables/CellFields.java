@@ -510,9 +510,12 @@ public final class CellFields {
                 if (!showingValue && getter != null && !Objects.equals(value, getter.get())) {
                     Object edited = key;
                     CellFields.apply(this, flash, edited, "", () -> setter.accept(value));
-                    if (Objects.equals(key, edited)) {
-                        showValue();
-                    }
+                    // reverting a rejected value from within this change would leave the skin's popup checking it
+                    Platform.runLater(() -> {
+                        if (getter != null && Objects.equals(key, edited)) {
+                            showValue();
+                        }
+                    });
                 }
             });
         }

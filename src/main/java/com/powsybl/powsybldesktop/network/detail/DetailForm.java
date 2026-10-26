@@ -11,6 +11,7 @@ import com.powsybl.commons.PowsyblException;
 import com.powsybl.powsybldesktop.network.tables.TableColumnSupport;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
+import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.geometry.HPos;
@@ -188,7 +189,8 @@ public final class DetailForm implements DetailPart {
         choiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
             if (!refreshing[0] && newValue != null && !newValue.equals(getter.get())) {
                 apply(choiceBox, () -> setter.accept(newValue));
-                refresher.run();
+                // reverting a rejected value from within this change would leave the skin's popup checking it
+                Platform.runLater(refresher);
             }
         });
         return node(labelKey, choiceBox, null, refresher);
