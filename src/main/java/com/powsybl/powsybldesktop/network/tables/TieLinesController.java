@@ -19,6 +19,7 @@ import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.TieLineNavigationState;
 import com.powsybl.powsybldesktop.network.NetworkTieLines;
+import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
@@ -115,6 +116,7 @@ public class TieLinesController extends AbstractEquipmentTableController<TieLine
                 tieLine -> Optional.of(tieLine.getTerminal1().getVoltageLevel()),
                 tieLine -> Optional.of(tieLine.getTerminal2().getVoltageLevel()), this::containerCell);
         nameColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getNameOrId()));
+        TableColumnSupport.configureDetailNameColumn(nameColumn, item -> EquipmentDetails.open(sceneModel, item));
         pairingKeyColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getPairingKey()));
         TableColumnSupport.configureTwoSidedLinkColumn(boundaryLineColumn,
                 TieLine::getBoundaryLine1, TieLine::getBoundaryLine2, this::boundaryLineLink);

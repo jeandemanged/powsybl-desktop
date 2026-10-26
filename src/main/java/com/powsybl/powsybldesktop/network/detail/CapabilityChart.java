@@ -45,7 +45,7 @@ public final class CapabilityChart extends LineChart<Number, Number> {
         // the outline goes back along the min Q side: points must stay in insertion order
         setAxisSortingPolicy(SortingPolicy.NONE);
         setAnimated(false);
-        limitsSeries.setName(Messages.get("detail.chart.limits"));
+        limitsSeries.setName(Messages.get("detail.tab.reactiveLimits"));
         targetSeries.setName(Messages.get("detail.chart.target"));
         solvedSeries.setName(Messages.get("detail.chart.solved"));
         getData().setAll(List.of(limitsSeries, targetSeries, solvedSeries));

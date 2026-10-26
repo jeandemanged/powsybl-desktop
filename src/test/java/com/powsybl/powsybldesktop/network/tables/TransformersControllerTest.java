@@ -122,8 +122,7 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     // Each side of a tap changer column is a StackPane holding a blank Label (shown at rest, when this side has
-    // no such tap changer) and an HBox with the info button (see TapChangerStepsDialog) then the IntStepperField
-    // (shown otherwise) - see TableColumnSupport.TapChangerSlot.
+    // no such tap changer) and the IntStepperField (shown otherwise) - see TableColumnSupport.TapChangerSlot.
     private static boolean isBlankTapChangerSide(VBox box, int index) {
         return ((StackPane) box.getChildren().get(index)).getChildren().get(0).isVisible();
     }
@@ -132,15 +131,11 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         return (HBox) ((StackPane) box.getChildren().get(index)).getChildren().get(1);
     }
 
-    private static Button infoButtonOf(VBox box, int index) {
-        return (Button) presentTapChangerSideOf(box, index).getChildren().get(0);
-    }
-
     // An IntStepperField (TableColumnSupport) is itself an HBox: a StackPane holding the double-click-to-edit
     // Label/TextField pair (same as editableDoubleField's ratedU/ratedS cells) followed by a VBox holding the
     // increment (top) and decrement (bottom) buttons.
     private static HBox stepperOf(VBox box, int index) {
-        return (HBox) presentTapChangerSideOf(box, index).getChildren().get(1);
+        return presentTapChangerSideOf(box, index);
     }
 
     private static Label stepperLabelOf(VBox box, int index) {
@@ -456,8 +451,9 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals(1, transformer.getLeg2().getRatioTapChanger().getTapPosition());
     }
 
+    // the steps are edited in the transformer's detail view, opened from the name column
     @Test
-    void ratioTapChangerFieldHasAnInfoButtonToItsLeft() {
+    void ratioTapChangerFieldIsTheStepperAlone() {
         interact(() -> {
             mainModel.setNetwork(threeWindingsNetwork);
             controller.ratioTapChangerColumn.setVisible(true);
@@ -467,9 +463,8 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         HBox leg2Cell = presentTapChangerSideOf(ratioBox, 1);
 
         assertEquals(2, leg2Cell.getChildren().size());
-        assertInstanceOf(Button.class, leg2Cell.getChildren().get(0));
-        assertInstanceOf(HBox.class, leg2Cell.getChildren().get(1));
-        assertEquals(infoButtonOf(ratioBox, 1).getTooltip().getText(), Messages.get("transformers.tapChanger.stepsTooltip"));
+        assertInstanceOf(StackPane.class, leg2Cell.getChildren().get(0));
+        assertInstanceOf(VBox.class, leg2Cell.getChildren().get(1));
     }
 
     @Test

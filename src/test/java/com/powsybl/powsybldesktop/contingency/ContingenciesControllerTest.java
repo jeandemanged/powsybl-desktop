@@ -28,6 +28,7 @@ import javafx.stage.Stage;
 import org.controlsfx.control.CheckComboBox;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.testfx.util.WaitForAsyncUtils;
 
 import java.io.IOException;
 import java.util.List;
@@ -150,7 +151,16 @@ class ContingenciesControllerTest extends AbstractHeadlessApplicationTest {
             listView.getSelectionModel().select(0);
         });
         TextField nameField = lookup("#nameField").query();
-        clickOn(nameField);
+        // focused programmatically, its window first: a robot click doesn't focus it while another test's window
+        // still has the focus, and the form commits the name on focus loss
+        interact(() -> {
+            Stage stage = (Stage) nameField.getScene().getWindow();
+            stage.toFront();
+            stage.requestFocus();
+            nameField.requestFocus();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+        assertTrue(nameField.isFocused());
         interact(() -> nameField.setText("renamed"));
 
         // the name field still has focus as its form is torn down for the newly selected list, and commits then

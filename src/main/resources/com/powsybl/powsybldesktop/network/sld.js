@@ -10,18 +10,28 @@ document.addEventListener('click', function (event) {
     if (event.target.closest('.sld-top-feeder')    ||
         event.target.closest('.sld-bottom-feeder')) {
         controller.onFeederTopBottomClick(event.target.parentElement.id);
+        return;
     }
     if (event.target.closest('.sld-breaker')       ||
         event.target.closest('.sld-disconnector')  ||
         event.target.closest('.sld-load-break-switch')) {
         controller.onSwitchClick(event.target.parentElement.id);
+        return;
+    }
+    // e.g. a transformer drawn inside the diagram: its node is one of the clicked element's ancestors
+    for (var element = event.target; element; element = element.parentElement) {
+        if (element.id && controller.onEquipmentClick(element.id)) {
+            break;
+        }
     }
 }, false);
 
-document.addEventListener('contextmenu', function (event) {
-    if (event.target.closest('.sld-top-feeder')    ||
-        event.target.closest('.sld-bottom-feeder')) {
-        event.preventDefault();
-        controller.onFeederContextMenu(event.target.parentElement.id);
+// called by ContainerDiagram on a right-click, the WebView not dispatching contextmenu events to the page (its own
+// context menu is disabled): x, y in CSS pixels of the viewport
+function equipmentContextMenuAt(x, y) {
+    for (var element = document.elementFromPoint(x, y); element; element = element.parentElement) {
+        if (element.id && controller.onEquipmentContextMenu(element.id)) {
+            return;
+        }
     }
-}, false);
+}

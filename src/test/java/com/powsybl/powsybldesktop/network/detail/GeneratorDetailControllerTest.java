@@ -19,15 +19,16 @@ import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
-import javafx.fxml.FXMLLoader;
+import com.powsybl.powsybldesktop.window.SeparateWindows;
 import javafx.scene.Node;
-import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuButton;
+import javafx.scene.control.Tab;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
@@ -35,7 +36,6 @@ import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -61,19 +61,14 @@ class GeneratorDetailControllerTest extends AbstractHeadlessApplicationTest {
     private MainModel mainModel;
 
     @Override
-    public void start(Stage stage) throws IOException {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource(
-                "/com/powsybl/powsybldesktop/network/detail/generator-detail-view.fxml"), Messages.bundle());
-        Parent root = loader.load();
-        controller = loader.getController();
-
+    public void start(Stage stage) {
         mainModel = new MainModel();
         mainModel.addNetwork(network);
         mainModel.setNetwork(network);
-        controller.setGenerator(generator);
-        controller.setSceneModel(SceneModel.main(mainModel));
+        SeparateWindows.View view = EquipmentDetails.load(generator, SceneModel.main(mainModel));
+        controller = (GeneratorDetailController) view.controller();
 
-        stage.setScene(new Scene(root, 1000, 700));
+        stage.setScene(new Scene(view.root(), 1000, 700));
         stage.show();
     }
 
@@ -121,11 +116,12 @@ class GeneratorDetailControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void showsGenerator() {
         assertTrue(controller.titleLabel.getText().contains(generator.getNameOrId()));
-        assertEquals(generator.getTerminal().getVoltageLevel().getNameOrId(), controller.voltageLevelLink.getText());
+        assertEquals(generator.getTerminal().getVoltageLevel().getNameOrId(), ((Hyperlink) controller.linksBox.getChildren().get(1)).getText());
         Node form = controller.form.getNode();
         assertEquals(generator.getId(), field(form, "desktop.common.column.id", Label.class).getText());
         assertEquals(generator.getEnergySource(), field(form, "detail.generator.energySource", ChoiceBox.class).getValue());
         assertEquals(4, controller.tabPane.getTabs().size());
+        assertEquals(generator, controller.getEquipment());
     }
 
     @Test
@@ -185,13 +181,13 @@ class GeneratorDetailControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void setsRegulatingTerminal() {
         var loadTerminal = network.getLoad("B2-L").getTerminal();
-        interact(() -> controller.form.apply(controller.titleLabel, () -> controller.setRegulatingTerminal(loadTerminal)));
+        interact(() -> controller.form.apply(controller.titleLabel, () -> DetailSections.setRegulatingTerminal(generator, RegulationMode.VOLTAGE, loadTerminal)));
         assertEquals(loadTerminal, generator.getVoltageRegulation().getTerminal());
         Node link = field(controller.form.getNode(), "detail.voltageRegulation.terminal", javafx.scene.layout.HBox.class).getChildren().get(1);
         assertTrue(link.isVisible());
 
         interact(() -> generator.getVoltageRegulation().setMode(RegulationMode.REACTIVE_POWER));
-        interact(() -> controller.form.apply(controller.titleLabel, () -> controller.setRegulatingTerminal(null)));
+        interact(() -> controller.form.apply(controller.titleLabel, () -> DetailSections.setRegulatingTerminal(generator, RegulationMode.VOLTAGE, null)));
         assertNull(generator.getVoltageRegulation().getTerminal());
         assertEquals(RegulationMode.VOLTAGE, generator.getVoltageRegulation().getMode());
         assertFalse(link.isVisible());
@@ -199,7 +195,7 @@ class GeneratorDetailControllerTest extends AbstractHeadlessApplicationTest {
 
     @Test
     void stagesReactiveLimitsUntilApplied() {
-        ReactiveLimitsPane pane = controller.reactiveLimitsPane;
+        ReactiveLimitsPane pane = reactiveLimitsPane();
         @SuppressWarnings("unchecked")
         ChoiceBox<ReactiveLimitsKind> kind = (ChoiceBox<ReactiveLimitsKind>) pane.lookupAll(".choice-box").iterator().next();
         interact(() -> kind.setValue(ReactiveLimitsKind.CURVE));
@@ -269,9 +265,17 @@ class GeneratorDetailControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> release[0] = mainModel.markBusy(network));
         assertTrue(targetP.isDisabled());
         assertTrue(fictitious.isDisabled());
-        assertTrue(button(controller.reactiveLimitsPane, "detail.action.apply").isDisabled());
+        assertTrue(button(reactiveLimitsPane(), "detail.action.apply").isDisabled());
         interact(release[0]);
         assertFalse(targetP.isDisabled());
+    }
+
+    private ReactiveLimitsPane reactiveLimitsPane() {
+        return controller.tabPane.getTabs().stream()
+                .map(Tab::getContent)
+                .filter(ReactiveLimitsPane.class::isInstance)
+                .map(ReactiveLimitsPane.class::cast)
+                .findFirst().orElseThrow();
     }
 
     private static Button button(Node root, String textKey) {

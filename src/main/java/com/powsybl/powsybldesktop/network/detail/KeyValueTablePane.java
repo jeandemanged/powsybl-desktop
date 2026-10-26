@@ -40,7 +40,7 @@ import java.util.function.Supplier;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-public final class KeyValueTablePane extends VBox {
+public final class KeyValueTablePane extends VBox implements DetailPart {
 
     private final TableView<String> tableView = new TableView<>();
     private final BooleanProperty editable = new SimpleBooleanProperty(true);
@@ -135,10 +135,12 @@ public final class KeyValueTablePane extends VBox {
                 identifiable::removeAlias, onEdit);
     }
 
+    @Override
     public BooleanProperty editableProperty() {
         return editable;
     }
 
+    @Override
     public void refresh() {
         String selected = tableView.getSelectionModel().getSelectedItem();
         tableView.getItems().setAll(keys.get().stream().sorted().toList());

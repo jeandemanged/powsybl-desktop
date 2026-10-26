@@ -23,8 +23,8 @@ Not a textbook MVC/MVVM. The actual structure is:
 | `navigation` | `NavigationType`, `NavigationEvent` (record), `NavigationState` + one subclass per restorable selection, `NavigationHistory` |
 | `network` | `NetworksController` (load/import/export/merge/detach networks), `SubstationsController` (tree + SLD/NAD tabs + embedded tables), diagram renderers, `DropImportDialog` |
 | `network/tables` | One controller per equipment table, `AbstractEquipmentTableController`, `EmbeddableEquipmentTable`, `TableColumnSupport` (cell factories), `ViolationColumns` (columns of the Violations and Security Analysis Results views), `ColumnVisibilityToolbarController`, edit dialogs |
-| `network/detail` | Equipment detail views (`GeneratorDetailController`), opened by `EquipmentDetails.open` as separate-window tabs, and their reusable parts: `DetailForm`, `ReactiveLimitsPane` + `CapabilityChart`, `ExtensionsPane` + `ExtensionEditors`, `KeyValueTablePane` (properties, aliases), `TerminalPickerDialog` |
-| `network/limits` | `OperationalLimitsPane`: read-only detail of an equipment's selected operational limits groups (reused by `FlowViolationsDialog`) |
+| `network/detail` | Equipment detail views, one `AbstractEquipmentDetailController` subclass per equipment type, opened by `EquipmentDetails.open` as separate-window tabs, and their reusable parts: `DetailForm`, `DetailSections`, `DetailTables`, `ReactiveLimitsPane` + `CapabilityChart`, `TapChangerPane`, `ExtensionsPane` + `ExtensionEditors`, `KeyValueTablePane` (properties, aliases), `TerminalPickerDialog` |
+| `network/limits` | `OperationalLimitsPane`: an equipment's operational limits groups, read-only with violations highlighted (`FlowViolationsDialog`) or editable (detail views) |
 | `network/search` | `NetworkSearch` (kinds, container resolution), `NetworkSearchIndex` (Lucene), `SearchBoxController` (reusable search box) |
 | `diagram` | `DiagramPaneController`: reusable WebView viewport (zoom, fit, PNG/SVG export) |
 | `map` | Map view: `MapController`, `MapNetworkData` snapshot, `MapTileRenderer`, `map.js` + Leaflet |

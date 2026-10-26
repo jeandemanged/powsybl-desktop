@@ -18,6 +18,7 @@ import com.powsybl.powsybldesktop.navigation.HvdcLineNavigationState;
 import com.powsybl.powsybldesktop.navigation.LccConverterStationNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
+import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
@@ -84,6 +85,7 @@ public class LccConverterStationsController extends AbstractEquipmentTableContro
         TableColumnSupport.configureContainerColumn(voltageLevelColumn,
                 station -> Optional.of(station.getTerminal().getVoltageLevel()), this::containerCell);
         nameColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getNameOrId()));
+        TableColumnSupport.configureDetailNameColumn(nameColumn, item -> EquipmentDetails.open(sceneModel, item));
 
         hvdcLineColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
         hvdcLineColumn.setCellFactory(col -> new TableCell<LccConverterStation, LccConverterStation>() {

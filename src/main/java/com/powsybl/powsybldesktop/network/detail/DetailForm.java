@@ -44,7 +44,7 @@ import java.util.function.Supplier;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-public final class DetailForm {
+public final class DetailForm implements DetailPart {
 
     public static final String MW = "MW";
     public static final String MVAR = "Mvar";
@@ -54,6 +54,7 @@ public final class DetailForm {
     public static final String DEGREE = "°";
     public static final String OHM = "Ω";
     public static final String PERCENT = "%";
+    public static final String SIEMENS = "S";
 
     private static final String MISSING = "-";
 
@@ -87,10 +88,12 @@ public final class DetailForm {
         return root;
     }
 
+    @Override
     public BooleanProperty editableProperty() {
         return editable;
     }
 
+    @Override
     public void refresh() {
         refreshers.forEach(Runnable::run);
     }
@@ -98,10 +101,10 @@ public final class DetailForm {
     /**
      * Starts a new section: a title, or a separator if {@code titleKey} is null.
      */
-    public DetailForm section(String titleKey) {
+    public DetailForm section(String titleKey, Object... args) {
         Node header;
         if (titleKey != null) {
-            Label title = new Label(Messages.get(titleKey));
+            Label title = new Label(args.length == 0 ? Messages.get(titleKey) : Messages.get(titleKey, args));
             title.getStyleClass().add("section-title");
             header = title;
         } else {
@@ -204,7 +207,10 @@ public final class DetailForm {
         return apply(node, edit, onEdit);
     }
 
-    static boolean apply(Node node, Runnable edit, Runnable onEdit) {
+    /**
+     * Runs {@code edit} with the edit feedback on {@code node}, then {@code onEdit} if applied.
+     */
+    public static boolean apply(Node node, Runnable edit, Runnable onEdit) {
         try {
             edit.run();
         } catch (PowsyblException e) {
@@ -264,6 +270,16 @@ public final class DetailForm {
 
     private static boolean isMissing(String text) {
         return text.isBlank() || MISSING.equals(text.trim());
+    }
+
+    /**
+     * {@code value}, or an edit error if null, for the integer fields of mandatory values.
+     */
+    public static int mandatory(Integer value) {
+        if (value == null) {
+            throw new PowsyblException(Messages.get("detail.editError.mandatory"));
+        }
+        return value;
     }
 
     static double parseDouble(String text) {

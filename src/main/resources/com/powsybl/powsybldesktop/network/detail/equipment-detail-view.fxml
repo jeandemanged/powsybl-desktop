@@ -8,8 +8,10 @@
   SPDX-License-Identifier: MPL-2.0
   -->
 
+<!-- Shared by every equipment detail view: its controller, an AbstractEquipmentDetailController subclass per equipment
+     type, is set by EquipmentDetails, hence no fx:controller. -->
+
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Hyperlink?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.SplitPane?>
@@ -18,14 +20,12 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
-<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.powsybl.powsybldesktop.network.detail.GeneratorDetailController" styleClass="detail-view">
-    <HBox spacing="8" alignment="CENTER_LEFT">
+<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" styleClass="detail-view">
+    <HBox fx:id="linksBox" spacing="8" alignment="CENTER_LEFT">
         <padding>
             <Insets top="8" right="8" bottom="4" left="8"/>
         </padding>
         <Label fx:id="titleLabel" styleClass="detail-title"/>
-        <Hyperlink fx:id="voltageLevelLink" styleClass="container-link"/>
     </HBox>
     <TabPane fx:id="tabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
         <Tab fx:id="mainTab" text="%detail.tab.main">
@@ -35,14 +35,13 @@
                         <Insets top="8" right="8" bottom="8" left="8"/>
                     </padding>
                 </ScrollPane>
-                <BorderPane fx:id="mainChartHost">
+                <BorderPane fx:id="mainSideHost">
                     <padding>
                         <Insets top="8" right="8" bottom="8" left="8"/>
                     </padding>
                 </BorderPane>
             </SplitPane>
         </Tab>
-        <Tab fx:id="reactiveLimitsTab" text="%detail.tab.reactiveLimits"/>
         <Tab fx:id="extensionsTab" text="%detail.tab.extensions">
             <ScrollPane fx:id="extensionsScrollPane" fitToWidth="true">
                 <padding>

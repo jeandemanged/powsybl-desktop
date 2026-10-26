@@ -83,7 +83,7 @@ final class TerminalPickerDialog {
         Dialog<Terminal> dialog = new Dialog<>();
         dialog.initOwner(owner);
         dialog.initModality(Modality.WINDOW_MODAL);
-        dialog.setTitle(Messages.get("detail.terminalPicker.title"));
+        dialog.setTitle(Messages.get("detail.voltageRegulation.terminal"));
         dialog.setHeaderText(Messages.get("detail.terminalPicker.header"));
         dialog.getDialogPane().setContent(new VBox(8, searchBox, equipmentLabel, terminalChoiceBox));
         dialog.getDialogPane().getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
@@ -104,7 +104,7 @@ final class TerminalPickerDialog {
         Identifiable<?> connectable = terminal.getConnectable();
         String side = Terminal.getConnectableSide(terminal)
                 .filter(s -> connectable instanceof Connectable<?> c && c.getTerminals().size() > 1)
-                .map(s -> " " + Messages.get("detail.terminal.side", s.getNum()))
+                .map(s -> " " + Messages.get("limits.side", s.getNum()))
                 .orElse("");
         return connectable.getNameOrId() + side + " (" + terminal.getVoltageLevel().getNameOrId() + ")";
     }

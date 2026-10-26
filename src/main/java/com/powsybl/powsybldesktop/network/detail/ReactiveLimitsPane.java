@@ -58,7 +58,7 @@ import java.util.function.Supplier;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-public final class ReactiveLimitsPane extends SplitPane {
+public final class ReactiveLimitsPane extends SplitPane implements DetailPart {
 
     // mutable, edited in place by the points table
     private static final class PointRow {
@@ -151,7 +151,7 @@ public final class ReactiveLimitsPane extends SplitPane {
         stageOnCommit(maxQField, value -> maxQ = value);
 
         pointsTable.getColumns().setAll(List.of(
-                pointColumn("detail.reactiveLimits.p", row -> row.p, (row, value) -> row.p = value),
+                pointColumn("desktop.common.column.p", row -> row.p, (row, value) -> row.p = value),
                 pointColumn("detail.reactiveLimits.minQ", row -> row.minQ, (row, value) -> row.minQ = value),
                 pointColumn("detail.reactiveLimits.maxQ", row -> row.maxQ, (row, value) -> row.maxQ = value)));
         pointsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
@@ -188,6 +188,7 @@ public final class ReactiveLimitsPane extends SplitPane {
         load();
     }
 
+    @Override
     public BooleanProperty editableProperty() {
         return editable;
     }
@@ -195,6 +196,7 @@ public final class ReactiveLimitsPane extends SplitPane {
     /**
      * Re-reads the limits unless edits are staged, and the operating points.
      */
+    @Override
     public void refresh() {
         if (!dirty.get()) {
             load();

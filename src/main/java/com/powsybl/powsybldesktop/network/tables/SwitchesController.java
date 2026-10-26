@@ -16,6 +16,7 @@ import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.TableAutoFitLimiter;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -68,6 +69,7 @@ public class SwitchesController extends AbstractDisposableController implements 
         TableAutoFitLimiter.install(switchesTableView);
 
         nameColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getNameOrId()));
+        TableColumnSupport.configureDetailNameColumn(nameColumn, item -> EquipmentDetails.open(sceneModel, item));
         kindColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getKind()));
         TableColumnSupport.configureEditableBooleanColumn(openColumn, Switch::isOpen, this::setOpen);
         // retain status only means anything in a node/breaker voltage level (see Switch::setRetained) -

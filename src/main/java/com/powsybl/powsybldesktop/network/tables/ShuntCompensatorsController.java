@@ -19,6 +19,7 @@ import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.ShuntCompensatorNavigationState;
+import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
@@ -65,7 +66,7 @@ public class ShuntCompensatorsController extends AbstractEquipmentTableControlle
     @FXML
     TableColumn<ShuntCompensator, String> typeColumn;
     @FXML
-    TableColumn<ShuntCompensator, ShuntCompensator> modelTypeColumn;
+    TableColumn<ShuntCompensator, String> modelTypeColumn;
     @FXML
     TableColumn<ShuntCompensator, ShuntCompensator> sectionColumn;
     @FXML
@@ -96,6 +97,7 @@ public class ShuntCompensatorsController extends AbstractEquipmentTableControlle
         TableColumnSupport.configureContainerColumn(voltageLevelColumn,
                 shuntCompensator -> Optional.of(shuntCompensator.getTerminal().getVoltageLevel()), this::containerCell);
         nameColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getNameOrId()));
+        TableColumnSupport.configureDetailNameColumn(nameColumn, item -> EquipmentDetails.open(sceneModel, item));
         TableColumnSupport.configureConnectedColumn(connectedColumn, ShuntCompensator::getTerminal, terminal -> mainModel.setUpdate(terminal.getVoltageLevel()));
         TableColumnSupport.configureComponentColumn(connectedComponentColumn,
                 shuntCompensator -> shuntCompensator.getTerminal().getBusView().getBus(), Bus::getConnectedComponent);
@@ -104,8 +106,7 @@ public class ShuntCompensatorsController extends AbstractEquipmentTableControlle
 
         typeColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(typeLabel(cellData.getValue())));
 
-        TableColumnSupport.configureInfoButtonColumn(modelTypeColumn, shuntCompensator -> modelTypeLabel(shuntCompensator.getModelType()),
-                "shuntCompensators.sections.tooltip", (owner, shuntCompensator) -> ShuntCompensatorSectionsDialog.show(owner, shuntCompensator, guiParameters()));
+        modelTypeColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(modelTypeLabel(cellData.getValue().getModelType())));
 
         TableColumnSupport.configureSpinnerIntColumn(sectionColumn, ShuntCompensator::getSectionCount,
                 ShuntCompensator::getMaximumSectionCount, ShuntCompensator::setSectionCount);
@@ -143,16 +144,15 @@ public class ShuntCompensatorsController extends AbstractEquipmentTableControlle
                         pColumn, qColumn, iColumn, regulatedBusVoltageColumn)));
     }
 
-    // Package-private: reused by ShuntCompensatorSectionsDialog's header, which repeats the row's model type
-    // and type next to the shunt's name.
-    static String modelTypeLabel(ShuntCompensatorModelType modelType) {
+    // reused by the shunt compensator detail view
+    public static String modelTypeLabel(ShuntCompensatorModelType modelType) {
         return Messages.get(modelType == ShuntCompensatorModelType.LINEAR
                 ? "shuntCompensators.modelType.linear" : "shuntCompensators.modelType.nonLinear");
     }
 
     // A linear shunt has a single bPerSection for every section, so its sign alone decides reactor vs. capacitor.
     // A non-linear shunt stores each section's B independently, so all of them must agree on the sign.
-    static String typeLabel(ShuntCompensator shuntCompensator) {
+    public static String typeLabel(ShuntCompensator shuntCompensator) {
         if (shuntCompensator.getModelType() == ShuntCompensatorModelType.LINEAR) {
             double bPerSection = shuntCompensator.getModel(ShuntCompensatorLinearModel.class).getBPerSection();
             return Messages.get(bPerSection < 0 ? "shuntCompensators.type.reactor" : "shuntCompensators.type.capacitor");

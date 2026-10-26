@@ -84,9 +84,8 @@ import java.util.function.Supplier;
  * several independently editable values. The
  * "nullable editable" variants show "-" and refuse to enter edit mode for a field that only exists on some rows,
  * for the BoundaryLines table's optional generation part. configureMultiSidedTapChangerColumn combines both: a
- * per-side IntStepperField plus an info button opening TapChangerStepsDialog, blank on a side without that tap changer
- * type, for the Transformers table's ratio/phase tap changer columns. configureInfoButtonColumn is the single-value
- * counterpart, for the ShuntCompensators table's model type column, whose info button opens ShuntCompensatorSectionsDialog.
+ * per-side IntStepperField, blank on a side without that tap changer type, for the Transformers table's ratio/phase
+ * tap changer columns (their steps are edited in the transformer's detail view).
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -98,8 +97,8 @@ public final class TableColumnSupport {
 
     // Briefly marks a cell after an edit, so styles.css can flash it red (rejected, e.g. an IIDM validation
     // exception) or green (applied), both removed again after their respective duration below.
-    static final String EDIT_ERROR_STYLE_CLASS = "edit-error";
-    static final String EDIT_SUCCESS_STYLE_CLASS = "edit-success";
+    public static final String EDIT_ERROR_STYLE_CLASS = "edit-error";
+    public static final String EDIT_SUCCESS_STYLE_CLASS = "edit-success";
     private static final Duration EDIT_SUCCESS_FLASH_DURATION = Duration.millis(200);
     private static final Duration EDIT_ERROR_FLASH_DURATION = Duration.seconds(1.5);
 
@@ -1060,7 +1059,7 @@ public final class TableColumnSupport {
 
     // Editable counterpart of a multi-sided column for a value that may not exist on every side (e.g. a
     // transformer leg without a ratio/phase tap changer): a blank slot where tapChangersGetter's list holds
-    // Optional.empty(), an IntStepperField bounded to [low, high] tap position plus an info button otherwise.
+    // Optional.empty(), an IntStepperField bounded to [low, high] tap position otherwise.
     // Unlike configureMultiSidedEditableDoubleColumn, no separate setter is needed - each present value is the
     // mutable TapChanger itself, so the field writes straight through to it.
     //
@@ -1069,27 +1068,20 @@ public final class TableColumnSupport {
     // reuses its single IntStepperField - it's expensive to construct (buttons/icons/CSS applied), so rebuilding
     // one per side on every updateItem call (as configureMultiSidedEditableDoubleColumn's plain Labels can afford
     // to) made scrolling/refreshing the Transformers table noticeably slow.
-    static <S> void configureMultiSidedTapChangerColumn(TableColumn<S, S> column, Function<S, String> nameGetter,
-                                                          Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter,
-                                                          Supplier<GuiParameters> guiParameters) {
+    static <S> void configureMultiSidedTapChangerColumn(TableColumn<S, S> column,
+                                                          Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new MultiSidedTapChangerTableCell<>(nameGetter, tapChangersGetter, guiParameters));
+        column.setCellFactory(col -> new MultiSidedTapChangerTableCell<>(tapChangersGetter));
         disableUnlessTableEditable(column);
     }
 
     private static final class MultiSidedTapChangerTableCell<S> extends TableCell<S, S> {
-        private final Function<S, String> nameGetter;
         private final Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter;
-        private final Supplier<GuiParameters> guiParameters;
         private final List<TapChangerSlot> slots = new ArrayList<>();
 
-        MultiSidedTapChangerTableCell(Function<S, String> nameGetter,
-                                       Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter,
-                                       Supplier<GuiParameters> guiParameters) {
-            this.nameGetter = nameGetter;
+        MultiSidedTapChangerTableCell(Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter) {
             this.tapChangersGetter = tapChangersGetter;
-            this.guiParameters = guiParameters;
         }
 
         @Override
@@ -1101,67 +1093,31 @@ public final class TableColumnSupport {
             }
             List<Optional<? extends TapChanger<?, ?, ?, ?>>> tapChangers = tapChangersGetter.apply(item);
             while (slots.size() < tapChangers.size()) {
-                slots.add(new TapChangerSlot(this, guiParameters));
+                slots.add(new TapChangerSlot());
             }
-            String name = nameGetter.apply(item);
             for (int side = 0; side < tapChangers.size(); side++) {
-                slots.get(side).bind(name, side, tapChangers.size(), tapChangers.get(side));
+                slots.get(side).bind(tapChangers.get(side));
             }
             setGraphic(sidedBox(slots.subList(0, tapChangers.size()).stream().<Node>map(slot -> slot.root).toList(), Pos.CENTER));
         }
     }
 
     // One side's reusable node pair: a blank Label (shown at rest, when this side has no such tap changer) and
-    // an info-button-plus-IntStepperField HBox (shown otherwise), swapped in place by bind() rather than rebuilt,
-    // so the field/Button/Tooltip are constructed once per TableCell and merely rebound to a different TapChanger
-    // as the cell is recycled to a different row.
+    // an IntStepperField (shown otherwise), swapped in place by bind() rather than rebuilt, so the field is
+    // constructed once per TableCell and merely rebound to a different TapChanger as the cell is recycled to a
+    // different row.
     private static final class TapChangerSlot {
         private final Label blankLabel = new Label();
         private final IntStepperField stepperField = new IntStepperField();
-        private final HBox presentBox;
-        private final StackPane root;
-        private TapChanger<?, ?, ?, ?> tapChanger;
-        private String name;
-        private int side;
-        private int totalSides;
+        private final StackPane root = new StackPane(blankLabel, stepperField.root);
 
-        TapChangerSlot(TableCell<?, ?> ownerCell, Supplier<GuiParameters> guiParameters) {
-            Button infoButton = new Button();
-            infoButton.setGraphic(new FontIcon("mdi2i-information-outline"));
-            infoButton.getStyleClass().add("icon-button");
-            infoButton.setTooltip(new Tooltip(Messages.get("transformers.tapChanger.stepsTooltip")));
-            infoButton.setOnAction(event -> {
-                if (tapChanger != null) {
-                    // A two-windings transformer's tap changer isn't per side (totalSides == 1 here), so its
-                    // dialog header shouldn't claim a side; a three-windings transformer's leg number is
-                    // 1-based, matching ThreeWindingsTransformer.Leg's own naming.
-                    Integer sideNumber = totalSides > 1 ? side + 1 : null;
-                    TapChangerStepsDialog.show(infoButton.getScene().getWindow(), name, sideNumber, tapChanger, guiParameters.get());
-                    // The dialog can flip hasLoadTapChangingCapabilities, which decides whether this row's
-                    // Regulating/Regulation Mode/Regulation Value/Target Deadband/Solved Tap columns are blank -
-                    // refresh so they pick that up as soon as the (modal) dialog closes.
-                    TableView<?> tableView = ownerCell.getTableView();
-                    if (tableView != null) {
-                        tableView.refresh();
-                    }
-                }
-            });
-
-            presentBox = new HBox(4, infoButton, stepperField.root);
-            presentBox.setAlignment(Pos.CENTER_LEFT);
-            root = new StackPane(blankLabel, presentBox);
-        }
-
-        void bind(String name, int side, int totalSides, Optional<? extends TapChanger<?, ?, ?, ?>> tapChangerOpt) {
-            this.name = name;
-            this.side = side;
-            this.totalSides = totalSides;
-            tapChanger = tapChangerOpt.orElse(null);
+        void bind(Optional<? extends TapChanger<?, ?, ?, ?>> tapChangerOpt) {
+            TapChanger<?, ?, ?, ?> tapChanger = tapChangerOpt.orElse(null);
             boolean present = tapChanger != null;
             blankLabel.setVisible(!present);
             blankLabel.setManaged(!present);
-            presentBox.setVisible(present);
-            presentBox.setManaged(present);
+            stepperField.root.setVisible(present);
+            stepperField.root.setManaged(present);
             if (present) {
                 stepperField.bind(tapChanger.getLowTapPosition(), tapChanger.getHighTapPosition(),
                         tapChanger.getTapPosition(), tapChanger::setTapPosition);
@@ -1346,62 +1302,8 @@ public final class TableColumnSupport {
         return new StackPane(label, choiceBox);
     }
 
-    // Single-value counterpart of configureMultiSidedTapChangerColumn's per-side info button: a Label plus a
-    // fixed info button in one HBox, for a column whose row has exactly one value rather than a variable number
-    // of sides. Used by the ShuntCompensators table's model type column, whose button opens
-    // ShuntCompensatorSectionsDialog.
-    static <S> void configureInfoButtonColumn(TableColumn<S, S> column, Function<S, String> textGetter,
-                                               String tooltipKey, BiConsumer<Window, S> onInfoClick) {
-        column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new InfoButtonTableCell<>(textGetter, tooltipKey, onInfoClick));
-        // the info button opens an editing dialog
-        disableUnlessTableEditable(column);
-        // The cell value is the row item itself (S isn't Comparable), so sorting needs an explicit comparator
-        // rather than the column's default cast-to-Comparable one - sort by the same text the cell displays.
-        column.setComparator(Comparator.comparing(textGetter));
-    }
-
-    private static final class InfoButtonTableCell<S> extends TableCell<S, S> {
-        private final Function<S, String> textGetter;
-        private final Label label = new Label();
-        private final Button infoButton = new Button();
-        private final HBox box;
-        private S current;
-
-        InfoButtonTableCell(Function<S, String> textGetter, String tooltipKey, BiConsumer<Window, S> onInfoClick) {
-            this.textGetter = textGetter;
-            infoButton.setGraphic(new FontIcon("mdi2i-information-outline"));
-            infoButton.getStyleClass().add("icon-button");
-            infoButton.setTooltip(new Tooltip(Messages.get(tooltipKey)));
-            infoButton.setOnAction(event -> {
-                if (current != null) {
-                    onInfoClick.accept(infoButton.getScene().getWindow(), current);
-                    // like the tap changer info button: the (modal) dialog can change what other columns show,
-                    // e.g. a shunt's sections' B sign decides its capacitor/reactor type
-                    if (getTableView() != null) {
-                        getTableView().refresh();
-                    }
-                }
-            });
-            box = new HBox(4, infoButton, label);
-            box.setAlignment(Pos.CENTER_LEFT);
-        }
-
-        @Override
-        protected void updateItem(S item, boolean empty) {
-            super.updateItem(item, empty);
-            current = item;
-            if (empty || item == null) {
-                setGraphic(null);
-            } else {
-                label.setText(textGetter.apply(item));
-                setGraphic(box);
-            }
-        }
-    }
-
-    // The name of an equipment with a detail view, after an info button opening it. Unlike configureInfoButtonColumn's,
-    // the button stays enabled while the network is busy: the (non-modal) detail view has its own busy lock.
+    // The name of an equipment with a detail view, after an info button opening it. Unlike editing controls, the button
+    // stays enabled while the network is busy: the (non-modal) detail view has its own busy lock.
     static <S> void configureDetailNameColumn(TableColumn<S, String> column, Consumer<S> onDetail) {
         column.setCellFactory(col -> new DetailNameTableCell<>(onDetail));
     }
@@ -1738,12 +1640,11 @@ public final class TableColumnSupport {
     }
 
     // Single-key counterpart of flashConnected/applyConnectedFlash, for a column whose cell corresponds to exactly
-    // one row identity rather than a list of terminals (e.g. a shunt compensator section number or a tap changer
-    // position, in ShuntCompensatorSectionsDialog/TapChangerStepsDialog, both of which call tableView.refresh()
-    // on commit to update sibling rows/columns derived from the edited value). Same reasoning as flashConnected:
+    // one row identity rather than a list of terminals (e.g. a row of the detail views' tables, see DetailTables, which
+    // refresh the table on commit to update sibling rows/columns derived from the edited value). Same reasoning as flashConnected:
     // that refresh can recycle the editing TableCell to a different row before the flash fades, so the state is
     // keyed by the row's identity (K) and re-derived in updateItem instead of held on the cell instance.
-    static <K> void flashKeyed(TableCell<?, ?> cell, K key, Map<K, String> flashStyles, String styleClass) {
+    public static <K> void flashKeyed(TableCell<?, ?> cell, K key, Map<K, String> flashStyles, String styleClass) {
         flashStyles.put(key, styleClass);
         applyKeyedFlash(cell, key, flashStyles);
         PauseTransition pause = new PauseTransition(flashDuration(styleClass));
@@ -1757,7 +1658,7 @@ public final class TableColumnSupport {
         pause.play();
     }
 
-    static <K> void applyKeyedFlash(TableCell<?, ?> cell, K key, Map<K, String> flashStyles) {
+    public static <K> void applyKeyedFlash(TableCell<?, ?> cell, K key, Map<K, String> flashStyles) {
         cell.getStyleClass().removeAll(EDIT_SUCCESS_STYLE_CLASS, EDIT_ERROR_STYLE_CLASS);
         String style = flashStyles.get(key);
         if (style != null) {

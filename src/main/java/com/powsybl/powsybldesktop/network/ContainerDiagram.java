@@ -9,15 +9,21 @@ package com.powsybl.powsybldesktop.network;
 
 import com.google.common.io.ByteStreams;
 import com.powsybl.iidm.network.Battery;
+import com.powsybl.iidm.network.BoundaryLine;
+import com.powsybl.iidm.network.BusbarSection;
 import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Generator;
+import com.powsybl.iidm.network.HvdcConverterStation;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.LccConverterStation;
+import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Load;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.ShuntCompensator;
 import com.powsybl.iidm.network.StaticVarCompensator;
 import com.powsybl.iidm.network.Switch;
+import com.powsybl.iidm.network.ThreeWindingsTransformer;
+import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.VscConverterStation;
 import com.powsybl.powsybldesktop.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.MainModel;
@@ -45,7 +51,7 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Slider;
 import javafx.scene.control.Tooltip;
-import javafx.scene.input.MouseButton;
+import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.util.Duration;
 import netscape.javascript.JSObject;
@@ -55,6 +61,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -63,8 +71,10 @@ import java.util.Objects;
  * the FX thread (latest wins), again on every network update, diagram parameters or decimals change - lazily, only
  * while showing. The single line diagram is interactive: a switch click toggles the switch, a feeder click navigates
  * to the feeder's equipment (see {@link SceneModel#navigate}). Used by {@link SubstationsController}'s two diagram
- * tabs and by separate diagram windows. A generator feeder click opens its detail view instead (see
- * {@link EquipmentDetails}), its right-click offers both.
+ * tabs and by separate diagram windows. A feeder click on an equipment with a detail view (see {@link EquipmentDetails})
+ * opens it instead, unless the feeder leads to another voltage level (lines, transformers...); a click on a transformer
+ * drawn inside the diagram opens its detail view; a right-click on any equipment offers its detail view and where the
+ * click leads.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -103,7 +113,7 @@ public final class ContainerDiagram extends AbstractDisposableController {
     private final Kind kind;
     private final DiagramPaneController pane;
     private final ContextMenu contextMenu = new ContextMenu();
-    // screen location of the last secondary button press, where the feeder context menu shows (see sld.js)
+    // screen location of the last context menu request, where the equipment context menu shows
     private double contextMenuX;
     private double contextMenuY;
     private final SceneModel sceneModel;
@@ -143,13 +153,8 @@ public final class ContainerDiagram extends AbstractDisposableController {
         if (kind == Kind.SINGLE_LINE) {
             pane.setOnEngineLoaded(() -> ((JSObject) pane.getWebView().getEngine().executeScript("window")).setMember("controller", this));
             pane.loadShell(SLD_HTML_SHELL.replace("%__JS__%", readSldJs()));
-            pane.getWebView().addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
-                contextMenu.hide();
-                if (event.getButton() == MouseButton.SECONDARY) {
-                    contextMenuX = event.getScreenX();
-                    contextMenuY = event.getScreenY();
-                }
-            });
+            pane.getWebView().addEventFilter(MouseEvent.MOUSE_PRESSED, event -> contextMenu.hide());
+            pane.getWebView().addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, this::onContextMenuRequested);
             // remembered across navigation/views (see SceneModel)
             listenerManager.listen(pane.zoomProperty(), (observable, oldValue, newValue) -> sceneModel.diagramZoomProperty().set(newValue.doubleValue()));
             listenerManager.listen(pane.fitToScreenProperty(), (observable, oldValue, newValue) -> sceneModel.diagramFitToScreenProperty().set(newValue));
@@ -298,24 +303,65 @@ public final class ContainerDiagram extends AbstractDisposableController {
     }
 
     /**
-     * Offers the feeder's detail view, and its row in the equipment tables, at the right-click location.
+     * Opens the detail view of a transformer drawn inside the diagram (not as a feeder, see onFeederTopBottomClick).
+     *
+     * @return whether {@code id} is such a transformer's node, JS otherwise trying the clicked element's parents
      */
     @SuppressWarnings("unused") // used by JS
-    public void onFeederContextMenu(String id) {
+    public boolean onEquipmentClick(String id) {
+        Identifiable<?> equipment = equipment(id);
+        if (equipment instanceof TwoWindingsTransformer || equipment instanceof ThreeWindingsTransformer) {
+            EquipmentDetails.open(sceneModel, equipment);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Offers the equipment's detail view (and its HVDC line's, for a converter station), and where the equipment
+     * leads: a feeder's other end voltage level, or its row in the equipment tables, at the right-click location.
+     *
+     * @return whether {@code id} is an equipment's node, JS otherwise trying the clicked element's parents
+     */
+    @SuppressWarnings("unused") // used by JS
+    public boolean onEquipmentContextMenu(String id) {
         GraphMetadata.NodeMetadata node = sldMetadata == null ? null : sldMetadata.getNodeMetadata(id);
-        if (node == null || node.getNextVId() != null) {
-            return;
-        }
-        Identifiable<?> equipment = container.getNetwork().getIdentifiable(node.getEquipmentId());
+        Identifiable<?> equipment = equipment(id);
         if (!EquipmentDetails.supports(equipment)) {
-            return;
+            return false;
         }
-        MenuItem detailsItem = new MenuItem(Messages.get("substations.diagram.feeder.details"));
+        List<MenuItem> items = new ArrayList<>();
+        MenuItem detailsItem = new MenuItem(Messages.get("detail.open.tooltip"));
         detailsItem.setOnAction(event -> EquipmentDetails.open(sceneModel, equipment));
-        MenuItem showItem = new MenuItem(Messages.get("substations.diagram.feeder.showInTable"));
+        items.add(detailsItem);
+        if (equipment instanceof HvdcConverterStation<?> station && station.getHvdcLine() != null) {
+            MenuItem hvdcItem = new MenuItem(Messages.get("substations.diagram.equipment.hvdcLineDetails"));
+            hvdcItem.setOnAction(event -> EquipmentDetails.open(sceneModel, station.getHvdcLine()));
+            items.add(hvdcItem);
+        }
+        MenuItem showItem = new MenuItem(node.getNextVId() != null
+                ? Messages.get("substations.diagram.equipment.goTo", container.getNetwork().getVoltageLevel(node.getNextVId()).getNameOrId())
+                : Messages.get("substations.diagram.equipment.showInTable"));
         showItem.setOnAction(event -> showEquipment(node, equipment));
-        contextMenu.getItems().setAll(detailsItem, showItem);
+        items.add(showItem);
+        contextMenu.getItems().setAll(items);
         contextMenu.show(pane.getWebView(), contextMenuX, contextMenuY);
+        return true;
+    }
+
+    // the WebView, its own context menu disabled, doesn't dispatch contextmenu events to the page: sld.js finds the
+    // equipment under the pointer, given in CSS pixels of the viewport (the WebView's zoom scales them)
+    private void onContextMenuRequested(ContextMenuEvent event) {
+        contextMenuX = event.getScreenX();
+        contextMenuY = event.getScreenY();
+        double zoom = pane.getWebView().getZoom();
+        pane.getWebView().getEngine().executeScript("equipmentContextMenuAt(" + event.getX() / zoom + ", " + event.getY() / zoom + ")");
+        event.consume();
+    }
+
+    private Identifiable<?> equipment(String id) {
+        GraphMetadata.NodeMetadata node = sldMetadata == null || id == null || id.isEmpty() ? null : sldMetadata.getNodeMetadata(id);
+        return node == null || node.getEquipmentId() == null ? null : container.getNetwork().getIdentifiable(node.getEquipmentId());
     }
 
     private void showEquipment(GraphMetadata.NodeMetadata node, Identifiable<?> equipment) {
@@ -338,6 +384,11 @@ public final class ContainerDiagram extends AbstractDisposableController {
             case StaticVarCompensator _ -> ContainerNavigationState.ContainerTab.STATIC_VAR_COMPENSATORS;
             case VscConverterStation _ -> ContainerNavigationState.ContainerTab.VSC_CONVERTER_STATIONS;
             case LccConverterStation _ -> ContainerNavigationState.ContainerTab.LCC_CONVERTER_STATIONS;
+            case TwoWindingsTransformer _, ThreeWindingsTransformer _ -> ContainerNavigationState.ContainerTab.TRANSFORMERS;
+            case BusbarSection _ -> ContainerNavigationState.ContainerTab.BUSBAR_SECTIONS;
+            case Switch _ -> ContainerNavigationState.ContainerTab.SWITCHES;
+            case Line _ -> ContainerNavigationState.ContainerTab.LINES;
+            case BoundaryLine _ -> ContainerNavigationState.ContainerTab.BOUNDARY_LINES;
             case null, default -> ContainerNavigationState.ContainerTab.SINGLE_LINE;
         };
     }

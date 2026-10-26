@@ -104,7 +104,7 @@ table uses it too).
   There is no form object/DTO layer.
 - Use the factories in `…/network/tables/TableColumnSupport.java` (`configureDoubleColumn`,
   `configureEditableBooleanColumn`, `configureChoiceColumn`, `configureSingleSlotChoiceColumn`, `configureNullableEditable*`, `configureMultiSided*`,
-  `configureInfoButtonColumn`, `configureSpinnerIntColumn`, ...). They handle:
+  `configureDetailNameColumn`, `configureSpinnerIntColumn`, ...). They handle:
   - validation errors: a `PowsyblException` from the setter is caught, the old value restored, and
     `notifyEditError` shows a ControlsFX popup + red flash;
   - success feedback: green flash (`flashEditSuccess` / `flashKeyed`). Cells whose setter triggers
@@ -127,7 +127,7 @@ Two established forms:
   `static show(Window owner, ...)` method building a `javafx.scene.control.Dialog` in code (no FXML):
   `initOwner(owner)`, `initModality(Modality.WINDOW_MODAL)`, title from `Messages`, content set on the `DialogPane`,
   `ButtonType.CLOSE` (or a result converter), `showAndWait()`. Examples: `…/network/tables/GeographicalTagsDialog.java`
-  (simplest), `TapChangerStepsDialog`, `ShuntCompensatorSectionsDialog` (editable cells), `…/network/DropImportDialog.java`
+  (simplest), `…/network/DropImportDialog.java`
   (returns a result via `setResultConverter`). Edits inside these dialogs write to the IIDM object directly and use the
   same error/flash helpers as tables.
 - **FXML secondary windows** opened by `MainController`: memory (`onMemory`); about (`onAbout`) is an FXML content
@@ -145,24 +145,34 @@ Two established forms:
 
 ## Equipment detail views
 
-Non-modal, all-fields view of one equipment (`…/network/detail/`), canonical example `GeneratorDetailController` +
-`generator-detail-view.fxml`:
+Non-modal, all-fields view of one equipment (`…/network/detail/`), one `AbstractEquipmentDetailController` subclass per
+equipment type (generators, batteries, loads, shunt and static var compensators, VSC/LCC converter stations, HVDC
+lines, lines, tie lines, boundary lines, two- and three-winding transformers, busbar sections, switches), all on the
+shared `equipment-detail-view.fxml` (no `fx:controller`: `EquipmentDetails.load` sets it). Canonical examples:
+`GeneratorDetailController` (injection), `TwoWindingsTransformerDetailController` (branch).
 
 - Opened by `EquipmentDetails.open(sceneModel, equipment)` (a no-op for an unsupported type) as a `SeparateWindows` tab
-  keyed by equipment id, from the SLD (feeder click, feeder context menu in `ContainerDiagram` / `sld.js`) and from the
-  equipment table's name column info button (`TableColumnSupport.configureDetailNameColumn`). Works from separate
-  windows too, through `SceneModel.getDetailWindows()`. Add a type by extending `EquipmentDetails.supports`/`open`.
-- Tabs: main data (form + small `CapabilityChart` when applicable), then secondary tabs (reactive limits, extensions,
-  properties and aliases).
-- Build forms with `DetailForm` (sections of label/editor/unit rows; commits on Enter or focus loss, Escape reverts;
-  same error/flash feedback as tables; `refresh()` skips the field being typed in). Solved values are read-only
-  `value(...)` rows. Show IIDM attributes as IIDM holds them (e.g. `VoltageRegulation` fields), not the tables'
-  simplified columns.
-- Reuse `ReactiveLimitsPane` (staged edits + Apply/Revert, since IIDM reactive limits are replaced as a whole),
-  `ExtensionsPane` with editors from `ExtensionEditors` (shared ones are generic over `Injection`/`Connectable`), and
+  keyed by equipment id; works from separate windows too, through `SceneModel.getDetailWindows()`. Add a type with a
+  subclass and a `Kind` entry in `EquipmentDetails`. Entry points: every equipment table's name column info button
+  (`TableColumnSupport.configureDetailNameColumn`); in the SLD (`ContainerDiagram` / `sld.js`), a feeder click (unless
+  the feeder leads to another voltage level, which the click keeps navigating to), a click on a transformer drawn
+  inside the diagram, and a right-click on any equipment (details, HVDC line details for a converter station, go to /
+  show in table).
+- The base builds the header (title, voltage level links), the main tab's general section (id, name, fictitious), the
+  extensions and properties/aliases tabs; a subclass adds its main rows (`buildMain`), a main side node
+  (`mainSide`, e.g. `capabilityChart(...)`) and tabs (`extraTabs`: `reactiveLimitsTab(...)`, `limitsTab()`,
+  `TapChangerPane`s, ...). Every part is a `DetailPart` passed to `register(...)`: the base re-reads it after every
+  network update and binds its `editableProperty()` to the busy lock. Edits run `onEdit()` (`mainModel.setUpdate`).
+- Reuse, never duplicate, the shared pieces: `DetailForm` (label/editor/unit rows; commits on Enter or focus loss,
+  Escape reverts; same error/flash feedback as tables), `DetailSections` (terminal connection, solved values, sides,
+  local targets, a `VoltageRegulationHolder`'s voltage regulation as IIDM holds it - also used by ratio tap changers -,
+  regulated terminal row with `TerminalPickerDialog`, links to other equipment's details), `DetailTables` (editable row
+  table columns with row-keyed flash), `ReactiveLimitsPane` (staged edits + Apply/Revert, IIDM reactive limits being
+  replaced as a whole), `TapChangerPane`, `OperationalLimitsPane.editable(...)` (also the violations popup's read-only
+  pane), `ExtensionsPane` with editors from `ExtensionEditors` (per-type lists composed of shared generic ones), and
   `KeyValueTablePane.properties/aliases`.
-- Bind every part's `editableProperty()` to `networkBusyProperty().not()`, run edits' `onEdit` as
-  `mainModel.setUpdate(voltageLevel)`, and refresh all parts on `updateProperty()` and GUI parameters changes.
+- Show IIDM attributes as IIDM holds them, not the tables' simplified columns, and only the values IIDM accepts for the
+  type (e.g. regulation modes per `VoltageRegulationUtils`).
 
 ## WebView-based views (diagrams, map)
 

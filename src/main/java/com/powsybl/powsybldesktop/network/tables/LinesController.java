@@ -15,6 +15,7 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.LineNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
+import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
@@ -91,6 +92,7 @@ public class LinesController extends AbstractEquipmentTableController<Line> {
                 line -> Optional.of(line.getTerminal1().getVoltageLevel()),
                 line -> Optional.of(line.getTerminal2().getVoltageLevel()), this::containerCell);
         nameColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getNameOrId()));
+        TableColumnSupport.configureDetailNameColumn(nameColumn, item -> EquipmentDetails.open(sceneModel, item));
 
         TableColumnSupport.configureTwoSidedConnectedColumn(connectedColumn,
                 Line::getTerminal1, Line::getTerminal2, terminal -> mainModel.setUpdate(terminal.getVoltageLevel()));

@@ -204,8 +204,7 @@ class ShuntCompensatorsControllerTest extends AbstractHeadlessApplicationTest {
 
         assertEquals(shuntCompensator.getNameOrId(), cellValue(controller.nameColumn, row));
         assertEquals(Messages.get("shuntCompensators.type.capacitor"), cellValue(controller.typeColumn, row));
-        HBox modelTypeBox = (HBox) cellGraphic(controller.modelTypeColumn, row);
-        assertEquals(Messages.get("shuntCompensators.modelType.linear"), ((Label) modelTypeBox.getChildren().get(1)).getText());
+        assertEquals(Messages.get("shuntCompensators.modelType.linear"), cellValue(controller.modelTypeColumn, row));
         assertEquals(3, cellValue(controller.maximumSectionColumn, row));
         assertEquals(shuntCompensator.getRegulatingTargetV(), ((Double) cellValue(controller.targetVColumn, row)).doubleValue());
         assertEquals(shuntCompensator.getVoltageRegulation().getTargetDeadband(), ((Double) cellValue(controller.targetDeadbandColumn, row)).doubleValue());

@@ -35,7 +35,7 @@ import java.util.function.Supplier;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-public final class ExtensionsPane<O extends Extendable<O>> extends VBox {
+public final class ExtensionsPane<O extends Extendable<O>> extends VBox implements DetailPart {
 
     /**
      * How to show and edit one extension class.
@@ -72,6 +72,7 @@ public final class ExtensionsPane<O extends Extendable<O>> extends VBox {
         rebuild();
     }
 
+    @Override
     public BooleanProperty editableProperty() {
         return editable;
     }
@@ -79,6 +80,7 @@ public final class ExtensionsPane<O extends Extendable<O>> extends VBox {
     /**
      * Rebuilds the sections if extensions were added or removed meanwhile, re-reads their forms otherwise.
      */
+    @Override
     public void refresh() {
         if (!List.copyOf(extendable.getExtensions()).equals(shown)) {
             rebuild();
