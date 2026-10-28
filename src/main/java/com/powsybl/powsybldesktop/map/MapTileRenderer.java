@@ -197,7 +197,7 @@ final class MapTileRenderer {
             int b = line * 4;
             double[] bounds = data.lineBounds();
             if (bounds[b + 2] < minX || bounds[b] > maxX || bounds[b + 3] < minY || bounds[b + 1] > maxY
-                    || hiddenBaseVoltages.contains(data.lineBaseVoltages()[line])) {
+                    || MapNetworkData.isHidden(hiddenBaseVoltages, data.lineBaseVoltages()[line])) {
                 continue;
             }
             Path2D.Double path = new Path2D.Double();
@@ -221,7 +221,7 @@ final class MapTileRenderer {
             for (int i = substations.nextSetBit(0); i >= 0; i = substations.nextSetBit(i + 1)) {
                 double x = data.substationX()[i];
                 double y = data.substationY()[i];
-                if (x < minX || x > maxX || y < minY || y > maxY || hiddenBaseVoltages.contains(data.substationBaseVoltages()[i])) {
+                if (x < minX || x > maxX || y < minY || y > maxY || MapNetworkData.isHidden(hiddenBaseVoltages, data.substationBaseVoltages()[i])) {
                     continue;
                 }
                 g.setColor(data.colors().get(data.substationColor()[i]));

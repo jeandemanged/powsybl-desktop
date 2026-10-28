@@ -406,6 +406,12 @@ record MapNetworkData(List<Color> colors,
         return Math.toDegrees(Math.asin(Math.tanh(2 * Math.PI * (0.5 - y / WORLD_SIZE))));
     }
 
+    // a substation without voltage level, or a nominal voltage outside the base voltages, has a null base voltage:
+    // never hidden, and immutable sets throw on contains(null)
+    static boolean isHidden(Set<String> hiddenBaseVoltages, String baseVoltage) {
+        return baseVoltage != null && hiddenBaseVoltages.contains(baseVoltage);
+    }
+
     /**
      * Substation marker size in whole pixels at a zoom of the given {@code scale} (2^zoom), so zooming only ever
      * produces a handful of sizes.
@@ -562,14 +568,14 @@ record MapNetworkData(List<Color> colors,
                         double dx = substationX[item] - px;
                         double dy = substationY[item] - py;
                         double distance = dx * dx + dy * dy;
-                        if (distance <= bestSubstationDistance && !hiddenBaseVoltages.contains(substationBaseVoltages[item])) {
+                        if (distance <= bestSubstationDistance && !isHidden(hiddenBaseVoltages, substationBaseVoltages[item])) {
                             bestSubstationDistance = distance;
                             bestSubstation = item;
                         }
                     } else {
                         int k = -item - 1;
                         double distance = squaredDistanceToSegment(px, py, pointX[k], pointY[k], pointX[k + 1], pointY[k + 1]);
-                        if (distance <= bestLineDistance && !hiddenBaseVoltages.contains(lineBaseVoltages[pointLine[k]])) {
+                        if (distance <= bestLineDistance && !isHidden(hiddenBaseVoltages, lineBaseVoltages[pointLine[k]])) {
                             bestLineDistance = distance;
                             bestLine = pointLine[k];
                         }

@@ -44,7 +44,6 @@ import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import javafx.concurrent.Worker;
 import javafx.fxml.FXML;
-import javafx.geometry.Point2D;
 import javafx.scene.Node;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
@@ -52,6 +51,8 @@ import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
+import javafx.scene.input.ContextMenuEvent;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
 import javafx.scene.web.WebView;
 import javafx.util.StringConverter;
@@ -180,6 +181,8 @@ public class MapController extends AbstractDisposableController implements Scene
     @FXML
     private WebView webView;
     private final ContextMenu contextMenu = new ContextMenu();
+    private double contextMenuX;
+    private double contextMenuY;
 
     @FXML
     private ComboBox<Basemap> basemapComboBox;
@@ -245,6 +248,8 @@ public class MapController extends AbstractDisposableController implements Scene
     @FXML
     private void initialize() {
         webView.setContextMenuEnabled(false);
+        webView.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> contextMenu.hide());
+        webView.addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, this::onContextMenuRequested);
         basemapComboBox.getItems().setAll(Basemap.values());
         basemapComboBox.setConverter(new StringConverter<>() {
             @Override
@@ -557,7 +562,7 @@ public class MapController extends AbstractDisposableController implements Scene
 
     // creation in the clicked substation, or of a substation at the clicked place
     @SuppressWarnings("unused") // called from map.js
-    public void onMapContextMenu(double latitude, double longitude, double zoom, double x, double y) {
+    public void onMapContextMenu(double latitude, double longitude, double zoom) {
         Network network = sceneModel.getNetwork();
         if (network == null) {
             return;
@@ -578,9 +583,20 @@ public class MapController extends AbstractDisposableController implements Scene
             }
         }
         contextMenu.getItems().setAll(items);
-        Point2D screen = webView.localToScreen(x, y);
         // not from within the JavaScript call
-        Platform.runLater(() -> contextMenu.show(webView, screen.getX(), screen.getY()));
+        Platform.runLater(() -> contextMenu.show(webView, contextMenuX, contextMenuY));
+    }
+
+    // the WebView, its own context menu disabled, doesn't dispatch contextmenu events to the page: map.js finds the
+    // place under the pointer, given in CSS pixels of the viewport (the WebView's zoom scales them)
+    private void onContextMenuRequested(ContextMenuEvent event) {
+        if (engineLoaded) {
+            contextMenuX = event.getScreenX();
+            contextMenuY = event.getScreenY();
+            double zoom = webView.getZoom();
+            webView.getEngine().executeScript("mapContextMenuAt(" + event.getX() / zoom + ", " + event.getY() / zoom + ")");
+        }
+        event.consume();
     }
 
     @Override

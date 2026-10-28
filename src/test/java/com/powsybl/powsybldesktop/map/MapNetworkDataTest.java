@@ -17,10 +17,12 @@ import com.powsybl.iidm.network.extensions.SubstationPositionAdder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -131,5 +133,18 @@ class MapNetworkDataTest {
         assertEquals(48, bounds[2], DELTA);
         assertEquals(2.3, bounds[3], DELTA);
         assertNull(data.substationsLatLngBounds(Set.of("S8")));
+    }
+
+    // substations without voltage levels, or nominal voltages outside the base voltages, have none: an
+    // immutable set of hidden ones throws on contains(null)
+    @Test
+    void elementsWithoutBaseVoltageAreHitAndDrawn() throws IOException {
+        MapNetworkData.Hit hit = data.hitTest(48, 2.3, 10, Set.of());
+        assertEquals("S3", hit.id());
+
+        double scale = Math.pow(2, 10);
+        int tileX = (int) (MapNetworkData.projectX(2.3) * scale / MapTileRenderer.TILE_SIZE);
+        int tileY = (int) (MapNetworkData.projectY(48) * scale / MapTileRenderer.TILE_SIZE);
+        assertNotNull(MapTileRenderer.render(data, false, Set.of(), 10, tileX, tileY, 1));
     }
 }

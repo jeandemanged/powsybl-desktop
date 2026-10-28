@@ -376,9 +376,12 @@ map.on('click', function (e) {
     window.controller.onMapClick(e.latlng.lat, e.latlng.lng, map.getZoom());
 });
 
-map.on('contextmenu', function (e) {
-    window.controller.onMapContextMenu(e.latlng.lat, e.latlng.lng, map.getZoom(), e.originalEvent.clientX, e.originalEvent.clientY);
-});
+// called by MapController on a right-click, the WebView not dispatching contextmenu events to the page (its own
+// context menu disabled), with the pointer in CSS pixels of the viewport
+function mapContextMenuAt(x, y) {
+    var latlng = map.containerPointToLatLng(L.point(x, y));
+    window.controller.onMapContextMenu(latlng.lat, latlng.lng, map.getZoom());
+}
 
 // Called by MapController once a network is ready to be drawn, with the south, west, north and east of what it
 // draws, null for nothing, and the view the user last left it at, as {latitude, longitude, zoom}, null for none.
