@@ -125,7 +125,7 @@ public class SearchBoxController {
                         NetworkSearch.Kind.GENERATOR, NetworkSearch.Kind.BATTERY, NetworkSearch.Kind.SHUNT_COMPENSATOR, NetworkSearch.Kind.STATIC_VAR_COMPENSATOR,
                         NetworkSearch.Kind.VSC_CONVERTER_STATION, NetworkSearch.Kind.LCC_CONVERTER_STATION, NetworkSearch.Kind.LOAD,
                         NetworkSearch.Kind.LINE, NetworkSearch.Kind.TRANSFORMER, NetworkSearch.Kind.TIE_LINE, NetworkSearch.Kind.BOUNDARY_LINE,
-                        NetworkSearch.Kind.HVDC_LINE, NetworkSearch.Kind.BUSBAR_SECTION)
+                        NetworkSearch.Kind.HVDC_LINE, NetworkSearch.Kind.BUSBAR_SECTION, NetworkSearch.Kind.GROUND)
                 .stream()
                 .filter(kinds::contains)
                 .map(kind -> Messages.get(pluralKindMessageKey(kind)))
@@ -151,6 +151,7 @@ public class SearchBoxController {
             case BOUNDARY_LINE -> "desktop.common.equipment.boundaryLine.plural";
             case HVDC_LINE -> "desktop.common.equipment.hvdcLine.plural";
             case BUSBAR_SECTION -> "desktop.common.equipment.busbarSection.plural";
+            case GROUND -> "desktop.common.equipment.ground.plural";
         };
     }
 
@@ -312,6 +313,7 @@ public class SearchBoxController {
             case BOUNDARY_LINE -> "desktop.common.equipment.boundaryLine";
             case HVDC_LINE -> "desktop.common.equipment.hvdcLine";
             case BUSBAR_SECTION -> "desktop.common.equipment.busbarSection";
+            case GROUND -> "desktop.common.equipment.ground";
         };
     }
 

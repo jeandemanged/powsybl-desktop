@@ -24,6 +24,7 @@ import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.TransformerNavigationState;
 import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
+import com.powsybl.powsybldesktop.network.edit.EditMenus;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
@@ -31,6 +32,7 @@ import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.violations.Loading;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.util.StringConverter;
@@ -493,5 +495,16 @@ public class TransformersController extends AbstractEquipmentTableController<Ide
     @Override
     NavigationEvent ownNavigationEvent(Identifiable<?> transformer) {
         return NavigationEvent.create(NavigationType.NETWORK_TABLE_TRANSFORMERS, TransformerNavigationState.create(transformer));
+    }
+
+    @Override
+    protected List<MenuItem> creationItems(Container<?> context) {
+        Substation substation = switch (context) {
+            case Substation s -> s;
+            case VoltageLevel voltageLevel -> voltageLevel.getNullableSubstation();
+            case null, default -> null;
+        };
+        return EditMenus.transformerItems(sceneModel, () -> tableView().getScene().getWindow(), substation,
+                context instanceof VoltageLevel voltageLevel ? voltageLevel : null, null);
     }
 }

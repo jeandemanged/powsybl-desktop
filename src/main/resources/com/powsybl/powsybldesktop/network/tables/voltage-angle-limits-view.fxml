@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.network.tables.VoltageAngleLimitsController">
+   <children>
+      <ToolBar fx:id="toolBar"/>
+      <TableView fx:id="voltageAngleLimitsTableView" editable="true" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">
+         <columns>
+            <TableColumn fx:id="idColumn" text="%desktop.common.column.id" editable="false"/>
+            <TableColumn fx:id="fromColumn" text="%edit.angleLimit.from" editable="false"/>
+            <TableColumn fx:id="toColumn" text="%edit.angleLimit.to" editable="false"/>
+            <TableColumn fx:id="lowLimitColumn" styleClass="right-aligned-column" text="%edit.angleLimit.low" editable="false"/>
+            <TableColumn fx:id="highLimitColumn" styleClass="right-aligned-column" text="%edit.angleLimit.high" editable="false"/>
+         </columns>
+      </TableView>
+   </children>
+</VBox>

@@ -13,6 +13,7 @@ import com.powsybl.iidm.network.BoundaryLine;
 import com.powsybl.iidm.network.BusbarSection;
 import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Generator;
+import com.powsybl.iidm.network.Ground;
 import com.powsybl.iidm.network.HvdcConverterStation;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.LccConverterStation;
@@ -33,6 +34,7 @@ import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
+import com.powsybl.powsybldesktop.network.edit.EditMenus;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.parameters.ApplicationParametersJson;
 import com.powsybl.powsybldesktop.parameters.DesktopNadParameters;
@@ -50,6 +52,7 @@ import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.Separator;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.Slider;
 import javafx.scene.control.Tooltip;
 import javafx.scene.input.ContextMenuEvent;
@@ -328,8 +331,9 @@ public final class ContainerDiagram extends AbstractDisposableController {
     }
 
     /**
-     * Offers the equipment's detail view (and its HVDC line's, for a converter station), and where the equipment
-     * leads: a feeder's other end voltage level, or its row in the equipment tables, at the right-click location.
+     * Offers the equipment's detail view (and its HVDC line's, for a converter station), where the equipment leads (a
+     * feeder's other end voltage level, or its row in the equipment tables), then what can be created on it (on a
+     * busbar section or bus) and its removal, at the right-click location.
      *
      * @return whether {@code id} is an equipment's node, JS otherwise trying the clicked element's parents
      */
@@ -337,26 +341,51 @@ public final class ContainerDiagram extends AbstractDisposableController {
     public boolean onEquipmentContextMenu(String id) {
         GraphMetadata.NodeMetadata node = sldMetadata == null ? null : sldMetadata.getNodeMetadata(id);
         Identifiable<?> equipment = equipment(id);
-        if (!EquipmentDetails.supports(equipment)) {
+        if (equipment == null) {
             return false;
         }
         List<MenuItem> items = new ArrayList<>();
-        MenuItem detailsItem = new MenuItem(Messages.get("detail.open.tooltip"));
-        detailsItem.setOnAction(event -> EquipmentDetails.open(sceneModel, equipment));
-        items.add(detailsItem);
-        if (equipment instanceof HvdcConverterStation<?> station && station.getHvdcLine() != null) {
-            MenuItem hvdcItem = new MenuItem(Messages.get("substations.diagram.equipment.hvdcLineDetails"));
-            hvdcItem.setOnAction(event -> EquipmentDetails.open(sceneModel, station.getHvdcLine()));
-            items.add(hvdcItem);
+        if (EquipmentDetails.supports(equipment)) {
+            MenuItem detailsItem = new MenuItem(Messages.get("detail.open.tooltip"));
+            detailsItem.setOnAction(event -> EquipmentDetails.open(sceneModel, equipment));
+            items.add(detailsItem);
+            if (equipment instanceof HvdcConverterStation<?> station && station.getHvdcLine() != null) {
+                MenuItem hvdcItem = new MenuItem(Messages.get("substations.diagram.equipment.hvdcLineDetails"));
+                hvdcItem.setOnAction(event -> EquipmentDetails.open(sceneModel, station.getHvdcLine()));
+                items.add(hvdcItem);
+            }
+            MenuItem showItem = new MenuItem(node.getNextVId() != null
+                    ? Messages.get("substations.diagram.equipment.goTo", container.getNetwork().getVoltageLevel(node.getNextVId()).getNameOrId())
+                    : Messages.get("substations.diagram.equipment.showInTable"));
+            showItem.setOnAction(event -> showEquipment(node, equipment));
+            items.add(showItem);
         }
-        MenuItem showItem = new MenuItem(node.getNextVId() != null
-                ? Messages.get("substations.diagram.equipment.goTo", container.getNetwork().getVoltageLevel(node.getNextVId()).getNameOrId())
-                : Messages.get("substations.diagram.equipment.showInTable"));
-        showItem.setOnAction(event -> showEquipment(node, equipment));
-        items.add(showItem);
+        List<MenuItem> edits = EditMenus.items(sceneModel, () -> pane.getWebView().getScene().getWindow(), equipment.getParentNetwork(), equipment);
+        if (!items.isEmpty() && !edits.isEmpty()) {
+            items.add(new SeparatorMenuItem());
+        }
+        items.addAll(edits);
+        if (items.isEmpty()) {
+            return false;
+        }
         contextMenu.getItems().setAll(items);
         contextMenu.show(pane.getWebView(), contextMenuX, contextMenuY);
         return true;
+    }
+
+    /**
+     * Offers what can be created in the shown voltage level or substation, on a right-click outside any equipment.
+     */
+    @SuppressWarnings("unused") // used by JS
+    public void onBackgroundContextMenu() {
+        if (container == null) {
+            return;
+        }
+        List<MenuItem> items = EditMenus.items(sceneModel, () -> pane.getWebView().getScene().getWindow(), container.getParentNetwork(), container);
+        if (!items.isEmpty()) {
+            contextMenu.getItems().setAll(items);
+            contextMenu.show(pane.getWebView(), contextMenuX, contextMenuY);
+        }
     }
 
     // the WebView, its own context menu disabled, doesn't dispatch contextmenu events to the page: sld.js finds the
@@ -399,6 +428,7 @@ public final class ContainerDiagram extends AbstractDisposableController {
             case Switch _ -> ContainerNavigationState.ContainerTab.SWITCHES;
             case Line _ -> ContainerNavigationState.ContainerTab.LINES;
             case BoundaryLine _ -> ContainerNavigationState.ContainerTab.BOUNDARY_LINES;
+            case Ground _ -> ContainerNavigationState.ContainerTab.GROUNDS;
             case null, default -> ContainerNavigationState.ContainerTab.SINGLE_LINE;
         };
     }

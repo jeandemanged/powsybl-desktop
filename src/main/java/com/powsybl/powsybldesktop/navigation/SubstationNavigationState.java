@@ -7,10 +7,12 @@
  */
 package com.powsybl.powsybldesktop.navigation;
 
+import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
 
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -34,6 +36,11 @@ public class SubstationNavigationState extends NetworkNavigationState {
 
     public Substation getSubstation() {
         return substation;
+    }
+
+    @Override
+    public boolean refersTo(Set<Identifiable<?>> removed) {
+        return removed.contains(substation);
     }
 
     @Override

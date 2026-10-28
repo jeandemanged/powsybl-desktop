@@ -40,7 +40,7 @@
         <!-- surefire forks test classes in parallel JVMs, not JUnit's in-JVM parallel mode: a JVM has a
              single JavaFX toolkit and TestFX shares one primary stage between test classes. A property
              rather than plugin configuration so that -DforkCount=N overrides it -->
-        <forkCount>1C</forkCount>
+        <forkCount>0.5C</forkCount>
     </properties>
 
     <dependencies>
@@ -88,6 +88,14 @@
                  powsybl-ucte-converter, but used directly -->
             <groupId>com.powsybl</groupId>
             <artifactId>powsybl-entsoe-util</artifactId>
+            <version>${powsybl-core.version}</version>
+        </dependency>
+        <dependency>
+            <!-- provides the network modifications (feeder bays, voltage level topologies, removals...) used to
+                 create and remove equipment; already pulled in transitively via powsybl-cgmes-conversion, but used
+                 directly -->
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-iidm-modification</artifactId>
             <version>${powsybl-core.version}</version>
         </dependency>
         <dependency>

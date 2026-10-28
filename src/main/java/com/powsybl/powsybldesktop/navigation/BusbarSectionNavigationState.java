@@ -8,9 +8,11 @@
 package com.powsybl.powsybldesktop.navigation;
 
 import com.powsybl.iidm.network.BusbarSection;
+import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -34,6 +36,11 @@ public class BusbarSectionNavigationState extends NetworkNavigationState {
 
     public BusbarSection getBusbarSection() {
         return busbarSection;
+    }
+
+    @Override
+    public boolean refersTo(Set<Identifiable<?>> removed) {
+        return removed.contains(busbarSection);
     }
 
     @Override

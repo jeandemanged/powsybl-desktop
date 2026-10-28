@@ -7,10 +7,13 @@
  */
 package com.powsybl.powsybldesktop.navigation;
 
+import com.powsybl.commons.PowsyblException;
 import com.powsybl.iidm.network.Bus;
+import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -34,6 +37,19 @@ public class BusNavigationState extends NetworkNavigationState {
 
     public Bus getBus() {
         return bus;
+    }
+
+    @Override
+    public boolean refersTo(Set<Identifiable<?>> removed) {
+        if (bus == null) {
+            return false;
+        }
+        // a bus view bus is computed, never notified as removed: it is gone with its voltage level
+        try {
+            return removed.contains(bus) || removed.contains(bus.getVoltageLevel());
+        } catch (PowsyblException e) {
+            return true;
+        }
     }
 
     @Override

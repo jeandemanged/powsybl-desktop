@@ -24,6 +24,7 @@ Not a textbook MVC/MVVM. The actual structure is:
 | `network` | `NetworksController` (load/import/export/merge/detach networks), `SubstationsController` (tree + SLD/NAD tabs + embedded tables), diagram renderers, `DropImportDialog` |
 | `network/tables` | One controller per equipment table, `AbstractEquipmentTableController`, `EmbeddableEquipmentTable`, `TableColumnSupport` (cell factories), `ViolationColumns` (columns of the Violations and Security Analysis Results views), `ColumnVisibilityToolbarController`, edit dialogs |
 | `network/detail` | Equipment detail views, one `AbstractEquipmentDetailController` subclass per equipment type, opened by `EquipmentDetails.open` as separate-window tabs, and their reusable parts: `DetailForm`, `DetailSections`, `DetailTables`, `ReactiveLimitsPane` + `CapabilityChart`, `TapChangerPane`, `ExtensionsPane` + `ExtensionEditors`, `KeyValueTablePane` (properties, aliases), `TerminalPickerDialog` |
+| `network/edit` | Creating and removing network objects: `NetworkEdits` (the single mutation funnel), creation dialogs (`CreateDialog` + `CreationForm`, `ConnectionSection`) per family (`ContainerCreations`, `InjectionCreations`, `BranchCreations`, `NetworkObjectEdits`), `TopologyEdits` and `LineEdits` (powsybl-iidm-modification topology modifications), `Removals`, and the menus offering them everywhere (`EditMenus`, `TableEditActions`) |
 | `network/limits` | `OperationalLimitsPane`: an equipment's operational limits groups, read-only with violations highlighted (`FlowViolationsDialog`) or editable (detail views) |
 | `network/search` | `NetworkSearch` (kinds, container resolution), `NetworkSearchIndex` (Lucene), `SearchBoxController` (reusable search box) |
 | `diagram` | `DiagramPaneController`: reusable WebView viewport (zoom, fit, PNG/SVG export) |
@@ -85,6 +86,25 @@ Rules:
   from `updateProperty()`.
 - Collections exposed to views are unmodifiable views cached in a field (see the comment in
   `navigation/NavigationHistory.java` on why a fresh unmodifiable wrapper per call can silently stop forwarding).
+
+## Structural edits (creating and removing network objects)
+
+- Every creation or removal goes through `network/edit/NetworkEdits.apply(mainModel, network, change)`: refused (error
+  notification) while the network is busy, run on the FX thread (a few objects, like value edits). A temporary IIDM
+  `NetworkListener` on the root network collects what `change` created and removed - modifications create and remove
+  more than they are given (a bay's switches, a voltage level's contents, a converter station's HVDC line) - and
+  publishes it as a `NetworkStructureChange` through `MainModel.setStructureChange`, then `setUpdate()` (only the
+  latter when nothing was created nor removed, e.g. an internal connection).
+- `setStructureChange` purges the navigation history of entries whose state `refersTo` a removed object (every
+  equipment `NavigationState` implements it, by identity). Listeners then: `MainController` updates every search index
+  of the root network in place (`NetworkSearchIndex.applyStructureChange`) and closes the separate-window views of
+  removed objects (`SeparateWindows.closeRemoved`: detail views, container diagrams and tabs); `SubstationsController`
+  rebuilds its tree keeping expansion and selection (or the closest remaining ancestor); `NetworksController` refreshes
+  the statistics. Tables and diagrams already re-query on `updateProperty()`.
+- powsybl-iidm-modification modifications are applied with `NetworkEdits.apply(network, modification)`, which throws
+  on error (they only log by default). Node breaker feeders get their bay (`CreateFeederBay`,
+  `CreateBranchFeederBays`, and leg by leg for three-winding transformers) and a `ConnectablePosition` where the voltage
+  level uses positions.
 
 ## Navigation
 

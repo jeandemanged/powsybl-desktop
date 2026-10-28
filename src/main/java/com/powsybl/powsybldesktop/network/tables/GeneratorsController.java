@@ -8,6 +8,7 @@
 package com.powsybl.powsybldesktop.network.tables;
 
 import com.powsybl.iidm.network.Bus;
+import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Generator;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
@@ -17,12 +18,15 @@ import com.powsybl.powsybldesktop.navigation.GeneratorNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
+import com.powsybl.powsybldesktop.network.edit.EditMenus;
+import com.powsybl.powsybldesktop.network.edit.InjectionCreations;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 
@@ -195,5 +199,11 @@ public class GeneratorsController extends AbstractEquipmentTableController<Gener
     @Override
     NavigationEvent ownNavigationEvent(Generator generator) {
         return NavigationEvent.create(NavigationType.NETWORK_TABLE_GENERATORS, GeneratorNavigationState.create(generator));
+    }
+
+    @Override
+    protected List<MenuItem> creationItems(Container<?> context) {
+        return EditMenus.injectionItems(sceneModel, () -> tableView().getScene().getWindow(), sceneModel.getNetwork(), context,
+                InjectionCreations.Kind.GENERATOR);
     }
 }

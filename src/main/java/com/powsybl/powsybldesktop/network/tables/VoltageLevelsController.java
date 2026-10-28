@@ -22,6 +22,8 @@ import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.VoltageLevelNavigationState;
 import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
+import com.powsybl.powsybldesktop.network.edit.EditMenus;
+import com.powsybl.powsybldesktop.network.edit.TableEditActions;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
@@ -119,6 +121,11 @@ public class VoltageLevelsController extends AbstractDisposableController implem
         // for the decimal places, read by the cells on every render
         listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> voltageLevelsTableView.refresh());
         searchBoxController.bind(sceneModel, this::onSearchMatch);
+        TableEditActions.install(voltageLevelsTableView, sceneModel, () -> {
+            VoltageLevel selected = voltageLevelsTableView.getSelectionModel().getSelectedItem();
+            return List.of(EditMenus.voltageLevelItem(sceneModel,
+                    () -> voltageLevelsTableView.getScene().getWindow(), sceneModel.getNetwork(), selected == null ? null : selected.getNullableSubstation()));
+        });
     }
 
     @Override

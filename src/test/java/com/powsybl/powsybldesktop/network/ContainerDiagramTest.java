@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.testfx.util.WaitForAsyncUtils;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -104,7 +104,9 @@ class ContainerDiagramTest extends AbstractHeadlessApplicationTest {
                 .filter(window -> window instanceof ContextMenu && window.isShowing())
                 .map(ContextMenu.class::cast)
                 .findFirst().orElseThrow(() -> new AssertionError("No context menu"));
-        assertEquals(List.of(Messages.get("detail.open.tooltip"), Messages.get("substations.diagram.equipment.showInTable")),
+        // then, after a separator, its topology edits and its removal
+        assertEquals(Arrays.asList(Messages.get("detail.open.tooltip"), Messages.get("substations.diagram.equipment.showInTable"), null,
+                        Messages.get("edit.menu.topology"), null, Messages.get("edit.menu.remove", "Generator \"B1-G\"")),
                 menu.getItems().stream().map(MenuItem::getText).toList());
     }
 

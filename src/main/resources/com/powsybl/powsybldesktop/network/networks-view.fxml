@@ -22,6 +22,14 @@
                     <top>
                         <ToolBar>
                             <items>
+                                <Button fx:id="newNetworkButton" mnemonicParsing="false" onAction="#onNewNetwork">
+                                    <graphic>
+                                        <FontIcon iconLiteral="mdi2f-file-plus" iconSize="16"/>
+                                    </graphic>
+                                    <tooltip>
+                                        <Tooltip text="%networks.toolbar.newNetwork"/>
+                                    </tooltip>
+                                </Button>
                                 <MenuButton fx:id="importMenuButton" mnemonicParsing="false">
                                     <graphic>
                                         <FontIcon iconLiteral="mdi2u-upload" iconSize="16"/>

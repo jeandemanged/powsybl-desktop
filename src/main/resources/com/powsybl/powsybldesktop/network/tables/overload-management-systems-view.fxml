@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.network.tables.OverloadManagementSystemsController">
+   <children>
+      <TableView fx:id="overloadManagementSystemsTableView" editable="true" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">
+         <columns>
+            <TableColumn fx:id="nameColumn" text="%desktop.common.column.name" editable="false"/>
+            <TableColumn fx:id="substationColumn" text="%desktop.common.equipment.substation" editable="false"/>
+            <TableColumn fx:id="enabledColumn" styleClass="centered-column" text="%edit.oms.enabled"/>
+            <TableColumn fx:id="monitoredElementColumn" text="%edit.oms.monitoredElement" editable="false"/>
+            <TableColumn fx:id="monitoredSideColumn" text="%edit.oms.monitoredSide" editable="false"/>
+            <TableColumn fx:id="trippingCountColumn" styleClass="right-aligned-column" text="%edit.oms.trippings" editable="false"/>
+         </columns>
+      </TableView>
+   </children>
+</VBox>

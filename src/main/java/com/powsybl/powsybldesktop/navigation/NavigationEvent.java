@@ -46,6 +46,10 @@ public record NavigationEvent(NavigationType navigationType, NavigationState sta
             case NETWORK_TABLE_TIE_LINES -> Messages.get("desktop.common.equipment.tieLine.plural");
             case NETWORK_TABLE_BOUNDARY_LINES -> Messages.get("desktop.common.equipment.boundaryLine.plural");
             case NETWORK_TABLE_HVDC_LINES -> Messages.get("desktop.common.equipment.hvdcLine.plural");
+            case NETWORK_TABLE_GROUNDS -> Messages.get("desktop.common.equipment.ground.plural");
+            case NETWORK_TABLE_AREAS -> Messages.get("desktop.common.equipment.area.plural");
+            case NETWORK_TABLE_OVERLOAD_MANAGEMENT_SYSTEMS -> Messages.get("desktop.common.equipment.overloadManagementSystem.plural");
+            case NETWORK_TABLE_VOLTAGE_ANGLE_LIMITS -> Messages.get("desktop.common.equipment.voltageAngleLimit.plural");
             case NETWORK_TABLE_COMPONENTS -> Messages.get("main.toolbar.loadflowresult");
             case NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS -> Messages.get("main.toolbar.securityAnalysisResults");
             case NETWORK_TABLE_VIOLATIONS -> Messages.get("main.toolbar.violations");
@@ -85,6 +89,12 @@ public record NavigationEvent(NavigationType navigationType, NavigationState sta
             selection = s.getBoundaryLine().getNameOrId();
         } else if (state instanceof HvdcLineNavigationState s && s.getHvdcLine() != null) {
             selection = s.getHvdcLine().getNameOrId();
+        } else if (state instanceof GroundNavigationState s && s.getGround() != null) {
+            selection = s.getGround().getNameOrId();
+        } else if (state instanceof AreaNavigationState s && s.getArea() != null) {
+            selection = s.getArea().getNameOrId();
+        } else if (state instanceof OverloadManagementSystemNavigationState s && s.getOverloadManagementSystem() != null) {
+            selection = s.getOverloadManagementSystem().getNameOrId();
         } else if (state instanceof ContainerNavigationState s && s.getContainer() != null) {
             selection = s.getContainer().getNameOrId();
         } else if (state instanceof ReportNavigationState s) {

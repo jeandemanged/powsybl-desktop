@@ -8,6 +8,7 @@
 package com.powsybl.powsybldesktop.network.tables;
 
 import com.powsybl.iidm.network.Bus;
+import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.HvdcLine;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
@@ -20,6 +21,8 @@ import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.VscConverterStationNavigationState;
 import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
+import com.powsybl.powsybldesktop.network.edit.EditMenus;
+import com.powsybl.powsybldesktop.network.edit.InjectionCreations;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
@@ -27,6 +30,7 @@ import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
 import javafx.scene.control.Hyperlink;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -215,5 +219,11 @@ public class VscConverterStationsController extends AbstractEquipmentTableContro
     @Override
     NavigationEvent ownNavigationEvent(VscConverterStation station) {
         return NavigationEvent.create(NavigationType.NETWORK_TABLE_VSC_CONVERTER_STATIONS, VscConverterStationNavigationState.create(station));
+    }
+
+    @Override
+    protected List<MenuItem> creationItems(Container<?> context) {
+        return EditMenus.injectionItems(sceneModel, () -> tableView().getScene().getWindow(), sceneModel.getNetwork(), context,
+                InjectionCreations.Kind.VSC_CONVERTER_STATION);
     }
 }

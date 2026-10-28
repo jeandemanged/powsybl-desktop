@@ -21,6 +21,8 @@ import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.SubstationNavigationState;
 import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
+import com.powsybl.powsybldesktop.network.edit.EditMenus;
+import com.powsybl.powsybldesktop.network.edit.TableEditActions;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
@@ -128,6 +130,8 @@ public class SubstationsTableController extends AbstractDisposableController imp
         listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> updateSubstations());
         listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> updateSubstations());
         searchBoxController.bind(sceneModel, this::onSearchMatch);
+        TableEditActions.install(substationsTableView, sceneModel,
+                () -> List.of(EditMenus.substationItem(sceneModel, () -> substationsTableView.getScene().getWindow(), sceneModel.getNetwork())));
     }
 
     @Override

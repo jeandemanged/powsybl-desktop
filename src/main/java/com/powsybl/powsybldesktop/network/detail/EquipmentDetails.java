@@ -7,15 +7,18 @@
  */
 package com.powsybl.powsybldesktop.network.detail;
 
+import com.powsybl.iidm.network.Area;
 import com.powsybl.iidm.network.Battery;
 import com.powsybl.iidm.network.BoundaryLine;
 import com.powsybl.iidm.network.BusbarSection;
 import com.powsybl.iidm.network.Generator;
+import com.powsybl.iidm.network.Ground;
 import com.powsybl.iidm.network.HvdcLine;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.LccConverterStation;
 import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Load;
+import com.powsybl.iidm.network.OverloadManagementSystem;
 import com.powsybl.iidm.network.ShuntCompensator;
 import com.powsybl.iidm.network.StaticVarCompensator;
 import com.powsybl.iidm.network.Substation;
@@ -69,6 +72,9 @@ public final class EquipmentDetails {
             new Kind<>(ThreeWindingsTransformer.class, "desktop.common.equipment.transformer", ThreeWindingsTransformerDetailController::new),
             new Kind<>(BusbarSection.class, "desktop.common.equipment.busbarSection", BusbarSectionDetailController::new),
             new Kind<>(Switch.class, "desktop.common.equipment.switch", SwitchDetailController::new),
+            new Kind<>(Ground.class, "desktop.common.equipment.ground", GroundDetailController::new),
+            new Kind<>(Area.class, "desktop.common.equipment.area", AreaDetailController::new),
+            new Kind<>(OverloadManagementSystem.class, "desktop.common.equipment.overloadManagementSystem", OverloadManagementSystemDetailController::new),
             new Kind<>(Substation.class, "desktop.common.equipment.substation", SubstationDetailController::new),
             new Kind<>(VoltageLevel.class, "desktop.common.equipment.voltageLevel", VoltageLevelDetailController::new));
 

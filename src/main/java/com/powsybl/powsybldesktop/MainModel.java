@@ -21,6 +21,7 @@ import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyBooleanProperty;
+import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
@@ -47,6 +48,7 @@ public class MainModel {
     private final ObservableList<ReportNode> reports = FXCollections.unmodifiableObservableList(modifiableReports);
     private final ObjectProperty<Network> network = new SimpleObjectProperty<>();
     private final ObjectProperty<Instant> update = new SimpleObjectProperty<>();
+    private final ObjectProperty<NetworkStructureChange> structureChange = new SimpleObjectProperty<>();
     // the single voltage level touched by the change that triggered the most recent update() firing, or null
     // if the change isn't confined to one (e.g. a load flow run) - read by MainController.refreshSearchIndexBuses()
     // to scope its search index refresh instead of re-indexing every bus in the network
@@ -215,6 +217,23 @@ public class MainModel {
     public void setUpdate(VoltageLevel voltageLevel) {
         updatedVoltageLevel = Objects.requireNonNull(voltageLevel);
         update.setValue(Instant.now());
+    }
+
+    /**
+     * Fired, before the {@link #updateProperty() update} it is followed by, after network objects were created or
+     * removed (see {@code NetworkEdits}): views showing the network's structure (container tree, search indexes,
+     * statistics) refresh from it; the navigation history no longer holds the removed objects.
+     */
+    public ReadOnlyObjectProperty<NetworkStructureChange> structureChangeProperty() {
+        return structureChange;
+    }
+
+    public void setStructureChange(NetworkStructureChange change) {
+        navigationHistory.removeIf(event -> event.state() != null && event.state().refersTo(change.removed()));
+        // through null: two changes are equal records when they hold the same objects, e.g. none
+        structureChange.setValue(null);
+        structureChange.setValue(change);
+        setUpdate();
     }
 
     public VoltageLevel getUpdatedVoltageLevel() {

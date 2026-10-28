@@ -12,6 +12,7 @@ import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -26,7 +27,7 @@ public class ContainerNavigationState extends NetworkNavigationState {
     public enum ContainerTab {
         SINGLE_LINE, AREA, SWITCHES,
         GENERATORS, BATTERIES, SHUNT_COMPENSATORS, STATIC_VAR_COMPENSATORS, VSC_CONVERTER_STATIONS, LCC_CONVERTER_STATIONS, LOADS,
-        LINES, TRANSFORMERS, TIE_LINES, BOUNDARY_LINES, HVDC_LINES,
+        LINES, TRANSFORMERS, TIE_LINES, BOUNDARY_LINES, HVDC_LINES, GROUNDS,
         BUSBAR_SECTIONS, BUSES_BUS_VIEW, BUSES_BUS_BREAKER_VIEW
     }
 
@@ -68,6 +69,11 @@ public class ContainerNavigationState extends NetworkNavigationState {
 
     public Identifiable<?> getEquipment() {
         return equipment;
+    }
+
+    @Override
+    public boolean refersTo(Set<Identifiable<?>> removed) {
+        return removed.contains(container) || removed.contains(equipment);
     }
 
     @Override

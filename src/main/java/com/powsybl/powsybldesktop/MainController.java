@@ -27,9 +27,14 @@ import com.powsybl.powsybldesktop.logs.LogsViewController;
 import com.powsybl.powsybldesktop.map.MapController;
 import com.powsybl.powsybldesktop.memory.MemoryController;
 import com.powsybl.powsybldesktop.navigation.*;
+import com.powsybl.powsybldesktop.navigation.AreaNavigationState;
+import com.powsybl.powsybldesktop.navigation.GroundNavigationState;
+import com.powsybl.powsybldesktop.navigation.NetworkNavigationState;
+import com.powsybl.powsybldesktop.navigation.OverloadManagementSystemNavigationState;
 import com.powsybl.powsybldesktop.network.NetworksController;
 import com.powsybl.powsybldesktop.network.SubstationsController;
 import com.powsybl.powsybldesktop.network.search.NetworkSearchIndex;
+import com.powsybl.powsybldesktop.network.tables.AreasController;
 import com.powsybl.powsybldesktop.network.tables.BatteriesController;
 import com.powsybl.powsybldesktop.network.tables.BoundaryLinesController;
 import com.powsybl.powsybldesktop.network.tables.BusbarSectionsController;
@@ -37,10 +42,12 @@ import com.powsybl.powsybldesktop.network.tables.BusesBusBreakerViewController;
 import com.powsybl.powsybldesktop.network.tables.BusesBusViewController;
 import com.powsybl.powsybldesktop.network.tables.ComponentsController;
 import com.powsybl.powsybldesktop.network.tables.GeneratorsController;
+import com.powsybl.powsybldesktop.network.tables.GroundsController;
 import com.powsybl.powsybldesktop.network.tables.HvdcLinesController;
 import com.powsybl.powsybldesktop.network.tables.LccConverterStationsController;
 import com.powsybl.powsybldesktop.network.tables.LinesController;
 import com.powsybl.powsybldesktop.network.tables.LoadsController;
+import com.powsybl.powsybldesktop.network.tables.OverloadManagementSystemsController;
 import com.powsybl.powsybldesktop.network.tables.SecurityAnalysisResultsController;
 import com.powsybl.powsybldesktop.network.tables.ShuntCompensatorsController;
 import com.powsybl.powsybldesktop.network.tables.StaticVarCompensatorsController;
@@ -48,6 +55,7 @@ import com.powsybl.powsybldesktop.network.tables.SubstationsTableController;
 import com.powsybl.powsybldesktop.network.tables.TieLinesController;
 import com.powsybl.powsybldesktop.network.tables.TransformersController;
 import com.powsybl.powsybldesktop.network.tables.ViolationsController;
+import com.powsybl.powsybldesktop.network.tables.VoltageAngleLimitsController;
 import com.powsybl.powsybldesktop.network.tables.VoltageLevelsController;
 import com.powsybl.powsybldesktop.network.tables.VscConverterStationsController;
 import com.powsybl.powsybldesktop.notification.Notification;
@@ -102,9 +110,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -120,6 +130,8 @@ import java.util.stream.Collectors;
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 public class MainController extends AbstractDisposableController {
+    private static final Set<NavigationType> NETWORK_OBJECT_TABLES = EnumSet.of(NavigationType.NETWORK_TABLE_GROUNDS,
+            NavigationType.NETWORK_TABLE_AREAS, NavigationType.NETWORK_TABLE_OVERLOAD_MANAGEMENT_SYSTEMS, NavigationType.NETWORK_TABLE_VOLTAGE_ANGLE_LIMITS);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MainController.class);
 
@@ -619,6 +631,12 @@ public class MainController extends AbstractDisposableController {
     // a no-op if the current network has no cached index yet (still building, or none requested). Scoped to just
     // the voltage level the change was confined to when known, cheaper still than the whole-network fallback
     // used when it isn't (e.g. after a load flow run).
+    private void onStructureChange(NetworkStructureChange change) {
+        mainModel.getStudy(change.rootNetwork()).getSearchIndexes()
+                .forEach((network, index) -> index.applyStructureChange(network, change.created(), change.removed()));
+        separateWindows.closeRemoved(change.rootNetwork(), change.removed());
+    }
+
     private void refreshSearchIndexBuses() {
         Network network = mainModel.getNetwork();
         if (network == null) {
@@ -702,6 +720,11 @@ public class MainController extends AbstractDisposableController {
             updateMapButtonVisibility();
         });
         updateMapButtonVisibility();
+        listenerManager.listen(mainModel.structureChangeProperty(), (observable, oldValue, change) -> {
+            if (change != null) {
+                onStructureChange(change);
+            }
+        });
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refreshSearchIndexBuses());
         listenerManager.listen(mainModel.getNetworks(), (ListChangeListener<Network>) change -> {
             while (change.next()) {
@@ -1023,6 +1046,8 @@ public class MainController extends AbstractDisposableController {
             } else if (newValue.state() == null) {
                 controller.goToHvdcLine(null);
             }
+        } else if (NETWORK_OBJECT_TABLES.contains(newValue.navigationType())) {
+            onNetworkObjectTableEvent(newValue);
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_COMPONENTS) {
             ensureSceneView(ComponentsController.class, "network/tables/components-view.fxml", NavigationType.NETWORK_TABLE_COMPONENTS);
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS) {
@@ -1185,6 +1210,50 @@ public class MainController extends AbstractDisposableController {
 
     public void onHvdcLines() {
         mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_HVDC_LINES, HvdcLineNavigationState.createNoHvdcLine(mainModel.getNetwork())));
+    }
+
+    // kept out of onNavigationEvent, whose length checkstyle limits
+    private void onNetworkObjectTableEvent(NavigationEvent newValue) {
+        if (newValue.navigationType() == NavigationType.NETWORK_TABLE_GROUNDS) {
+            GroundsController controller = ensureSceneView(GroundsController.class, "network/tables/grounds-view.fxml", NavigationType.NETWORK_TABLE_GROUNDS);
+            if (newValue.state() instanceof GroundNavigationState state) {
+                controller.goToGround(state.getGround());
+            } else if (newValue.state() == null) {
+                controller.goToGround(null);
+            }
+        } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_AREAS) {
+            AreasController controller = ensureSceneView(AreasController.class, "network/tables/areas-view.fxml", NavigationType.NETWORK_TABLE_AREAS);
+            if (newValue.state() instanceof AreaNavigationState state) {
+                controller.goToArea(state.getArea());
+            }
+        } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_OVERLOAD_MANAGEMENT_SYSTEMS) {
+            OverloadManagementSystemsController controller = ensureSceneView(OverloadManagementSystemsController.class,
+                    "network/tables/overload-management-systems-view.fxml", NavigationType.NETWORK_TABLE_OVERLOAD_MANAGEMENT_SYSTEMS);
+            if (newValue.state() instanceof OverloadManagementSystemNavigationState state) {
+                controller.goToOverloadManagementSystem(state.getOverloadManagementSystem());
+            }
+        } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_VOLTAGE_ANGLE_LIMITS) {
+            ensureSceneView(VoltageAngleLimitsController.class, "network/tables/voltage-angle-limits-view.fxml",
+                    NavigationType.NETWORK_TABLE_VOLTAGE_ANGLE_LIMITS);
+        }
+    }
+
+    public void onGrounds() {
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_GROUNDS, GroundNavigationState.createNoGround(mainModel.getNetwork())));
+    }
+
+    public void onAreas() {
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_AREAS, AreaNavigationState.createNoArea(mainModel.getNetwork())));
+    }
+
+    public void onOverloadManagementSystems() {
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_OVERLOAD_MANAGEMENT_SYSTEMS,
+                OverloadManagementSystemNavigationState.createNoOverloadManagementSystem(mainModel.getNetwork())));
+    }
+
+    public void onVoltageAngleLimits() {
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_VOLTAGE_ANGLE_LIMITS,
+                NetworkNavigationState.create(mainModel.getNetwork())));
     }
 
     public void onComponents() {

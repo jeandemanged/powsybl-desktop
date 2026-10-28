@@ -17,6 +17,7 @@ import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
+import com.powsybl.powsybldesktop.network.edit.TableEditActions;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
@@ -30,6 +31,7 @@ import javafx.collections.transformation.SortedList;
 import javafx.scene.Node;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.stage.Window;
@@ -117,6 +119,22 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
         return true;
     }
 
+    /**
+     * The creation items of this table's kind(s), in {@code context}: the container the table is embedded in, else
+     * the selected row's voltage level, else null. None by default.
+     */
+    protected List<MenuItem> creationItems(Container<?> context) {
+        return List.of();
+    }
+
+    private Container<?> creationContext() {
+        if (filtering) {
+            return scopeContainer;
+        }
+        T selected = tableView().getSelectionModel().getSelectedItem();
+        return selected == null ? null : voltageLevelsOf(selected).getFirst();
+    }
+
     final void initializeTable() {
         tableView().getSelectionModel().setCellSelectionEnabled(true);
         SortedList<T> sorted = new SortedList<>(data);
@@ -139,6 +157,7 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
         // for the decimal places, read by the cells on every render
         listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> tableView().refresh());
         searchBox().bind(sceneModel, searchKinds(), this::onSearchMatch);
+        TableEditActions.install(tableView(), sceneModel, () -> creationItems(creationContext()));
     }
 
     // read fresh: a parameters reset/import replaces the instance

@@ -17,6 +17,8 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
+import com.powsybl.powsybldesktop.network.edit.EditMenus;
+import com.powsybl.powsybldesktop.network.edit.TableEditActions;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.TableAutoFitLimiter;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -29,6 +31,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -95,6 +98,8 @@ public class SwitchesController extends AbstractDisposableController implements 
         // see AbstractEquipmentTableController.setSceneModel
         switchesTableView.editableProperty().bind(mainModel.networkBusyProperty().not());
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
+        TableEditActions.install(switchesTableView, sceneModel, () -> List.of(EditMenus.switchItem(sceneModel,
+                () -> switchesTableView.getScene().getWindow(), container instanceof VoltageLevel voltageLevel ? voltageLevel : null)));
     }
 
     @Override

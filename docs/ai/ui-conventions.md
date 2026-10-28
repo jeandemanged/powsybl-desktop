@@ -151,12 +151,33 @@ Two established forms:
 - Inline forms inside a view (contingency list forms) are FXML sub-controllers swapped in by the parent controller
   (`contingency/CriterionListFormController`, `DefaultContingencyListFormController`).
 
+## Creation dialogs and edit menus
+
+- A creation dialog is a `network/edit/CreationForm` (the `DetailForm` grid, but fields holding values read on OK:
+  `text`, `id` (unique among the network's objects), `number`, `integer`, `check`, `choice`, `custom`, rows shown or
+  hidden with `visibleWhen`) shown by `CreateDialog.show` / `showThenDetails` (which then opens the created object's
+  detail view, where everything the form doesn't ask for is set). OK applies it and only closes once applied: a
+  `CreationForm.FieldException` is shown on its editor, an IIDM error on the form. Forms ask for what IIDM requires,
+  with defaults; a form with many fields is a small class with a `create` method (checkstyle limits lambdas to 20 lines).
+- Where a connectable is connected is a `ConnectionSection`: voltage level, busbar section (node breaker: position
+  order, suggested at the end of the section, and direction) or bus (bus breaker). Orders are never refused:
+  `FeederOrders` brings one out of the section's range back to its nearest end and, when it is taken, moves every
+  following feeder of the voltage level up (moved back if the creation fails).
+- What can be created or removed for an object comes from `EditMenus.items(sceneModel, owner, network, context)` (a
+  "New" submenu, a "Topology" submenu, the removal), the same in the substations tree (its "+" button and context
+  menu), the SLD context menu (on equipment, or on the background for the shown container), the map context menu
+  (plus "new substation here") and the table row context menus. Tables get add and remove buttons with
+  `TableEditActions.install` (`AbstractEquipmentTableController.creationItems` for the base's tables). Detail views have
+  a remove button. Removals (`Removals.remove`) confirm, listing what goes with the object.
+- Tables of objects outside voltage levels (areas, overload management systems, voltage angle limits) extend
+  `AbstractNetworkObjectTableController`: no search box, no embedding.
+
 ## Equipment detail views
 
 Non-modal, all-fields view of one equipment (`…/network/detail/`), one `AbstractEquipmentDetailController` subclass per
 equipment type (generators, batteries, loads, shunt and static var compensators, VSC/LCC converter stations, HVDC
 lines, lines, tie lines, boundary lines, two- and three-winding transformers, busbar sections, switches, substations,
-voltage levels), all on the
+voltage levels, grounds, areas, overload management systems), all on the
 shared `equipment-detail-view.fxml` (no `fx:controller`: `EquipmentDetails.load` sets it). Canonical examples:
 `GeneratorDetailController` (injection), `TwoWindingsTransformerDetailController` (branch).
 

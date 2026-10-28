@@ -7,10 +7,12 @@
  */
 package com.powsybl.powsybldesktop.navigation;
 
+import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.LccConverterStation;
 import com.powsybl.iidm.network.Network;
 
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -34,6 +36,11 @@ public class LccConverterStationNavigationState extends NetworkNavigationState {
 
     public LccConverterStation getLccConverterStation() {
         return lccConverterStation;
+    }
+
+    @Override
+    public boolean refersTo(Set<Identifiable<?>> removed) {
+        return removed.contains(lccConverterStation);
     }
 
     @Override

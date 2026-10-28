@@ -376,6 +376,10 @@ map.on('click', function (e) {
     window.controller.onMapClick(e.latlng.lat, e.latlng.lng, map.getZoom());
 });
 
+map.on('contextmenu', function (e) {
+    window.controller.onMapContextMenu(e.latlng.lat, e.latlng.lng, map.getZoom(), e.originalEvent.clientX, e.originalEvent.clientY);
+});
+
 // Called by MapController once a network is ready to be drawn, with the south, west, north and east of what it
 // draws, null for nothing, and the view the user last left it at, as {latitude, longitude, zoom}, null for none.
 function renderNetwork(boundsJson, viewJson) {

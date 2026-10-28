@@ -8,15 +8,18 @@
 package com.powsybl.powsybldesktop.network;
 
 import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
+import com.powsybl.iidm.modification.topology.RemoveVoltageLevelBuilder;
 import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Generator;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
+import com.powsybl.powsybldesktop.network.edit.NetworkEdits;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
@@ -30,9 +33,12 @@ import javafx.scene.control.TreeView;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.testfx.util.WaitForAsyncUtils;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -100,6 +106,35 @@ class SubstationsControllerTest extends AbstractHeadlessApplicationTest {
 
     private Tab tabWithText(String text) {
         return tabPane().getTabs().stream().filter(tab -> text.equals(tab.getText())).findFirst().orElseThrow();
+    }
+
+    @Test
+    void createdAndRemovedContainersAreShownWithoutLosingTheSelection() {
+        VoltageLevel vl1 = network.getVoltageLevel("VL1");
+        select(vl1);
+
+        // the single line diagram's render keeps the network busy for a while, refusing edits
+        waitUntilNotBusy();
+        interact(() -> assertTrue(NetworkEdits.apply(mainModel, network, n -> n.newSubstation().setId("NEW_S").add())));
+
+        assertTrue(findItem(treeView().getRoot(), network.getSubstation("NEW_S")) != null);
+        assertEquals(vl1, treeView().getSelectionModel().getSelectedItem().getValue());
+
+        Substation substation = vl1.getSubstation().orElseThrow();
+        waitUntilNotBusy();
+        interact(() -> assertTrue(NetworkEdits.apply(mainModel, network, n -> NetworkEdits.apply(n,
+                new RemoveVoltageLevelBuilder().withVoltageLevelId("VL1").build()))));
+
+        assertEquals(null, findItem(treeView().getRoot(), vl1));
+        assertEquals(substation, treeView().getSelectionModel().getSelectedItem().getValue(), "the removed voltage level's substation is selected instead");
+    }
+
+    private void waitUntilNotBusy() {
+        try {
+            WaitForAsyncUtils.waitFor(10, TimeUnit.SECONDS, () -> !mainModel.isBusy(network));
+        } catch (TimeoutException e) {
+            throw new AssertionError(e);
+        }
     }
 
     @Test

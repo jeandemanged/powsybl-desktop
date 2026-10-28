@@ -7,14 +7,18 @@
  */
 package com.powsybl.powsybldesktop.network.detail;
 
+import com.powsybl.iidm.network.Area;
+import com.powsybl.iidm.network.Ground;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.LimitType;
 import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.LoadingLimits;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.OperationalLimitsGroup;
+import com.powsybl.iidm.network.OverloadManagementSystem;
 import com.powsybl.iidm.network.ShuntCompensator;
 import com.powsybl.iidm.network.TapChanger;
+import com.powsybl.iidm.network.ThreeSides;
 import com.powsybl.iidm.network.TwoSides;
 import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.test.BatteryNetworkFactory;
@@ -33,6 +37,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBase;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Labeled;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.ScrollPane;
@@ -41,6 +46,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -131,6 +137,33 @@ class EquipmentDetailViewsTest extends AbstractHeadlessApplicationTest {
             assertTrue(controller.tabPane.getTabs().size() >= 3, equipment.getId());
             assertFalse(controller.linksBox.getChildren().size() < 2, equipment.getId());
         }
+    }
+
+    @Test
+    void groundAreaAndOverloadManagementSystemHaveADetailView() {
+        Network network = EurostagTutorialExample1Factory.createWithTieLinesAndAreas();
+        Ground ground = network.getVoltageLevel("VLLOAD").newGround().setId("GROUND").setBus("NLOAD").add();
+        OverloadManagementSystem system = network.getSubstation("P2").newOverloadManagementSystem().setId("OMS").setEnabled(true)
+                .setMonitoredElementId("NHV2_NLOAD").setMonitoredElementSide(ThreeSides.ONE)
+                .newBranchTripping().setKey("T1").setBranchToOperateId("NHV2_NLOAD").setSideToOperate(TwoSides.TWO).setCurrentLimit(1000).setOpenAction(true).add()
+                .add();
+        Area area = network.getAreaStream().findFirst().orElseThrow();
+        for (Identifiable<?> equipment : List.<Identifiable<?>>of(ground, area, system)) {
+            AbstractEquipmentDetailController<?> controller = open(network, equipment);
+            interact(() -> mainModel.setUpdate());
+            assertTrue(controller.titleLabel.getText().contains(equipment.getNameOrId()), equipment.getId());
+            assertTrue(controller.tabPane.getTabs().size() >= 3, equipment.getId());
+        }
+
+        AbstractEquipmentDetailController<?> controller = open(network, area);
+        long voltageLevels = area.getVoltageLevelStream().count();
+        VBox pane = content(controller, "desktop.common.equipment.voltageLevel.plural", VBox.class);
+        interact(() -> {
+            ComboBox<?> candidates = (ComboBox<?>) pane.lookup(".combo-box");
+            candidates.getSelectionModel().selectFirst();
+            button(pane, Button.class, Messages.get("desktop.common.action.add")).fire();
+        });
+        assertEquals(voltageLevels + 1, area.getVoltageLevelStream().count());
     }
 
     @Test

@@ -104,6 +104,11 @@
                                         <MenuItem mnemonicParsing="false" onAction="#onHvdcLines" text="%desktop.common.equipment.hvdcLine.plural" />
                                         <MenuItem mnemonicParsing="false" onAction="#onVscConverterStations" text="%desktop.common.equipment.vscConverterStation.plural" />
                                         <MenuItem mnemonicParsing="false" onAction="#onLccConverterStations" text="%desktop.common.equipment.lccConverterStation.plural" />
+                                        <MenuItem mnemonicParsing="false" onAction="#onGrounds" text="%desktop.common.equipment.ground.plural" />
+                                        <SeparatorMenuItem mnemonicParsing="false" />
+                                        <MenuItem mnemonicParsing="false" onAction="#onAreas" text="%desktop.common.equipment.area.plural" />
+                                        <MenuItem mnemonicParsing="false" onAction="#onOverloadManagementSystems" text="%desktop.common.equipment.overloadManagementSystem.plural" />
+                                        <MenuItem mnemonicParsing="false" onAction="#onVoltageAngleLimits" text="%desktop.common.equipment.voltageAngleLimit.plural" />
                                     </items>
                                 </Menu>
                                 <MenuItem mnemonicParsing="false" onAction="#onComponents" text="%main.toolbar.loadflowresult" />

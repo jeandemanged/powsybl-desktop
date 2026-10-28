@@ -27,6 +27,8 @@ import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
@@ -133,6 +135,32 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
 
     private StackPane noNetworkSelectedPane() {
         return (StackPane) lookup("#noNetworkSelectedPane").queryAs(StackPane.class);
+    }
+
+    @Test
+    void newNetworkIsCreatedLoadedAndSelected() {
+        clickOn("#newNetworkButton");
+        DialogPane dialogPane = lookup(".dialog-pane").queryAs(DialogPane.class);
+        TextField idField = from(dialogPane).lookup(".text-field").queryAs(TextField.class);
+        interact(() -> idField.setText("scratch"));
+        clickOn(dialogPane.lookupButton(ButtonType.OK));
+
+        Network created = mainModel.getNetworks().stream().filter(network -> network.getId().equals("scratch")).findFirst().orElseThrow();
+        assertEquals(0, created.getSubstationCount());
+        assertEquals(created, mainModel.getNetwork());
+    }
+
+    @Test
+    void newNetworkRequiresAnId() {
+        clickOn("#newNetworkButton");
+        DialogPane dialogPane = lookup(".dialog-pane").queryAs(DialogPane.class);
+        TextField idField = from(dialogPane).lookup(".text-field").queryAs(TextField.class);
+        interact(() -> idField.setText(""));
+
+        assertTrue(dialogPane.lookupButton(ButtonType.OK).isDisabled(), "an id is required");
+
+        clickOn(dialogPane.lookupButton(ButtonType.CANCEL));
+        assertEquals(2, mainModel.getNetworks().size());
     }
 
     private void selectNetwork(Network network) {

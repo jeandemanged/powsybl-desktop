@@ -37,6 +37,14 @@
                                 <Menu fx:id="groupByAreaMenu" text="%substations.grouping.area"/>
                             </items>
                         </MenuButton>
+                        <MenuButton fx:id="editMenuButton" mnemonicParsing="false">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2p-plus" iconSize="16"/>
+                            </graphic>
+                            <tooltip>
+                                <Tooltip text="%edit.menu.tooltip"/>
+                            </tooltip>
+                        </MenuButton>
                         <Separator orientation="VERTICAL"/>
                         <Button fx:id="expandAllButton" mnemonicParsing="false" onAction="#onExpandAll">
                             <graphic>
@@ -138,6 +146,11 @@
                         <Tab fx:id="hvdcLinesTab" text="%desktop.common.equipment.hvdcLine.plural">
                             <content>
                                 <fx:include fx:id="hvdcLinesEmbedded" source="tables/hvdc-lines-view.fxml"/>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="groundsTab" text="%desktop.common.equipment.ground.plural">
+                            <content>
+                                <fx:include fx:id="groundsEmbedded" source="tables/grounds-view.fxml"/>
                             </content>
                         </Tab>
                         <Tab fx:id="busbarSectionsTab" text="%desktop.common.equipment.busbarSection.plural">

@@ -11,6 +11,7 @@ import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Wraps either a {@code TwoWindingsTransformer} or a {@code ThreeWindingsTransformer}, the Transformers table
@@ -37,6 +38,11 @@ public class TransformerNavigationState extends NetworkNavigationState {
 
     public Identifiable<?> getTransformer() {
         return transformer;
+    }
+
+    @Override
+    public boolean refersTo(Set<Identifiable<?>> removed) {
+        return removed.contains(transformer);
     }
 
     @Override

@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop.window;
 
+import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.powsybldesktop.MainApplication;
 import com.powsybl.powsybldesktop.MainModel;
@@ -59,9 +60,12 @@ import org.kordamp.ikonli.javafx.FontIcon;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -403,6 +407,20 @@ public final class SeparateWindows {
 
     public void close(String key) {
         close(views.stream().filter(view -> key.equals(view.key)).toList());
+    }
+
+    /**
+     * Closes the views of {@code rootNetwork} showing one of the {@code removed} objects: the detail views (keyed
+     * {@code detail:<id>}) and the container diagrams and equipment tabs (keyed {@code <kind>/<container id>}).
+     */
+    public void closeRemoved(Network rootNetwork, Collection<Identifiable<?>> removed) {
+        Set<String> ids = new HashSet<>();
+        removed.forEach(identifiable -> ids.add(identifiable.getId()));
+        close(views.stream()
+                .filter(view -> view.bound && view.network.getNetwork() == rootNetwork)
+                .filter(view -> view.key.startsWith("detail:") && ids.contains(view.key.substring("detail:".length()))
+                        || view.key.contains("/") && ids.contains(view.key.substring(view.key.indexOf('/') + 1)))
+                .toList());
     }
 
     public static void focus(Stage stage) {

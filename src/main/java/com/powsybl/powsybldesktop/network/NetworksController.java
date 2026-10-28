@@ -57,6 +57,7 @@ import com.powsybl.powsybldesktop.network.detail.DetailPart;
 import com.powsybl.powsybldesktop.network.detail.ExtensionEditors;
 import com.powsybl.powsybldesktop.network.detail.ExtensionsPane;
 import com.powsybl.powsybldesktop.network.detail.KeyValueTablePane;
+import com.powsybl.powsybldesktop.network.edit.ContainerCreations;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
 import com.powsybl.powsybldesktop.parameters.NetworkFormatParametersController;
@@ -224,6 +225,12 @@ public class NetworksController extends AbstractDisposableController {
         nameField.disableProperty().bind(mainModel.networkBusyProperty());
         caseDateField.disableProperty().bind(mainModel.networkBusyProperty());
         forecastDistanceField.disableProperty().bind(mainModel.networkBusyProperty());
+        listenerManager.listen(mainModel.structureChangeProperty(), (obs, oldValue, change) -> {
+            if (change != null && selectedNetwork != null && change.rootNetwork() == selectedNetwork.getNetwork()) {
+                showStructure(selectedNetwork);
+                networksTreeView.refresh();
+            }
+        });
         listenerManager.listen(mainModel.updateProperty(), (obs, oldValue, newValue) -> refreshNetworkDetails());
     }
 
@@ -378,6 +385,7 @@ public class NetworksController extends AbstractDisposableController {
         if (!newName.equals(selectedNetwork.getOptionalName().orElse(""))) {
             selectedNetwork.setName(newName);
             networksTreeView.refresh();
+            mainModel.setUpdate();
         }
     }
 
@@ -404,6 +412,11 @@ public class NetworksController extends AbstractDisposableController {
         idLabel.setText(network.getId());
         nameField.setText(network.getOptionalName().orElse(""));
         sourceFormatLabel.setText(network.getSourceFormat());
+        showStructure(network);
+    }
+
+    // what changes when network objects are created or removed: countries and statistics
+    private void showStructure(Network network) {
         String countries = network.getCountries().stream().map(Object::toString).sorted().collect(Collectors.joining(", "));
         countriesLabel.setText(countries);
         countriesCaptionLabel.setVisible(!countries.isEmpty());
@@ -1144,6 +1157,11 @@ public class NetworksController extends AbstractDisposableController {
         networkLoadingService.setOnCancelled(event -> mainModel.getNotificationsModel().replace(runningNotification,
                 Notification.createCancelled(runningNotification.startTimestamp(), "main.sampleNetwork.cancelled")));
         networkLoadingService.start();
+    }
+
+    @FXML
+    private void onNewNetwork() {
+        ContainerCreations.newNetwork(networksTreeView.getScene().getWindow(), mainModel).ifPresent(this::navigateTo);
     }
 
     @FXML

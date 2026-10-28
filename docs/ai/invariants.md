@@ -7,7 +7,8 @@ State and communication
    through it and `NavigationHistory`; no static mutable state, event bus, or controller-to-controller references
    (except a parent controller driving its `fx:include`d children).
 2. Per-root-network state lives in `NetworkStudy`; access it with `MainModel.getStudy(network)`.
-3. After mutating a network from the UI, fire `mainModel.setUpdate()` / `setUpdate(voltageLevel)`.
+3. After mutating a network from the UI, fire `mainModel.setUpdate()` / `setUpdate(voltageLevel)`. Creating or
+   removing network objects goes through `NetworkEdits.apply`, which fires both the structure change and the update.
 4. Only `MainController` swaps the center view, in response to `NavigationHistory.currentEventProperty()`. There is a
    single history, the main window's: views navigate through `SceneModel.navigate` / `record`, never through
    `getNavigationHistory()` directly, so that a separate window drives the main window without recording its own state.

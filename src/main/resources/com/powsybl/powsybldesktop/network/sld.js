@@ -34,4 +34,5 @@ function equipmentContextMenuAt(x, y) {
             return;
         }
     }
+    controller.onBackgroundContextMenu();
 }

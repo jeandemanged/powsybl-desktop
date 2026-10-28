@@ -22,6 +22,7 @@ import javafx.collections.ObservableList;
 import javafx.concurrent.Service;
 import javafx.concurrent.Worker;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -124,6 +125,13 @@ public class NetworkStudy {
 
     public NetworkSearchIndex getSearchIndex(Network network) {
         return searchIndexes.get(network);
+    }
+
+    /**
+     * The built search indexes, by network (the root network and its subnetworks).
+     */
+    public Map<Network, NetworkSearchIndex> getSearchIndexes() {
+        return Collections.unmodifiableMap(searchIndexes);
     }
 
     void setSearchIndex(Network network, NetworkSearchIndex index) {

@@ -13,6 +13,7 @@ import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.SceneView;
 import com.powsybl.powsybldesktop.diagram.DiagramPaneController;
 import com.powsybl.powsybldesktop.navigation.*;
+import com.powsybl.powsybldesktop.network.edit.EditMenus;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.network.tables.BatteriesController;
@@ -22,6 +23,7 @@ import com.powsybl.powsybldesktop.network.tables.BusesBusBreakerViewController;
 import com.powsybl.powsybldesktop.network.tables.BusesBusViewController;
 import com.powsybl.powsybldesktop.network.tables.EmbeddableEquipmentTable;
 import com.powsybl.powsybldesktop.network.tables.GeneratorsController;
+import com.powsybl.powsybldesktop.network.tables.GroundsController;
 import com.powsybl.powsybldesktop.network.tables.HvdcLinesController;
 import com.powsybl.powsybldesktop.network.tables.LccConverterStationsController;
 import com.powsybl.powsybldesktop.network.tables.LinesController;
@@ -66,6 +68,8 @@ public class SubstationsController extends AbstractDisposableController implemen
     private TreeView<Object> substationsTreeView;
     @FXML
     private MenuButton groupingMenuButton;
+    @FXML
+    private MenuButton editMenuButton;
     @FXML
     private Menu groupByAreaMenu;
     @FXML
@@ -112,6 +116,8 @@ public class SubstationsController extends AbstractDisposableController implemen
     @FXML
     private Tab hvdcLinesTab;
     @FXML
+    private Tab groundsTab;
+    @FXML
     private Tab busbarSectionsTab;
     @FXML
     private Tab busesBusViewTab;
@@ -143,6 +149,8 @@ public class SubstationsController extends AbstractDisposableController implemen
     private BoundaryLinesController boundaryLinesEmbeddedController;
     @FXML
     private HvdcLinesController hvdcLinesEmbeddedController;
+    @FXML
+    private GroundsController groundsEmbeddedController;
     @FXML
     private BusbarSectionsController busbarSectionsEmbeddedController;
     @FXML
@@ -214,6 +222,13 @@ public class SubstationsController extends AbstractDisposableController implemen
         // same property in registration order, and update()'s setContainer() call would otherwise filter
         // stale, possibly-invalidated data
         equipmentTabs.forEach(equipmentTab -> equipmentTab.controller().setSceneModel(sceneModel));
+        listenerManager.listen(mainModel.structureChangeProperty(), (observable, oldValue, change) -> {
+            Network network = sceneModel.getNetwork();
+            if (change != null && network != null && change.rootNetwork() == network.getNetwork()) {
+                refreshAreaTypesMenu(network);
+                rebuildSubstationTree();
+            }
+        });
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> this.update());
         // the voltage levels' nominal voltage follows the decimals
         listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> substationsTreeView.refresh());
@@ -311,6 +326,45 @@ public class SubstationsController extends AbstractDisposableController implemen
             buildTopLevelGroups(network, groupingMode).forEach(rootItem.getChildren()::add);
         }
         substationsTreeView.setRoot(rootItem);
+    }
+
+    // after substations or voltage levels were created or removed: keeps the expanded items and the selection, or
+    // selects the closest remaining ancestor of a removed selected container
+    private void rebuildSubstationTree() {
+        Map<Object, Boolean> expanded = new HashMap<>();
+        collectExpanded(substationsTreeView.getRoot(), expanded);
+        List<Object> selectedPath = new ArrayList<>();
+        for (TreeItem<Object> item = substationsTreeView.getSelectionModel().getSelectedItem(); item != null; item = item.getParent()) {
+            selectedPath.add(item.getValue());
+        }
+        programmaticSelection = true;
+        try {
+            updateSubstationTree();
+            restoreExpanded(substationsTreeView.getRoot(), expanded);
+            selectedPath.stream()
+                    .map(value -> TreeItems.find(substationsTreeView.getRoot(), candidate -> candidate == value || candidate instanceof GroupKey && candidate.equals(value)))
+                    .filter(Objects::nonNull)
+                    .findFirst()
+                    .ifPresent(item -> substationsTreeView.getSelectionModel().select(item));
+            update();
+        } finally {
+            programmaticSelection = false;
+        }
+    }
+
+    private static void collectExpanded(TreeItem<Object> item, Map<Object, Boolean> expanded) {
+        if (item != null) {
+            expanded.put(item.getValue(), item.isExpanded());
+            item.getChildren().forEach(child -> collectExpanded(child, expanded));
+        }
+    }
+
+    private static void restoreExpanded(TreeItem<Object> item, Map<Object, Boolean> expanded) {
+        Boolean wasExpanded = expanded.get(item.getValue());
+        if (wasExpanded != null) {
+            item.setExpanded(wasExpanded);
+        }
+        item.getChildren().forEach(child -> restoreExpanded(child, expanded));
     }
 
     private List<TreeItem<Object>> buildTopLevelGroups(Network network, GroupingMode mode) {
@@ -514,6 +568,8 @@ public class SubstationsController extends AbstractDisposableController implemen
                         boundaryLinesEmbeddedController, "network/tables/boundary-lines-view.fxml"),
                 new EquipmentTab(ContainerNavigationState.ContainerTab.HVDC_LINES, hvdcLinesTab, "desktop.common.equipment.hvdcLine.plural",
                         hvdcLinesEmbeddedController, "network/tables/hvdc-lines-view.fxml"),
+                new EquipmentTab(ContainerNavigationState.ContainerTab.GROUNDS, groundsTab, "desktop.common.equipment.ground.plural",
+                        groundsEmbeddedController, "network/tables/grounds-view.fxml"),
                 new EquipmentTab(ContainerNavigationState.ContainerTab.BUSBAR_SECTIONS, busbarSectionsTab, "desktop.common.equipment.busbarSection.plural",
                         busbarSectionsEmbeddedController, "network/tables/busbar-sections-view.fxml"),
                 new EquipmentTab(ContainerNavigationState.ContainerTab.BUSES_BUS_VIEW, busesBusViewTab, "desktop.common.equipment.busesBusBranchView",
@@ -570,6 +626,11 @@ public class SubstationsController extends AbstractDisposableController implemen
     }
 
     private void initializeTreeViews() {
+        // built on showing, for the then selected item
+        ContextMenu contextMenu = new ContextMenu();
+        contextMenu.setOnShowing(event -> contextMenu.getItems().setAll(editMenuItems()));
+        substationsTreeView.setContextMenu(contextMenu);
+        editMenuButton.setOnShowing(event -> editMenuButton.getItems().setAll(editMenuItems()));
 
         substationsTreeView.setCellFactory(dummy -> new TreeCell<>() {
             @Override
@@ -578,6 +639,12 @@ public class SubstationsController extends AbstractDisposableController implemen
                 updateSubstationTreeCell(this, item, empty);
             }
         });
+    }
+
+    private List<MenuItem> editMenuItems() {
+        TreeItem<Object> selected = substationsTreeView.getSelectionModel().getSelectedItem();
+        Object context = selected == null || selected.getValue() instanceof GroupKey ? null : selected.getValue();
+        return EditMenus.items(sceneModel, () -> substationsTreeView.getScene().getWindow(), sceneModel.getNetwork(), context);
     }
 
     private void updateSubstationTreeCell(TreeCell<Object> cell, Object item, boolean empty) {

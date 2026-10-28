@@ -47,6 +47,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -60,14 +61,14 @@ import java.util.stream.Stream;
  * Indexing is a flat pass per {@link NetworkSearch.Kind} over the network's own stream accessors, so unlike a
  * hierarchy walk it never needs to dedupe multi-terminal equipment (lines, transformers, tie lines) by terminal/leg.
  * <p>
- * Everything except {@link NetworkSearch.Kind#BUS} is indexed once and never changes: no other equipment is ever
- * added/removed once a network is loaded - {@link NetworkSearch.Kind#CONFIGURED_BUS} buses included, since a
+ * Everything except {@link NetworkSearch.Kind#BUS} only changes when equipment is created or removed, which
+ * {@link #applyStructureChange} indexes in place - {@link NetworkSearch.Kind#CONFIGURED_BUS} buses included, since a
  * BUS_BREAKER voltage level's configured buses are real, directly-modeled objects unaffected by switch state,
  * unlike {@link NetworkSearch.Kind#BUS}'s bus-view merged buses ({@link VoltageLevel#getBusView()}), which are
  * recalculated on every topology change (switch open/close, terminal connect/disconnect);
  * {@link #refreshBuses(VoltageLevel)}/{@link #refreshBuses(Network)} re-index just that one kind in place, see
- * their caller in {@code MainController} for the trigger. {@link #search} and {@code refreshBuses} may be called
- * concurrently from different threads.
+ * their caller in {@code MainController} for the trigger. {@link #search}, {@code refreshBuses} and
+ * {@code applyStructureChange} may be called concurrently from different threads.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -209,6 +210,42 @@ public final class NetworkSearchIndex implements Closeable {
         busIdsByVoltageLevel.put(voltageLevelId, newIds);
     }
 
+    /**
+     * Indexes the {@code created} objects of {@code network} (the one this index was built for) and drops the
+     * {@code removed} ones, after an edit of its structure, then re-indexes its bus view (see
+     * {@link #refreshBuses(Network)}).
+     */
+    public synchronized void applyStructureChange(Network network, Collection<Identifiable<?>> created, Collection<Identifiable<?>> removed) {
+        List<Identifiable<?>> indexed = created.stream()
+                .filter(identifiable -> indexedKind(identifiable) != null && isPartOf(identifiable, network))
+                .toList();
+        try {
+            Term[] removedIds = removed.stream().map(identifiable -> new Term(FIELD_ID_EXACT, identifiable.getId())).toArray(Term[]::new);
+            if (removedIds.length > 0) {
+                writer.deleteDocuments(removedIds);
+            }
+            for (Identifiable<?> identifiable : indexed) {
+                writer.addDocument(toDocument(identifiable, indexedKind(identifiable)));
+            }
+            commitAndRefreshSearcher();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        removed.forEach(identifiable -> byId.remove(identifiable.getId(), identifiable));
+        indexed.forEach(identifiable -> byId.put(identifiable.getId(), identifiable));
+        refreshBuses(network);
+    }
+
+    // created buses are configured ones: bus view buses are calculated, never created
+    private static NetworkSearch.Kind indexedKind(Identifiable<?> identifiable) {
+        return identifiable instanceof Bus ? NetworkSearch.Kind.CONFIGURED_BUS : NetworkSearch.findKind(identifiable);
+    }
+
+    // a subnetwork's index only holds its own objects, like its stream accessors
+    private static boolean isPartOf(Identifiable<?> identifiable, Network network) {
+        return network.getNetwork() == network || identifiable.getParentNetwork() == network;
+    }
+
     private void commitAndRefreshSearcher() throws IOException {
         writer.commit();
         searcherManager.maybeRefreshBlocking();
@@ -238,6 +275,7 @@ public final class NetworkSearchIndex implements Closeable {
             case BOUNDARY_LINE -> network.getBoundaryLineStream().map(i -> i);
             case HVDC_LINE -> network.getHvdcLineStream().map(i -> i);
             case BUSBAR_SECTION -> network.getBusbarSectionStream().map(i -> i);
+            case GROUND -> network.getGroundStream().map(i -> i);
         };
     }
 
@@ -247,12 +285,10 @@ public final class NetworkSearchIndex implements Closeable {
         document.add(new TextField(FIELD_ID_TEXT, identifiable.getId(), Field.Store.NO));
         identifiable.getOptionalName().ifPresent(name -> document.add(new TextField(FIELD_NAME, name, Field.Store.NO)));
         document.add(new StringField(FIELD_KIND, kind.name(), Field.Store.NO));
-        if (kind == NetworkSearch.Kind.BUS) {
-            // an exact (unanalyzed) copy of the id, indexed so refreshBuses(VoltageLevel) can delete precisely
-            // the stale ids it already knows about, unlike FIELD_ID_TEXT's analyzed tokens or FIELD_ID's
-            // stored-only (unindexed) value, neither of which supports an exact-match term delete
-            document.add(new StringField(FIELD_ID_EXACT, identifiable.getId(), Field.Store.NO));
-        }
+        // an exact (unanalyzed) copy of the id, indexed so refreshBuses(VoltageLevel) and applyStructureChange can
+        // delete precisely the stale ids they already know about, unlike FIELD_ID_TEXT's analyzed tokens or
+        // FIELD_ID's stored-only (unindexed) value, neither of which supports an exact-match term delete
+        document.add(new StringField(FIELD_ID_EXACT, identifiable.getId(), Field.Store.NO));
         return document;
     }
 

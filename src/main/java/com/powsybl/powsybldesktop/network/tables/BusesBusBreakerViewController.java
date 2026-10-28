@@ -8,6 +8,7 @@
 package com.powsybl.powsybldesktop.network.tables;
 
 import com.powsybl.iidm.network.Bus;
+import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.TopologyKind;
@@ -16,14 +17,17 @@ import com.powsybl.powsybldesktop.navigation.BusNavigationState;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
+import com.powsybl.powsybldesktop.network.edit.EditMenus;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Hyperlink;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -149,5 +153,10 @@ public class BusesBusBreakerViewController extends AbstractBusesController {
     @Override
     NavigationEvent ownNavigationEvent(Bus bus) {
         return NavigationEvent.create(NavigationType.NETWORK_TABLE_BUSES_BUS_BREAKER_VIEW, BusNavigationState.create(bus));
+    }
+
+    @Override
+    protected List<MenuItem> creationItems(Container<?> context) {
+        return List.of(EditMenus.busItem(sceneModel, () -> tableView().getScene().getWindow(), context instanceof VoltageLevel voltageLevel ? voltageLevel : null));
     }
 }

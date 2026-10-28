@@ -7,11 +7,21 @@
  */
 package com.powsybl.powsybldesktop.navigation;
 
+import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
+
+import java.util.Set;
 
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 public interface NavigationState {
     Network getSelectedNetwork();
+
+    /**
+     * Whether this state holds one of the {@code removed} network objects, so that it can no longer be restored.
+     */
+    default boolean refersTo(Set<Identifiable<?>> removed) {
+        return false;
+    }
 }

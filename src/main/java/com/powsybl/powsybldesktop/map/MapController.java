@@ -18,6 +18,7 @@ import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.Terminal;
 import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.iidm.network.extensions.LinePosition;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
 import com.powsybl.powsybldesktop.AbstractNetworkTask;
@@ -31,6 +32,8 @@ import com.powsybl.powsybldesktop.navigation.LineNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.TieLineNavigationState;
+import com.powsybl.powsybldesktop.network.edit.ContainerCreations;
+import com.powsybl.powsybldesktop.network.edit.EditMenus;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
@@ -41,14 +44,19 @@ import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import javafx.concurrent.Worker;
 import javafx.fxml.FXML;
+import javafx.geometry.Point2D;
 import javafx.scene.Node;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.layout.VBox;
 import javafx.scene.web.WebView;
 import javafx.util.StringConverter;
 import netscape.javascript.JSObject;
+import org.kordamp.ikonli.javafx.FontIcon;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +66,7 @@ import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
@@ -170,6 +179,7 @@ public class MapController extends AbstractDisposableController implements Scene
 
     @FXML
     private WebView webView;
+    private final ContextMenu contextMenu = new ContextMenu();
 
     @FXML
     private ComboBox<Basemap> basemapComboBox;
@@ -556,6 +566,34 @@ public class MapController extends AbstractDisposableController implements Scene
         } else if (identifiable instanceof BoundaryLine boundaryLine) {
             sceneModel.navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_BOUNDARY_LINES, BoundaryLineNavigationState.create(boundaryLine)));
         }
+    }
+
+    // creation in the clicked substation, or of a substation at the clicked place
+    @SuppressWarnings("unused") // called from map.js
+    public void onMapContextMenu(double latitude, double longitude, double zoom, double x, double y) {
+        Network network = sceneModel.getNetwork();
+        if (network == null) {
+            return;
+        }
+        MapNetworkData.Hit hit = networkData == null ? null : networkData.hitTest(latitude, longitude, zoom, hiddenBaseVoltages);
+        Identifiable<?> identifiable = hit == null ? null : network.getIdentifiable(hit.id());
+        List<MenuItem> items = new ArrayList<>();
+        MenuItem newSubstation = new MenuItem(Messages.get("edit.menu.newSubstationHere"), new FontIcon("mdi2p-plus"));
+        newSubstation.setDisable(mainModel.isBusy(network));
+        newSubstation.setOnAction(event -> ContainerCreations.newSubstation(sceneModel, webView.getScene().getWindow(), network,
+                new Coordinate(latitude, longitude)));
+        items.add(newSubstation);
+        if (identifiable != null) {
+            List<MenuItem> edits = EditMenus.items(sceneModel, () -> webView.getScene().getWindow(), network, identifiable);
+            if (!edits.isEmpty()) {
+                items.add(new SeparatorMenuItem());
+                items.addAll(edits);
+            }
+        }
+        contextMenu.getItems().setAll(items);
+        Point2D screen = webView.localToScreen(x, y);
+        // not from within the JavaScript call
+        Platform.runLater(() -> contextMenu.show(webView, screen.getX(), screen.getY()));
     }
 
     @Override

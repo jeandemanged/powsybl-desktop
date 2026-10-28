@@ -7,10 +7,12 @@
  */
 package com.powsybl.powsybldesktop.navigation;
 
+import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.StaticVarCompensator;
 
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -34,6 +36,11 @@ public class StaticVarCompensatorNavigationState extends NetworkNavigationState 
 
     public StaticVarCompensator getStaticVarCompensator() {
         return staticVarCompensator;
+    }
+
+    @Override
+    public boolean refersTo(Set<Identifiable<?>> removed) {
+        return removed.contains(staticVarCompensator);
     }
 
     @Override

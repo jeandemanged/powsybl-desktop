@@ -17,6 +17,7 @@ import com.powsybl.powsybldesktop.SceneView;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
+import com.powsybl.powsybldesktop.network.edit.Removals;
 import com.powsybl.powsybldesktop.network.limits.OperationalLimitsPane;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
@@ -25,6 +26,7 @@ import javafx.beans.binding.BooleanBinding;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
+import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
@@ -34,7 +36,9 @@ import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -176,6 +180,14 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
             link.setOnAction(event -> sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
                     ContainerNavigationState.create(container, tab, tab == ContainerNavigationState.ContainerTab.SINGLE_LINE ? null : equipment))));
             linksBox.getChildren().add(link);
+        }
+        if (Removals.supports(equipment)) {
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+            Button removeButton = new Button(Messages.get("desktop.common.action.remove"), new FontIcon("mdi2d-delete"));
+            removeButton.disableProperty().bind(editable.not());
+            removeButton.setOnAction(event -> Removals.remove(mainModel, removeButton.getScene().getWindow(), equipment));
+            linksBox.getChildren().addAll(spacer, removeButton);
         }
 
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());

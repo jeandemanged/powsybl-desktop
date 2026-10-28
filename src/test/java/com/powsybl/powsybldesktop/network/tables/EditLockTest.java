@@ -55,7 +55,8 @@ class EditLockTest extends AbstractHeadlessApplicationTest {
             "lcc-converter-stations-view.fxml", "lines-view.fxml", "loads-view.fxml",
             "security-analysis-results-view.fxml", "shunt-compensators-view.fxml", "static-var-compensators-view.fxml",
             "substations-view.fxml", "switches-view.fxml", "tie-lines-view.fxml", "transformers-view.fxml",
-            "violations-view.fxml", "voltage-levels-view.fxml", "vsc-converter-stations-view.fxml");
+            "violations-view.fxml", "voltage-levels-view.fxml", "vsc-converter-stations-view.fxml",
+            "grounds-view.fxml", "areas-view.fxml", "overload-management-systems-view.fxml", "voltage-angle-limits-view.fxml");
 
     private Stage stage;
 

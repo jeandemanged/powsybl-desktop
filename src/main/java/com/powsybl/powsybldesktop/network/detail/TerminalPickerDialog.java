@@ -35,17 +35,17 @@ import java.util.Optional;
 
 /**
  * Modal dialog choosing a terminal of a view's network: an equipment found with the search box, then one of its
- * terminals (side). Used to set a regulated terminal.
+ * terminals (side). Used to set a regulated terminal, an area boundary, a voltage angle limit's terminals.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-final class TerminalPickerDialog {
+public final class TerminalPickerDialog {
 
     // the kinds whose equipment are connectables, i.e. have terminals
     private static final EnumSet<NetworkSearch.Kind> KINDS = EnumSet.of(NetworkSearch.Kind.GENERATOR, NetworkSearch.Kind.BATTERY,
             NetworkSearch.Kind.SHUNT_COMPENSATOR, NetworkSearch.Kind.STATIC_VAR_COMPENSATOR, NetworkSearch.Kind.VSC_CONVERTER_STATION,
             NetworkSearch.Kind.LCC_CONVERTER_STATION, NetworkSearch.Kind.LOAD, NetworkSearch.Kind.LINE, NetworkSearch.Kind.TRANSFORMER,
-            NetworkSearch.Kind.BOUNDARY_LINE, NetworkSearch.Kind.BUSBAR_SECTION);
+            NetworkSearch.Kind.BOUNDARY_LINE, NetworkSearch.Kind.BUSBAR_SECTION, NetworkSearch.Kind.GROUND);
 
     private TerminalPickerDialog() {
     }
@@ -53,7 +53,7 @@ final class TerminalPickerDialog {
     /**
      * @param sceneModel the network of its view, searched for the equipment
      */
-    static Optional<Terminal> show(Window owner, SceneModel sceneModel) {
+    public static Optional<Terminal> show(Window owner, SceneModel sceneModel) {
         FXMLLoader loader = new FXMLLoader(MainApplication.class.getResource("network/search/search-box.fxml"), Messages.bundle());
         Parent searchBox;
         try {

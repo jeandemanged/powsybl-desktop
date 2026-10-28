@@ -13,6 +13,7 @@ import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.BusbarSection;
 import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Generator;
+import com.powsybl.iidm.network.Ground;
 import com.powsybl.iidm.network.HvdcConverterStation;
 import com.powsybl.iidm.network.HvdcLine;
 import com.powsybl.iidm.network.Identifiable;
@@ -57,13 +58,13 @@ public final class NetworkSearch {
 
     public enum Kind {
         SUBSTATION, VOLTAGE_LEVEL, BUS, CONFIGURED_BUS, GENERATOR, BATTERY, SHUNT_COMPENSATOR, STATIC_VAR_COMPENSATOR,
-        VSC_CONVERTER_STATION, LCC_CONVERTER_STATION, LOAD, LINE, TRANSFORMER, TIE_LINE, BOUNDARY_LINE, HVDC_LINE, BUSBAR_SECTION
+        VSC_CONVERTER_STATION, LCC_CONVERTER_STATION, LOAD, LINE, TRANSFORMER, TIE_LINE, BOUNDARY_LINE, HVDC_LINE, BUSBAR_SECTION, GROUND
     }
 
     public static final Set<Kind> ALL_KINDS = EnumSet.allOf(Kind.class);
     private static final Set<Kind> EQUIPMENT_KINDS = EnumSet.of(Kind.BUS, Kind.CONFIGURED_BUS, Kind.GENERATOR, Kind.BATTERY,
             Kind.SHUNT_COMPENSATOR, Kind.STATIC_VAR_COMPENSATOR, Kind.VSC_CONVERTER_STATION, Kind.LCC_CONVERTER_STATION, Kind.LOAD,
-            Kind.LINE, Kind.TRANSFORMER, Kind.TIE_LINE, Kind.BOUNDARY_LINE, Kind.HVDC_LINE, Kind.BUSBAR_SECTION);
+            Kind.LINE, Kind.TRANSFORMER, Kind.TIE_LINE, Kind.BOUNDARY_LINE, Kind.HVDC_LINE, Kind.BUSBAR_SECTION, Kind.GROUND);
 
     private NetworkSearch() {
     }
@@ -110,10 +111,22 @@ public final class NetworkSearch {
                 || kinds.contains(Kind.BOUNDARY_LINE) && voltageLevel.getBoundaryLineCount() > 0
                 || kinds.contains(Kind.HVDC_LINE) && voltageLevel.getConnectableStream(HvdcConverterStation.class)
                         .anyMatch(station -> station.getHvdcLine() != null)
-                || kinds.contains(Kind.BUSBAR_SECTION) && voltageLevel.getConnectableCount(BusbarSection.class) > 0;
+                || kinds.contains(Kind.BUSBAR_SECTION) && voltageLevel.getConnectableCount(BusbarSection.class) > 0
+                || kinds.contains(Kind.GROUND) && voltageLevel.getConnectableCount(Ground.class) > 0;
     }
 
     public static Kind kindOf(Identifiable<?> identifiable) {
+        Kind kind = findKind(identifiable);
+        if (kind == null) {
+            throw new IllegalArgumentException("Unsupported searchable type: " + identifiable.getClass());
+        }
+        return kind;
+    }
+
+    /**
+     * The kind of {@code identifiable}, or null if it isn't searchable (e.g. a switch).
+     */
+    public static Kind findKind(Identifiable<?> identifiable) {
         if (identifiable instanceof Substation) {
             return Kind.SUBSTATION;
         }
@@ -165,7 +178,10 @@ public final class NetworkSearch {
         if (identifiable instanceof BusbarSection) {
             return Kind.BUSBAR_SECTION;
         }
-        throw new IllegalArgumentException("Unsupported searchable type: " + identifiable.getClass());
+        if (identifiable instanceof Ground) {
+            return Kind.GROUND;
+        }
+        return null;
     }
 
     /**
