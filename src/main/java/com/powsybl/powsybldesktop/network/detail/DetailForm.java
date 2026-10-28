@@ -13,7 +13,9 @@ import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.collections.FXCollections;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
@@ -27,6 +29,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.util.StringConverter;
+import org.controlsfx.control.SearchableComboBox;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -179,21 +182,34 @@ public final class DetailForm implements DetailPart {
         ChoiceBox<T> choiceBox = new ChoiceBox<>();
         choiceBox.getItems().setAll(choices);
         choiceBox.setConverter(converter);
-        choiceBox.disableProperty().bind(editable.not());
+        return choiceField(labelKey, choiceBox, choiceBox.valueProperty(), getter, setter);
+    }
+
+    /**
+     * Like {@link #choiceField}, with a search field filtering long lists of choices (e.g. countries).
+     */
+    public <T> DetailForm searchableChoiceField(String labelKey, List<T> choices, StringConverter<T> converter, Supplier<T> getter, Consumer<T> setter) {
+        SearchableComboBox<T> comboBox = new SearchableComboBox<>(FXCollections.observableArrayList(choices));
+        comboBox.setConverter(converter);
+        return choiceField(labelKey, comboBox, comboBox.valueProperty(), getter, setter);
+    }
+
+    private <T> DetailForm choiceField(String labelKey, Control control, ObjectProperty<T> value, Supplier<T> getter, Consumer<T> setter) {
+        control.disableProperty().bind(editable.not());
         boolean[] refreshing = {false};
         Runnable refresher = () -> {
             refreshing[0] = true;
-            choiceBox.setValue(getter.get());
+            value.set(getter.get());
             refreshing[0] = false;
         };
-        choiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+        value.addListener((observable, oldValue, newValue) -> {
             if (!refreshing[0] && newValue != null && !newValue.equals(getter.get())) {
-                apply(choiceBox, () -> setter.accept(newValue));
+                apply(control, () -> setter.accept(newValue));
                 // reverting a rejected value from within this change would leave the skin's popup checking it
                 Platform.runLater(refresher);
             }
         });
-        return node(labelKey, choiceBox, null, refresher);
+        return node(labelKey, control, null, refresher);
     }
 
     /**

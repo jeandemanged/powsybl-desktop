@@ -26,6 +26,7 @@ import com.powsybl.powsybldesktop.network.edit.TableEditActions;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
+import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.utils.TableAutoFitLimiter;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -43,7 +44,6 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
-import javafx.util.StringConverter;
 import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.util.Arrays;
@@ -62,18 +62,6 @@ import java.util.stream.Stream;
 public class SubstationsTableController extends AbstractDisposableController implements SceneView {
 
     private static final List<Country> COUNTRY_CHOICES = Stream.concat(Stream.of((Country) null), Arrays.stream(Country.values())).toList();
-
-    private static final StringConverter<Country> COUNTRY_FORMAT = new StringConverter<>() {
-        @Override
-        public String toString(Country country) {
-            return country == null ? "-" : country.name();
-        }
-
-        @Override
-        public Country fromString(String text) {
-            return "-".equals(text) ? null : Country.valueOf(text);
-        }
-    };
 
     @FXML
     public TableView<Substation> substationsTableView;
@@ -107,7 +95,8 @@ public class SubstationsTableController extends AbstractDisposableController imp
         TableColumnSupport.configureContainerColumn(nameColumn, substation -> Optional.of(substation),
                 (container, item) -> TableColumnSupport.withDetailButton(containerLink(container, item), () -> EquipmentDetails.open(sceneModel, item)));
 
-        TableColumnSupport.configureChoiceColumn(countryColumn, Substation::getNullableCountry, Substation::setCountry, COUNTRY_CHOICES, COUNTRY_FORMAT);
+        TableColumnSupport.configureSearchableChoiceColumn(countryColumn, Substation::getNullableCountry, Substation::setCountry, COUNTRY_CHOICES,
+                Labels.countryFormat());
 
         tsoColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getTso()));
         TableColumnSupport.configureEditableTextColumn(tsoColumn);

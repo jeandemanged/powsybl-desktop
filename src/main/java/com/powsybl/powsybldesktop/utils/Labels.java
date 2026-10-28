@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.utils;
 
 import com.powsybl.iidm.network.Country;
 import com.powsybl.iidm.network.Network;
+import javafx.util.StringConverter;
 
 import java.util.Collection;
 import java.util.stream.Collectors;
@@ -22,7 +23,27 @@ public final class Labels {
     private static final int TREE_LABEL_SUFFIX_LENGTH = 4;
     private static final int COUNTRIES_MAX_LISTED = 5;
 
+    // code then name, so that a searchable choice matches either
+    private static final StringConverter<Country> COUNTRY_FORMAT = new StringConverter<>() {
+        @Override
+        public String toString(Country country) {
+            return country == null ? "-" : country.name() + " - " + country.getName();
+        }
+
+        @Override
+        public Country fromString(String text) {
+            throw new UnsupportedOperationException();
+        }
+    };
+
     private Labels() {
+    }
+
+    /**
+     * Shows a country as its code and name, "-" for none.
+     */
+    public static StringConverter<Country> countryFormat() {
+        return COUNTRY_FORMAT;
     }
 
     public static String truncateForTree(String text) {

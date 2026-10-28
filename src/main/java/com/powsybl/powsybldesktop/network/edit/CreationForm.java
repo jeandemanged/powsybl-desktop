@@ -25,6 +25,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.util.StringConverter;
+import org.controlsfx.control.SearchableComboBox;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -245,7 +246,17 @@ public final class CreationForm {
      * A choice among {@code choices}; none chosen reads as null, an error if {@code required}.
      */
     public <T> Field<T> choice(String labelKey, List<T> choices, StringConverter<T> converter, T initial, boolean required) {
-        ComboBox<T> comboBox = new ComboBox<>();
+        return choice(labelKey, new ComboBox<>(), choices, converter, initial, required);
+    }
+
+    /**
+     * Like {@link #choice}, with a search field filtering long lists of choices (e.g. countries).
+     */
+    public <T> Field<T> searchableChoice(String labelKey, List<T> choices, StringConverter<T> converter, T initial, boolean required) {
+        return choice(labelKey, new SearchableComboBox<>(), choices, converter, initial, required);
+    }
+
+    private <T> Field<T> choice(String labelKey, ComboBox<T> comboBox, List<T> choices, StringConverter<T> converter, T initial, boolean required) {
         comboBox.getItems().setAll(choices);
         comboBox.setConverter(converter);
         comboBox.setValue(initial);

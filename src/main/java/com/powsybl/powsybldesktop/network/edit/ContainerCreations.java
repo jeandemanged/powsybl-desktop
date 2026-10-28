@@ -25,6 +25,7 @@ import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.network.detail.DetailForm;
 import com.powsybl.powsybldesktop.network.detail.DetailSections;
+import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.scene.control.ComboBox;
 import javafx.stage.Window;
@@ -95,7 +96,7 @@ public final class ContainerCreations {
         List<Country> countries = new ArrayList<>();
         countries.add(null);
         countries.addAll(DetailSections.values(Country.class));
-        CreationForm.Field<Country> country = form.choice("desktop.common.column.country", countries, DetailSections.enumFormat(),
+        CreationForm.Field<Country> country = form.searchableChoice("desktop.common.column.country", countries, Labels.countryFormat(),
                 defaultCountry(network), false);
         CreationForm.Field<String> tso = form.text("substations.column.tso", null, false);
         form.section("edit.create.position");

@@ -30,7 +30,9 @@ import com.powsybl.iidm.criteria.VoltageInterval;
 import com.powsybl.iidm.network.Country;
 import com.powsybl.iidm.network.IdentifiableType;
 import com.powsybl.powsybldesktop.network.tables.CellFields;
+import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.powsybldesktop.utils.SearchableCheckComboBox;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
@@ -47,7 +49,6 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.util.StringConverter;
 import javafx.util.converter.DefaultStringConverter;
-import org.controlsfx.control.CheckComboBox;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -332,21 +333,20 @@ public class CriterionListFormController {
     }
 
     private static final class CountryGroup {
-        private final CheckComboBox<Country> comboBox = new CheckComboBox<>(FXCollections.observableArrayList(Country.values()));
+        private final SearchableCheckComboBox<Country> comboBox = new SearchableCheckComboBox<>(List.of(Country.values()), Labels.countryFormat());
         private final Node root;
 
         CountryGroup(String titleKey, Runnable onCommit) {
-            comboBox.getCheckModel().getCheckedItems().addListener((ListChangeListener<Country>) change -> onCommit.run());
+            comboBox.getCheckedItems().addListener((ListChangeListener<Country>) change -> onCommit.run());
             root = new VBox(4, new Label(Messages.get(titleKey)), comboBox);
         }
 
         void setValue(List<Country> countries) {
-            comboBox.getCheckModel().clearChecks();
-            countries.forEach(comboBox.getCheckModel()::check);
+            comboBox.setChecked(countries);
         }
 
         List<Country> getChecked() {
-            return List.copyOf(comboBox.getCheckModel().getCheckedItems());
+            return List.copyOf(comboBox.getCheckedItems());
         }
     }
 

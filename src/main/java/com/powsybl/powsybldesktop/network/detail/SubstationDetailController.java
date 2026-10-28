@@ -12,6 +12,7 @@ import com.powsybl.iidm.network.Country;
 import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
+import com.powsybl.powsybldesktop.utils.Labels;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +45,7 @@ public class SubstationDetailController extends AbstractEquipmentDetailControlle
         List<Country> countries = new ArrayList<>();
         countries.add(null);
         countries.addAll(DetailSections.values(Country.class));
-        form.choiceField("desktop.common.column.country", countries, DetailSections.enumFormat(), equipment::getNullableCountry, equipment::setCountry)
+        form.searchableChoiceField("desktop.common.column.country", countries, Labels.countryFormat(), equipment::getNullableCountry, equipment::setCountry)
                 .textField("substations.column.tso", equipment::getTso, equipment::setTso)
                 .text("substations.column.geographicalTags", () -> String.join(", ", equipment.getGeographicalTags()));
         form.section("desktop.common.equipment.voltageLevel.plural");

@@ -1021,6 +1021,14 @@ public final class TableColumnSupport {
         column.setOnEditCommit(event -> setter.accept(event.getRowValue(), event.getNewValue()));
     }
 
+    // Like configureChoiceColumn, with a search field filtering long lists of choices (e.g. countries).
+    static <S, T> void configureSearchableChoiceColumn(TableColumn<S, T> column, Function<S, T> getter, BiConsumer<S, T> setter,
+                                                        List<T> choices, StringConverter<T> converter) {
+        column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
+        CellFields.searchableChoiceColumn(column, choices, converter);
+        column.setOnEditCommit(event -> setter.accept(event.getRowValue(), event.getNewValue()));
+    }
+
     private static <S> CheckBox connectedCheckBox(TableCell<?, ?> cell, S row, Terminal terminal, Consumer<Terminal> onToggle, CellFields.KeyedFlash flash) {
         CheckBox checkBox = new CheckBox();
         checkBox.setSelected(terminal.isConnected());

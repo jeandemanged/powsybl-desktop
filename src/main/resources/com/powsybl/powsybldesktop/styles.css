@@ -21,6 +21,13 @@
     -fx-font-weight: bold;
 }
 
+/* Popup of a SearchableCheckComboBox: a plain popup has no background of its own. */
+.searchable-check-combo-box-popup {
+    -fx-background-color: -fx-box-border, -fx-control-inner-background;
+    -fx-background-insets: 0, 1;
+    -fx-padding: 4px;
+}
+
 /* Warning text and icon next to a value (TableColumnSupport voltage violations, map's unreachable basemap label). */
 .alert-label {
     -fx-text-fill: darkorange;

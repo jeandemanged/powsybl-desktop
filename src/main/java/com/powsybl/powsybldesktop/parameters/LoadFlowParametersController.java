@@ -16,7 +16,9 @@ import com.powsybl.loadflow.json.JsonLoadFlowParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.FileChooserPreferences;
+import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.powsybldesktop.utils.SearchableCheckComboBox;
 import javafx.beans.property.ObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
@@ -296,20 +298,12 @@ public class LoadFlowParametersController extends AbstractDisposableController {
     }
 
     private void addCountriesToBalanceField() {
-        CheckComboBox<String> checkComboBox = new CheckComboBox<>(FXCollections.observableArrayList(
-                Arrays.stream(Country.values()).map(Country::name).sorted().toList()));
+        SearchableCheckComboBox<Country> checkComboBox = new SearchableCheckComboBox<>(List.of(Country.values()), Labels.countryFormat());
         checkComboBox.setTitle(Messages.get("loadflow.param.countriesToBalance.title"));
-        refreshers.add(() -> {
-            Set<String> selected = loadFlowParametersProperty.getValue().getCountriesToBalance().stream()
-                    .map(Country::name).collect(Collectors.toSet());
-            checkComboBox.getCheckModel().clearChecks();
-            checkComboBox.getItems().stream().filter(selected::contains).forEach(checkComboBox.getCheckModel()::check);
-        });
-        checkComboBox.getCheckModel().getCheckedItems().addListener((javafx.collections.ListChangeListener<String>) change -> {
+        refreshers.add(() -> checkComboBox.setChecked(loadFlowParametersProperty.getValue().getCountriesToBalance()));
+        checkComboBox.getCheckedItems().addListener((javafx.collections.ListChangeListener<Country>) change -> {
             if (!refreshing) {
-                Set<Country> countries = checkComboBox.getCheckModel().getCheckedItems().stream()
-                        .map(Country::valueOf).collect(Collectors.toSet());
-                loadFlowParametersProperty.getValue().setCountriesToBalance(countries);
+                loadFlowParametersProperty.getValue().setCountriesToBalance(Set.copyOf(checkComboBox.getCheckedItems()));
                 onChange.run();
             }
         });
@@ -515,7 +509,10 @@ public class LoadFlowParametersController extends AbstractDisposableController {
     }
 
     // string list with a closed set of possible values (enum-backed): a checkable dropdown
-    private CheckComboBox<String> buildCheckListControl(Parameter parameter) {
+    private Control buildCheckListControl(Parameter parameter) {
+        if (Set.copyOf(parameter.getPossibleValues()).equals(Arrays.stream(Country.values()).map(Country::name).collect(Collectors.toSet()))) {
+            return buildCountryCheckListControl(parameter);
+        }
         CheckComboBox<String> checkComboBox = new CheckComboBox<>(FXCollections.observableArrayList(
                 parameter.getPossibleValues().stream().map(Object::toString).toList()));
         refreshers.add(() -> {
@@ -529,6 +526,20 @@ public class LoadFlowParametersController extends AbstractDisposableController {
         checkComboBox.getCheckModel().getCheckedItems().addListener((javafx.collections.ListChangeListener<String>) change -> {
             if (!refreshing) {
                 applySpecificUpdate(parameter, String.join(",", checkComboBox.getCheckModel().getCheckedItems()));
+            }
+        });
+        return checkComboBox;
+    }
+
+    // country codes (e.g. slackBusCountryFilter), searchable by code or name
+    private Control buildCountryCheckListControl(Parameter parameter) {
+        SearchableCheckComboBox<Country> checkComboBox = new SearchableCheckComboBox<>(List.of(Country.values()), Labels.countryFormat());
+        refreshers.add(() -> checkComboBox.setChecked(currentSpecificValue(parameter) instanceof Collection<?> collection
+                ? collection.stream().map(value -> Country.valueOf(value.toString())).toList()
+                : List.of()));
+        checkComboBox.getCheckedItems().addListener((javafx.collections.ListChangeListener<Country>) change -> {
+            if (!refreshing) {
+                applySpecificUpdate(parameter, checkComboBox.getCheckedItems().stream().map(Country::name).collect(Collectors.joining(",")));
             }
         });
         return checkComboBox;

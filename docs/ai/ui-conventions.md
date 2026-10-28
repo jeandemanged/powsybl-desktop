@@ -108,6 +108,10 @@ table uses it too).
   `sidedColumn`/`editorColumn` stack one editor per side (`CellTextField`, `CellChoiceBox`, `IntStepper`). A text
   field commits on Enter or focus loss, Escape reverts what is being typed, Up/Down commit then move to the field
   above/below in the same column; focusing a field selects its cell.
+- Country choices (PowSyBl `Country`) are searchable and shown by `Labels.countryFormat()` (code and name): a single
+  choice is a ControlsFX `SearchableComboBox` (`CellFields.searchableChoiceColumn`, `DetailForm.searchableChoiceField`,
+  `CreationForm.searchableChoice`), a multiple one a `…/utils/SearchableCheckComboBox.java` (ControlsFX's
+  `CheckComboBox` has no search).
 - Use the factories in `…/network/tables/TableColumnSupport.java` (`configureDoubleColumn`,
   `configureEditableBooleanColumn`, `configureChoiceColumn`, `configureSingleSlotChoiceColumn`, `configureNullableEditable*`, `configureMultiSided*`,
   `configureDetailNameColumn`, `configureSpinnerIntColumn`, ...) and, in detail views, `DetailTables.editableColumn`.

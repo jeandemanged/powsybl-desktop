@@ -11,6 +11,7 @@ import com.powsybl.commons.PowsyblException;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
+import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
 import javafx.event.Event;
@@ -31,6 +32,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.util.StringConverter;
+import org.controlsfx.control.SearchableComboBox;
 import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.util.ArrayList;
@@ -121,9 +123,21 @@ public final class CellFields {
      * Edits {@code column}'s values in choice boxes, committed through its onEditCommit handler like {@link #textColumn}.
      */
     public static <S, T> void choiceColumn(TableColumn<S, T> column, List<T> choices, StringConverter<T> converter) {
+        choiceColumn(column, (cell, flash) -> new CellChoiceBox<>(cell, flash, choices, converter));
+    }
+
+    /**
+     * Like {@link #choiceColumn}, with a search field filtering long lists of choices (e.g. countries).
+     */
+    public static <S, T> void searchableChoiceColumn(TableColumn<S, T> column, List<T> choices, StringConverter<T> converter) {
+        choiceColumn(column, (cell, flash) -> new CellSearchableComboBox<>(cell, flash, choices, converter));
+    }
+
+    private static <S, T, E extends Node & ChoiceEditor<T>> void choiceColumn(TableColumn<S, T> column,
+                                                                             BiFunction<TableCell<?, ?>, KeyedFlash, E> editorFactory) {
         KeyedFlash flash = new KeyedFlash();
         column.setCellFactory(col -> new TableCell<>() {
-            private final CellChoiceBox<T> choiceBox = new CellChoiceBox<>(this, flash, choices, converter);
+            private final E choiceBox = editorFactory.apply(this, flash);
 
             @Override
             protected void updateItem(T value, boolean empty) {
@@ -487,16 +501,11 @@ public final class CellFields {
     /**
      * A choice box editing one value of a cell, applied when picked.
      */
-    static final class CellChoiceBox<T> extends ChoiceBox<T> implements CellEditor {
-        private final KeyedFlash flash;
-        private Object key;
-        private Supplier<T> getter;
-        private Consumer<T> setter;
-        private boolean showingValue;
+    static final class CellChoiceBox<T> extends ChoiceBox<T> implements ChoiceEditor<T> {
+        private final ChoiceBinding<T> binding;
 
         CellChoiceBox(TableCell<?, ?> cell, KeyedFlash flash, List<T> choices, StringConverter<T> converter) {
             super(FXCollections.observableArrayList(choices));
-            this.flash = flash;
             if (converter != null) {
                 setConverter(converter);
             }
@@ -506,10 +515,75 @@ public final class CellFields {
                     selectCell(cell);
                 }
             });
-            valueProperty().addListener((observable, oldValue, value) -> {
-                if (!showingValue && getter != null && !Objects.equals(value, getter.get())) {
+            binding = new ChoiceBinding<>(this, flash, valueProperty());
+        }
+
+        @Override
+        public void bind(Object key, Supplier<T> getter, Consumer<T> setter) {
+            binding.bind(key, getter, setter);
+        }
+
+        @Override
+        public void unbind() {
+            binding.unbind();
+        }
+    }
+
+    /**
+     * A combo box with a search field, editing one value of a cell, applied when picked.
+     */
+    static final class CellSearchableComboBox<T> extends SearchableComboBox<T> implements ChoiceEditor<T> {
+        private final ChoiceBinding<T> binding;
+
+        CellSearchableComboBox(TableCell<?, ?> cell, KeyedFlash flash, List<T> choices, StringConverter<T> converter) {
+            super(FXCollections.observableArrayList(choices));
+            setConverter(converter);
+            setMaxWidth(Double.MAX_VALUE);
+            // the skin's search field takes the focus, not the combo box
+            focusWithinProperty().addListener((observable, wasFocused, focused) -> {
+                if (focused) {
+                    selectCell(cell);
+                }
+            });
+            binding = new ChoiceBinding<>(this, flash, valueProperty());
+        }
+
+        @Override
+        public void bind(Object key, Supplier<T> getter, Consumer<T> setter) {
+            binding.bind(key, getter, setter);
+        }
+
+        @Override
+        public void unbind() {
+            binding.unbind();
+        }
+    }
+
+    /**
+     * An editor of one value of a cell among choices.
+     */
+    interface ChoiceEditor<T> extends CellEditor {
+        void bind(Object key, Supplier<T> getter, Consumer<T> setter);
+    }
+
+    // A choice editor's value, bound to the row (or row side) its cell shows.
+    private static final class ChoiceBinding<T> {
+        private final Node editor;
+        private final KeyedFlash flash;
+        private final ObjectProperty<T> value;
+        private Object key;
+        private Supplier<T> getter;
+        private Consumer<T> setter;
+        private boolean showingValue;
+
+        private ChoiceBinding(Node editor, KeyedFlash flash, ObjectProperty<T> value) {
+            this.editor = editor;
+            this.flash = flash;
+            this.value = value;
+            value.addListener((observable, oldValue, newValue) -> {
+                if (!showingValue && getter != null && !Objects.equals(newValue, getter.get())) {
                     Object edited = key;
-                    CellFields.apply(this, flash, edited, "", () -> setter.accept(value));
+                    CellFields.apply(editor, flash, edited, "", () -> setter.accept(newValue));
                     // reverting a rejected value from within this change would leave the skin's popup checking it
                     Platform.runLater(() -> {
                         if (getter != null && Objects.equals(key, edited)) {
@@ -520,25 +594,24 @@ public final class CellFields {
             });
         }
 
-        void bind(Object key, Supplier<T> getter, Consumer<T> setter) {
+        private void bind(Object key, Supplier<T> getter, Consumer<T> setter) {
             this.key = key;
             this.getter = getter;
             this.setter = setter;
             showValue();
-            flash.show(this, key);
+            flash.show(editor, key);
         }
 
-        @Override
-        public void unbind() {
+        private void unbind() {
             key = null;
             getter = null;
             setter = null;
-            flash.show(this, null);
+            flash.show(editor, null);
         }
 
         private void showValue() {
             showingValue = true;
-            setValue(getter.get());
+            value.set(getter.get());
             showingValue = false;
         }
     }

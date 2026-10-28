@@ -14,6 +14,7 @@ import com.powsybl.loadflow.json.JsonLoadFlowParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.powsybldesktop.utils.SearchableCheckComboBox;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.fxml.FXMLLoader;
@@ -30,7 +31,6 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
-import org.controlsfx.control.CheckComboBox;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -144,12 +144,9 @@ class LoadFlowParametersControllerTest extends AbstractHeadlessApplicationTest {
     void countriesToBalanceCheckModelRoundTripsToParameters() {
         GridPane grid = selectCategory("Slack Distribution");
         @SuppressWarnings("unchecked")
-        CheckComboBox<String> combo = (CheckComboBox<String>) controlForLabel(grid, "Countries To Balance");
+        SearchableCheckComboBox<Country> combo = (SearchableCheckComboBox<Country>) controlForLabel(grid, "Countries To Balance");
 
-        interact(() -> {
-            combo.getCheckModel().check("FR");
-            combo.getCheckModel().check("BE");
-        });
+        interact(() -> combo.setChecked(List.of(Country.FR, Country.BE)));
 
         assertEquals(Set.of(Country.FR, Country.BE), params.get().getCountriesToBalance());
     }
