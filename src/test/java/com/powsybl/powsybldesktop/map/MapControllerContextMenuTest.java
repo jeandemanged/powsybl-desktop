@@ -9,6 +9,8 @@ package com.powsybl.powsybldesktop.map;
 
 import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.extensions.Coordinate;
+import com.powsybl.iidm.network.extensions.SubstationPosition;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
@@ -19,7 +21,9 @@ import javafx.geometry.Point2D;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.ContextMenu;
+import javafx.scene.control.ListView;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.TitledPane;
 import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.web.WebView;
 import javafx.stage.Stage;
@@ -34,6 +38,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -45,17 +51,24 @@ class MapControllerContextMenuTest extends AbstractHeadlessApplicationTest {
 
     private MapController controller;
     private WebView webView;
+    private ListView<MapNetworkData.UnplacedSubstation> unplacedList;
+    private TitledPane positionsPane;
+    private Network network;
 
     @Override
+    @SuppressWarnings("unchecked")
     public void start(Stage stage) throws IOException {
         FXMLLoader loader = new FXMLLoader(getClass().getResource(
                 "/com/powsybl/powsybldesktop/map/map-view.fxml"), Messages.bundle());
         Parent root = loader.load();
         controller = loader.getController();
         webView = (WebView) root.lookup(".web-view");
+        positionsPane = (TitledPane) root.lookup("#positionsPane");
+        // in the titled pane's content, only part of the scene graph once its skin exists
+        unplacedList = (ListView<MapNetworkData.UnplacedSubstation>) positionsPane.getContent().lookup("#unplacedListView");
 
         MainModel mainModel = new MainModel();
-        Network network = IeeeCdfNetworkFactory.create14();
+        network = IeeeCdfNetworkFactory.create14();
         mainModel.addNetwork(network);
         mainModel.setNetwork(network);
         controller.setSceneModel(SceneModel.main(mainModel));
@@ -76,12 +89,43 @@ class MapControllerContextMenuTest extends AbstractHeadlessApplicationTest {
     // handles the JavaFX event and asks map.js where the pointer is
     @Test
     void rightClickOffersANewSubstationHere() throws TimeoutException {
+        waitForEngine();
+
+        assertEquals(List.of(Messages.get("edit.menu.newSubstationHere")), rightClick(webView.getWidth() / 2, webView.getHeight() / 2));
+    }
+
+    // IEEE 14 has no positions at all: its substations are placed from the list, each click selecting the next one
+    @Test
+    void placesUnplacedSubstationsOneAfterTheOther() throws TimeoutException {
+        waitForEngine();
+        int substations = network.getSubstationCount();
+        WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> unplacedList.getItems().size() == substations);
+        interact(() -> {
+            positionsPane.setExpanded(true);
+            unplacedList.getSelectionModel().select(0);
+        });
+        String first = unplacedList.getItems().getFirst().id();
+
+        interact(() -> controller.onPlace(48, 2));
+        WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> unplacedList.getItems().size() == substations - 1
+                && unplacedList.getSelectionModel().getSelectedIndex() == 0);
+
+        assertEquals(new Coordinate(48, 2), network.getSubstation(first).getExtension(SubstationPosition.class).getCoordinate());
+        assertNotEquals(first, unplacedList.getSelectionModel().getSelectedItem().id());
+
+        // the view is fitted to the only substation placed, which is then in its middle
+        interact(() -> unplacedList.getSelectionModel().clearSelection());
+        assertTrue(rightClick(webView.getWidth() / 2, webView.getHeight() / 2).contains(Messages.get("map.edit.moveSubstation")));
+    }
+
+    private void waitForEngine() throws TimeoutException {
         WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() ->
                 webView.getEngine().executeScript("typeof window.controller !== 'undefined'")).get().equals(Boolean.TRUE));
+    }
 
+    // the texts of the context menu shown at x, y
+    private List<String> rightClick(double x, double y) {
         interact(() -> {
-            double x = webView.getWidth() / 2;
-            double y = webView.getHeight() / 2;
             // the event's coordinates are the scene's
             Point2D scene = webView.localToScene(x, y);
             Point2D screen = webView.localToScreen(x, y);
@@ -94,6 +138,6 @@ class MapControllerContextMenuTest extends AbstractHeadlessApplicationTest {
                 .filter(window -> window instanceof ContextMenu && window.isShowing())
                 .map(ContextMenu.class::cast)
                 .findFirst().orElseThrow(() -> new AssertionError("No context menu"));
-        assertEquals(List.of(Messages.get("edit.menu.newSubstationHere")), menu.getItems().stream().map(MenuItem::getText).toList());
+        return menu.getItems().stream().map(MenuItem::getText).toList();
     }
 }

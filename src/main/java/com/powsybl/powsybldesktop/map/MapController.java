@@ -34,24 +34,38 @@ import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.TieLineNavigationState;
 import com.powsybl.powsybldesktop.network.edit.ContainerCreations;
 import com.powsybl.powsybldesktop.network.edit.EditMenus;
+import com.powsybl.powsybldesktop.network.edit.NetworkEdits;
+import com.powsybl.powsybldesktop.network.edit.PositionEdits;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import javafx.concurrent.Worker;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
+import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
 import javafx.scene.input.ContextMenuEvent;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
 import javafx.scene.web.WebView;
@@ -68,9 +82,11 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -82,8 +98,9 @@ import java.util.stream.Collectors;
 
 /**
  * Shows substations and lines on a basemap, using the coordinates carried by the IIDM
- * {@link SubstationPosition}/{@link LinePosition} network extensions - equipment without one of those
- * extensions simply isn't drawn. A line disconnected on at least one side is dashed. Clicking a substation marker
+ * {@link SubstationPosition}/{@link LinePosition} network extensions - a substation without position isn't drawn, a
+ * line without route is drawn thin and translucent straight between its substations if both have one. A line
+ * disconnected on at least one side is dashed. Clicking a substation marker
  * or a line navigates to it in the substations view / lines, tie lines or boundary lines table, same as any other
  * cross-view link in this app.
  * <p>
@@ -110,6 +127,10 @@ import java.util.stream.Collectors;
  * The search box zooms to its current match: a line, tie line or boundary line to fit it whole, anything else to its
  * substation, with some neighbouring substations around it, and marks it: a line halfway along, anything else at its
  * substation. A match with nothing drawn to zoom to leaves the view as it is, unmarked.
+ * <p>
+ * Positions are edited here too (see {@link PositionEdits}): substations without position are listed, and placed by
+ * a click on the map, one after the other; the context menu moves a substation or edits a line's route, both drawn
+ * by map.js over the network tiles until applied (or cancelled), and gives lines straight routes.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -205,6 +226,43 @@ public class MapController extends AbstractDisposableController implements Scene
     @FXML
     private SearchBoxController searchBoxController;
 
+    @FXML
+    private TitledPane positionsPane;
+
+    @FXML
+    private TextField unplacedFilterField;
+
+    @FXML
+    private ListView<MapNetworkData.UnplacedSubstation> unplacedListView;
+
+    @FXML
+    private Label placementHintLabel;
+
+    @FXML
+    private Hyperlink straightRoutesLink;
+
+    @FXML
+    private Node editBar;
+
+    @FXML
+    private Label editTitleLabel;
+
+    @FXML
+    private Label editHintLabel;
+
+    @FXML
+    private Button editStraightButton;
+
+    private final ObservableList<MapNetworkData.UnplacedSubstation> unplacedSubstations = FXCollections.observableArrayList();
+    private final FilteredList<MapNetworkData.UnplacedSubstation> filteredUnplacedSubstations = new FilteredList<>(unplacedSubstations);
+    // the substation selected in the list is placed by a click on the map
+    private boolean placing;
+    // where in the list the substation just placed was: the one taking its place is selected next, once the list shows it
+    private int nextPlacement = -1;
+    // what is being edited on the map: a substation, a line or a boundary line (a tie line half), null for nothing
+    private Identifiable<?> edited;
+    private Network editedNetwork;
+
     /**
      * Builds the {@link MapNetworkData} off the FX thread. Restarting it on each refresh cancels a build still
      * running, whose result is then dropped.
@@ -263,6 +321,8 @@ public class MapController extends AbstractDisposableController implements Scene
             }
         });
         basemapUnreachableLabel.managedProperty().bind(basemapUnreachableLabel.visibleProperty());
+        webView.addEventFilter(KeyEvent.KEY_PRESSED, this::onKeyPressed);
+        initializePositions();
 
         String html = HTML_SHELL.formatted(readResource("leaflet.css"), readResource("leaflet.js"), readResource("map.js"));
         webView.getEngine().getLoadWorker().stateProperty().addListener((observable, oldValue, newValue) -> {
@@ -281,6 +341,7 @@ public class MapController extends AbstractDisposableController implements Scene
             networkData = networkDataService.getValue();
             displayedNetwork = buildingNetwork;
             loadingPane.setVisible(false);
+            showPositions();
             NetworkStudy.MapView mapView = displayedNetwork == null ? null : mainModel.getStudy(displayedNetwork).getMapView(displayedNetwork);
             try {
                 // passed as JS string arguments rather than spliced into a script, so they need no escaping
@@ -332,7 +393,11 @@ public class MapController extends AbstractDisposableController implements Scene
             }
             applyBasemap();
         });
-        listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> refresh());
+        listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> {
+            stopEdit();
+            unplacedSubstations.clear();
+            refresh();
+        });
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
         createBaseVoltageCheckBoxes();
         listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> applyGuiParameters());
@@ -576,6 +641,11 @@ public class MapController extends AbstractDisposableController implements Scene
                 new Coordinate(latitude, longitude)));
         items.add(newSubstation);
         if (identifiable != null) {
+            List<MenuItem> positions = positionItems(network, identifiable, hit.implied());
+            if (!positions.isEmpty()) {
+                items.add(new SeparatorMenuItem());
+                items.addAll(positions);
+            }
             List<MenuItem> edits = EditMenus.items(sceneModel, () -> webView.getScene().getWindow(), network, identifiable);
             if (!edits.isEmpty()) {
                 items.add(new SeparatorMenuItem());
@@ -597,6 +667,299 @@ public class MapController extends AbstractDisposableController implements Scene
             webView.getEngine().executeScript("mapContextMenuAt(" + event.getX() / zoom + ", " + event.getY() / zoom + ")");
         }
         event.consume();
+    }
+
+    private void initializePositions() {
+        unplacedListView.setItems(filteredUnplacedSubstations);
+        unplacedFilterField.textProperty().addListener((observable, oldValue, newValue) -> {
+            String filter = newValue.trim().toLowerCase(Locale.ROOT);
+            filteredUnplacedSubstations.setPredicate(substation -> filter.isEmpty()
+                    || substation.text().toLowerCase(Locale.ROOT).contains(filter) || substation.id().toLowerCase(Locale.ROOT).contains(filter));
+        });
+        unplacedListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> updatePlacement());
+        positionsPane.expandedProperty().addListener((observable, oldValue, newValue) -> updatePlacement());
+        positionsPane.managedProperty().bind(positionsPane.visibleProperty());
+        positionsPane.setVisible(false);
+        for (Node node : List.of(unplacedFilterField, unplacedListView, placementHintLabel, straightRoutesLink, editStraightButton)) {
+            node.managedProperty().bind(node.visibleProperty());
+        }
+        updatePlacement();
+    }
+
+    // the unplaced substations and unrouted lines of the network just drawn, and the edit if what it edits is gone
+    private void showPositions() {
+        if (edited != null && (editedNetwork != displayedNetwork || editedNetwork.getIdentifiable(edited.getId()) != edited)) {
+            stopEdit();
+        }
+        MapNetworkData.UnplacedSubstation selected = unplacedListView.getSelectionModel().getSelectedItem();
+        unplacedSubstations.setAll(networkData.unplacedSubstations());
+        int index = nextPlacement >= 0 ? Math.min(nextPlacement, filteredUnplacedSubstations.size() - 1)
+                : selected == null ? -1 : filteredUnplacedSubstations.indexOf(selected);
+        nextPlacement = -1;
+        if (index >= 0) {
+            unplacedListView.getSelectionModel().select(index);
+            unplacedListView.scrollTo(index);
+        }
+        int unplaced = networkData.unplacedSubstations().size();
+        int unrouted = networkData.unroutedCount();
+        positionsPane.setVisible(unplaced > 0 || unrouted > 0);
+        positionsPane.setText(Messages.get("map.position.title", unplaced, unrouted));
+        unplacedFilterField.setVisible(unplaced > 0);
+        unplacedListView.setVisible(unplaced > 0);
+        placementHintLabel.setVisible(unplaced > 0);
+        straightRoutesLink.setVisible(unrouted > 0);
+        straightRoutesLink.setText(Messages.get("map.position.straightRoutes", unrouted));
+    }
+
+    // a substation selected in the open list is placed by the next click on the map, unless something is being edited
+    private void updatePlacement() {
+        MapNetworkData.UnplacedSubstation selected = unplacedListView.getSelectionModel().getSelectedItem();
+        placing = selected != null && positionsPane.isExpanded() && edited == null;
+        placementHintLabel.setText(placing ? Messages.get("map.position.placing", selected.text()) : Messages.get("map.position.placeHint"));
+        if (engineLoaded) {
+            jsWindow.call(placing ? "startPlacement" : "stopPlacement");
+        }
+    }
+
+    /**
+     * Called from map.js on a click while placing the substation selected in the list.
+     */
+    @SuppressWarnings("unused") // called from map.js
+    public void onPlace(double latitude, double longitude) {
+        // not from within the JavaScript call: the edit refreshes the map
+        Platform.runLater(() -> {
+            MapNetworkData.UnplacedSubstation selected = unplacedListView.getSelectionModel().getSelectedItem();
+            Network network = sceneModel.getNetwork();
+            Substation substation = selected == null || network == null ? null : network.getSubstation(selected.id());
+            if (!placing || substation == null) {
+                return;
+            }
+            int index = unplacedListView.getSelectionModel().getSelectedIndex();
+            if (NetworkEdits.apply(mainModel, network, n -> PositionEdits.setSubstationPosition(substation, new Coordinate(latitude, longitude)))) {
+                // until the refreshed list shows the next one: a click meanwhile would move this one instead
+                unplacedListView.getSelectionModel().clearSelection();
+                nextPlacement = index;
+            }
+        });
+    }
+
+    @FXML
+    private void createStraightRoutes() {
+        Network network = sceneModel.getNetwork();
+        if (network == null || networkData == null) {
+            return;
+        }
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.initOwner(webView.getScene().getWindow());
+        alert.setTitle(Messages.get("edit.menu.straightRoute"));
+        alert.setHeaderText(Messages.get("map.position.straightRoutes.confirm", networkData.unroutedCount()));
+        if (alert.showAndWait().filter(ButtonType.OK::equals).isPresent()) {
+            NetworkEdits.apply(mainModel, network, PositionEdits::createStraightRoutes);
+        }
+    }
+
+    // moving a substation or editing a route on the map, and changing a position at once
+    private List<MenuItem> positionItems(Network network, Identifiable<?> identifiable, boolean implied) {
+        List<MenuItem> items = new ArrayList<>();
+        switch (identifiable) {
+            case Substation substation -> {
+                items.add(menuItem("map.edit.moveSubstation", () -> startSubstationMove(network, substation)));
+                items.add(menuItem("map.edit.removePosition", () -> NetworkEdits.apply(mainModel, network,
+                        n -> PositionEdits.removeSubstationPosition(substation))));
+            }
+            case TieLine tieLine -> {
+                List<BoundaryLine> halves = List.of(tieLine.getBoundaryLine1(), tieLine.getBoundaryLine2());
+                Menu editRoute = new Menu(Messages.get(implied ? "map.edit.defineRoute" : "map.edit.editRoute"));
+                for (int i = 0; i < halves.size(); i++) {
+                    BoundaryLine half = halves.get(i);
+                    MenuItem item = new MenuItem(Messages.get("map.edit.routeSide", i + 1, half.getNameOrId()));
+                    item.setOnAction(event -> startRouteEdit(network, half));
+                    editRoute.getItems().add(item);
+                }
+                items.add(editRoute);
+                MenuItem straight = menuItem("edit.menu.straightRoute", () -> NetworkEdits.apply(mainModel, network,
+                        n -> halves.forEach(half -> PositionEdits.straightRoute(half).ifPresent(route -> PositionEdits.setRoute(half, route)))));
+                straight.setDisable(PositionEdits.straightRoute(halves.getFirst()).isEmpty());
+                items.add(straight);
+                if (!implied) {
+                    items.add(menuItem("map.edit.removeRoute", () -> NetworkEdits.apply(mainModel, network,
+                            n -> halves.forEach(half -> PositionEdits.setRoute(half, List.of())))));
+                }
+            }
+            case Line line -> items.addAll(routeItems(network, line, implied));
+            case BoundaryLine boundaryLine -> items.addAll(routeItems(network, boundaryLine, false));
+            default -> {
+                // no position
+            }
+        }
+        if (mainModel.isBusy(network)) {
+            items.forEach(item -> item.setDisable(true));
+        }
+        return items;
+    }
+
+    private List<MenuItem> routeItems(Network network, Identifiable<?> line, boolean implied) {
+        List<MenuItem> items = new ArrayList<>();
+        items.add(menuItem(implied ? "map.edit.defineRoute" : "map.edit.editRoute", () -> startRouteEdit(network, line)));
+        List<Coordinate> straightRoute = PositionEdits.straightRoute(line).orElse(null);
+        MenuItem straight = menuItem("edit.menu.straightRoute", () -> NetworkEdits.apply(mainModel, network,
+                n -> PositionEdits.setRoute(line, straightRoute)));
+        straight.setDisable(straightRoute == null);
+        items.add(straight);
+        if (!implied) {
+            items.add(menuItem("map.edit.removeRoute", () -> NetworkEdits.apply(mainModel, network, n -> PositionEdits.setRoute(line, List.of()))));
+        }
+        return items;
+    }
+
+    private static MenuItem menuItem(String key, Runnable action) {
+        MenuItem item = new MenuItem(Messages.get(key));
+        item.setOnAction(event -> action.run());
+        return item;
+    }
+
+    private void startSubstationMove(Network network, Substation substation) {
+        PositionEdits.substationCoordinate(substation).ifPresent(coordinate -> {
+            startEdit(network, substation, Messages.get("map.edit.moving", substation.getNameOrId()));
+            jsWindow.call("startSubstationMove", coordinate.getLatitude(), coordinate.getLongitude());
+            onEditChanged(1);
+        });
+    }
+
+    /**
+     * Starts from its route, or else a straight one, or else, for a boundary line, its substation: the user clicks the
+     * rest. Its ends snap to their substations.
+     */
+    private void startRouteEdit(Network network, Identifiable<?> line) {
+        List<Coordinate> route = PositionEdits.route(line);
+        List<VoltageLevel> ends = switch (line) {
+            case Line branch -> List.of(branch.getTerminal1().getVoltageLevel(), branch.getTerminal2().getVoltageLevel());
+            case BoundaryLine boundaryLine -> List.of(boundaryLine.getTerminal().getVoltageLevel());
+            default -> List.of();
+        };
+        List<Coordinate> snaps = ends.stream().map(PositionEdits::substationCoordinate).flatMap(Optional::stream).toList();
+        if (route.isEmpty()) {
+            route = PositionEdits.straightRoute(line).orElse(line instanceof BoundaryLine ? snaps : List.of());
+        }
+        startEdit(network, line, Messages.get("map.edit.route", line.getNameOrId()));
+        jsWindow.call("startRouteEdit", toJson(route), toJson(snaps));
+        onEditChanged(route.size());
+    }
+
+    private void startEdit(Network network, Identifiable<?> identifiable, String title) {
+        edited = identifiable;
+        editedNetwork = network;
+        updatePlacement();
+        clearSearchHighlight();
+        editTitleLabel.setText(title);
+        editStraightButton.setVisible(!(identifiable instanceof Substation));
+        editBar.setVisible(true);
+    }
+
+    /**
+     * Called from map.js whenever the edited points changed, with how many there are now.
+     */
+    @SuppressWarnings("unused") // called from map.js
+    public void onEditChanged(int points) {
+        editHintLabel.setText(Messages.get(edited instanceof Substation ? "map.edit.moveHint"
+                : points < 2 ? "map.edit.drawHint" : "map.edit.routeHint"));
+    }
+
+    @FXML
+    private void applyEdit() {
+        if (edited == null) {
+            return;
+        }
+        Identifiable<?> target = edited;
+        List<Coordinate> points;
+        try {
+            points = Arrays.stream(objectMapper.readValue((String) jsWindow.call("getEditPoints"), double[][].class))
+                    .map(point -> new Coordinate(point[0], point[1]))
+                    .toList();
+        } catch (JsonProcessingException e) {
+            LOGGER.error(e.getMessage(), e);
+            return;
+        }
+        if (NetworkEdits.apply(mainModel, editedNetwork, n -> {
+            if (target instanceof Substation substation) {
+                PositionEdits.setSubstationPosition(substation, points.getFirst());
+            } else {
+                PositionEdits.setRoute(target, points);
+            }
+        })) {
+            stopEdit();
+        }
+    }
+
+    @FXML
+    private void cancelEdit() {
+        stopEdit();
+    }
+
+    @FXML
+    private void straightenEdit() {
+        if (edited != null) {
+            PositionEdits.straightRoute(edited).ifPresent(route -> jsWindow.call("setEditPoints", toJson(route)));
+        }
+    }
+
+    private void stopEdit() {
+        if (edited == null) {
+            return;
+        }
+        edited = null;
+        editedNetwork = null;
+        editBar.setVisible(false);
+        if (engineLoaded) {
+            jsWindow.call("stopEdit");
+        }
+        updatePlacement();
+    }
+
+    /**
+     * Called from map.js on a right-click while editing, with the index of the point under the pointer, -1 for none.
+     */
+    @SuppressWarnings("unused") // called from map.js
+    public void onEditContextMenu(int point) {
+        List<MenuItem> items = new ArrayList<>();
+        if (point >= 0 && !(edited instanceof Substation)) {
+            items.add(menuItem("map.edit.deletePoint", () -> jsWindow.call("deleteEditPoint", point)));
+        }
+        if (!(edited instanceof Substation)) {
+            MenuItem straight = menuItem("edit.menu.straightRoute", this::straightenEdit);
+            straight.setDisable(edited == null || PositionEdits.straightRoute(edited).isEmpty());
+            items.add(straight);
+        }
+        items.add(new SeparatorMenuItem());
+        items.add(menuItem("detail.action.apply", this::applyEdit));
+        items.add(menuItem("desktop.common.action.cancel", this::cancelEdit));
+        contextMenu.getItems().setAll(items);
+        // not from within the JavaScript call
+        Platform.runLater(() -> contextMenu.show(webView, contextMenuX, contextMenuY));
+    }
+
+    // Enter applies an edit, Escape cancels it, or stops placing substations
+    private void onKeyPressed(KeyEvent event) {
+        if (edited != null && event.getCode() == KeyCode.ENTER) {
+            applyEdit();
+            event.consume();
+        } else if (edited != null && event.getCode() == KeyCode.ESCAPE) {
+            stopEdit();
+            event.consume();
+        } else if (placing && event.getCode() == KeyCode.ESCAPE) {
+            unplacedListView.getSelectionModel().clearSelection();
+            event.consume();
+        }
+    }
+
+    private String toJson(List<Coordinate> coordinates) {
+        try {
+            return objectMapper.writeValueAsString(coordinates.stream()
+                    .map(coordinate -> new double[] {coordinate.getLatitude(), coordinate.getLongitude()})
+                    .toList());
+        } catch (JsonProcessingException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     @Override

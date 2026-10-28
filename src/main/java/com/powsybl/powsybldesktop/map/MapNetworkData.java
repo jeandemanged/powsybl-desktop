@@ -14,11 +14,13 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.iidm.network.extensions.LinePosition;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
+import com.powsybl.powsybldesktop.network.edit.PositionEdits;
 
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,18 +38,22 @@ import java.util.function.DoubleFunction;
  * min y, max x, max y; {@code substationColor}/{@code lineColor} index {@code colors}; base voltages are the
  * {@code BaseVoltagesConfig} names, null outside all ranges.
  *
+ * @param lineImplied whether a line has no route of its own, drawn straight between its two substations instead
  * @param grid null when there is nothing to draw
  * @param substationSpacing median distance from a substation to its nearest neighbour, infinite with fewer than
  *                          two distinct positions
+ * @param unplacedSubstations the substations without position, by name
+ * @param unroutedCount how many lines and tie lines {@link PositionEdits#createStraightRoutes} would give a route to
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 record MapNetworkData(List<Color> colors,
                       String[] substationIds, String[] substationTexts, String[] substationBaseVoltages,
                       double[] substationX, double[] substationY, int[] substationColor,
                       String[] lineIds, String[] lineTexts, String[] lineBaseVoltages, int[] lineColor,
-                      boolean[] lineDisconnected, int[] lineStart, double[] lineBounds,
+                      boolean[] lineDisconnected, boolean[] lineImplied, int[] lineStart, double[] lineBounds,
                       double[] pointX, double[] pointY, int[] pointLine,
-                      Grid grid, double substationSpacing) {
+                      Grid grid, double substationSpacing,
+                      List<UnplacedSubstation> unplacedSubstations, int unroutedCount) {
 
     static final String DEFAULT_SUBSTATION_COLOR = "#000000";
     static final String DEFAULT_LINE_COLOR = "#616161";
@@ -111,7 +117,14 @@ record MapNetworkData(List<Color> colors,
      *
      * @param key identifies the element, to tell whether the hovered element changed
      */
-    record Hit(String key, boolean substation, String id, String text, double lat, double lng) {
+    record Hit(String key, boolean substation, String id, String text, double lat, double lng, boolean implied) {
+    }
+
+    record UnplacedSubstation(String id, String text) {
+        @Override
+        public String toString() {
+            return text;
+        }
     }
 
     private record MarkerData(String id, double x, double y, String text, String baseVoltage, String color) {
@@ -120,7 +133,8 @@ record MapNetworkData(List<Color> colors,
     /**
      * @param points projected coordinates, x and y interleaved
      */
-    private record LineData(String id, double[] points, String text, String baseVoltage, String color, boolean disconnected) {
+    private record LineData(String id, double[] points, String text, String baseVoltage, String color, boolean disconnected,
+                            boolean implied) {
     }
 
     private interface GridItemConsumer {
@@ -137,10 +151,14 @@ record MapNetworkData(List<Color> colors,
     static MapNetworkData build(Network network, DoubleFunction<String> baseVoltageName, BinaryOperator<String> color) {
         List<MarkerData> substations = new ArrayList<>();
         List<LineData> lines = new ArrayList<>();
+        List<UnplacedSubstation> unplaced = new ArrayList<>();
+        int unroutedCount = 0;
         if (network != null) {
             network.getSubstationStream().forEach(substation -> {
                 SubstationPosition position = substation.getExtension(SubstationPosition.class);
-                if (position != null) {
+                if (position == null) {
+                    unplaced.add(new UnplacedSubstation(substation.getId(), substation.getNameOrId()));
+                } else {
                     String baseVoltage = baseVoltageName.apply(substation.getVoltageLevelStream()
                             .mapToDouble(VoltageLevel::getNominalV).max().orElse(Double.NaN));
                     substations.add(new MarkerData(substation.getId(),
@@ -148,11 +166,22 @@ record MapNetworkData(List<Color> colors,
                             substation.getNameOrId(), baseVoltage, color.apply(baseVoltage, DEFAULT_SUBSTATION_COLOR)));
                 }
             });
-            network.getLineStream().forEach(line -> addLine(lines, line, line,
-                    Math.max(line.getTerminal1().getVoltageLevel().getNominalV(), line.getTerminal2().getVoltageLevel().getNominalV()),
-                    !line.getTerminal1().isConnected() || !line.getTerminal2().isConnected(), baseVoltageName, color));
-            network.getTieLineStream().forEach(tieLine -> addLine(lines, tieLine, tieLine, nominalV(tieLine), isDisconnected(tieLine),
-                    baseVoltageName, color));
+            network.getLineStream().forEach(line -> {
+                double nominalV = Math.max(line.getTerminal1().getVoltageLevel().getNominalV(), line.getTerminal2().getVoltageLevel().getNominalV());
+                boolean disconnected = !line.getTerminal1().isConnected() || !line.getTerminal2().isConnected();
+                if (!addLine(lines, line, line, nominalV, disconnected, baseVoltageName, color)) {
+                    addImpliedLine(lines, line, line.getTerminal1().getVoltageLevel(), line.getTerminal2().getVoltageLevel(), nominalV,
+                            disconnected, baseVoltageName, color);
+                }
+            });
+            network.getTieLineStream().forEach(tieLine -> {
+                if (!addLine(lines, tieLine, tieLine, nominalV(tieLine), isDisconnected(tieLine), baseVoltageName, color)
+                        && PositionEdits.route(tieLine.getBoundaryLine1()).isEmpty() && PositionEdits.route(tieLine.getBoundaryLine2()).isEmpty()) {
+                    addImpliedLine(lines, tieLine, tieLine.getBoundaryLine1().getTerminal().getVoltageLevel(),
+                            tieLine.getBoundaryLine2().getTerminal().getVoltageLevel(), nominalV(tieLine), isDisconnected(tieLine),
+                            baseVoltageName, color);
+                }
+            });
             network.getBoundaryLineStream().forEach(boundaryLine -> {
                 TieLine tieLine = boundaryLine.getTieLine().orElse(null);
                 if (tieLine == null) {
@@ -162,8 +191,10 @@ record MapNetworkData(List<Color> colors,
                     addLine(lines, boundaryLine, tieLine, nominalV(tieLine), isDisconnected(tieLine), baseVoltageName, color);
                 }
             });
+            unplaced.sort(Comparator.comparing(UnplacedSubstation::text, String.CASE_INSENSITIVE_ORDER));
+            unroutedCount = PositionEdits.unroutedCount(network);
         }
-        return pack(substations, lines);
+        return pack(substations, lines, List.copyOf(unplaced), unroutedCount);
     }
 
     private static double nominalV(TieLine tieLine) {
@@ -178,8 +209,10 @@ record MapNetworkData(List<Color> colors,
     /**
      * Adds {@code positioned}'s line position, if any, drawn as and navigating to {@code shown}: they differ for a
      * tie line half.
+     *
+     * @return whether it has one
      */
-    private static <T extends Identifiable<T>> void addLine(List<LineData> lines, T positioned, Identifiable<?> shown, double nominalV,
+    private static <T extends Identifiable<T>> boolean addLine(List<LineData> lines, T positioned, Identifiable<?> shown, double nominalV,
                                                             boolean disconnected, DoubleFunction<String> baseVoltageName,
                                                             BinaryOperator<String> color) {
         LinePosition<T> position = positioned.getExtension(LinePosition.class);
@@ -192,11 +225,27 @@ record MapNetworkData(List<Color> colors,
             }
             String baseVoltage = baseVoltageName.apply(nominalV);
             lines.add(new LineData(shown.getId(), points, shown.getNameOrId(), baseVoltage,
-                    color.apply(baseVoltage, DEFAULT_LINE_COLOR), disconnected));
+                    color.apply(baseVoltage, DEFAULT_LINE_COLOR), disconnected, false));
+            return true;
+        }
+        return false;
+    }
+
+    // straight between the two ends' substations, if both have a position: voltage levels may have no substation
+    private static void addImpliedLine(List<LineData> lines, Identifiable<?> line, VoltageLevel end1, VoltageLevel end2, double nominalV,
+                                       boolean disconnected, DoubleFunction<String> baseVoltageName, BinaryOperator<String> color) {
+        Coordinate start = PositionEdits.substationCoordinate(end1).orElse(null);
+        Coordinate end = PositionEdits.substationCoordinate(end2).orElse(null);
+        if (start != null && end != null) {
+            double[] points = {projectX(start.getLongitude()), projectY(start.getLatitude()), projectX(end.getLongitude()), projectY(end.getLatitude())};
+            String baseVoltage = baseVoltageName.apply(nominalV);
+            lines.add(new LineData(line.getId(), points, line.getNameOrId(), baseVoltage,
+                    color.apply(baseVoltage, DEFAULT_LINE_COLOR), disconnected, true));
         }
     }
 
-    private static MapNetworkData pack(List<MarkerData> substations, List<LineData> lines) {
+    private static MapNetworkData pack(List<MarkerData> substations, List<LineData> lines, List<UnplacedSubstation> unplacedSubstations,
+                                       int unroutedCount) {
         List<Color> colors = new ArrayList<>();
         Map<String, Integer> colorIndices = new HashMap<>();
         int substationCount = substations.size();
@@ -223,6 +272,7 @@ record MapNetworkData(List<Color> colors,
         String[] lineBaseVoltages = new String[lineCount];
         int[] lineColor = new int[lineCount];
         boolean[] lineDisconnected = new boolean[lineCount];
+        boolean[] lineImplied = new boolean[lineCount];
         int[] lineStart = new int[lineCount + 1];
         double[] lineBounds = new double[lineCount * 4];
         double[] pointX = new double[pointCount];
@@ -236,6 +286,7 @@ record MapNetworkData(List<Color> colors,
             lineBaseVoltages[i] = line.baseVoltage();
             lineColor[i] = colorIndex(line.color(), colors, colorIndices);
             lineDisconnected[i] = line.disconnected();
+            lineImplied[i] = line.implied();
             lineStart[i] = k;
             double minX = Double.POSITIVE_INFINITY;
             double minY = Double.POSITIVE_INFINITY;
@@ -261,8 +312,8 @@ record MapNetworkData(List<Color> colors,
         lineStart[lineCount] = k;
         Grid grid = buildGrid(substationX, substationY, lineStart, pointX, pointY);
         return new MapNetworkData(colors, substationIds, substationTexts, substationBaseVoltages, substationX, substationY,
-                substationColor, lineIds, lineTexts, lineBaseVoltages, lineColor, lineDisconnected, lineStart, lineBounds,
-                pointX, pointY, pointLine, grid, substationSpacing(grid, substationX, substationY));
+                substationColor, lineIds, lineTexts, lineBaseVoltages, lineColor, lineDisconnected, lineImplied, lineStart, lineBounds,
+                pointX, pointY, pointLine, grid, substationSpacing(grid, substationX, substationY), unplacedSubstations, unroutedCount);
     }
 
     private static int colorIndex(String color, List<Color> colors, Map<String, Integer> colorIndices) {
@@ -585,12 +636,12 @@ record MapNetworkData(List<Color> colors,
         }
         if (bestSubstation >= 0) {
             return new Hit("s" + bestSubstation, true, substationIds[bestSubstation], substationTexts[bestSubstation],
-                    unprojectLatitude(substationY[bestSubstation]), unprojectLongitude(substationX[bestSubstation]));
+                    unprojectLatitude(substationY[bestSubstation]), unprojectLongitude(substationX[bestSubstation]), false);
         }
         if (bestLine >= 0) {
             double[] anchor = lineMiddle(List.of(bestLine));
             return new Hit("l" + bestLine, false, lineIds[bestLine], lineTexts[bestLine],
-                    unprojectLatitude(anchor[1]), unprojectLongitude(anchor[0]));
+                    unprojectLatitude(anchor[1]), unprojectLongitude(anchor[0]), lineImplied[bestLine]);
         }
         return null;
     }

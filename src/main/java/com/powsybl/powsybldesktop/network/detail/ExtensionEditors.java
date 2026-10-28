@@ -79,6 +79,7 @@ import com.powsybl.iidm.network.extensions.LineCouplings;
 import com.powsybl.iidm.network.extensions.LineFortescue;
 import com.powsybl.iidm.network.extensions.LineFortescueAdder;
 import com.powsybl.iidm.network.extensions.LinePosition;
+import com.powsybl.iidm.network.extensions.LinePositionAdder;
 import com.powsybl.iidm.network.extensions.LoadAsymmetrical;
 import com.powsybl.iidm.network.extensions.LoadAsymmetricalAdder;
 import com.powsybl.iidm.network.extensions.LoadConnectionType;
@@ -116,6 +117,7 @@ import com.powsybl.iidm.network.extensions.TwoWindingsTransformerPhaseAngleClock
 import com.powsybl.iidm.network.extensions.TwoWindingsTransformerToBeEstimated;
 import com.powsybl.iidm.network.extensions.TwoWindingsTransformerToBeEstimatedAdder;
 import com.powsybl.iidm.network.extensions.WindingConnectionType;
+import com.powsybl.powsybldesktop.network.edit.PositionEdits;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.scene.control.Button;
@@ -677,10 +679,9 @@ public final class ExtensionEditors {
         return substation.getExtension(SubstationPosition.class);
     }
 
+    // the ends of its lines' routes follow
     private static void setPosition(Substation substation, double latitude, double longitude) {
-        Coordinate coordinate = new Coordinate(latitude, longitude);
-        substation.removeExtension(SubstationPosition.class);
-        substation.newExtension(SubstationPositionAdder.class).withCoordinate(coordinate).add();
+        PositionEdits.setSubstationPosition(substation, new Coordinate(latitude, longitude));
     }
 
     @SuppressWarnings("unchecked")
@@ -932,13 +933,17 @@ public final class ExtensionEditors {
     }
 
     /**
-     * Read-only, and not offered in the add menu: its coordinates are immutable, a polyline doesn't fit a form.
+     * Its coordinates are immutable: edited in a {@link CoordinatesPane} replacing the extension. Added as a straight
+     * route between the two ends' substations when they have positions, empty otherwise.
      */
     @SuppressWarnings("unchecked")
     public static <I extends Identifiable<I>> ExtensionsPane.Editor<I> linePosition() {
-        return ExtensionsPane.<I, LinePosition<I>>editor(LinePosition.class, "detail.extension.linePosition", null,
-                (extension, form) -> form.text("detail.extension.linePosition.coordinates", () -> lines(extension.getCoordinates().stream()
-                        .map(coordinate -> coordinate.getLatitude() + ", " + coordinate.getLongitude()), extension.getCoordinates().size())));
+        return ExtensionsPane.<I, LinePosition<I>>editor(LinePosition.class, "detail.extension.linePosition",
+                line -> line.newExtension(LinePositionAdder.class).withCoordinates(PositionEdits.straightRoute(line).orElse(List.of())).add(),
+                (extension, form) -> {
+                    CoordinatesPane pane = new CoordinatesPane(extension.getExtendable(), form);
+                    form.node("detail.extension.linePosition.coordinates", pane, null, pane::refresh);
+                });
     }
 
     /**

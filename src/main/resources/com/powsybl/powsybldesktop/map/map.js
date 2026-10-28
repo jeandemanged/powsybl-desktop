@@ -116,6 +116,12 @@ L.DomEvent.on(map.getContainer(), 'wheel', function (e) {
 });
 
 map.on('dblclick', function (e) {
+    // deletes a route's point while editing it, see deleteEditPoint
+    var index = edit && edit.route ? editVertexAt(e.containerPoint.x, e.containerPoint.y) : -1;
+    if (index >= 0) {
+        deleteEditPoint(index);
+        return;
+    }
     animateZoom(e.containerPoint, snapZoom(zoomTarget() + (e.originalEvent.shiftKey ? -1 : 1)));
 });
 
@@ -343,7 +349,8 @@ function setHovered(hit) {
         return;
     }
     hovered = hit;
-    map.getContainer().style.cursor = hit ? 'pointer' : '';
+    // while placing, a click places rather than opens what is under it
+    map.getContainer().style.cursor = placing ? 'crosshair' : (hit ? 'pointer' : '');
     if (hit) {
         tooltip.setLatLng([hit.lat, hit.lng]).setContent(hit.text);
         if (!map.hasLayer(tooltip)) {
@@ -359,7 +366,8 @@ map.on('mousemove', function (e) {
     if (hoverTimer === null) {
         hoverTimer = setTimeout(function () {
             hoverTimer = null;
-            if (!map.dragging.moving()) {
+            // while editing, the cursor tells the edit handles instead
+            if (!map.dragging.moving() && !edit) {
                 var latlng = pendingHoverEvent.latlng;
                 var hit = window.controller.hitTest(latlng.lat, latlng.lng, map.getZoom());
                 setHovered(hit ? JSON.parse(hit) : null);
@@ -373,12 +381,18 @@ map.on('mouseout', function () {
 });
 
 map.on('click', function (e) {
-    window.controller.onMapClick(e.latlng.lat, e.latlng.lng, map.getZoom());
+    if (!editClick(e.latlng)) {
+        window.controller.onMapClick(e.latlng.lat, e.latlng.lng, map.getZoom());
+    }
 });
 
 // called by MapController on a right-click, the WebView not dispatching contextmenu events to the page (its own
 // context menu disabled), with the pointer in CSS pixels of the viewport
 function mapContextMenuAt(x, y) {
+    if (edit) {
+        window.controller.onEditContextMenu(editVertexAt(x, y));
+        return;
+    }
     var latlng = map.containerPointToLatLng(L.point(x, y));
     window.controller.onMapContextMenu(latlng.lat, latlng.lng, map.getZoom());
 }
@@ -521,4 +535,262 @@ function fitView() {
         var center = map.project(bounds.getSouthWest(), zoom).add(map.project(bounds.getNorthEast(), zoom)).divideBy(2);
         map.setView(map.unproject(center, zoom), zoom, {animate: false});
     }
+}
+
+// Position editing: a substation being moved, or a line's route being edited, drawn on a canvas laid over the map
+// container rather than in a Leaflet pane, which the WebView mis-composites while zooming (see the search markers), and
+// redrawn in container pixels whenever the view moves. Its handles are hit-tested here: a press on one is caught before
+// Leaflet starts panning the map. MapController holds what is edited and applies the result, read by getEditPoints.
+var EDIT_HANDLE_RADIUS = 6;
+var EDIT_GHOST_RADIUS = 4;
+var EDIT_HIT_PIXELS = 4;
+var EDIT_SNAP_PIXELS = 10;
+var EDIT_COLOR = '#ff6d00';
+var editCanvas = L.DomUtil.create('canvas', '', map.getContainer());
+editCanvas.style.position = 'absolute';
+editCanvas.style.left = '0';
+editCanvas.style.top = '0';
+editCanvas.style.pointerEvents = 'none';
+// above the map panes (400), below the controls (1000)
+editCanvas.style.zIndex = '500';
+// {route: whether a route rather than a substation, points: [L.LatLng], snaps: [L.LatLng]}, null when not editing
+var edit = null;
+// index of the point being dragged
+var editDrag = null;
+// the click ending a drag must not then add or move a point
+var editDragEnded = false;
+var placing = false;
+
+// Called by MapController with the route's [latitude, longitude] points, and those its ends snap to: its substations
+function startRouteEdit(pointsJson, snapsJson) {
+    edit = {route: true, points: toLatLngs(pointsJson), snaps: toLatLngs(snapsJson)};
+    setHovered(null);
+    drawEdit();
+}
+
+function startSubstationMove(lat, lng) {
+    edit = {route: false, points: [L.latLng(lat, lng)], snaps: []};
+    setHovered(null);
+    drawEdit();
+}
+
+function setEditPoints(pointsJson) {
+    if (edit) {
+        edit.points = toLatLngs(pointsJson);
+        drawEdit();
+        window.controller.onEditChanged(edit.points.length);
+    }
+}
+
+function getEditPoints() {
+    return JSON.stringify(edit ? edit.points.map(function (p) {
+        return [p.lat, p.lng];
+    }) : []);
+}
+
+function deleteEditPoint(index) {
+    if (edit && edit.route && index >= 0 && index < edit.points.length) {
+        edit.points.splice(index, 1);
+        drawEdit();
+        window.controller.onEditChanged(edit.points.length);
+    }
+}
+
+function stopEdit() {
+    edit = null;
+    editDrag = null;
+    map.dragging.enable();
+    map.getContainer().style.cursor = placing ? 'crosshair' : '';
+    drawEdit();
+}
+
+function startPlacement() {
+    placing = true;
+    map.getContainer().style.cursor = 'crosshair';
+}
+
+function stopPlacement() {
+    placing = false;
+    map.getContainer().style.cursor = '';
+}
+
+function toLatLngs(json) {
+    return JSON.parse(json).map(function (p) {
+        return L.latLng(p[0], p[1]);
+    });
+}
+
+// the midpoints of the route's segments, dragged to insert a point there
+function editGhosts() {
+    var ghosts = [];
+    for (var i = 0; edit.route && i + 1 < edit.points.length; i++) {
+        var a = map.latLngToContainerPoint(edit.points[i]);
+        var b = map.latLngToContainerPoint(edit.points[i + 1]);
+        // a too short segment has no room for it between its ends' handles
+        if (a.distanceTo(b) > 4 * EDIT_HANDLE_RADIUS) {
+            ghosts.push({index: i + 1, point: a.add(b).divideBy(2)});
+        }
+    }
+    return ghosts;
+}
+
+// Also called by MapController for its context menu: the index of the point at x, y in container pixels, -1 for none
+function editVertexAt(x, y) {
+    if (!edit) {
+        return -1;
+    }
+    var p = L.point(x, y);
+    for (var i = edit.points.length - 1; i >= 0; i--) {
+        if (map.latLngToContainerPoint(edit.points[i]).distanceTo(p) <= EDIT_HANDLE_RADIUS + EDIT_HIT_PIXELS) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+function editGhostAt(p) {
+    var ghosts = edit ? editGhosts() : [];
+    for (var i = 0; i < ghosts.length; i++) {
+        if (ghosts[i].point.distanceTo(p) <= EDIT_GHOST_RADIUS + EDIT_HIT_PIXELS) {
+            return ghosts[i];
+        }
+    }
+    return null;
+}
+
+// a route's end dropped near one of its substations goes exactly there
+function snapped(end, latlng) {
+    if (!end) {
+        return latlng;
+    }
+    var p = map.latLngToContainerPoint(latlng);
+    for (var i = 0; i < edit.snaps.length; i++) {
+        if (map.latLngToContainerPoint(edit.snaps[i]).distanceTo(p) <= EDIT_SNAP_PIXELS) {
+            return edit.snaps[i];
+        }
+    }
+    return latlng;
+}
+
+function drawEdit() {
+    var size = map.getSize();
+    var ratio = window.devicePixelRatio || 1;
+    editCanvas.style.width = size.x + 'px';
+    editCanvas.style.height = size.y + 'px';
+    editCanvas.width = Math.round(size.x * ratio);
+    editCanvas.height = Math.round(size.y * ratio);
+    var g = editCanvas.getContext('2d');
+    g.setTransform(ratio, 0, 0, ratio, 0, 0);
+    g.clearRect(0, 0, size.x, size.y);
+    if (!edit) {
+        return;
+    }
+    var points = edit.points.map(function (latlng) {
+        return map.latLngToContainerPoint(latlng);
+    });
+    if (edit.route && points.length > 1) {
+        g.lineJoin = 'round';
+        g.lineCap = 'round';
+        g.beginPath();
+        points.forEach(function (p, i) {
+            if (i === 0) {
+                g.moveTo(p.x, p.y);
+            } else {
+                g.lineTo(p.x, p.y);
+            }
+        });
+        g.strokeStyle = '#fff';
+        g.lineWidth = 6;
+        g.stroke();
+        g.strokeStyle = EDIT_COLOR;
+        g.lineWidth = 3;
+        g.stroke();
+    }
+    editGhosts().forEach(function (ghost) {
+        circle(g, ghost.point, EDIT_GHOST_RADIUS, 'rgba(255, 255, 255, 0.7)', EDIT_COLOR);
+    });
+    points.forEach(function (p, i) {
+        // a substation, or a route's end, filled; a route's breakpoints hollow
+        var filled = !edit.route || i === 0 || i === points.length - 1;
+        circle(g, p, EDIT_HANDLE_RADIUS, filled ? EDIT_COLOR : '#fff', filled ? '#000' : EDIT_COLOR);
+    });
+}
+
+function circle(g, p, radius, fill, stroke) {
+    g.beginPath();
+    g.arc(p.x, p.y, radius, 0, 2 * Math.PI);
+    g.fillStyle = fill;
+    g.fill();
+    g.lineWidth = 2;
+    g.strokeStyle = stroke;
+    g.stroke();
+}
+
+map.on('move zoom resize viewreset', drawEdit);
+
+// in the capture phase, so before Leaflet's own handlers start panning the map
+map.getContainer().addEventListener('mousedown', function (e) {
+    if (!edit || e.button !== 0) {
+        return;
+    }
+    var p = map.mouseEventToContainerPoint(e);
+    var index = editVertexAt(p.x, p.y);
+    if (index < 0) {
+        var ghost = editGhostAt(p);
+        if (ghost === null) {
+            return;
+        }
+        edit.points.splice(ghost.index, 0, map.containerPointToLatLng(ghost.point));
+        index = ghost.index;
+    }
+    editDrag = index;
+    map.dragging.disable();
+    e.stopPropagation();
+    e.preventDefault();
+    drawEdit();
+}, true);
+
+document.addEventListener('mousemove', function (e) {
+    if (editDrag !== null) {
+        var end = edit.route && (editDrag === 0 || editDrag === edit.points.length - 1);
+        edit.points[editDrag] = snapped(end, map.mouseEventToLatLng(e));
+        drawEdit();
+    } else if (edit) {
+        var p = map.mouseEventToContainerPoint(e);
+        map.getContainer().style.cursor = editVertexAt(p.x, p.y) >= 0 || editGhostAt(p) !== null ? 'move' : '';
+    }
+});
+
+document.addEventListener('mouseup', function () {
+    if (editDrag !== null) {
+        editDrag = null;
+        editDragEnded = true;
+        setTimeout(function () {
+            editDragEnded = false;
+        }, 0);
+        map.dragging.enable();
+        window.controller.onEditChanged(edit.points.length);
+    }
+});
+
+// While editing, a click adds a route's first points, or moves the substation there; while placing, it places the
+// chosen substation. Returns whether it took the click.
+function editClick(latlng) {
+    if (edit) {
+        if (!editDragEnded) {
+            if (!edit.route) {
+                edit.points = [latlng];
+            } else if (edit.points.length < 2) {
+                edit.points.push(snapped(true, latlng));
+            }
+            drawEdit();
+            window.controller.onEditChanged(edit.points.length);
+        }
+        return true;
+    }
+    if (placing) {
+        window.controller.onPlace(latlng.lat, latlng.lng);
+        return true;
+    }
+    return false;
 }

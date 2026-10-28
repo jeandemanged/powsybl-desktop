@@ -53,7 +53,7 @@ class MapControllerEmptyStateTest extends AbstractHeadlessApplicationTest {
 
     @Test
     void noExceptionWhenNoNetworkIsSelected() {
-        assertEquals(4, mapContainer.getChildren().size());
+        assertEquals(5, mapContainer.getChildren().size());
     }
 
     // leaflet.js/leaflet.css aren't checked in: they're unpacked from the org.webjars:leaflet artifact by

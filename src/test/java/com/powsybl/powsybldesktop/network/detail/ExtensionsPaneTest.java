@@ -21,12 +21,14 @@ import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.iidm.network.extensions.DiscreteMeasurement;
 import com.powsybl.iidm.network.extensions.DiscreteMeasurements;
+import com.powsybl.iidm.network.extensions.LinePosition;
 import com.powsybl.iidm.network.extensions.LinePositionAdder;
 import com.powsybl.iidm.network.extensions.Measurement;
 import com.powsybl.iidm.network.extensions.Measurements;
 import com.powsybl.iidm.network.extensions.ReferenceTerminals;
 import com.powsybl.iidm.network.extensions.SecondaryVoltageControl;
 import com.powsybl.iidm.network.extensions.SecondaryVoltageControlAdder;
+import com.powsybl.iidm.network.extensions.SubstationPositionAdder;
 import com.powsybl.iidm.network.test.EurostagTutorialExample1Factory;
 import com.powsybl.iidm.network.test.FourSubstationsNodeBreakerFactory;
 import com.powsybl.iidm.network.test.ThreeWindingsTransformerNetworkFactory;
@@ -38,6 +40,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
 import javafx.scene.layout.GridPane;
@@ -197,18 +200,48 @@ class ExtensionsPaneTest extends AbstractHeadlessApplicationTest {
         assertEquals(EntsoeGeographicalCode.FR, network.getSubstation("P1").getExtension(EntsoeArea.class).getCode());
     }
 
+    private static Button button(Node pane, String key) {
+        String text = Messages.get(key);
+        return pane.lookupAll(".button").stream()
+                .map(Button.class::cast)
+                .filter(button -> text.equals(button.getText()))
+                .findFirst().orElseThrow(() -> new AssertionError("No button " + key));
+    }
+
+    // staged in the pane until applied
+    @Test
+    void editsLinePositionInAWorkingCopy() {
+        Network network = EurostagTutorialExample1Factory.create();
+        Line line = network.getLine("NHV1_NHV2_1");
+        Coordinate p1 = new Coordinate(48, 2);
+        Coordinate p2 = new Coordinate(49, 3);
+        network.getSubstation("P1").newExtension(SubstationPositionAdder.class).withCoordinate(p1).add();
+        network.getSubstation("P2").newExtension(SubstationPositionAdder.class).withCoordinate(p2).add();
+        line.newExtension(LinePositionAdder.class).withCoordinates(List.of(p1, new Coordinate(48.8, 2.2), p2)).add();
+        interact(() -> {
+            Node coordinates = value(pane(line, ExtensionEditors.forLine()), "detail.extension.linePosition.coordinates");
+            TableView<?> table = (TableView<?>) coordinates.lookup(".table-view");
+            assertEquals(3, table.getItems().size());
+
+            button(coordinates, "detail.extension.linePosition.straight").fire();
+            assertEquals(2, table.getItems().size());
+            assertEquals(3, line.<LinePosition<Line>>getExtension(LinePosition.class).getCoordinates().size());
+            button(coordinates, "detail.action.revert").fire();
+            assertEquals(3, table.getItems().size());
+
+            table.getSelectionModel().select(1);
+            button(coordinates, "desktop.common.action.remove").fire();
+            button(coordinates, "detail.action.apply").fire();
+        });
+        assertEquals(List.of(p1, p2), line.<LinePosition<Line>>getExtension(LinePosition.class).getCoordinates());
+    }
+
     @Test
     void showsReadOnlyExtensions() {
         Network network = EurostagTutorialExample1Factory.create();
-        Line line = network.getLine("NHV1_NHV2_1");
-        line.newExtension(LinePositionAdder.class).withCoordinates(List.of(new Coordinate(48, 2), new Coordinate(49, 3))).add();
         ReferenceTerminals.addTerminal(network.getGenerator("GEN").getTerminal());
         network.newExtension(CimCharacteristicsAdder.class).setTopologyKind(CgmesTopologyKind.BUS_BRANCH).setCimVersion(16).add();
         interact(() -> {
-            ExtensionsPane<Line> linePane = pane(line, ExtensionEditors.forLine());
-            assertNoSectionWithoutEditor(linePane);
-            assertEquals("48.0, 2.0\n49.0, 3.0", ((Label) value(linePane, "detail.extension.linePosition.coordinates")).getText());
-
             ExtensionsPane<Network> networkPane = pane(network, ExtensionEditors.forNetwork());
             assertNoSectionWithoutEditor(networkPane);
             assertEquals(TerminalPickerDialog.terminalLabel(network.getGenerator("GEN").getTerminal()),

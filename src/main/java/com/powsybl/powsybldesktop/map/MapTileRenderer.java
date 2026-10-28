@@ -53,6 +53,11 @@ final class MapTileRenderer {
     /** For disconnected lines: dash and gap lengths, round caps eating the line weight out of each gap. */
     private static final Stroke DASHED_LINE_STROKE = new BasicStroke((float) MapNetworkData.LINE_WEIGHT, BasicStroke.CAP_ROUND,
             BasicStroke.JOIN_ROUND, 10, new float[] {6, 6}, 0);
+    /** Lines without route of their own, drawn straight between their substations: thinner and translucent. */
+    private static final Stroke IMPLIED_LINE_STROKE = new BasicStroke(1, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+    private static final Stroke DASHED_IMPLIED_LINE_STROKE = new BasicStroke(1, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
+            10, new float[] {4, 4}, 0);
+    private static final int IMPLIED_LINE_ALPHA = 128;
 
     /**
      * Every polygon ring of every country, projected like {@link MapNetworkData}: ring {@code i}'s points are
@@ -202,8 +207,12 @@ final class MapTileRenderer {
             }
             Path2D.Double path = new Path2D.Double();
             appendPath(path, data.pointX(), data.pointY(), data.lineStart()[line], data.lineStart()[line + 1], scale);
-            g.setColor(data.colors().get(data.lineColor()[line]));
-            g.setStroke(data.lineDisconnected()[line] ? DASHED_LINE_STROKE : LINE_STROKE);
+            Color color = data.colors().get(data.lineColor()[line]);
+            boolean implied = data.lineImplied()[line];
+            g.setColor(implied ? new Color(color.getRed(), color.getGreen(), color.getBlue(), IMPLIED_LINE_ALPHA) : color);
+            g.setStroke(data.lineDisconnected()[line]
+                    ? (implied ? DASHED_IMPLIED_LINE_STROKE : DASHED_LINE_STROKE)
+                    : (implied ? IMPLIED_LINE_STROKE : LINE_STROKE));
             g.draw(path);
             drawn = true;
         }

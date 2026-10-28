@@ -223,6 +223,12 @@ shared `equipment-detail-view.fxml` (no `fx:controller`: `EquipmentDetails.load`
 - The Map view does not draw the network in JavaScript: tiles are rendered in Java (`MapTileRenderer`) on a thread
   pool from an immutable `MapNetworkData` snapshot; Leaflet only displays tiles. Leaflet files are unpacked from the
   `org.webjars:leaflet` dependency at build time — not checked in.
+- Anything map.js draws itself (search markers, the position edit overlay) avoids Leaflet's vector panes, which the
+  WebView mis-composites while zooming: DOM markers, or a canvas laid over the map container redrawn on every move.
+- Position edits (`SubstationPosition`, `LinePosition`, both immutable) go through `network/edit/PositionEdits`, run
+  by `NetworkEdits.apply`: moving a substation moves the route ends at its old position, and a tie line's route is
+  its two boundary lines'. A voltage level may have no substation: reach a position through
+  `PositionEdits.substationCoordinate(VoltageLevel)`, never `getSubstation().get()`.
 
 ## Styling and icons
 

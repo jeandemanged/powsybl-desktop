@@ -94,6 +94,10 @@ public final class DetailForm implements DetailPart {
         return root;
     }
 
+    public Supplier<GuiParameters> getGuiParameters() {
+        return guiParameters;
+    }
+
     @Override
     public BooleanProperty editableProperty() {
         return editable;

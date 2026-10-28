@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -35,7 +36,8 @@ class MapNetworkDataTest {
 
     private MapNetworkData data;
 
-    // S0 at (48, 2), S1 to S6 east of it 0.1 degree apart, S7 at S0's position, S8 without a position
+    // S0 at (48, 2), S1 to S6 east of it 0.1 degree apart, S7 at S0's position, S8 without a position, VL_ALONE
+    // without substation
     @BeforeEach
     void setUp() {
         Network network = Network.create("test", "code");
@@ -57,6 +59,20 @@ class MapNetworkDataTest {
                 .setId("L_NO_POSITION")
                 .setVoltageLevel1("S0_VL").setBus1("S0_B")
                 .setVoltageLevel2("S2_VL").setBus2("S2_B")
+                .setR(1).setX(10)
+                .add();
+        network.newLine()
+                .setId("L_TO_UNPLACED")
+                .setVoltageLevel1("S0_VL").setBus1("S0_B")
+                .setVoltageLevel2("S8_VL").setBus2("S8_B")
+                .setR(1).setX(10)
+                .add();
+        network.newVoltageLevel().setId("VL_ALONE").setNominalV(400).setTopologyKind(TopologyKind.BUS_BREAKER).add()
+                .getBusBreakerView().newBus().setId("VL_ALONE_B").add();
+        network.newLine()
+                .setId("L_TO_NO_SUBSTATION")
+                .setVoltageLevel1("S0_VL").setBus1("S0_B")
+                .setVoltageLevel2("VL_ALONE").setBus2("VL_ALONE_B")
                 .setR(1).setX(10)
                 .add();
         data = MapNetworkData.build(network, nominalV -> null, (baseVoltage, defaultColor) -> defaultColor);
@@ -101,8 +117,38 @@ class MapNetworkDataTest {
     }
 
     @Test
-    void lineWithoutPositionHasNoBounds() {
-        assertNull(data.lineLatLngBounds("L_NO_POSITION"));
+    void lineWithoutPositionIsDrawnStraightBetweenItsSubstations() {
+        double[] bounds = data.lineLatLngBounds("L_NO_POSITION");
+
+        assertEquals(48, bounds[0], DELTA);
+        assertEquals(2, bounds[1], DELTA);
+        assertEquals(48, bounds[2], DELTA);
+        assertEquals(2.2, bounds[3], DELTA);
+        int index = List.of(data.lineIds()).indexOf("L_NO_POSITION");
+        assertTrue(data.lineImplied()[index]);
+        assertFalse(data.lineImplied()[List.of(data.lineIds()).indexOf("L")]);
+    }
+
+    // one end without position, or without substation at all
+    @Test
+    void lineWithAnUnplacedEndIsNotDrawn() {
+        assertNull(data.lineLatLngBounds("L_TO_UNPLACED"));
+        assertNull(data.lineLatLngBounds("L_TO_NO_SUBSTATION"));
+    }
+
+    @Test
+    void listsUnplacedSubstationsAndUnroutedLines() {
+        assertEquals(List.of(new MapNetworkData.UnplacedSubstation("S8", "S8")), data.unplacedSubstations());
+        assertEquals(1, data.unroutedCount());
+    }
+
+    @Test
+    void impliedLineIsHitAsImplied() {
+        // a quarter of the way from S0 to S2, clear of S1 halfway
+        MapNetworkData.Hit hit = data.hitTest(48, 2.05, 12, Set.of());
+
+        assertEquals("L_NO_POSITION", hit.id());
+        assertTrue(hit.implied());
     }
 
     // its two segments are mirror images, so halfway along is their shared point
@@ -112,7 +158,7 @@ class MapNetworkDataTest {
 
         assertEquals(48.5, middle[0], DELTA);
         assertEquals(2.05, middle[1], DELTA);
-        assertNull(data.lineMiddleLatLng("L_NO_POSITION"));
+        assertNull(data.lineMiddleLatLng("L_TO_UNPLACED"));
     }
 
     @Test
