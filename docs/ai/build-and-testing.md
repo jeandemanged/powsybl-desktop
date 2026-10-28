@@ -67,8 +67,9 @@ code.
   `prism.order=sw`). Do **not** add `openjfx-monocle` or set `testfx.headless` — that makes TestFX install Monocle and
   breaks the suite.
 - Surefire pins `-Duser.language=en -Duser.country=US` as a JVM arg so assertions on English UI strings are stable.
-- Test classes run in parallel across forked JVMs (`forkCount` `0.5C`, one per two cores; override with
-  `-DforkCount=N`, `-DforkCount=1` for a serial run). Don't enable JUnit's in-JVM parallel execution: a JVM has a
+- Test classes run in parallel across forked JVMs (`forkCount` `0.5C`, one per two cores: at `1C` a many-core dev box
+  times out UI tests; CI passes `-DforkCount=1C` as runners have few cores; override with `-DforkCount=N`,
+  `-DforkCount=1` for a serial run). Don't enable JUnit's in-JVM parallel execution: a JVM has a
   single JavaFX toolkit and TestFX shares one primary stage, so concurrent UI tests would overwrite each other's
   scene. Tests must not share state outside the JVM: write files under `@TempDir`.
 

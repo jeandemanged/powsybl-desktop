@@ -123,11 +123,17 @@ class CellFieldsTest extends AbstractHeadlessApplicationTest {
         Row row = rows.get(1);
         TextField field = field(row);
         type(field, "12.5");
-        press(field, KeyCode.ENTER);
+        // The success flash is removed by a 200ms PauseTransition, which a slow CI runner can outlast between
+        // interact() returning and the assertion - so check it in the same FX pulse as the commit.
+        boolean[] flashed = new boolean[1];
+        interact(() -> {
+            field.fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.ENTER, false, false, false, false));
+            flashed[0] = field.getStyleClass().contains("edit-success");
+        });
 
         assertEquals(12.5, row.value);
         assertEquals("12.5", field.getText());
-        assertTrue(field.getStyleClass().contains("edit-success"));
+        assertTrue(flashed[0]);
         assertSame(field, focusedField());
     }
 
