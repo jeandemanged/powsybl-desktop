@@ -142,8 +142,6 @@ public class MainController extends AbstractDisposableController {
     @FXML
     public Button forwardButton;
     @FXML
-    public Button mapButton;
-    @FXML
     private Menu windowsMenu;
     @FXML
     public RadioMenuItem languageEnglishItem;
@@ -717,9 +715,7 @@ public class MainController extends AbstractDisposableController {
                 implicitlySelectedRoot = null;
             }
             ensureSearchIndex(newValue);
-            updateMapButtonVisibility();
         });
-        updateMapButtonVisibility();
         listenerManager.listen(mainModel.structureChangeProperty(), (observable, oldValue, change) -> {
             if (change != null) {
                 onStructureChange(change);
@@ -1093,13 +1089,6 @@ public class MainController extends AbstractDisposableController {
             notificationOverlay = new NotificationOverlay(borderPane.getScene().getWindow(), mainModel.getNotificationsModel()::remove);
         }
         return notificationOverlay;
-    }
-
-    // managed too, so the hidden button doesn't leave a gap in the toolbar
-    private void updateMapButtonVisibility() {
-        boolean hasPositions = MapController.hasPositions(mainModel.getNetwork());
-        mapButton.setVisible(hasPositions);
-        mapButton.setManaged(hasPositions);
     }
 
     private void disposeCurrentController() {

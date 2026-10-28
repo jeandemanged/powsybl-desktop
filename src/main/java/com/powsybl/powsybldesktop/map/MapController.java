@@ -314,19 +314,6 @@ public class MapController extends AbstractDisposableController implements Scene
         }
     }
 
-    /**
-     * Whether {@code network} has anything this view could draw, i.e. at least one substation or line
-     * carrying a position extension (only networks imported with the CGMES geographical layout profile do).
-     * Used by {@code MainController} to hide the Map toolbar button for networks without one.
-     */
-    public static boolean hasPositions(Network network) {
-        return network != null
-                && (network.getSubstationStream().anyMatch(substation -> substation.getExtension(SubstationPosition.class) != null)
-                || network.getLineStream().anyMatch(line -> line.getExtension(LinePosition.class) != null)
-                || network.getTieLineStream().anyMatch(tieLine -> tieLine.getExtension(LinePosition.class) != null)
-                || network.getBoundaryLineStream().anyMatch(boundaryLine -> boundaryLine.getExtension(LinePosition.class) != null));
-    }
-
     @Override
     public void setSceneModel(SceneModel sceneModel) {
         this.sceneModel = Objects.requireNonNull(sceneModel);
