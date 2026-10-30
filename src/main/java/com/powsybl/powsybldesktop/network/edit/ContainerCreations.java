@@ -81,16 +81,19 @@ public final class ContainerCreations {
 
     /**
      * Creates a substation in {@code network}, at {@code coordinate} if not null.
+     *
+     * @param country the country proposed, or if null the network's only one
      */
-    public static Optional<Substation> newSubstation(SceneModel sceneModel, Window owner, Network network, Coordinate coordinate) {
+    public static Optional<Substation> newSubstation(SceneModel sceneModel, Window owner, Network network, Coordinate coordinate,
+                                                     Country country) {
         CreationForm form = new CreationForm();
         CreationForm.Field<String> id = form.id(network, NetworkEdits.uniqueId(network, "S"));
         CreationForm.Field<String> name = form.text("desktop.common.column.name", null, false);
         List<Country> countries = new ArrayList<>();
         countries.add(null);
         countries.addAll(DetailSections.values(Country.class));
-        CreationForm.Field<Country> country = form.searchableChoice("desktop.common.column.country", countries, Labels.countryFormat(),
-                defaultCountry(network), false);
+        CreationForm.Field<Country> countryField = form.searchableChoice("desktop.common.column.country", countries, Labels.countryFormat(),
+                country != null ? country : defaultCountry(network), false);
         CreationForm.Field<String> tso = form.text("substations.column.tso", null, false);
         form.section("edit.create.position");
         CreationForm.Field<Double> latitude = form.number("detail.extension.substationPosition.latitude", DetailForm.DEGREE,
@@ -107,8 +110,8 @@ public final class ContainerCreations {
             }
             NetworkEdits.apply(sceneModel.getMainModel(), network, n -> {
                 SubstationAdder adder = n.newSubstation().setId(substationId).setName(name.get()).setTso(tso.get());
-                if (country.get() != null) {
-                    adder.setCountry(country.get());
+                if (countryField.get() != null) {
+                    adder.setCountry(countryField.get());
                 }
                 Substation substation = adder.add();
                 if (!Double.isNaN(lat)) {

@@ -652,7 +652,7 @@ public class MapController extends AbstractDisposableController implements Scene
         MenuItem newSubstation = new MenuItem(Messages.get("edit.menu.newSubstationHere"), new FontIcon("mdi2p-plus"));
         newSubstation.setDisable(mainModel.isBusy(network));
         newSubstation.setOnAction(event -> ContainerCreations.newSubstation(sceneModel, webView.getScene().getWindow(), network,
-                new Coordinate(latitude, longitude)));
+                new Coordinate(latitude, longitude), MapTileRenderer.countryAt(latitude, longitude)));
         items.add(newSubstation);
         if (identifiable != null) {
             List<MenuItem> positions = positionItems(network, identifiable, hit.implied());

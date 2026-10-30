@@ -46,8 +46,8 @@ class NetworkFromScratchTest extends AbstractCreationDialogTest {
     void builtNetworkIsSolvedDrawnAndExported() throws Exception {
         Network network = Network.create("scratch", ContainerCreations.SOURCE_FORMAT);
 
-        Substation s1 = openAndConfirm(sceneModel -> ContainerCreations.newSubstation(sceneModel, stage, network, null), network);
-        Substation s2 = openAndConfirm(sceneModel -> ContainerCreations.newSubstation(sceneModel, stage, network, null), network);
+        Substation s1 = openAndConfirm(sceneModel -> ContainerCreations.newSubstation(sceneModel, stage, network, null, null), network);
+        Substation s2 = openAndConfirm(sceneModel -> ContainerCreations.newSubstation(sceneModel, stage, network, null, null), network);
         VoltageLevel vl1 = openAndConfirm(sceneModel -> ContainerCreations.newVoltageLevel(sceneModel, stage, network, s1), network);
         VoltageLevel vl2 = openAndConfirm(sceneModel -> ContainerCreations.newVoltageLevel(sceneModel, stage, network, s2), network);
         // id, name, min P, max P, target P

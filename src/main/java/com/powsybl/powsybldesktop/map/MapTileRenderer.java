@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.map;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.powsybl.iidm.network.Country;
 
 import javax.imageio.ImageIO;
 import java.awt.BasicStroke;
@@ -36,8 +37,8 @@ import java.util.Set;
  * concurrently on background threads.
  * <p>
  * The offline basemap is drawn here too, below the network: the country outlines bundled as
- * {@code countries.geojson} (Natural Earth 1:50m admin-0 countries, public domain, properties stripped and
- * coordinates rounded to 0.01 degree). Its sea is the map container's background color, set by map.js.
+ * {@code countries.geojson} (Natural Earth 1:50m admin-0 countries, public domain, see docs/ai/ui-conventions.md
+ * for how it was generated). It also tells the country of a place, see {@link #countryAt}. Its sea is the map container's background color, set by map.js.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -61,9 +62,12 @@ final class MapTileRenderer {
 
     /**
      * Every polygon ring of every country, projected like {@link MapNetworkData}: ring {@code i}'s points are
-     * {@code ringStart[i]} (inclusive) to {@code ringStart[i + 1]} (exclusive).
+     * {@code ringStart[i]} (inclusive) to {@code ringStart[i + 1]} (exclusive), and it belongs to feature
+     * {@code ringFeature[i]}, whose country is {@code featureCountry[ringFeature[i]]} (null for the few unrecognized
+     * territories, e.g. Somaliland).
      */
-    private record Countries(int[] ringStart, double[] ringBounds, double[] pointX, double[] pointY) {
+    private record Countries(int[] ringStart, double[] ringBounds, double[] pointX, double[] pointY,
+                             int[] ringFeature, Country[] featureCountry) {
     }
 
     // loaded on first use, by the first tile drawing thread needing it rather than the FX thread
@@ -109,6 +113,47 @@ final class MapTileRenderer {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         ImageIO.write(image, "png", out);
         return out.toByteArray();
+    }
+
+    /**
+     * The country at a place according to the offline basemap, whichever basemap is shown: null at sea or in an
+     * unrecognized territory. Its borders are coarse (about 1 km), so near one the answer is only a guess. The first
+     * call loads the basemap if no tile has yet.
+     */
+    static Country countryAt(double latitude, double longitude) {
+        Countries countries = CountriesHolder.COUNTRIES;
+        double x = MapNetworkData.projectX(longitude);
+        double y = MapNetworkData.projectY(latitude);
+        // even-odd per feature, as drawn: a point in a hole (Lesotho in South Africa) is in two rings of its feature
+        boolean[] inside = new boolean[countries.featureCountry().length];
+        for (int ring = 0; ring < countries.ringStart().length - 1; ring++) {
+            int b = ring * 4;
+            if (x < countries.ringBounds()[b] || x > countries.ringBounds()[b + 2]
+                    || y < countries.ringBounds()[b + 1] || y > countries.ringBounds()[b + 3]) {
+                continue;
+            }
+            if (ringContains(countries.pointX(), countries.pointY(), countries.ringStart()[ring], countries.ringStart()[ring + 1], x, y)) {
+                inside[countries.ringFeature()[ring]] ^= true;
+            }
+        }
+        for (int feature = 0; feature < inside.length; feature++) {
+            if (inside[feature]) {
+                return countries.featureCountry()[feature];
+            }
+        }
+        return null;
+    }
+
+    // ray casting, the ring's closing edge from its last point back to its first included
+    private static boolean ringContains(double[] pointX, double[] pointY, int start, int end, double x, double y) {
+        boolean inside = false;
+        for (int i = start, j = end - 1; i < end; j = i++) {
+            if ((pointY[i] > y) != (pointY[j] > y)
+                    && x < (pointX[j] - pointX[i]) * (y - pointY[i]) / (pointY[j] - pointY[i]) + pointX[i]) {
+                inside = !inside;
+            }
+        }
+        return inside;
     }
 
     // Countries don't overlap, so even-odd filling leaves exactly the holes (e.g. Lesotho in South Africa) unfilled.
@@ -252,13 +297,21 @@ final class MapTileRenderer {
             throw new UncheckedIOException(e);
         }
         List<JsonNode> rings = new ArrayList<>();
+        List<Integer> ringFeatures = new ArrayList<>();
+        List<Country> featureCountries = new ArrayList<>();
         for (JsonNode feature : root.get("features")) {
+            JsonNode code = feature.get("properties").get("country");
+            featureCountries.add(code == null ? null : Country.valueOf(code.asText()));
             JsonNode geometry = feature.get("geometry");
             JsonNode coordinates = geometry.get("coordinates");
+            int before = rings.size();
             if ("Polygon".equals(geometry.get("type").asText())) {
                 coordinates.forEach(rings::add);
             } else {
                 coordinates.forEach(polygon -> polygon.forEach(rings::add));
+            }
+            for (int i = before; i < rings.size(); i++) {
+                ringFeatures.add(featureCountries.size() - 1);
             }
         }
         int pointCount = rings.stream().mapToInt(JsonNode::size).sum();
@@ -289,6 +342,7 @@ final class MapTileRenderer {
             ringBounds[i * 4 + 3] = maxY;
         }
         ringStart[rings.size()] = k;
-        return new Countries(ringStart, ringBounds, pointX, pointY);
+        return new Countries(ringStart, ringBounds, pointX, pointY, ringFeatures.stream().mapToInt(Integer::intValue).toArray(),
+                featureCountries.toArray(new Country[0]));
     }
 }

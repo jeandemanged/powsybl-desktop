@@ -241,6 +241,14 @@ shared `equipment-detail-view.fxml` (no `fx:controller`: `EquipmentDetails.load`
 - The Map view does not draw the network in JavaScript: tiles are rendered in Java (`MapTileRenderer`) on a thread
   pool from an immutable `MapNetworkData` snapshot; Leaflet only displays tiles. Leaflet files are unpacked from the
   `org.webjars:leaflet` dependency at build time — not checked in.
+- The offline basemap, `map/countries.geojson`, is Natural Earth 1:50m admin-0 countries — public domain, no
+  attribution required (https://www.naturalearthdata.com/about/terms-of-use/). Generated from
+  `geojson/ne_50m_admin_0_countries.geojson` of https://github.com/nvkelso/natural-earth-vector (5.2.0-pre):
+  features kept in order, every coordinate rounded to 2 decimals (about 1 km) and consecutive duplicate points
+  dropped, properties reduced to `{"country": ISO_A2_EH}` (empty for its 3 `-99` territories: Somaliland, N. Cyprus,
+  Siachen Glacier), written as compact JSON. Every code must be a powsybl `Country` constant: loading fails otherwise.
+- `MapTileRenderer.countryAt` reads the country of a place from that basemap, whichever basemap is shown; "New
+  substation here" proposes it, falling back to the network's only country (at sea, or in a territory without code).
 - Anything map.js draws itself (search markers, the position edit overlay) avoids Leaflet's vector panes, which the
   WebView mis-composites while zooming: DOM markers, or a canvas laid over the map container redrawn on every move.
 - Position edits (`SubstationPosition`, `LinePosition`, both immutable) go through `network/edit/PositionEdits`, run

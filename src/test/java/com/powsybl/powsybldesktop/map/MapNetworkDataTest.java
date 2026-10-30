@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop.map;
 
+import com.powsybl.iidm.network.Country;
 import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
@@ -192,5 +193,15 @@ class MapNetworkDataTest {
         int tileX = (int) (MapNetworkData.projectX(2.3) * scale / MapTileRenderer.TILE_SIZE);
         int tileY = (int) (MapNetworkData.projectY(48) * scale / MapTileRenderer.TILE_SIZE);
         assertNotNull(MapTileRenderer.render(data, false, Set.of(), 10, tileX, tileY, 1));
+    }
+
+    // Lesotho is a hole in South Africa; the Atlantic and Somaliland, unrecognized, have no country
+    @Test
+    void countryAtFollowsTheOfflineBasemap() {
+        assertEquals(Country.FR, MapTileRenderer.countryAt(48.85, 2.35));
+        assertEquals(Country.LS, MapTileRenderer.countryAt(-29.5, 28.2));
+        assertEquals(Country.ZA, MapTileRenderer.countryAt(-30, 25));
+        assertNull(MapTileRenderer.countryAt(45, -30));
+        assertNull(MapTileRenderer.countryAt(9.56, 44.06));
     }
 }

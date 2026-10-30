@@ -153,7 +153,7 @@ public final class EditMenus {
 
     public static MenuItem substationItem(SceneModel sceneModel, Supplier<Window> owner, Network network) {
         return disabledIf(network == null,
-                kindItem("desktop.common.equipment.substation", () -> ContainerCreations.newSubstation(sceneModel, owner.get(), network, null)));
+                kindItem("desktop.common.equipment.substation", () -> ContainerCreations.newSubstation(sceneModel, owner.get(), network, null, null)));
     }
 
     /**
