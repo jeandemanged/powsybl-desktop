@@ -46,7 +46,7 @@ public class MemoryController {
     @FXML
     private Label maxHeapHintLabel;
 
-    private final Timeline refreshTimeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> refresh()));
+    private final Timeline refreshTimeline = new Timeline(new KeyFrame(Duration.seconds(1), _ -> refresh()));
 
     @FXML
     private void initialize() {
@@ -70,7 +70,7 @@ public class MemoryController {
         }
         maxHeapCombo.setValue(MaxHeapConfig.read(config.get()));
         updateRestartHint(runningGb);
-        maxHeapCombo.valueProperty().addListener((observable, oldValue, newValue) -> {
+        maxHeapCombo.valueProperty().addListener((_, _, newValue) -> {
             try {
                 MaxHeapConfig.write(config.get(), newValue);
             } catch (IOException e) {

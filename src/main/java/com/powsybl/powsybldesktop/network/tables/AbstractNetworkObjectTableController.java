@@ -61,9 +61,9 @@ abstract class AbstractNetworkObjectTableController<T> extends AbstractDisposabl
             tableView().editableProperty().bind(mainModel.networkBusyProperty().not());
         }
         refresh();
-        listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> refresh());
-        listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
-        listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> tableView().refresh());
+        listenerManager.listen(sceneModel.networkProperty(), (_, _, _) -> refresh());
+        listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> refresh());
+        listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (_, _, _) -> tableView().refresh());
     }
 
     private void refresh() {

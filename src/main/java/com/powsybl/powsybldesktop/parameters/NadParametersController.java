@@ -159,7 +159,7 @@ public class NadParametersController extends AbstractDiagramParametersController
                         Double.parseDouble(rightField.getText()), Double.parseDouble(bottomField.getText()));
                 parametersProperty.getValue().getSvgParameters().setDiagramPadding(padding);
                 notifyChange();
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException _) {
                 refresh();
             }
         };
@@ -191,7 +191,7 @@ public class NadParametersController extends AbstractDiagramParametersController
             scaleField.setText(Double.toString(svgParameters.getFixedScale()));
         });
 
-        modeChoiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+        modeChoiceBox.valueProperty().addListener((_, _, newValue) -> {
             if (!refreshing && newValue != null) {
                 parametersProperty.getValue().getSvgParameters().setSizeConstraint(newValue);
                 notifyChange();
@@ -203,7 +203,7 @@ public class NadParametersController extends AbstractDiagramParametersController
             }
             try {
                 parametersProperty.getValue().getSvgParameters().setFixedWidth(Integer.parseInt(widthField.getText()));
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException _) {
                 refresh();
                 return;
             }
@@ -216,7 +216,7 @@ public class NadParametersController extends AbstractDiagramParametersController
             }
             try {
                 parametersProperty.getValue().getSvgParameters().setFixedHeight(Integer.parseInt(heightField.getText()));
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException _) {
                 refresh();
                 return;
             }
@@ -229,7 +229,7 @@ public class NadParametersController extends AbstractDiagramParametersController
             }
             try {
                 parametersProperty.getValue().getSvgParameters().setFixedScale(Double.parseDouble(scaleField.getText()));
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException _) {
                 refresh();
                 return;
             }
@@ -373,7 +373,7 @@ public class NadParametersController extends AbstractDiagramParametersController
                 parametersProperty.getValue().getLayoutParameters().setTextNodeFixedShift(
                         Double.parseDouble(xField.getText()), Double.parseDouble(yField.getText()));
                 notifyChange();
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException _) {
                 refresh();
             }
         };

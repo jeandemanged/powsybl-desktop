@@ -29,11 +29,11 @@ public class ReportNodeViewController {
 
     // A node is kept if its own severity meets the threshold, or a descendant's does - so raising the
     // threshold only prunes branches that are entirely below it, rather than orphaning matching descendants.
-    private String minSeverity = GuiParameters.REPORT_SEVERITIES.get(0);
+    private String minSeverity = GuiParameters.REPORT_SEVERITIES.getFirst();
 
     @FXML
     private void initialize() {
-        treeView.setCellFactory(tv -> new ReportNodeTreeCell());
+        treeView.setCellFactory(_ -> new ReportNodeTreeCell());
     }
 
     // null clears the view, e.g. once the selected report is cleared

@@ -97,7 +97,7 @@ public class SwitchesController extends AbstractDisposableController implements 
         this.mainModel = sceneModel.getMainModel();
         // see AbstractEquipmentTableController.setSceneModel
         switchesTableView.editableProperty().bind(mainModel.networkBusyProperty().not());
-        listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
+        listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> refresh());
         TableEditActions.install(switchesTableView, sceneModel, () -> List.of(EditMenus.switchItem(sceneModel,
                 () -> switchesTableView.getScene().getWindow(), container instanceof VoltageLevel voltageLevel ? voltageLevel : null)));
     }

@@ -127,7 +127,7 @@ public final class EditMenus {
     public static void installContextMenu(Control control, Supplier<List<MenuItem>> items) {
         ContextMenu contextMenu = new ContextMenu();
         // a filter, to run before the control's own handler shows its context menu
-        control.addEventFilter(ContextMenuEvent.CONTEXT_MENU_REQUESTED, event -> contextMenu.getItems().setAll(items.get()));
+        control.addEventFilter(ContextMenuEvent.CONTEXT_MENU_REQUESTED, _ -> contextMenu.getItems().setAll(items.get()));
         control.setContextMenu(contextMenu);
     }
 
@@ -348,7 +348,7 @@ public final class EditMenus {
 
     static MenuItem item(String text, String icon, Runnable action) {
         MenuItem item = icon == null ? new MenuItem(text) : new MenuItem(text, new FontIcon(icon));
-        item.setOnAction(event -> action.run());
+        item.setOnAction(_ -> action.run());
         return item;
     }
 }

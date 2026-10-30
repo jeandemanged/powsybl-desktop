@@ -83,7 +83,7 @@ public class ParametersController extends AbstractDisposableController {
         securityAnalysisEmbeddedController.setOnChange(mainModel.getParametersModel()::parametersChanged);
         securityAnalysisEmbeddedController.setOnImportFailed((path, e) -> importFailed(Instant.now(), path, e));
         guiEmbeddedController.setParametersModel(mainModel.getParametersModel());
-        listenerManager.listen(mainModel.getParametersModel().parametersRevisionProperty(), (observable, oldValue, newValue) -> updateSaveButton());
+        listenerManager.listen(mainModel.getParametersModel().parametersRevisionProperty(), (_, _, _) -> updateSaveButton());
         setConfigPath(configPath);
     }
 

@@ -55,7 +55,7 @@ class ColumnVisibilityToolbarControllerTest extends AbstractHeadlessApplicationT
 
         List<CheckBox> checkBoxes = controller.root.getItems().stream().map(CheckBox.class::cast).toList();
         assertEquals(2, checkBoxes.size());
-        assertTrue(checkBoxes.get(0).isSelected());
+        assertTrue(checkBoxes.getFirst().isSelected());
         assertFalse(checkBoxes.get(1).isSelected());
     }
 
@@ -66,7 +66,7 @@ class ColumnVisibilityToolbarControllerTest extends AbstractHeadlessApplicationT
 
         interact(() -> controller.configure(List.of(
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.column.p", false, columnA, columnB))));
-        CheckBox checkBox = (CheckBox) controller.root.getItems().get(0);
+        CheckBox checkBox = (CheckBox) controller.root.getItems().getFirst();
 
         interact(checkBox::fire);
         assertTrue(columnA.isVisible());

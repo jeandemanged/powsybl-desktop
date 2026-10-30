@@ -144,7 +144,7 @@ class BusbarSectionsControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> controller.goToBusbarSection(busbarSection));
         List<TablePosition> selectedCells = controller.busbarSectionsTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(row, selectedCells.get(0).getRow());
+        assertEquals(row, selectedCells.getFirst().getRow());
 
         interact(() -> controller.goToBusbarSection(null));
         assertTrue(controller.busbarSectionsTableView.getSelectionModel().getSelectedCells().isEmpty());

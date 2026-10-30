@@ -220,7 +220,7 @@ class GeneratorsControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> controller.goToGenerator(generator));
         List<TablePosition> selectedCells = controller.generatorsTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(row, selectedCells.get(0).getRow());
+        assertEquals(row, selectedCells.getFirst().getRow());
 
         interact(() -> controller.goToGenerator(null));
         assertTrue(controller.generatorsTableView.getSelectionModel().getSelectedCells().isEmpty());
@@ -241,7 +241,7 @@ class GeneratorsControllerTest extends AbstractHeadlessApplicationTest {
 
         List<TablePosition> selectedCells = controller.generatorsTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(sortedRow, selectedCells.get(0).getRow());
+        assertEquals(sortedRow, selectedCells.getFirst().getRow());
     }
 
     @Test

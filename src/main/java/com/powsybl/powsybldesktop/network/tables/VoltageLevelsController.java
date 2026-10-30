@@ -116,10 +116,10 @@ public class VoltageLevelsController extends AbstractDisposableController implem
         // see AbstractEquipmentTableController.setSceneModel
         voltageLevelsTableView.editableProperty().bind(mainModel.networkBusyProperty().not());
         updateVoltageLevels();
-        listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> updateVoltageLevels());
-        listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> updateVoltageLevels());
+        listenerManager.listen(sceneModel.networkProperty(), (_, _, _) -> updateVoltageLevels());
+        listenerManager.listen(this.mainModel.updateProperty(), (_, _, _) -> updateVoltageLevels());
         // for the decimal places, read by the cells on every render
-        listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> voltageLevelsTableView.refresh());
+        listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (_, _, _) -> voltageLevelsTableView.refresh());
         searchBoxController.bind(sceneModel, this::onSearchMatch);
         TableEditActions.install(voltageLevelsTableView, sceneModel, () -> {
             VoltageLevel selected = voltageLevelsTableView.getSelectionModel().getSelectedItem();
@@ -147,7 +147,7 @@ public class VoltageLevelsController extends AbstractDisposableController implem
     private Hyperlink containerLink(Container<?> container, VoltageLevel item) {
         Hyperlink link = new Hyperlink(container.getNameOrId());
         link.getStyleClass().add("container-link");
-        link.setOnAction(event -> {
+        link.setOnAction(_ -> {
             sceneModel.record(NavigationEvent.create(
                     NavigationType.NETWORK_TABLE_VOLTAGE_LEVELS, VoltageLevelNavigationState.create(item)));
             sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(container)));

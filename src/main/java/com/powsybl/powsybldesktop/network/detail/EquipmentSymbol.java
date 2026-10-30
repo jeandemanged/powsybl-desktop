@@ -168,7 +168,7 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
             topBus(end, x, busY);
             verticalWire(end, x, busY, busY + VERTICAL_WIRE, true);
             Point2D top = anchors(type.get(), Orientation.DOWN).stream().min(Comparator.comparingDouble(Point2D::getY)).orElse(Point2D.ZERO);
-            component(type.get(), Orientation.DOWN, x - top.getX(), busY + VERTICAL_WIRE - top.getY(), subComponent -> end.color());
+            component(type.get(), Orientation.DOWN, x - top.getX(), busY + VERTICAL_WIRE - top.getY(), _ -> end.color());
         });
     }
 
@@ -215,9 +215,9 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
         Supplier<String> type1 = () -> stationType(hvdcLine.getConverterStation(TwoSides.ONE));
         Supplier<String> type2 = () -> stationType(hvdcLine.getConverterStation(TwoSides.TWO));
         return drawn(() -> List.of(type1.get(), type2.get()), () -> row(end1, end2, false, x -> {
-            double dcStart = component(type1.get(), Orientation.RIGHT, x, subComponent -> end1.color());
+            double dcStart = component(type1.get(), Orientation.RIGHT, x, _ -> end1.color());
             wire(dcStart, rowY(), dcStart + DC_LINE, rowY(), dcColor, WIRE_WIDTH);
-            return component(type2.get(), Orientation.LEFT, dcStart + DC_LINE, subComponent -> end2.color());
+            return component(type2.get(), Orientation.LEFT, dcStart + DC_LINE, _ -> end2.color());
         }));
     }
 
@@ -452,7 +452,7 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
      * The fill, stroke, stroke width and font size of each single class selector of the library's style sheets.
      */
     private static Map<String, Style> styles(SldComponentLibrary componentLibrary) {
-        return STYLES.computeIfAbsent(componentLibrary.getName(), name -> {
+        return STYLES.computeIfAbsent(componentLibrary.getName(), _ -> {
             Map<String, Style> styles = new HashMap<>();
             for (URL url : componentLibrary.getCssUrls()) {
                 Matcher rule = RULE.matcher(COMMENT.matcher(read(url)).replaceAll(""));
@@ -521,7 +521,7 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
     private CheckBox connectedCheckBox(Supplier<Terminal> terminal) {
         CheckBox checkBox = new CheckBox(Messages.get("desktop.common.column.connected"));
         checkBox.disableProperty().bind(editable.not());
-        checkBox.setOnAction(event -> {
+        checkBox.setOnAction(_ -> {
             DetailForm.apply(checkBox, () -> {
                 Terminal t = terminal.get();
                 if (!(checkBox.isSelected() ? t.connect() : t.disconnect())) {

@@ -72,10 +72,10 @@ class SecurityAnalysisParametersControllerTest extends AbstractHeadlessApplicati
 
     @SuppressWarnings("unchecked")
     private GridPane selectCategory(String title) {
-        ListView<String> categories = (ListView<String>) controller.splitPane.getItems().get(0);
+        ListView<String> categories = (ListView<String>) controller.splitPane.getItems().getFirst();
         StackPane detail = (StackPane) controller.splitPane.getItems().get(1);
         interact(() -> categories.getSelectionModel().select(title));
-        ScrollPane scrollPane = (ScrollPane) detail.getChildren().get(0);
+        ScrollPane scrollPane = (ScrollPane) detail.getChildren().getFirst();
         return (GridPane) scrollPane.getContent();
     }
 
@@ -90,7 +90,7 @@ class SecurityAnalysisParametersControllerTest extends AbstractHeadlessApplicati
                             Integer r = GridPane.getRowIndex(n);
                             return (r == null ? 0 : r) == row;
                         })
-                        .map(n -> (Control) n)
+                        .map(Control.class::cast)
                         .findFirst()
                         .orElseThrow(() -> new AssertionError("No control next to label: " + labelText));
             }
@@ -101,7 +101,7 @@ class SecurityAnalysisParametersControllerTest extends AbstractHeadlessApplicati
     @Test
     void categoryListShowsGeneralFirstAndMiscellaneousLast() {
         @SuppressWarnings("unchecked")
-        ListView<String> categories = (ListView<String>) controller.splitPane.getItems().get(0);
+        ListView<String> categories = (ListView<String>) controller.splitPane.getItems().getFirst();
         assertEquals(List.of("General", "Increased Violations", "Modified Monitored Elements", "Miscellaneous"), categories.getItems());
     }
 

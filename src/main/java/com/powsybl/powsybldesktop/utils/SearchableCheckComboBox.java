@@ -63,7 +63,7 @@ public class SearchableCheckComboBox<T> extends Button {
     public SearchableCheckComboBox(List<T> items, StringConverter<T> converter) {
         for (T item : items) {
             BooleanProperty check = new SimpleBooleanProperty();
-            check.addListener((observable, wasChecked, isChecked) -> {
+            check.addListener((_, _, _) -> {
                 if (!updating) {
                     updateCheckedItems();
                 }
@@ -72,7 +72,7 @@ public class SearchableCheckComboBox<T> extends Button {
         }
         FilteredList<T> filteredItems = new FilteredList<>(FXCollections.observableArrayList(items));
         searchField.setPromptText(Messages.get("desktop.common.search.prompt"));
-        searchField.textProperty().addListener((observable, oldText, text) -> filteredItems.setPredicate(matching(text, converter)));
+        searchField.textProperty().addListener((_, _, text) -> filteredItems.setPredicate(matching(text, converter)));
         listView = new ListView<>(filteredItems);
         listView.setCellFactory(CheckBoxListCell.forListView(checks::get, converter));
         listView.setPrefHeight(LIST_HEIGHT);
@@ -101,14 +101,14 @@ public class SearchableCheckComboBox<T> extends Button {
                 SearchableCheckComboBox.class.getResource("/com/powsybl/powsybldesktop/styles.css")).toExternalForm());
         popup.getContent().add(content);
         popup.setAutoHide(true);
-        popup.setOnHidden(event -> searchField.clear());
+        popup.setOnHidden(_ -> searchField.clear());
 
         textProperty().bind(Bindings.createStringBinding(() -> checkedItems.isEmpty() ? title.get()
                 : checkedItems.stream().map(String::valueOf).collect(Collectors.joining(", ")), checkedItems, title));
         setGraphic(new FontIcon("mdi2c-chevron-down"));
         setContentDisplay(ContentDisplay.RIGHT);
         setAlignment(Pos.CENTER_LEFT);
-        setOnAction(event -> show());
+        setOnAction(_ -> show());
     }
 
     public final StringProperty titleProperty() {

@@ -172,7 +172,7 @@ class BusesBusViewControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> controller.goToBus(bus));
         List<TablePosition> selectedCells = controller.busesTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(row, selectedCells.get(0).getRow());
+        assertEquals(row, selectedCells.getFirst().getRow());
 
         interact(() -> controller.goToBus(null));
         assertTrue(controller.busesTableView.getSelectionModel().getSelectedCells().isEmpty());

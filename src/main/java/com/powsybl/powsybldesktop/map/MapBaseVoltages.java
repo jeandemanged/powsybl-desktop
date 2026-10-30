@@ -58,7 +58,7 @@ public final class MapBaseVoltages {
             checkBox.setGraphic(new Rectangle(10, 10, Color.web(baseVoltages.color(baseVoltage.getName(), MapNetworkData.DEFAULT_SUBSTATION_COLOR))));
             checkBox.setUserData(baseVoltage.getName());
             checkBox.setSelected(true);
-            checkBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
+            checkBox.selectedProperty().addListener((_, _, _) -> {
                 if (!updating) {
                     onChange.accept(hidden());
                 }

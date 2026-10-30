@@ -136,13 +136,13 @@ public class HvdcLinesController extends AbstractEquipmentTableController<HvdcLi
         TableColumnSupport.configureSingleSlotChoiceColumn(convertersModeColumn, HvdcLine::getConvertersMode, HvdcLine::setConvertersMode,
                 List.of(HvdcLine.ConvertersMode.values()), CONVERTERS_MODE_FORMAT);
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(activePowerSetpointColumn, hvdcLine -> List.of(hvdcLine.getActivePowerSetpoint()),
-                (hvdcLine, index, value) -> hvdcLine.setActivePowerSetpoint(value), format(GuiParameters.Quantity.POWER));
+                (hvdcLine, _, value) -> hvdcLine.setActivePowerSetpoint(value), format(GuiParameters.Quantity.POWER));
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(maxPColumn, hvdcLine -> List.of(hvdcLine.getMaxP()),
-                (hvdcLine, index, value) -> hvdcLine.setMaxP(value), format(GuiParameters.Quantity.POWER));
+                (hvdcLine, _, value) -> hvdcLine.setMaxP(value), format(GuiParameters.Quantity.POWER));
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(rColumn, hvdcLine -> List.of(hvdcLine.getR()),
-                (hvdcLine, index, value) -> hvdcLine.setR(value), format(GuiParameters.Quantity.IMPEDANCE));
+                (hvdcLine, _, value) -> hvdcLine.setR(value), format(GuiParameters.Quantity.IMPEDANCE));
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(nominalVColumn, hvdcLine -> List.of(hvdcLine.getNominalV()),
-                (hvdcLine, index, value) -> hvdcLine.setNominalV(value), format(GuiParameters.Quantity.VOLTAGE));
+                (hvdcLine, _, value) -> hvdcLine.setNominalV(value), format(GuiParameters.Quantity.VOLTAGE));
 
         TableColumnSupport.configureTwoSidedDoubleColumn(pColumn,
                 hvdcLine -> hvdcLine.getConverterStation1().getTerminal().getP(),
@@ -164,7 +164,7 @@ public class HvdcLinesController extends AbstractEquipmentTableController<HvdcLi
     private Hyperlink converterStationLink(HvdcConverterStation<?> station, HvdcLine item) {
         Hyperlink link = new Hyperlink(station.getNameOrId());
         link.getStyleClass().add("container-link");
-        link.setOnAction(event -> {
+        link.setOnAction(_ -> {
             if (isEmbedded()) {
                 ContainerNavigationState.ContainerTab tab = station instanceof VscConverterStation
                         ? ContainerNavigationState.ContainerTab.VSC_CONVERTER_STATIONS

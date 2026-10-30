@@ -105,6 +105,6 @@ abstract class AbstractCreationDialogTest extends AbstractHeadlessApplicationTes
     }
 
     protected <T> T openAndConfirm(Function<SceneModel, Optional<T>> open, Network network) {
-        return openAndConfirm(open, network, dialogPane -> { });
+        return openAndConfirm(open, network, _ -> { });
     }
 }

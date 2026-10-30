@@ -41,7 +41,7 @@ public final class CopyButtons {
     public static Button copy(Supplier<String> text) {
         Button button = new Button();
         decorate(button, "desktop.common.action.copyToClipboard");
-        button.setOnAction(event -> copyToClipboard(text.get()));
+        button.setOnAction(_ -> copyToClipboard(text.get()));
         return button;
     }
 
@@ -51,15 +51,15 @@ public final class CopyButtons {
      */
     public static Button copyIdOrName(Supplier<String> id, Supplier<String> name) {
         MenuItem copyId = new MenuItem(Messages.get("desktop.common.action.copyId"));
-        copyId.setOnAction(event -> copyToClipboard(id.get()));
+        copyId.setOnAction(_ -> copyToClipboard(id.get()));
         MenuItem copyName = new MenuItem(Messages.get("desktop.common.action.copyName"));
-        copyName.setOnAction(event -> copyToClipboard(name.get()));
+        copyName.setOnAction(_ -> copyToClipboard(name.get()));
         ContextMenu menu = new ContextMenu(copyId, copyName);
-        menu.setOnShowing(event -> copyName.setDisable(name.get() == null));
+        menu.setOnShowing(_ -> copyName.setDisable(name.get() == null));
         Button button = new Button();
         decorate(button, "desktop.common.action.copyToClipboard");
         button.setContextMenu(menu);
-        button.setOnAction(event -> {
+        button.setOnAction(_ -> {
             if (name.get() == null) {
                 copyToClipboard(id.get());
             } else {

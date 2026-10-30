@@ -91,10 +91,10 @@ public class ViolationsController extends AbstractDisposableController implement
         this.sceneModel = Objects.requireNonNull(sceneModel);
         this.mainModel = sceneModel.getMainModel();
         updateViolations();
-        listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> updateViolations());
-        listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> updateViolations());
+        listenerManager.listen(sceneModel.networkProperty(), (_, _, _) -> updateViolations());
+        listenerManager.listen(this.mainModel.updateProperty(), (_, _, _) -> updateViolations());
         // for the decimal places, read by the cells on every render
-        listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> {
+        listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (_, _, _) -> {
             flowTableView.refresh();
             voltageTableView.refresh();
         });

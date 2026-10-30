@@ -34,7 +34,7 @@ public class ColumnVisibilityToolbarController {
             group.columns().forEach(column -> column.setVisible(group.defaultVisible()));
             CheckBox checkBox = new CheckBox(Messages.get(group.labelKey()));
             checkBox.setSelected(group.defaultVisible());
-            checkBox.selectedProperty().addListener((observable, oldValue, visible) ->
+            checkBox.selectedProperty().addListener((_, _, visible) ->
                     group.columns().forEach(column -> column.setVisible(visible)));
             root.getItems().add(checkBox);
         }

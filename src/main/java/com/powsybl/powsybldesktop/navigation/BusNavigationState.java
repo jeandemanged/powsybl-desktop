@@ -47,7 +47,7 @@ public class BusNavigationState extends NetworkNavigationState {
         // a bus view bus is computed, never notified as removed: it is gone with its voltage level
         try {
             return removed.contains(bus) || removed.contains(bus.getVoltageLevel());
-        } catch (PowsyblException e) {
+        } catch (PowsyblException _) {
             return true;
         }
     }

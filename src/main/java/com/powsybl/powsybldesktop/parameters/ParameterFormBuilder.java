@@ -70,7 +70,7 @@ final class ParameterFormBuilder {
             case BOOLEAN -> {
                 CheckBox checkBox = new CheckBox();
                 checkBox.setSelected(Boolean.parseBoolean(value));
-                checkBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
+                checkBox.selectedProperty().addListener((_, _, newValue) -> {
                     setValue(parameter, properties, String.valueOf(newValue));
                     onChange.run();
                 });
@@ -87,7 +87,7 @@ final class ParameterFormBuilder {
         ChoiceBox<String> choiceBox = new ChoiceBox<>();
         parameter.getPossibleValues().stream().map(Object::toString).forEach(choiceBox.getItems()::add);
         choiceBox.setValue(value.isEmpty() ? null : value);
-        choiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+        choiceBox.valueProperty().addListener((_, _, newValue) -> {
             if (newValue != null) {
                 setValue(parameter, properties, newValue);
                 onChange.run();
@@ -98,7 +98,7 @@ final class ParameterFormBuilder {
 
     private static TextField buildTextControl(Parameter parameter, String value, Properties properties, Runnable onChange) {
         TextField textField = new TextField(value);
-        textField.textProperty().addListener((observable, oldValue, newValue) -> {
+        textField.textProperty().addListener((_, _, newValue) -> {
             setValue(parameter, properties, newValue);
             onChange.run();
         });

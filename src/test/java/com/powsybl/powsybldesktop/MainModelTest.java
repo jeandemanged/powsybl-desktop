@@ -55,7 +55,7 @@ class MainModelTest {
         System.setProperty("glass.platform", "Headless");
         try {
             Platform.startup(() -> { });
-        } catch (IllegalStateException alreadyStarted) {
+        } catch (IllegalStateException _) {
             // toolkit already started by another test class running in this fork
         }
     }
@@ -89,7 +89,7 @@ class MainModelTest {
         assertNull(model.getNetwork());
         assertEquals(List.of(network2), model.getNetworks());
         assertEquals(1, model.getNavigationHistory().getPast().size());
-        assertEquals(network2, model.getNavigationHistory().getPast().get(0).state().getSelectedNetwork());
+        assertEquals(network2, model.getNavigationHistory().getPast().getFirst().state().getSelectedNetwork());
     }
 
     @Test
@@ -269,7 +269,7 @@ class MainModelTest {
     void setNetworkSetsSearchIndexStateBeforeNotifyingNetworkListeners() {
         Network network = IeeeCdfNetworkFactory.create14();
         // what MainController.ensureSearchIndex does when the selected network has no index yet
-        model.networkProperty().addListener((observable, oldValue, newValue) ->
+        model.networkProperty().addListener((_, _, _) ->
                 model.searchIndexStateProperty().setValue(NetworkSearchIndex.State.BUILDING));
 
         model.addNetwork(network);

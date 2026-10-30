@@ -203,7 +203,7 @@ class StaticVarCompensatorsControllerTest extends AbstractHeadlessApplicationTes
         interact(() -> controller.goToStaticVarCompensator(staticVarCompensator));
         List<TablePosition> selectedCells = controller.staticVarCompensatorsTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(row, selectedCells.get(0).getRow());
+        assertEquals(row, selectedCells.getFirst().getRow());
 
         interact(() -> controller.goToStaticVarCompensator(null));
         assertTrue(controller.staticVarCompensatorsTableView.getSelectionModel().getSelectedCells().isEmpty());

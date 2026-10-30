@@ -92,9 +92,9 @@ public class AboutController {
 
     @FXML
     private void initialize() {
-        websiteLink.setOnAction(event -> openLink(websiteLink.getText()));
-        documentationLink.setOnAction(event -> openLink(documentationLink.getText()));
-        githubLink.setOnAction(event -> openLink(githubLink.getText()));
+        websiteLink.setOnAction(_ -> openLink(websiteLink.getText()));
+        documentationLink.setOnAction(_ -> openLink(documentationLink.getText()));
+        githubLink.setOnAction(_ -> openLink(githubLink.getText()));
 
         moduleNameColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getRepositoryName()));
         versionColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getMavenProjectVersion()));

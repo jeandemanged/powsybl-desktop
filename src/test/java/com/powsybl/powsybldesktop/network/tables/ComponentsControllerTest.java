@@ -95,7 +95,7 @@ class ComponentsControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     private Region statusMarker(int row) {
-        return (Region) ((HBox) statusGraphic(row)).getChildren().get(0);
+        return (Region) ((HBox) statusGraphic(row)).getChildren().getFirst();
     }
 
     private Label statusLabel(int row) {
@@ -112,7 +112,7 @@ class ComponentsControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void tableContainsOneRowForTheFullyConnectedNetworkWithNoLoadFlowResult() {
         assertEquals(1, controller.currentComponents.size());
-        ComponentsController.ComponentRow row = controller.currentComponents.get(0);
+        ComponentsController.ComponentRow row = controller.currentComponents.getFirst();
         assertEquals(0, row.key().connectedComponentNum());
         assertEquals(0, row.key().synchronousComponentNum());
         assertEquals((int) network.getBusView().getBusStream().count(), row.busCount());
@@ -199,8 +199,8 @@ class ComponentsControllerTest extends AbstractHeadlessApplicationTest {
 
         VBox slackBusesBox = assertInstanceOf(VBox.class, graphicOf(controller.slackBusesColumn, mainRow));
         assertEquals(1, slackBusesBox.getChildren().size());
-        HBox slackBusLine = (HBox) slackBusesBox.getChildren().get(0);
-        Hyperlink slackBusLink = assertInstanceOf(Hyperlink.class, slackBusLine.getChildren().get(0));
+        HBox slackBusLine = (HBox) slackBusesBox.getChildren().getFirst();
+        Hyperlink slackBusLink = assertInstanceOf(Hyperlink.class, slackBusLine.getChildren().getFirst());
         assertEquals(mainBus.getId(), slackBusLink.getText());
         assertEquals(": 0.5", ((Label) slackBusLine.getChildren().get(1)).getText());
 

@@ -32,7 +32,7 @@ public class NotificationsController extends AbstractDisposableController {
 
     @FXML
     private void initialize() {
-        notificationsListView.setCellFactory(lv -> new NotificationCell());
+        notificationsListView.setCellFactory(_ -> new NotificationCell());
     }
 
     public void setMainModel(MainModel mainModel) {

@@ -250,13 +250,13 @@ class EquipmentDetailViewsTest extends AbstractHeadlessApplicationTest {
         interact(() -> pane.lookupAll(".check-box").stream()
                 .filter(node -> Messages.get("limits.edit.selected").equals(((Labeled) node).getText()))
                 .map(ButtonBase.class::cast)
-                .reduce((first, second) -> second).orElseThrow().fire());
+                .reduce((_, second) -> second).orElseThrow().fire());
         assertTrue(line.getAllSelectedOperationalLimitsGroupIds(TwoSides.ONE).contains("summer"));
 
         interact(() -> pane.lookupAll(".button").stream()
                 .map(ButtonBase.class::cast)
                 .filter(button -> Messages.get("limits.edit.removeLimits").equals(button.getText()))
-                .reduce((first, second) -> second).orElseThrow().fire());
+                .reduce((_, second) -> second).orElseThrow().fire());
         assertTrue(line.getOperationalLimitsGroup1("summer").orElseThrow().getCurrentLimits().isEmpty());
     }
 
@@ -275,7 +275,7 @@ class EquipmentDetailViewsTest extends AbstractHeadlessApplicationTest {
         interact(() -> button(phasePane, Button.class, Messages.get("detail.tapChanger.addStep")).fire());
         assertEquals(steps + 1, transformer.getPhaseTapChanger().getStepCount());
 
-        TapChangerPane ratioPane = (TapChangerPane) tapChangers.getChildrenUnmodifiable().get(0);
+        TapChangerPane ratioPane = (TapChangerPane) tapChangers.getChildrenUnmodifiable().getFirst();
         interact(() -> button(ratioPane, Button.class, Messages.get("desktop.common.action.add")).fire());
         assertNotNull(transformer.getRatioTapChanger());
         assertEquals(1, transformer.getRatioTapChanger().getStepCount());

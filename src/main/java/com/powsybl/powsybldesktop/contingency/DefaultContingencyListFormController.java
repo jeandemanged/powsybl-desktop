@@ -83,11 +83,11 @@ public class DefaultContingencyListFormController {
         contingenciesTableView.setItems(contingencies);
         idColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getId()));
         // by index: a renamed contingency is a new row
-        CellFields.textColumn(idColumn, new DefaultStringConverter(), row -> true, CellFields.RowKey.INDEX);
+        CellFields.textColumn(idColumn, new DefaultStringConverter(), _ -> true, CellFields.RowKey.INDEX);
         idColumn.setOnEditCommit(event -> renameContingency(event.getRowValue(), event.getNewValue()));
         elementsColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(ContingencyNames.elementsSummary(cellData.getValue(), network)));
         removeContingencyButton.disableProperty().bind(contingenciesTableView.getSelectionModel().selectedItemProperty().isNull());
-        contingenciesTableView.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> bindElements(newValue));
+        contingenciesTableView.getSelectionModel().selectedItemProperty().addListener((_, _, newValue) -> bindElements(newValue));
 
         elementsTableView.setItems(elementRows);
         elementTypeColumn.setCellValueFactory(cellData -> cellData.getValue().typeProperty());
@@ -97,15 +97,15 @@ public class DefaultContingencyListFormController {
             commitElements();
         });
         elementIdColumn.setCellValueFactory(cellData -> cellData.getValue().idProperty());
-        CellFields.textColumn(elementIdColumn, new DefaultStringConverter(), row -> true, CellFields.RowKey.ITEM);
+        CellFields.textColumn(elementIdColumn, new DefaultStringConverter(), _ -> true, CellFields.RowKey.ITEM);
         elementIdColumn.setOnEditCommit(event -> {
             event.getRowValue().idProperty().set(event.getNewValue());
             commitElements();
         });
         removeElementButton.disableProperty().bind(elementsTableView.getSelectionModel().selectedItemProperty().isNull());
 
-        nameField.setOnAction(event -> commitContingencies());
-        nameField.focusedProperty().addListener((obs, wasFocused, isFocused) -> {
+        nameField.setOnAction(_ -> commitContingencies());
+        nameField.focusedProperty().addListener((_, _, isFocused) -> {
             if (Boolean.FALSE.equals(isFocused)) {
                 commitContingencies();
             }
@@ -127,7 +127,7 @@ public class DefaultContingencyListFormController {
     }
 
     private static List<ContingencyElementRow> toRows(List<ContingencyElement> elements) {
-        return elements.stream().map(e -> new ContingencyElementRow(e.getType(), e.getId())).collect(Collectors.toList());
+        return elements.stream().map(e -> new ContingencyElementRow(e.getType(), e.getId())).toList();
     }
 
     private void renameContingency(Contingency row, String newId) {

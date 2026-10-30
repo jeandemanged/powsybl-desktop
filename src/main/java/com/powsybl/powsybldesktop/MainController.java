@@ -120,7 +120,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * Owns the shell built from {@code main-view.fxml} (menu bar, toolbar, center view). Rebuilt in
@@ -228,7 +227,7 @@ public class MainController extends AbstractDisposableController {
                 Objects.requireNonNull(MainApplication.class.getResourceAsStream("logo.png"))));
         memoryStage.setScene(new Scene(root));
         memoryStage.setResizable(false);
-        memoryStage.setOnHidden(event -> {
+        memoryStage.setOnHidden(_ -> {
             controller.dispose();
             memoryStage = null;
         });
@@ -287,7 +286,7 @@ public class MainController extends AbstractDisposableController {
         disposeShell();
         MainController newController = new MainController(mainModel, separateWindows);
         FXMLLoader loader = new FXMLLoader(getClass().getResource("main-view.fxml"), Messages.bundle());
-        loader.setControllerFactory(type -> newController);
+        loader.setControllerFactory(_ -> newController);
         try {
             stage.getScene().setRoot(loader.load());
         } catch (IOException e) {
@@ -384,13 +383,13 @@ public class MainController extends AbstractDisposableController {
             Throwable exception = event.getSource().getException();
             LOGGER.error(exception.toString(), exception);
 
-            NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", e ->
+            NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", _ ->
                     mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS)));
 
             mainModel.getNotificationsModel().replace(runningNotification,
                     Notification.createError(runningNotification.startTimestamp(), "main.loadFlow.failed", viewLogsAction));
         });
-        loadFlowService.setOnCancelled(event -> mainModel.getNotificationsModel().replace(runningNotification,
+        loadFlowService.setOnCancelled(_ -> mainModel.getNotificationsModel().replace(runningNotification,
                 Notification.createCancelled(runningNotification.startTimestamp(), "main.loadFlow.cancelled")));
         mainModel.getStudy(network).trackComputation(loadFlowService);
         loadFlowService.start();
@@ -421,9 +420,9 @@ public class MainController extends AbstractDisposableController {
 
     // completing without exception doesn't mean converged - the outcome reflects the components' convergence
     private Notification loadFlowOutcome(Instant start, LoadFlowResultAndReport loadFlowResultAndReport) {
-        NotificationAction viewResultsAction = new NotificationAction("desktop.common.action.viewResults", e ->
+        NotificationAction viewResultsAction = new NotificationAction("desktop.common.action.viewResults", _ ->
                 mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_COMPONENTS)));
-        NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", e ->
+        NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", _ ->
                 mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.REPORTS,
                         ReportNavigationState.create(loadFlowResultAndReport.reportNode()))));
         return switch (LoadFlowConvergence.of(loadFlowResultAndReport.loadFlowResult())) {
@@ -448,7 +447,7 @@ public class MainController extends AbstractDisposableController {
         SecurityAnalysisParameters parameters = copyParameters(mainModel.getParametersModel().securityAnalysisParametersProperty().getValue());
         List<ContingencyList> enabledContingencyLists = mainModel.getStudy(network).getContingencyLists().stream()
                 .filter(list -> mainModel.getStudy(network).contingencyListEnabledProperty(list).get())
-                .collect(Collectors.toList());
+                .toList();
         ContingencyList contingencyList = new ListOfContingencyLists(network.getNameOrId(), enabledContingencyLists);
 
         // OpenLoadFlow's multi-threaded security analysis switches the network to thread-local variants while running,
@@ -523,19 +522,19 @@ public class MainController extends AbstractDisposableController {
             Throwable exception = event.getSource().getException();
             LOGGER.error(exception.toString(), exception);
 
-            NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", e ->
+            NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", _ ->
                     mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS)));
 
             mainModel.getNotificationsModel().replace(runningNotification,
                     Notification.createError(runningNotification.startTimestamp(), "main.securityAnalysis.failed", viewLogsAction));
         });
-        securityAnalysisService.setOnCancelled(event -> {
+        securityAnalysisService.setOnCancelled(_ -> {
             // a cancelled computation may still be running, until OpenLoadFlow notices
             CompletableFuture<SecurityAnalysisReport> future = computation.get();
             if (future == null) {
                 restoreVariantAccess.run();
             } else {
-                future.whenComplete((report, exception) -> Platform.runLater(restoreVariantAccess));
+                future.whenComplete((_, _) -> Platform.runLater(restoreVariantAccess));
             }
             mainModel.getNotificationsModel().replace(runningNotification,
                     Notification.createCancelled(runningNotification.startTimestamp(), "main.securityAnalysis.cancelled"));
@@ -546,9 +545,9 @@ public class MainController extends AbstractDisposableController {
 
     // completing without exception doesn't mean the base case converged - without it, no contingency was simulated
     private Notification securityAnalysisOutcome(Instant start, SecurityAnalysisResultAndReport securityAnalysisResultAndReport) {
-        NotificationAction viewResultsAction = new NotificationAction("desktop.common.action.viewResults", e ->
+        NotificationAction viewResultsAction = new NotificationAction("desktop.common.action.viewResults", _ ->
                 mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS)));
-        NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", e ->
+        NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", _ ->
                 mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.REPORTS,
                         ReportNavigationState.create(securityAnalysisResultAndReport.reportNode()))));
         if (securityAnalysisResultAndReport.securityAnalysisResult().getPreContingencyResult().getStatus()
@@ -598,7 +597,7 @@ public class MainController extends AbstractDisposableController {
             if (network.equals(mainModel.getNetwork())) {
                 mainModel.searchIndexStateProperty().setValue(NetworkSearchIndex.State.FAILED);
             }
-            NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", e ->
+            NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", _ ->
                     mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS)));
             mainModel.getNotificationsModel().add(Notification.createError(startTimestamp, "main.search.indexFailed", viewLogsAction));
         });
@@ -679,7 +678,7 @@ public class MainController extends AbstractDisposableController {
     // Swaps the border pane's center to fxml's view/controller only when it isn't already showing, so repeated
     // navigation events for the same NavigationType (e.g. selecting a different row) don't reload the view.
     private <T extends DisposableController> T ensureController(Class<T> controllerClass, String fxml, Consumer<T> setup) {
-        return ensureController(controllerClass, fxml, setup, root -> { });
+        return ensureController(controllerClass, fxml, setup, _ -> { });
     }
 
     // decorate: called with a newly loaded view's root, e.g. to add an open in new window button
@@ -729,24 +728,24 @@ public class MainController extends AbstractDisposableController {
         });
         // MainModel briefly sets this property to null before every real dispatch, to force the listener
         // to fire even when navigating to a content-equal NavigationEvent - ignore that transient value
-        listenerManager.listen(mainModel.getNavigationHistory().currentEventProperty(), (observable, oldValue, newValue) -> {
+        listenerManager.listen(mainModel.getNavigationHistory().currentEventProperty(), (_, _, newValue) -> {
             if (newValue != null) {
                 onNavigationEvent(newValue);
             }
         });
-        listenerManager.listen(mainModel.networkProperty(), (observable, oldValue, newValue) -> {
+        listenerManager.listen(mainModel.networkProperty(), (_, _, newValue) -> {
             // selected otherwise, e.g. by the user in the networks view
             if (newValue != implicitlySelectedRoot) {
                 implicitlySelectedRoot = null;
             }
             ensureSearchIndex(newValue);
         });
-        listenerManager.listen(mainModel.structureChangeProperty(), (observable, oldValue, change) -> {
+        listenerManager.listen(mainModel.structureChangeProperty(), (_, _, change) -> {
             if (change != null) {
                 onStructureChange(change);
             }
         });
-        listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refreshSearchIndexBuses());
+        listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> refreshSearchIndexBuses());
         listenerManager.listen(mainModel.getNetworks(), (ListChangeListener<Network>) change -> {
             while (change.next()) {
                 change.getAddedSubList().forEach(this::computeViolations);
@@ -754,7 +753,7 @@ public class MainController extends AbstractDisposableController {
         });
         listenerManager.listen(separateWindows.getOpenWindows(), (ListChangeListener<SeparateWindows.DetachedWindow>) change -> updateWindowsMenu());
         // also on showing: windows' names and tabs change without changing the list
-        windowsMenu.setOnShowing(event -> updateWindowsMenu());
+        windowsMenu.setOnShowing(_ -> updateWindowsMenu());
         updateWindowsMenu();
         separateWindows.addDragToOpen(mapButton, NavigationType.MAP.name(), () -> detachSceneView(MAP_FXML, NavigationType.MAP));
         separateWindows.addDragToOpen(contingenciesButton, NavigationType.CONTINGENCIES.name(),
@@ -816,9 +815,9 @@ public class MainController extends AbstractDisposableController {
 
         // at initialize() time the scene/stage don't exist yet (see MainApplication / reloadShell), so the
         // title for the very first navigation event is applied once the scene is attached to its window
-        borderPane.sceneProperty().addListener((observable, oldScene, newScene) -> {
+        borderPane.sceneProperty().addListener((_, _, newScene) -> {
             if (newScene != null) {
-                listenerManager.listen(newScene.windowProperty(), (o, oldWindow, newWindow) -> updateCurrentStageTitle());
+                listenerManager.listen(newScene.windowProperty(), (_, _, _) -> updateCurrentStageTitle());
                 updateCurrentStageTitle();
             }
         });
@@ -883,16 +882,16 @@ public class MainController extends AbstractDisposableController {
         Menu menu = new Menu(window.getName());
         menu.setMnemonicParsing(false);
         MenuItem show = new MenuItem(Messages.get("main.menu.windows.show"));
-        show.setOnAction(event -> window.show());
+        show.setOnAction(_ -> window.show());
         MenuItem rename = new MenuItem(Messages.get("main.menu.windows.rename"));
-        rename.setOnAction(event -> renameWindow(window));
+        rename.setOnAction(_ -> renameWindow(window));
         menu.getItems().addAll(show, rename, new SeparatorMenuItem());
         List<String> tabTitles = window.getTabTitles();
         for (int i = 0; i < tabTitles.size(); i++) {
             int index = i;
             MenuItem tab = new MenuItem(tabTitles.get(i));
             tab.setMnemonicParsing(false);
-            tab.setOnAction(event -> window.showTab(index));
+            tab.setOnAction(_ -> window.showTab(index));
             menu.getItems().add(tab);
         }
         return menu;
@@ -1146,7 +1145,7 @@ public class MainController extends AbstractDisposableController {
     }
 
     private void detachParameters() {
-        separateWindows.openSingleInstance(PARAMETERS_WINDOW, () -> Messages.get("desktop.common.parameters"), scene -> {
+        separateWindows.openSingleInstance(PARAMETERS_WINDOW, () -> Messages.get("desktop.common.parameters"), _ -> {
             SeparateWindows.View view = SeparateWindows.<ParametersController>load("parameters/parameters-view.fxml", c -> c.setMainModel(mainModel));
             return new SeparateWindows.View(view.root(), view.controller(), 1000, 700);
         });
@@ -1154,7 +1153,7 @@ public class MainController extends AbstractDisposableController {
 
     private void detachLogs() {
         separateWindows.openSingleInstance(LOGS_WINDOW, () -> NavigationEvent.create(NavigationType.LOGS).describe(),
-                scene -> SeparateWindows.<LogsViewController>load("logs/logs-view.fxml",
+                _ -> SeparateWindows.<LogsViewController>load("logs/logs-view.fxml",
                         c -> c.setModels(mainModel.getLogsModel(), mainModel.getParametersModel())));
     }
 
@@ -1323,7 +1322,7 @@ public class MainController extends AbstractDisposableController {
         for (int i = lastIndex; i >= 0; i--) {
             int index = i;
             MenuItem item = new MenuItem(events.get(i).describe());
-            item.setOnAction(e -> {
+            item.setOnAction(_ -> {
                 if (backward) {
                     mainModel.getNavigationHistory().navigateBackwardToIndex(index);
                 } else {

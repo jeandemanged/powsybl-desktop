@@ -105,7 +105,7 @@ public class NetworkStudy {
     }
 
     public BooleanProperty contingencyListEnabledProperty(ContingencyList list) {
-        return contingencyListEnabled.computeIfAbsent(list, l -> new SimpleBooleanProperty(true));
+        return contingencyListEnabled.computeIfAbsent(list, _ -> new SimpleBooleanProperty(true));
     }
 
     public void transferContingencyListEnabled(ContingencyList from, ContingencyList to) {
@@ -148,7 +148,7 @@ public class NetworkStudy {
     }
 
     private static void onDone(Service<?> service, Runnable action) {
-        service.stateProperty().addListener((observable, oldState, newState) -> {
+        service.stateProperty().addListener((_, _, newState) -> {
             if (newState == Worker.State.SUCCEEDED || newState == Worker.State.FAILED || newState == Worker.State.CANCELLED) {
                 action.run();
             }

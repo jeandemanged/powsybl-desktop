@@ -178,7 +178,7 @@ class VoltageLevelsControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> controller.goToVoltageLevel(voltageLevel));
         List<TablePosition> selectedCells = controller.voltageLevelsTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(row, selectedCells.get(0).getRow());
+        assertEquals(row, selectedCells.getFirst().getRow());
 
         interact(() -> controller.goToVoltageLevel(null));
         assertTrue(controller.voltageLevelsTableView.getSelectionModel().getSelectedCells().isEmpty());

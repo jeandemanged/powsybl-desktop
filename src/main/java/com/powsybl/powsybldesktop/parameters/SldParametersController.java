@@ -290,7 +290,7 @@ public class SldParametersController extends AbstractDiagramParametersController
                         Double.parseDouble(topField.getText()), Double.parseDouble(rightField.getText()),
                         Double.parseDouble(bottomField.getText()));
                 notifyChange();
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException _) {
                 refresh();
             }
         };

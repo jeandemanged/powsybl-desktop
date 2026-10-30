@@ -39,7 +39,7 @@ public class NotificationOverlay {
     private final Popup popup = new Popup();
     private final VBox stack = new VBox(8);
     private final Map<Notification, Entry> entries = new LinkedHashMap<>();
-    private final InvalidationListener followOwner = observable -> {
+    private final InvalidationListener followOwner = _ -> {
         if (popup.isShowing()) {
             reposition();
         }
@@ -58,7 +58,7 @@ public class NotificationOverlay {
         // Reposition only on an actual size change (a card added/removed, or one wrapping to another line
         // count) - not on every bounds-changed pulse, which would otherwise nudge the popup around every
         // second as a running card's elapsed-time text ticks.
-        stack.boundsInLocalProperty().addListener((obs, oldBounds, newBounds) -> {
+        stack.boundsInLocalProperty().addListener((_, oldBounds, newBounds) -> {
             if (popup.isShowing()
                     && (oldBounds.getWidth() != newBounds.getWidth() || oldBounds.getHeight() != newBounds.getHeight())) {
                 reposition();
@@ -124,7 +124,7 @@ public class NotificationOverlay {
             onDismiss.accept(n);
             detach(n);
         });
-        entry.autoHide().setOnFinished(e -> detach(notification));
+        entry.autoHide().setOnFinished(_ -> detach(notification));
     }
 
     private void detach(Notification notification) {

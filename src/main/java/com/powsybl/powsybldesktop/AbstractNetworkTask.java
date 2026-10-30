@@ -29,7 +29,7 @@ public abstract class AbstractNetworkTask<V> extends Task<V> {
 
     protected AbstractNetworkTask(MainModel mainModel, Network network) {
         releaseBusy = network == null ? () -> { } : mainModel.markBusy(network);
-        stateProperty().addListener((observable, oldState, newState) -> {
+        stateProperty().addListener((_, _, newState) -> {
             // cancelled before it ever ran: compute() won't run, nor release the network
             if (newState == Worker.State.CANCELLED && !started.get()) {
                 releaseBusy.run();

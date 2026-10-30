@@ -160,7 +160,7 @@ class SubstationsTableControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> controller.goToSubstation(substation));
         List<TablePosition> selectedCells = controller.substationsTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(row, selectedCells.get(0).getRow());
+        assertEquals(row, selectedCells.getFirst().getRow());
 
         interact(() -> controller.goToSubstation(null));
         assertTrue(controller.substationsTableView.getSelectionModel().getSelectedCells().isEmpty());

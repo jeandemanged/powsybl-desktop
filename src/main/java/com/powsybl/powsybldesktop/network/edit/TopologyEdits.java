@@ -103,7 +103,7 @@ public final class TopologyEdits {
                         throw new CreationForm.FieldException((busbar == null ? busbarIndex : sectionIndex).getEditor(),
                                 Messages.get("edit.topology.positionIncomplete"));
                     }
-                    NetworkEdits.apply(sceneModel.getMainModel(), network, n -> {
+                    NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> {
                         BusbarSection busbarSection = topology.newBusbarSection().setId(busbarSectionId).setName(name.get()).setNode(node.get()).add();
                         if (busbar != null) {
                             busbarSection.newExtension(BusbarSectionPositionAdder.class).withBusbarIndex(busbar).withSectionIndex(section).add();
@@ -169,7 +169,7 @@ public final class TopologyEdits {
         return CreateDialog.showThenDetails(sceneModel, owner, Messages.get("edit.create.title", Messages.get("desktop.common.equipment.switch")),
                 form, () -> {
                     String switchId = id.get();
-                    NetworkEdits.apply(sceneModel.getMainModel(), network, n -> topology.newSwitch().setId(switchId).setName(name.get())
+                    NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> topology.newSwitch().setId(switchId).setName(name.get())
                             .setKind(kind.get()).setNode1(from.get()).setNode2(to.get()).setOpen(open.get()).setRetained(retained.get()).add());
                     return network.getSwitch(switchId);
                 });
@@ -185,7 +185,7 @@ public final class TopologyEdits {
         CreationForm.Field<Integer> from = form.integer("edit.topology.node1", node1 != null ? node1 : nextNode);
         CreationForm.Field<Integer> to = form.integer("edit.topology.node2", node1 != null ? nextNode : nextNode + 1);
         return CreateDialog.show(owner, title("edit.topology.newInternalConnection"), form, () -> NetworkEdits.apply(sceneModel.getMainModel(),
-                voltageLevel.getParentNetwork(), network -> topology.newInternalConnection().setNode1(from.get()).setNode2(to.get()).add()));
+                voltageLevel.getParentNetwork(), _ -> topology.newInternalConnection().setNode1(from.get()).setNode2(to.get()).add()));
     }
 
     /**
@@ -198,7 +198,7 @@ public final class TopologyEdits {
         CreationForm.Field<String> name = form.text("desktop.common.column.name", null, false);
         return CreateDialog.show(owner, Messages.get("edit.create.title", Messages.get("desktop.common.equipment.bus")), form, () -> {
             String busId = id.get();
-            NetworkEdits.apply(sceneModel.getMainModel(), network, n -> voltageLevel.getBusBreakerView().newBus().setId(busId).setName(name.get()).add());
+            NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> voltageLevel.getBusBreakerView().newBus().setId(busId).setName(name.get()).add());
             return voltageLevel.getBusBreakerView().getBus(busId);
         });
     }
@@ -237,7 +237,7 @@ public final class TopologyEdits {
     static <T extends Identifiable<?>> CheckListView<T> checkList(List<T> items) {
         CheckListView<T> list = new CheckListView<>();
         list.getItems().setAll(items);
-        list.setCellFactory(view -> new CheckBoxListCell<>(list::getItemBooleanProperty, new StringConverter<>() {
+        list.setCellFactory(_ -> new CheckBoxListCell<>(list::getItemBooleanProperty, new StringConverter<>() {
             @Override
             public String toString(T identifiable) {
                 return identifiable == null ? "" : identifiable.getNameOrId();

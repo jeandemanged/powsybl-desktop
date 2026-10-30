@@ -100,12 +100,12 @@ class HvdcLinesControllerTest extends AbstractHeadlessApplicationTest {
 
     // single values rendered as a one-slot multi-sided column: a StackPane slot holding the field (see CellFields.sidedColumn)
     private static TextField fieldOf(VBox box, int index) {
-        return (TextField) ((StackPane) box.getChildren().get(index)).getChildren().get(0);
+        return (TextField) ((StackPane) box.getChildren().get(index)).getChildren().getFirst();
     }
 
     @SuppressWarnings("unchecked")
     private static ChoiceBox<HvdcLine.ConvertersMode> choiceBoxOf(VBox box, int index) {
-        return (ChoiceBox<HvdcLine.ConvertersMode>) ((StackPane) box.getChildren().get(index)).getChildren().get(0);
+        return (ChoiceBox<HvdcLine.ConvertersMode>) ((StackPane) box.getChildren().get(index)).getChildren().getFirst();
     }
 
     @Test
@@ -123,11 +123,11 @@ class HvdcLinesControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals(HvdcLine.ConvertersMode.SIDE_1_INVERTER_SIDE_2_RECTIFIER, choiceBoxOf(cellBox(controller.convertersModeColumn, row), 0).getValue());
 
         VBox voltageLevelBox = cellBox(controller.voltageLevelColumn, row);
-        assertEquals("VL1", ((Hyperlink) voltageLevelBox.getChildren().get(0)).getText());
+        assertEquals("VL1", ((Hyperlink) voltageLevelBox.getChildren().getFirst()).getText());
         assertEquals("VL2", ((Hyperlink) voltageLevelBox.getChildren().get(1)).getText());
 
         VBox stationBox = cellBox(controller.converterStationColumn, row);
-        assertEquals("Converter1", ((Hyperlink) stationBox.getChildren().get(0)).getText());
+        assertEquals("Converter1", ((Hyperlink) stationBox.getChildren().getFirst()).getText());
         assertEquals("Converter2", ((Hyperlink) stationBox.getChildren().get(1)).getText());
 
         assertEquals("280.0", fieldOf(cellBox(controller.activePowerSetpointColumn, row), 0).getText());
@@ -164,7 +164,7 @@ class HvdcLinesControllerTest extends AbstractHeadlessApplicationTest {
     void togglingConnectedCheckBoxesDisconnectsAndReconnectsEachStation() {
         HvdcLine hvdcLine = hvdcLine();
         VBox box = cellBox(controller.connectedColumn, rowOf(hvdcLine));
-        CheckBox checkBox1 = (CheckBox) box.getChildren().get(0);
+        CheckBox checkBox1 = (CheckBox) box.getChildren().getFirst();
         assertTrue(hvdcLine.getConverterStation1().getTerminal().isConnected());
 
         interact(checkBox1::fire);
@@ -182,7 +182,7 @@ class HvdcLinesControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> controller.goToHvdcLine(hvdcLine));
         List<TablePosition> selectedCells = controller.hvdcLinesTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(rowOf(hvdcLine), selectedCells.get(0).getRow());
+        assertEquals(rowOf(hvdcLine), selectedCells.getFirst().getRow());
 
         interact(() -> controller.goToHvdcLine(null));
         assertTrue(controller.hvdcLinesTableView.getSelectionModel().getSelectedCells().isEmpty());
@@ -203,7 +203,7 @@ class HvdcLinesControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void clickingVscConverterStationLinkNavigatesToVscTable() {
         HvdcLine hvdcLine = hvdcLine();
-        Hyperlink link = (Hyperlink) cellBox(controller.converterStationColumn, rowOf(hvdcLine)).getChildren().get(0);
+        Hyperlink link = (Hyperlink) cellBox(controller.converterStationColumn, rowOf(hvdcLine)).getChildren().getFirst();
 
         interact(link::fire);
 

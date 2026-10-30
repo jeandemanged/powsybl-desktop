@@ -105,7 +105,7 @@ public class NetworkFormatParametersController extends AbstractDisposableControl
                 detailPane.getChildren().setAll(buildDetail(formatParameters.get(format), properties.apply(format), onChange));
             }
         };
-        formatListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> refresher.run());
+        formatListView.getSelectionModel().selectedItemProperty().addListener((_, _, _) -> refresher.run());
         formatListView.setPrefWidth(220);
         formatListView.getSelectionModel().selectFirst();
 

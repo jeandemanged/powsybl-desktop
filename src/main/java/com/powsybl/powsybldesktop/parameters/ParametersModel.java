@@ -54,16 +54,16 @@ public class ParametersModel {
         // LoadFlowParameters instance (loadFlowParameters above); keep it wired into whichever
         // SecurityAnalysisParameters is current rather than letting the two diverge (e.g. after importing a
         // security analysis JSON that carries its own, stale load flow section).
-        loadFlowParameters.addListener((observable, oldValue, newValue) -> syncSecurityAnalysisLoadFlowParameters());
-        securityAnalysisParameters.addListener((observable, oldValue, newValue) -> syncSecurityAnalysisLoadFlowParameters());
+        loadFlowParameters.addListener((_, _, _) -> syncSecurityAnalysisLoadFlowParameters());
+        securityAnalysisParameters.addListener((_, _, _) -> syncSecurityAnalysisLoadFlowParameters());
         sldParameters.setValue(defaults.sld());
         nadParameters.setValue(defaults.nad());
         guiParameters.setValue(defaults.gui());
-        loadFlowParameters.addListener((observable, oldValue, newValue) -> parametersChanged());
-        securityAnalysisParameters.addListener((observable, oldValue, newValue) -> parametersChanged());
-        sldParameters.addListener((observable, oldValue, newValue) -> parametersChanged());
-        nadParameters.addListener((observable, oldValue, newValue) -> parametersChanged());
-        guiParameters.addListener((observable, oldValue, newValue) -> parametersChanged());
+        loadFlowParameters.addListener((_, _, _) -> parametersChanged());
+        securityAnalysisParameters.addListener((_, _, _) -> parametersChanged());
+        sldParameters.addListener((_, _, _) -> parametersChanged());
+        nadParameters.addListener((_, _, _) -> parametersChanged());
+        guiParameters.addListener((_, _, _) -> parametersChanged());
     }
 
     private void syncSecurityAnalysisLoadFlowParameters() {
@@ -174,10 +174,10 @@ public class ParametersModel {
     }
 
     public Properties getNetworkImportParameters(String format) {
-        return networkImportParameters.computeIfAbsent(format, f -> new Properties());
+        return networkImportParameters.computeIfAbsent(format, _ -> new Properties());
     }
 
     public Properties getNetworkExportParameters(String format) {
-        return networkExportParameters.computeIfAbsent(format, f -> new Properties());
+        return networkExportParameters.computeIfAbsent(format, _ -> new Properties());
     }
 }

@@ -63,7 +63,7 @@ public class MainModel {
     private final BooleanProperty diagramFitToScreen = new SimpleBooleanProperty(false);
     private final IntegerProperty diagramAreaDepth = new SimpleIntegerProperty(1);
     // may veto a selection change initiated by the user, see confirmNetworkChange
-    private Predicate<Network> networkChangeGuard = network -> true;
+    private Predicate<Network> networkChangeGuard = _ -> true;
 
     public MainModel() {
         update.setValue(Instant.now());

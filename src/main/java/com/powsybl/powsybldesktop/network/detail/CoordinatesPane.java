@@ -95,9 +95,9 @@ final class CoordinatesPane extends VBox {
                 .or(selected.greaterThanOrEqualTo(Bindings.size(table.getItems()).subtract(1))), () -> move(1));
         // not disabled without straight route: the substations' positions may change meanwhile, an error explains instead
         Button straightButton = button("detail.extension.linePosition.straight", editable.not(), null);
-        straightButton.setOnAction(event -> straight(straightButton));
+        straightButton.setOnAction(_ -> straight(straightButton));
         applyButton.disableProperty().bind(editable.not().or(dirty.not()));
-        applyButton.setOnAction(event -> apply());
+        applyButton.setOnAction(_ -> apply());
         Button revertButton = button("detail.action.revert", dirty.not(), this::load);
 
         FlowPane pointButtons = new FlowPane(4, 4, addButton, insertButton, removeButton, upButton, downButton, straightButton);
@@ -129,7 +129,7 @@ final class CoordinatesPane extends VBox {
         if (rows.isEmpty()) {
             row = new PointRow(0, 0);
         } else if (index == 0 || index >= rows.size()) {
-            PointRow neighbour = rows.get(index == 0 ? 0 : rows.size() - 1);
+            PointRow neighbour = index == 0 ? rows.getFirst() : rows.getLast();
             row = new PointRow(neighbour.latitude, neighbour.longitude);
         } else {
             PointRow before = rows.get(index - 1);
@@ -171,7 +171,7 @@ final class CoordinatesPane extends VBox {
         Button button = new Button(Messages.get(key));
         button.disableProperty().bind(disabled);
         if (action != null) {
-            button.setOnAction(event -> action.run());
+            button.setOnAction(_ -> action.run());
         }
         return button;
     }

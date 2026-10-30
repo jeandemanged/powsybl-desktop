@@ -66,7 +66,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
     private final List<Runnable> refreshers = new ArrayList<>();
     private boolean refreshing;
     private Runnable onChange = () -> { };
-    private BiConsumer<Path, RuntimeException> onImportFailed = (path, e) -> { };
+    private BiConsumer<Path, RuntimeException> onImportFailed = (_, _) -> { };
 
     static Map<String, String> buildCategoryTitles() {
         Map<String, String> titles = new LinkedHashMap<>();
@@ -97,7 +97,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
     public void setLoadFlowParametersProperty(ObjectProperty<LoadFlowParameters> loadFlowParametersProperty) {
         this.loadFlowParametersProperty = Objects.requireNonNull(loadFlowParametersProperty);
         refresh();
-        listenerManager.listen(loadFlowParametersProperty, (observable, oldValue, newValue) -> refresh());
+        listenerManager.listen(loadFlowParametersProperty, (_, _, _) -> refresh());
     }
 
     public void setOnChange(Runnable onChange) {
@@ -138,7 +138,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
         });
 
         StackPane detailPane = new StackPane();
-        categoryListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+        categoryListView.getSelectionModel().selectedItemProperty().addListener((_, _, newValue) -> {
             if (newValue != null) {
                 detailPane.getChildren().setAll(categoryPanes.get(newValue));
             }
@@ -179,8 +179,8 @@ public class LoadFlowParametersController extends AbstractDisposableController {
     }
 
     private static void bindCommit(TextField textField, Runnable commit) {
-        textField.setOnAction(event -> commit.run());
-        textField.focusedProperty().addListener((observable, wasFocused, isFocused) -> {
+        textField.setOnAction(_ -> commit.run());
+        textField.focusedProperty().addListener((_, wasFocused, isFocused) -> {
             if (Boolean.TRUE.equals(wasFocused) && Boolean.FALSE.equals(isFocused)) {
                 commit.run();
             }
@@ -254,7 +254,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
             dc.setSelected(isDc);
             ac.setSelected(!isDc);
         });
-        dc.selectedProperty().addListener((observable, oldValue, newValue) -> {
+        dc.selectedProperty().addListener((_, _, newValue) -> {
             if (!refreshing) {
                 loadFlowParametersProperty.getValue().setDc(newValue);
                 onChange.run();
@@ -275,7 +275,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
                                   Predicate<LoadFlowParameters> getter, BiConsumer<LoadFlowParameters, Boolean> setter) {
         CheckBox checkBox = new CheckBox();
         refreshers.add(() -> checkBox.setSelected(getter.test(loadFlowParametersProperty.getValue())));
-        checkBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
+        checkBox.selectedProperty().addListener((_, _, newValue) -> {
             if (!refreshing) {
                 setter.accept(loadFlowParametersProperty.getValue(), newValue);
                 onChange.run();
@@ -288,7 +288,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
                                                     Function<LoadFlowParameters, E> getter, BiConsumer<LoadFlowParameters, E> setter) {
         ChoiceBox<E> choiceBox = new ChoiceBox<>(FXCollections.observableArrayList(enumClass.getEnumConstants()));
         refreshers.add(() -> choiceBox.setValue(getter.apply(loadFlowParametersProperty.getValue())));
-        choiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+        choiceBox.valueProperty().addListener((_, _, newValue) -> {
             if (!refreshing && newValue != null) {
                 setter.accept(loadFlowParametersProperty.getValue(), newValue);
                 onChange.run();
@@ -328,7 +328,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
                 choiceBox.setValue(parametersExt.getVoltageInitModeOverride().toString());
             }
         });
-        choiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+        choiceBox.valueProperty().addListener((_, _, newValue) -> {
             if (refreshing || newValue == null) {
                 return;
             }
@@ -338,7 +338,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
                 LoadFlowParameters.VoltageInitMode mode = LoadFlowParameters.VoltageInitMode.valueOf(newValue);
                 parameters.setVoltageInitMode(mode);
                 parametersExt.setVoltageInitModeOverride(OpenLoadFlowParameters.VoltageInitModeOverride.NONE);
-            } catch (IllegalArgumentException ignored) {
+            } catch (IllegalArgumentException _) {
                 OpenLoadFlowParameters.VoltageInitModeOverride mode = OpenLoadFlowParameters.VoltageInitModeOverride.valueOf(newValue);
                 parameters.setVoltageInitMode(LoadFlowParameters.VoltageInitMode.UNIFORM_VALUES);
                 parametersExt.setVoltageInitModeOverride(mode);
@@ -360,7 +360,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
             try {
                 loadFlowParametersProperty.getValue().setDcPowerFactor(Double.parseDouble(textField.getText()));
                 onChange.run();
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException _) {
                 refresh();
             }
         };
@@ -420,7 +420,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
         update.put(parameter.getName(), value);
         try {
             OpenLoadFlowParameters.get(loadFlowParametersProperty.getValue()).update(update);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
             // OLF rejects out-of-range values (e.g. maxNewtonRaphsonIterations < 1): revert to the last valid one
             refresh();
             return;
@@ -431,7 +431,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
     private CheckBox buildBooleanControl(Parameter parameter) {
         CheckBox checkBox = new CheckBox();
         refreshers.add(() -> checkBox.setSelected(Boolean.TRUE.equals(currentSpecificValue(parameter))));
-        checkBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
+        checkBox.selectedProperty().addListener((_, _, newValue) -> {
             if (!refreshing) {
                 applySpecificUpdate(parameter, newValue.toString());
             }
@@ -443,7 +443,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
         ChoiceBox<String> choiceBox = new ChoiceBox<>(FXCollections.observableArrayList(
                 parameter.getPossibleValues().stream().map(Object::toString).toList()));
         refreshers.add(() -> choiceBox.setValue(Objects.toString(currentSpecificValue(parameter), null)));
-        choiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+        choiceBox.valueProperty().addListener((_, _, newValue) -> {
             if (!refreshing && newValue != null) {
                 applySpecificUpdate(parameter, newValue);
             }
@@ -483,7 +483,7 @@ public class LoadFlowParametersController extends AbstractDisposableController {
                     Double.parseDouble(text);
                 }
                 applySpecificUpdate(parameter, text);
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException _) {
                 refresh(); // revert display to the last valid value
             }
         };

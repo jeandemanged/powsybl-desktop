@@ -186,7 +186,7 @@ public final class InjectionCreations {
         for (String value : text.split(";")) {
             try {
                 values.add(Double.parseDouble(value.trim()));
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException _) {
                 throw new CreationForm.FieldException(sections.getEditor(), Messages.get("desktop.common.editError.invalidNumber", value.trim()));
             }
         }

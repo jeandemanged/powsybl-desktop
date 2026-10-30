@@ -186,7 +186,7 @@ class BatteriesControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> controller.goToBattery(battery));
         List<TablePosition> selectedCells = controller.batteriesTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(row, selectedCells.get(0).getRow());
+        assertEquals(row, selectedCells.getFirst().getRow());
 
         interact(() -> controller.goToBattery(null));
         assertTrue(controller.batteriesTableView.getSelectionModel().getSelectedCells().isEmpty());

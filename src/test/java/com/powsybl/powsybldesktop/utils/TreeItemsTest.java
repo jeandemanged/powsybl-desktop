@@ -20,7 +20,7 @@ class TreeItemsTest {
 
     @Test
     void findReturnsNullForNullItem() {
-        assertNull(TreeItems.find(null, value -> true));
+        assertNull(TreeItems.find(null, _ -> true));
     }
 
     @Test

@@ -152,10 +152,10 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
             tableView().editableProperty().bind(mainModel.networkBusyProperty().not());
         }
         refreshAll();
-        listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> refreshAll());
-        listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> refreshAll());
+        listenerManager.listen(sceneModel.networkProperty(), (_, _, _) -> refreshAll());
+        listenerManager.listen(this.mainModel.updateProperty(), (_, _, _) -> refreshAll());
         // for the decimal places, read by the cells on every render
-        listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> tableView().refresh());
+        listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (_, _, _) -> tableView().refresh());
         searchBox().bind(sceneModel, searchKinds(), this::onSearchMatch);
         TableEditActions.install(tableView(), sceneModel, () -> creationItems(creationContext()));
     }
@@ -278,7 +278,7 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
         }
         Hyperlink link = new Hyperlink(container.getNameOrId());
         link.getStyleClass().add("container-link");
-        link.setOnAction(event -> {
+        link.setOnAction(_ -> {
             // only when standalone (not embedded in SubstationsController, see class doc): leaving this
             // table's own row selection in history is meaningless for an embedded instance, which has no
             // navigation history entry of its own to update

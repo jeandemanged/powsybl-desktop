@@ -306,7 +306,7 @@ public class MapController extends AbstractDisposableController implements Scene
     @FXML
     private void initialize() {
         webView.setContextMenuEnabled(false);
-        webView.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> contextMenu.hide());
+        webView.addEventFilter(MouseEvent.MOUSE_PRESSED, _ -> contextMenu.hide());
         webView.addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, this::onContextMenuRequested);
         basemapComboBox.getItems().setAll(Basemap.values());
         basemapComboBox.setConverter(new StringConverter<>() {
@@ -325,7 +325,7 @@ public class MapController extends AbstractDisposableController implements Scene
         initializePositions();
 
         String html = HTML_SHELL.formatted(readResource("leaflet.css"), readResource("leaflet.js"), readResource("map.js"));
-        webView.getEngine().getLoadWorker().stateProperty().addListener((observable, oldValue, newValue) -> {
+        webView.getEngine().getLoadWorker().stateProperty().addListener((_, _, newValue) -> {
             if (newValue == Worker.State.SUCCEEDED) {
                 jsWindow = (JSObject) webView.getEngine().executeScript("window");
                 jsWindow.setMember("controller", this);
@@ -337,7 +337,7 @@ public class MapController extends AbstractDisposableController implements Scene
                 refresh();
             }
         });
-        networkDataService.setOnSucceeded(event -> {
+        networkDataService.setOnSucceeded(_ -> {
             networkData = networkDataService.getValue();
             displayedNetwork = buildingNetwork;
             loadingPane.setVisible(false);
@@ -351,7 +351,7 @@ public class MapController extends AbstractDisposableController implements Scene
                 LOGGER.error(e.getMessage(), e);
             }
         });
-        networkDataService.setOnFailed(event -> {
+        networkDataService.setOnFailed(_ -> {
             LOGGER.error(networkDataService.getException().getMessage(), networkDataService.getException());
             loadingPane.setVisible(false);
         });
@@ -362,8 +362,8 @@ public class MapController extends AbstractDisposableController implements Scene
         // BorderPane center (it's still at the FXML's placeholder prefWidth/prefHeight then). Without this,
         // tiles/markers past that stale boundary are positioned using outdated pixel math (visible as
         // misplaced tile blocks and markers rendered outside the map viewport).
-        webView.widthProperty().addListener((observable, oldValue, newValue) -> invalidateMapSize());
-        webView.heightProperty().addListener((observable, oldValue, newValue) -> invalidateMapSize());
+        webView.widthProperty().addListener((_, _, _) -> invalidateMapSize());
+        webView.heightProperty().addListener((_, _, _) -> invalidateMapSize());
     }
 
     private void invalidateMapSize() {
@@ -386,23 +386,23 @@ public class MapController extends AbstractDisposableController implements Scene
         this.mainModel = sceneModel.getMainModel();
         hiddenBaseVoltages = gui().getMapHiddenBaseVoltages();
         basemapComboBox.setValue(gui().getMapBasemap());
-        basemapComboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+        basemapComboBox.valueProperty().addListener((_, _, newValue) -> {
             if (gui().getMapBasemap() != newValue) {
                 gui().setMapBasemap(newValue);
                 mainModel.getParametersModel().guiParametersChanged();
             }
             applyBasemap();
         });
-        listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> {
+        listenerManager.listen(sceneModel.networkProperty(), (_, oldValue, newValue) -> {
             if (root(newValue) != root(oldValue)) {
                 stopEdit();
                 unplacedSubstations.clear();
                 refresh();
             }
         });
-        listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
+        listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> refresh());
         createBaseVoltageCheckBoxes();
-        listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> applyGuiParameters());
+        listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (_, _, _) -> applyGuiParameters());
         searchBoxController.bind(sceneModel, this::onSearchMatch);
         searchBoxController.setOnNoMatch(this::clearSearchHighlight);
     }
@@ -504,8 +504,8 @@ public class MapController extends AbstractDisposableController implements Scene
             }
         });
         baseVoltageCheckBoxes.setHidden(hiddenBaseVoltages);
-        checkAllBaseVoltagesLink.setOnAction(event -> baseVoltageCheckBoxes.setAllSelected(true));
-        checkNoBaseVoltagesLink.setOnAction(event -> baseVoltageCheckBoxes.setAllSelected(false));
+        checkAllBaseVoltagesLink.setOnAction(_ -> baseVoltageCheckBoxes.setAllSelected(true));
+        checkNoBaseVoltagesLink.setOnAction(_ -> baseVoltageCheckBoxes.setAllSelected(false));
         baseVoltagesBox.getChildren().addAll(baseVoltageCheckBoxes.getCheckBoxes());
     }
 
@@ -653,7 +653,7 @@ public class MapController extends AbstractDisposableController implements Scene
         }
         MenuItem newSubstation = new MenuItem(Messages.get("edit.menu.newSubstationHere"), new FontIcon("mdi2p-plus"));
         newSubstation.setDisable(mainModel.isBusy(network));
-        newSubstation.setOnAction(event -> ContainerCreations.newSubstation(sceneModel, webView.getScene().getWindow(), network,
+        newSubstation.setOnAction(_ -> ContainerCreations.newSubstation(sceneModel, webView.getScene().getWindow(), network,
                 new Coordinate(latitude, longitude), MapTileRenderer.countryAt(latitude, longitude)));
         items.add(newSubstation);
         if (identifiable != null) {
@@ -676,7 +676,7 @@ public class MapController extends AbstractDisposableController implements Scene
     private MenuItem diagramItem(Container<?> container, String text) {
         MenuItem item = new MenuItem(Messages.get("map.contextMenu.singleLineDiagram", text));
         item.setMnemonicParsing(false);
-        item.setOnAction(event -> sceneModel.getDetailWindows().ifPresent(windows ->
+        item.setOnAction(_ -> sceneModel.getDetailWindows().ifPresent(windows ->
                 ContainerDiagram.open(windows, SeparateWindows.Group.DIAGRAMS, ContainerDiagram.Kind.SINGLE_LINE, container)));
         return item;
     }
@@ -695,13 +695,13 @@ public class MapController extends AbstractDisposableController implements Scene
 
     private void initializePositions() {
         unplacedListView.setItems(filteredUnplacedSubstations);
-        unplacedFilterField.textProperty().addListener((observable, oldValue, newValue) -> {
+        unplacedFilterField.textProperty().addListener((_, _, newValue) -> {
             String filter = newValue.trim().toLowerCase(Locale.ROOT);
             filteredUnplacedSubstations.setPredicate(substation -> filter.isEmpty()
                     || substation.text().toLowerCase(Locale.ROOT).contains(filter) || substation.id().toLowerCase(Locale.ROOT).contains(filter));
         });
-        unplacedListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> updatePlacement());
-        positionsPane.expandedProperty().addListener((observable, oldValue, newValue) -> updatePlacement());
+        unplacedListView.getSelectionModel().selectedItemProperty().addListener((_, _, _) -> updatePlacement());
+        positionsPane.expandedProperty().addListener((_, _, _) -> updatePlacement());
         positionsPane.managedProperty().bind(positionsPane.visibleProperty());
         positionsPane.setVisible(false);
         for (Node node : List.of(unplacedFilterField, unplacedListView, placementHintLabel, straightRoutesLink, editStraightButton)) {
@@ -759,7 +759,7 @@ public class MapController extends AbstractDisposableController implements Scene
                 return;
             }
             int index = unplacedListView.getSelectionModel().getSelectedIndex();
-            if (NetworkEdits.apply(mainModel, network, n -> PositionEdits.setSubstationPosition(substation, new Coordinate(latitude, longitude)))) {
+            if (NetworkEdits.apply(mainModel, network, _ -> PositionEdits.setSubstationPosition(substation, new Coordinate(latitude, longitude)))) {
                 // until the refreshed list shows the next one: a click meanwhile would move this one instead
                 unplacedListView.getSelectionModel().clearSelection();
                 nextPlacement = index;
@@ -789,7 +789,7 @@ public class MapController extends AbstractDisposableController implements Scene
             case Substation substation -> {
                 items.add(menuItem("map.edit.moveSubstation", () -> startSubstationMove(network, substation)));
                 items.add(menuItem("map.edit.removePosition", () -> NetworkEdits.apply(mainModel, network,
-                        n -> PositionEdits.removeSubstationPosition(substation))));
+                        _ -> PositionEdits.removeSubstationPosition(substation))));
             }
             case TieLine tieLine -> {
                 List<BoundaryLine> halves = List.of(tieLine.getBoundaryLine1(), tieLine.getBoundaryLine2());
@@ -797,17 +797,17 @@ public class MapController extends AbstractDisposableController implements Scene
                 for (int i = 0; i < halves.size(); i++) {
                     BoundaryLine half = halves.get(i);
                     MenuItem item = new MenuItem(Messages.get("map.edit.routeSide", i + 1, half.getNameOrId()));
-                    item.setOnAction(event -> startRouteEdit(network, half));
+                    item.setOnAction(_ -> startRouteEdit(network, half));
                     editRoute.getItems().add(item);
                 }
                 items.add(editRoute);
                 MenuItem straight = menuItem("edit.menu.straightRoute", () -> NetworkEdits.apply(mainModel, network,
-                        n -> halves.forEach(half -> PositionEdits.straightRoute(half).ifPresent(route -> PositionEdits.setRoute(half, route)))));
+                        _ -> halves.forEach(half -> PositionEdits.straightRoute(half).ifPresent(route -> PositionEdits.setRoute(half, route)))));
                 straight.setDisable(PositionEdits.straightRoute(halves.getFirst()).isEmpty());
                 items.add(straight);
                 if (!implied) {
                     items.add(menuItem("map.edit.removeRoute", () -> NetworkEdits.apply(mainModel, network,
-                            n -> halves.forEach(half -> PositionEdits.setRoute(half, List.of())))));
+                            _ -> halves.forEach(half -> PositionEdits.setRoute(half, List.of())))));
                 }
             }
             case Line line -> items.addAll(routeItems(network, line, implied));
@@ -827,18 +827,18 @@ public class MapController extends AbstractDisposableController implements Scene
         items.add(menuItem(implied ? "map.edit.defineRoute" : "map.edit.editRoute", () -> startRouteEdit(network, line)));
         List<Coordinate> straightRoute = PositionEdits.straightRoute(line).orElse(null);
         MenuItem straight = menuItem("edit.menu.straightRoute", () -> NetworkEdits.apply(mainModel, network,
-                n -> PositionEdits.setRoute(line, straightRoute)));
+                _ -> PositionEdits.setRoute(line, straightRoute)));
         straight.setDisable(straightRoute == null);
         items.add(straight);
         if (!implied) {
-            items.add(menuItem("map.edit.removeRoute", () -> NetworkEdits.apply(mainModel, network, n -> PositionEdits.setRoute(line, List.of()))));
+            items.add(menuItem("map.edit.removeRoute", () -> NetworkEdits.apply(mainModel, network, _ -> PositionEdits.setRoute(line, List.of()))));
         }
         return items;
     }
 
     private static MenuItem menuItem(String key, Runnable action) {
         MenuItem item = new MenuItem(Messages.get(key));
-        item.setOnAction(event -> action.run());
+        item.setOnAction(_ -> action.run());
         return item;
     }
 
@@ -904,7 +904,7 @@ public class MapController extends AbstractDisposableController implements Scene
             LOGGER.error(e.getMessage(), e);
             return;
         }
-        if (NetworkEdits.apply(mainModel, editedNetwork, n -> {
+        if (NetworkEdits.apply(mainModel, editedNetwork, _ -> {
             if (target instanceof Substation substation) {
                 PositionEdits.setSubstationPosition(substation, points.getFirst());
             } else {

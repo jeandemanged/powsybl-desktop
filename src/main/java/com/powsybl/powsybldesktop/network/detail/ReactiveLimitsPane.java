@@ -132,7 +132,7 @@ public final class ReactiveLimitsPane extends SplitPane implements DetailPart {
             }
         });
         kindChoiceBox.disableProperty().bind(editable.not());
-        kindChoiceBox.valueProperty().addListener((observable, oldKind, newKind) -> {
+        kindChoiceBox.valueProperty().addListener((_, _, newKind) -> {
             if (!loading && newKind != null && newKind != kind) {
                 changeKind(newKind);
             }
@@ -157,10 +157,10 @@ public final class ReactiveLimitsPane extends SplitPane implements DetailPart {
         VBox.setVgrow(pointsTable, Priority.ALWAYS);
         Button addPointButton = new Button(Messages.get("detail.reactiveLimits.addPoint"));
         addPointButton.disableProperty().bind(editable.not());
-        addPointButton.setOnAction(event -> addPoint());
+        addPointButton.setOnAction(_ -> addPoint());
         Button removePointButton = new Button(Messages.get("detail.reactiveLimits.removePoint"));
         removePointButton.disableProperty().bind(editable.not().or(pointsTable.getSelectionModel().selectedItemProperty().isNull()));
-        removePointButton.setOnAction(event -> {
+        removePointButton.setOnAction(_ -> {
             pointsTable.getItems().remove(pointsTable.getSelectionModel().getSelectedItem());
             staged();
         });
@@ -168,10 +168,10 @@ public final class ReactiveLimitsPane extends SplitPane implements DetailPart {
         VBox.setVgrow(curvePane, Priority.ALWAYS);
 
         applyButton.disableProperty().bind(editable.not().or(dirty.not()).or(kindChoiceBox.valueProperty().isEqualTo(ReactiveLimitsKind.SHAPE)));
-        applyButton.setOnAction(event -> apply());
+        applyButton.setOnAction(_ -> apply());
         Button revertButton = new Button(Messages.get("detail.action.revert"));
         revertButton.disableProperty().bind(dirty.not());
-        revertButton.setOnAction(event -> load());
+        revertButton.setOnAction(_ -> load());
         HBox buttons = new HBox(4, applyButton, revertButton);
         buttons.setAlignment(Pos.CENTER_RIGHT);
 
@@ -292,14 +292,14 @@ public final class ReactiveLimitsPane extends SplitPane implements DetailPart {
             try {
                 stage.accept(format.fromString(field.getText()));
                 staged();
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException _) {
                 TableColumnSupport.notifyEditError(field, new PowsyblException(
                         Messages.get("desktop.common.editError.invalidNumber", field.getText().trim())));
                 show();
             }
         };
-        field.setOnAction(event -> commit.run());
-        field.focusedProperty().addListener((observable, wasFocused, focused) -> {
+        field.setOnAction(_ -> commit.run());
+        field.focusedProperty().addListener((_, _, focused) -> {
             if (!focused) {
                 commit.run();
             }

@@ -104,7 +104,7 @@ public class SubstationsTableController extends AbstractDisposableController imp
 
         geographicalTagsColumn.setSortable(false);
         geographicalTagsColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        geographicalTagsColumn.setCellFactory(col -> new GeographicalTagsCell());
+        geographicalTagsColumn.setCellFactory(_ -> new GeographicalTagsCell());
         // its button opens a dialog adding tags
         TableColumnSupport.disableUnlessTableEditable(geographicalTagsColumn);
     }
@@ -116,8 +116,8 @@ public class SubstationsTableController extends AbstractDisposableController imp
         // see AbstractEquipmentTableController.setSceneModel
         substationsTableView.editableProperty().bind(mainModel.networkBusyProperty().not());
         updateSubstations();
-        listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> updateSubstations());
-        listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> updateSubstations());
+        listenerManager.listen(sceneModel.networkProperty(), (_, _, _) -> updateSubstations());
+        listenerManager.listen(this.mainModel.updateProperty(), (_, _, _) -> updateSubstations());
         searchBoxController.bind(sceneModel, this::onSearchMatch);
         TableEditActions.install(substationsTableView, sceneModel,
                 () -> List.of(EditMenus.substationItem(sceneModel, () -> substationsTableView.getScene().getWindow(), sceneModel.getNetwork())));
@@ -142,7 +142,7 @@ public class SubstationsTableController extends AbstractDisposableController imp
     private Hyperlink containerLink(Container<?> container, Substation item) {
         Hyperlink link = new Hyperlink(container.getNameOrId());
         link.getStyleClass().add("container-link");
-        link.setOnAction(event -> {
+        link.setOnAction(_ -> {
             sceneModel.record(NavigationEvent.create(
                     NavigationType.NETWORK_TABLE_SUBSTATIONS, SubstationNavigationState.create(item)));
             sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(container)));
@@ -184,7 +184,7 @@ public class SubstationsTableController extends AbstractDisposableController imp
             editButton.setGraphic(new FontIcon("mdi2p-pencil"));
             editButton.getStyleClass().add("icon-button");
             editButton.setTooltip(new Tooltip(Messages.get("substations.geographicalTags.editTooltip")));
-            editButton.setOnAction(event -> {
+            editButton.setOnAction(_ -> {
                 Substation substation = getItem();
                 if (substation != null) {
                     GeographicalTagsDialog.show(box.getScene().getWindow(), substation);

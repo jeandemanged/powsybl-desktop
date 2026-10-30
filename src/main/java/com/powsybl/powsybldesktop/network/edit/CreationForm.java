@@ -207,7 +207,7 @@ public final class CreationForm {
             }
             try {
                 return Double.parseDouble(text);
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException _) {
                 throw new FieldException(field, Messages.get("desktop.common.editError.invalidNumber", text));
             }
         });
@@ -232,7 +232,7 @@ public final class CreationForm {
             }
             try {
                 return Integer.valueOf(text);
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException _) {
                 throw new FieldException(field, Messages.get("desktop.common.editError.invalidNumber", text));
             }
         });

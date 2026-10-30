@@ -57,7 +57,7 @@ public final class TableEditActions {
         List<Node> buttons = new ArrayList<>();
         MenuButton addButton = new MenuButton(null, new FontIcon("mdi2p-plus"));
         addButton.setTooltip(new Tooltip(Messages.get("edit.menu.new")));
-        addButton.setOnShowing(event -> addButton.getItems().setAll(disabledIfBusy(sceneModel, creations.get())));
+        addButton.setOnShowing(_ -> addButton.getItems().setAll(disabledIfBusy(sceneModel, creations.get())));
         if (!creations.get().isEmpty()) {
             buttons.add(addButton);
         }
@@ -66,7 +66,7 @@ public final class TableEditActions {
         removeButton.disableProperty().bind(Bindings.createBooleanBinding(
                 () -> table.getSelectionModel().getSelectedItem() == null || !Removals.supports(table.getSelectionModel().getSelectedItem()),
                 table.getSelectionModel().selectedItemProperty()).or(sceneModel.getMainModel().networkBusyProperty()));
-        removeButton.setOnAction(event -> {
+        removeButton.setOnAction(_ -> {
             T selected = table.getSelectionModel().getSelectedItem();
             if (selected != null) {
                 Removals.remove(sceneModel.getMainModel(), owner.get(), selected);
@@ -97,7 +97,7 @@ public final class TableEditActions {
         T selected = table.getSelectionModel().getSelectedItem();
         if (selected != null && EquipmentDetails.supports(selected)) {
             MenuItem details = new MenuItem(Messages.get("detail.open.tooltip"));
-            details.setOnAction(event -> EquipmentDetails.open(sceneModel, selected));
+            details.setOnAction(_ -> EquipmentDetails.open(sceneModel, selected));
             items.add(details);
         }
         List<MenuItem> created = disabledIfBusy(sceneModel, creations.get());

@@ -112,7 +112,7 @@ public class ComponentsController extends AbstractDisposableController implement
     private void configureStatusColumn() {
         statusColumn.setSortable(false);
         statusColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        statusColumn.setCellFactory(col -> new StatusTableCell());
+        statusColumn.setCellFactory(_ -> new StatusTableCell());
     }
 
     private static final class StatusTableCell extends TableCell<ComponentRow, ComponentRow> {
@@ -163,7 +163,7 @@ public class ComponentsController extends AbstractDisposableController implement
 
     private void configureReferenceBusIdColumn() {
         referenceBusIdColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        referenceBusIdColumn.setCellFactory(col -> new TableCell<>() {
+        referenceBusIdColumn.setCellFactory(_ -> new TableCell<>() {
             @Override
             protected void updateItem(ComponentRow row, boolean empty) {
                 super.updateItem(row, empty);
@@ -176,7 +176,7 @@ public class ComponentsController extends AbstractDisposableController implement
     private void configureSlackBusesColumn() {
         slackBusesColumn.setSortable(false);
         slackBusesColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        slackBusesColumn.setCellFactory(col -> new TableCell<>() {
+        slackBusesColumn.setCellFactory(_ -> new TableCell<>() {
             @Override
             protected void updateItem(ComponentRow row, boolean empty) {
                 super.updateItem(row, empty);
@@ -210,7 +210,7 @@ public class ComponentsController extends AbstractDisposableController implement
         }
         Hyperlink link = new Hyperlink(busId);
         link.getStyleClass().add("container-link");
-        link.setOnAction(event -> sceneModel.navigate(
+        link.setOnAction(_ -> sceneModel.navigate(
                 NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(bus.getVoltageLevel()))));
         return link;
     }
@@ -220,10 +220,10 @@ public class ComponentsController extends AbstractDisposableController implement
         this.sceneModel = Objects.requireNonNull(sceneModel);
         this.mainModel = sceneModel.getMainModel();
         updateComponents();
-        listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> updateComponents());
-        listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> updateComponents());
+        listenerManager.listen(sceneModel.networkProperty(), (_, _, _) -> updateComponents());
+        listenerManager.listen(this.mainModel.updateProperty(), (_, _, _) -> updateComponents());
         // for the decimal places, read by the cells on every render
-        listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> componentsTableView.refresh());
+        listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (_, _, _) -> componentsTableView.refresh());
     }
 
     private void updateComponents() {

@@ -112,7 +112,7 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
     // Each side of an editable multi-sided column is a StackPane slot holding its field (see CellFields.sidedColumn),
     // hidden on a side without such a value (e.g. a leg without tap changer).
     private static Node editorOf(VBox box, int index) {
-        return ((StackPane) box.getChildren().get(index)).getChildren().get(0);
+        return ((StackPane) box.getChildren().get(index)).getChildren().getFirst();
     }
 
     private static TextField fieldOf(VBox box, int index) {
@@ -130,11 +130,11 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     private static TextField stepperFieldOf(VBox box, int index) {
-        return (TextField) stepperOf(box, index).getChildren().get(0);
+        return (TextField) stepperOf(box, index).getChildren().getFirst();
     }
 
     private static Button stepperIncrementButtonOf(VBox box, int index) {
-        return (Button) ((VBox) stepperOf(box, index).getChildren().get(1)).getChildren().get(0);
+        return (Button) ((VBox) stepperOf(box, index).getChildren().get(1)).getChildren().getFirst();
     }
 
     private static Button stepperDecrementButtonOf(VBox box, int index) {
@@ -172,7 +172,7 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         VBox voltageLevelBox = cellBox(controller.voltageLevelColumn, row);
         assertEquals(2, voltageLevelBox.getChildren().size());
         assertEquals(transformer.getTerminal1().getVoltageLevel().getNameOrId(),
-                ((Hyperlink) voltageLevelBox.getChildren().get(0)).getText());
+                ((Hyperlink) voltageLevelBox.getChildren().getFirst()).getText());
         assertEquals(transformer.getTerminal2().getVoltageLevel().getNameOrId(),
                 ((Hyperlink) voltageLevelBox.getChildren().get(1)).getText());
 
@@ -191,7 +191,7 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         VBox box = cellBox(controller.connectedColumn, rowOf(transformer));
 
         assertEquals(2, box.getChildren().size());
-        assertEquals(transformer.getTerminal1().isConnected(), ((CheckBox) box.getChildren().get(0)).isSelected());
+        assertEquals(transformer.getTerminal1().isConnected(), ((CheckBox) box.getChildren().getFirst()).isSelected());
         assertEquals(transformer.getTerminal2().isConnected(), ((CheckBox) box.getChildren().get(1)).isSelected());
     }
 
@@ -199,7 +199,7 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
     void togglingConnectedCheckBoxesDisconnectsAndReconnectsEachTerminal() {
         TwoWindingsTransformer transformer = network.getTwoWindingsTransformerStream().findFirst().orElseThrow();
         VBox box = cellBox(controller.connectedColumn, rowOf(transformer));
-        CheckBox terminal1CheckBox = (CheckBox) box.getChildren().get(0);
+        CheckBox terminal1CheckBox = (CheckBox) box.getChildren().getFirst();
         CheckBox terminal2CheckBox = (CheckBox) box.getChildren().get(1);
         assertTrue(transformer.getTerminal1().isConnected());
         assertTrue(transformer.getTerminal2().isConnected());
@@ -271,22 +271,22 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
 
         VBox ccBox = cellBox(controller.connectedComponentColumn, row);
         assertEquals(String.valueOf(transformer.getTerminal1().getBusView().getBus().getConnectedComponent().getNum()),
-                ((Label) ccBox.getChildren().get(0)).getText());
+                ((Label) ccBox.getChildren().getFirst()).getText());
         assertEquals(String.valueOf(transformer.getTerminal2().getBusView().getBus().getConnectedComponent().getNum()),
                 ((Label) ccBox.getChildren().get(1)).getText());
 
         VBox scBox = cellBox(controller.synchronousComponentColumn, row);
         assertEquals(String.valueOf(transformer.getTerminal1().getBusView().getBus().getSynchronousComponent().getNum()),
-                ((Label) scBox.getChildren().get(0)).getText());
+                ((Label) scBox.getChildren().getFirst()).getText());
         assertEquals(String.valueOf(transformer.getTerminal2().getBusView().getBus().getSynchronousComponent().getNum()),
                 ((Label) scBox.getChildren().get(1)).getText());
 
         VBox pBox = cellBox(controller.pColumn, row);
-        assertEquals(doubleText(transformer.getTerminal1().getP()), ((Label) pBox.getChildren().get(0)).getText());
+        assertEquals(doubleText(transformer.getTerminal1().getP()), ((Label) pBox.getChildren().getFirst()).getText());
         assertEquals(doubleText(transformer.getTerminal2().getP()), ((Label) pBox.getChildren().get(1)).getText());
 
         VBox qBox = cellBox(controller.qColumn, row);
-        assertEquals(doubleText(transformer.getTerminal1().getQ()), ((Label) qBox.getChildren().get(0)).getText());
+        assertEquals(doubleText(transformer.getTerminal1().getQ()), ((Label) qBox.getChildren().getFirst()).getText());
         assertEquals(doubleText(transformer.getTerminal2().getQ()), ((Label) qBox.getChildren().get(1)).getText());
     }
 
@@ -421,7 +421,7 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         HBox leg2Cell = stepperOf(ratioBox, 1);
 
         assertEquals(2, leg2Cell.getChildren().size());
-        assertInstanceOf(TextField.class, leg2Cell.getChildren().get(0));
+        assertInstanceOf(TextField.class, leg2Cell.getChildren().getFirst());
         assertInstanceOf(VBox.class, leg2Cell.getChildren().get(1));
     }
 
@@ -437,7 +437,7 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         VBox voltageLevelBox = cellBox(controller.voltageLevelColumn, row);
         assertEquals(3, voltageLevelBox.getChildren().size());
         assertEquals(transformer.getLeg1().getTerminal().getVoltageLevel().getNameOrId(),
-                ((Hyperlink) voltageLevelBox.getChildren().get(0)).getText());
+                ((Hyperlink) voltageLevelBox.getChildren().getFirst()).getText());
         assertEquals(transformer.getLeg2().getTerminal().getVoltageLevel().getNameOrId(),
                 ((Hyperlink) voltageLevelBox.getChildren().get(1)).getText());
         assertEquals(transformer.getLeg3().getTerminal().getVoltageLevel().getNameOrId(),
@@ -467,7 +467,7 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> controller.goToTransformer(transformer));
         List<TablePosition> selectedCells = controller.transformersTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(row, selectedCells.get(0).getRow());
+        assertEquals(row, selectedCells.getFirst().getRow());
 
         interact(() -> controller.goToTransformer(null));
         assertTrue(controller.transformersTableView.getSelectionModel().getSelectedCells().isEmpty());
@@ -488,7 +488,7 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
 
         List<TablePosition> selectedCells = controller.transformersTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(sortedRow, selectedCells.get(0).getRow());
+        assertEquals(sortedRow, selectedCells.getFirst().getRow());
     }
 
     @Test
@@ -496,7 +496,7 @@ class TransformersControllerTest extends AbstractHeadlessApplicationTest {
         TwoWindingsTransformer transformer = network.getTwoWindingsTransformerStream().findFirst().orElseThrow();
         VoltageLevel voltageLevel1 = transformer.getTerminal1().getVoltageLevel();
         VBox voltageLevelBox = cellBox(controller.voltageLevelColumn, rowOf(transformer));
-        Hyperlink link = (Hyperlink) voltageLevelBox.getChildren().get(0);
+        Hyperlink link = (Hyperlink) voltageLevelBox.getChildren().getFirst();
 
         interact(link::fire);
 

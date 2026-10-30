@@ -103,7 +103,7 @@ public class LogsViewController extends AbstractDisposableController {
         TableAutoFitLimiter.install(tableView);
 
         keepOneSelected(levelToggleGroup);
-        levelToggleGroup.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
+        levelToggleGroup.selectedToggleProperty().addListener((_, _, newToggle) -> {
             if (newToggle != null) {
                 GuiParameters.LogLevel level = selectedLevel();
                 if (gui().getLogsMinLevel() != level) {
@@ -115,7 +115,7 @@ public class LogsViewController extends AbstractDisposableController {
             }
         });
         keepOneSelected(orderToggleGroup);
-        orderToggleGroup.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
+        orderToggleGroup.selectedToggleProperty().addListener((_, _, newToggle) -> {
             if (newToggle != null) {
                 boolean newestOnTop = newToggle == newestOnTopToggleButton;
                 if (gui().isLogsNewestOnTop() != newestOnTop) {
@@ -128,9 +128,9 @@ public class LogsViewController extends AbstractDisposableController {
         });
         applyGuiParameters();
         // edited from this view or the parameters view, or replaced by a parameters reset or import
-        listenerManager.listen(parametersModel.guiParametersRevisionProperty(), (observable, oldValue, newValue) -> applyGuiParameters());
+        listenerManager.listen(parametersModel.guiParametersRevisionProperty(), (_, _, _) -> applyGuiParameters());
 
-        listenerManager.listen(logsModel.getLogs(), change -> Platform.runLater(this::scrollToNewest));
+        listenerManager.listen(logsModel.getLogs(), _ -> Platform.runLater(this::scrollToNewest));
         scrollToNewest();
         timeColumn.setCellValueFactory(cellData -> {
             Instant instant = Instant.ofEpochMilli(cellData.getValue().getTimeStamp());
@@ -143,13 +143,13 @@ public class LogsViewController extends AbstractDisposableController {
                 new SimpleStringProperty(cellData.getValue().getLevel().toString()));
         messageColumn.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getFormattedMessage()));
-        messageColumn.setCellFactory(column -> new MessageCell());
-        tableView.setRowFactory(tv -> new LogRow());
+        messageColumn.setCellFactory(_ -> new MessageCell());
+        tableView.setRowFactory(_ -> new LogRow());
     }
 
     // clicking the selected toggle would otherwise leave none selected
     private static void keepOneSelected(ToggleGroup group) {
-        group.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
+        group.selectedToggleProperty().addListener((_, oldToggle, newToggle) -> {
             if (newToggle == null) {
                 oldToggle.setSelected(true);
             }
@@ -199,7 +199,7 @@ public class LogsViewController extends AbstractDisposableController {
 
         private LogRow() {
             MenuItem copyMessageItem = new MenuItem(Messages.get("desktop.common.action.copyMessage"));
-            copyMessageItem.setOnAction(event -> {
+            copyMessageItem.setOnAction(_ -> {
                 ClipboardContent content = new ClipboardContent();
                 content.putString(getItem().getFormattedMessage());
                 Clipboard.getSystemClipboard().setContent(content);

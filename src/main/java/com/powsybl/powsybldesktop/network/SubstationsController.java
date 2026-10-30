@@ -207,7 +207,7 @@ public class SubstationsController extends AbstractDisposableController implemen
         this.mainModel = sceneModel.getMainModel();
         refreshAreaTypesMenu(sceneModel.getNetwork());
         setGroupingMode(defaultGroupingMode(sceneModel.getNetwork()));
-        listenerManager.listen(sceneModel.networkProperty(), (observable, oldNetwork, newNetwork) -> {
+        listenerManager.listen(sceneModel.networkProperty(), (_, _, newNetwork) -> {
             refreshAreaTypesMenu(newNetwork);
             setGroupingMode(defaultGroupingMode(newNetwork));
         });
@@ -219,16 +219,16 @@ public class SubstationsController extends AbstractDisposableController implemen
         // same property in registration order, and update()'s setContainer() call would otherwise filter
         // stale, possibly-invalidated data
         equipmentTabs.forEach(equipmentTab -> equipmentTab.controller().setSceneModel(sceneModel));
-        listenerManager.listen(mainModel.structureChangeProperty(), (observable, oldValue, change) -> {
+        listenerManager.listen(mainModel.structureChangeProperty(), (_, _, change) -> {
             Network network = sceneModel.getNetwork();
             if (change != null && network != null && change.rootNetwork() == network.getNetwork()) {
                 refreshAreaTypesMenu(network);
                 rebuildSubstationTree();
             }
         });
-        listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> this.update());
+        listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> this.update());
         // the voltage levels' nominal voltage follows the decimals
-        listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> substationsTreeView.refresh());
+        listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (_, _, _) -> substationsTreeView.refresh());
 
         singleLineDiagram = new ContainerDiagram(ContainerDiagram.Kind.SINGLE_LINE, sldPaneController, sceneModel);
         areaDiagram = new ContainerDiagram(ContainerDiagram.Kind.AREA, nadPaneController, sceneModel);
@@ -298,7 +298,7 @@ public class SubstationsController extends AbstractDisposableController implemen
         List<String> areaTypes = network == null ? List.of() : network.getAreaTypeStream().sorted(String.CASE_INSENSITIVE_ORDER).toList();
         areaTypes.forEach(areaType -> {
             MenuItem item = new MenuItem(areaType);
-            item.setOnAction(event -> onGroupByArea(areaType));
+            item.setOnAction(_ -> onGroupByArea(areaType));
             groupByAreaMenu.getItems().add(item);
         });
         groupByAreaMenu.setDisable(areaTypes.isEmpty());
@@ -359,12 +359,12 @@ public class SubstationsController extends AbstractDisposableController implemen
 
         Map<Object, List<Substation>> substationsByGroup = new HashMap<>();
         network.getSubstationStream().forEach(substation ->
-                substationsByGroup.computeIfAbsent(rawGroupKeyFor(substation, mode, network), k -> new ArrayList<>()).add(substation));
+                substationsByGroup.computeIfAbsent(rawGroupKeyFor(substation, mode, network), _ -> new ArrayList<>()).add(substation));
 
         // VoltageLevel-s without substation, grouped by the same criterion, then under a "no substation" placeholder
         Map<Object, List<VoltageLevel>> orphanVlsByGroup = new HashMap<>();
         network.getVoltageLevelStream().filter(vl -> vl.getSubstation().isEmpty()).forEach(vl ->
-                orphanVlsByGroup.computeIfAbsent(rawGroupKeyFor(vl, mode, network), k -> new ArrayList<>()).add(vl));
+                orphanVlsByGroup.computeIfAbsent(rawGroupKeyFor(vl, mode, network), _ -> new ArrayList<>()).add(vl));
 
         Set<Object> rawKeys = new HashSet<>(substationsByGroup.keySet());
         rawKeys.addAll(orphanVlsByGroup.keySet());
@@ -407,12 +407,12 @@ public class SubstationsController extends AbstractDisposableController implemen
             if (substation.isPresent()) {
                 if (!areas.isEmpty()) {
                     substationsInAnArea.add(substation.get());
-                    areas.forEach(area -> substationsByArea.computeIfAbsent(area, a -> new HashSet<>()).add(substation.get()));
+                    areas.forEach(area -> substationsByArea.computeIfAbsent(area, _ -> new HashSet<>()).add(substation.get()));
                 }
             } else if (areas.isEmpty()) {
                 orphanVlsWithNoArea.add(vl);
             } else {
-                areas.forEach(area -> orphanVlsByArea.computeIfAbsent(area, a -> new ArrayList<>()).add(vl));
+                areas.forEach(area -> orphanVlsByArea.computeIfAbsent(area, _ -> new ArrayList<>()).add(vl));
             }
         });
 
@@ -562,7 +562,7 @@ public class SubstationsController extends AbstractDisposableController implemen
                 new EquipmentTab(ContainerNavigationState.ContainerTab.BUSES_BUS_BREAKER_VIEW, busesBusBreakerViewTab, "desktop.common.equipment.busesBusBreakerView",
                         busesBusBreakerViewEmbeddedController, "network/tables/buses-bus-breaker-view.fxml"));
 
-        diagramTabPane.getSelectionModel().selectedItemProperty().addListener((observable, oldTab, newTab) -> updateDiagramsShowing());
+        diagramTabPane.getSelectionModel().selectedItemProperty().addListener((_, _, _) -> updateDiagramsShowing());
 
         initializeTreeViews();
         initializeListeners();
@@ -613,9 +613,9 @@ public class SubstationsController extends AbstractDisposableController implemen
     private void initializeTreeViews() {
         // for the then selected item, which a right-click selects
         EditMenus.installContextMenu(substationsTreeView, this::editMenuItems);
-        editMenuButton.setOnShowing(event -> editMenuButton.getItems().setAll(editMenuItems()));
+        editMenuButton.setOnShowing(_ -> editMenuButton.getItems().setAll(editMenuItems()));
 
-        substationsTreeView.setCellFactory(dummy -> new TreeCell<>() {
+        substationsTreeView.setCellFactory(_ -> new TreeCell<>() {
             @Override
             public void updateItem(Object item, boolean empty) {
                 super.updateItem(item, empty);
@@ -655,7 +655,7 @@ public class SubstationsController extends AbstractDisposableController implemen
     private void initializeListeners() {
         // guarded by programmaticSelection so selection changes made by navigateTo() (main controller)
         // don't re-trigger a navigation event
-        substationsTreeView.getSelectionModel().selectedItemProperty().addListener((observable, oldItem, newItem) -> {
+        substationsTreeView.getSelectionModel().selectedItemProperty().addListener((_, _, newItem) -> {
             if (programmaticSelection) {
                 return;
             }
@@ -671,7 +671,7 @@ public class SubstationsController extends AbstractDisposableController implemen
         });
         // same guard: switching tabs is itself a navigable moment, but only once a container is actually
         // selected, to avoid polluting history with tab changes on an empty view
-        diagramTabPane.getSelectionModel().selectedItemProperty().addListener((observable, oldTab, newTab) -> {
+        diagramTabPane.getSelectionModel().selectedItemProperty().addListener((_, _, _) -> {
             if (programmaticSelection || currentContainer == null) {
                 return;
             }

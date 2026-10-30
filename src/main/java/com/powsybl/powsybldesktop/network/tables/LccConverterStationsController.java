@@ -92,7 +92,7 @@ public class LccConverterStationsController extends AbstractEquipmentTableContro
         TableColumnSupport.configureDetailNameColumn(nameColumn, item -> EquipmentDetails.open(sceneModel, item));
 
         hvdcLineColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        hvdcLineColumn.setCellFactory(col -> new TableCell<LccConverterStation, LccConverterStation>() {
+        hvdcLineColumn.setCellFactory(_ -> new TableCell<LccConverterStation, LccConverterStation>() {
             @Override
             protected void updateItem(LccConverterStation item, boolean empty) {
                 super.updateItem(item, empty);
@@ -131,7 +131,7 @@ public class LccConverterStationsController extends AbstractEquipmentTableContro
     private Hyperlink hvdcLineLink(HvdcLine hvdcLine, LccConverterStation item) {
         Hyperlink link = new Hyperlink(hvdcLine.getNameOrId());
         link.getStyleClass().add("container-link");
-        link.setOnAction(event -> {
+        link.setOnAction(_ -> {
             if (isEmbedded()) {
                 sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
                         ContainerNavigationState.create(item.getTerminal().getVoltageLevel(), ContainerNavigationState.ContainerTab.HVDC_LINES)));

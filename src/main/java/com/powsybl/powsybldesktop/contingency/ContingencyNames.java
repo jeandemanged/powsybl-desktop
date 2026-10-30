@@ -36,7 +36,7 @@ public final class ContingencyNames {
     public static String displayName(Contingency contingency, Network network) {
         return contingency.getName().orElseGet(() -> {
             List<ContingencyElement> elements = contingency.getElements();
-            if (elements.size() == 1 && elements.get(0).getId().equals(contingency.getId())) {
+            if (elements.size() == 1 && elements.getFirst().getId().equals(contingency.getId())) {
                 Identifiable<?> identifiable = network.getIdentifiable(contingency.getId());
                 if (identifiable != null) {
                     return identifiable.getNameOrId();
@@ -66,7 +66,7 @@ public final class ContingencyNames {
         List<Contingency> unique = new ArrayList<>();
         for (Contingency contingency : contingencies) {
             Set<ContingencyElement> elements = new HashSet<>(contingency.getElements());
-            List<Set<ContingencyElement>> elementSets = elementSetsById.computeIfAbsent(contingency.getId(), id -> new ArrayList<>());
+            List<Set<ContingencyElement>> elementSets = elementSetsById.computeIfAbsent(contingency.getId(), _ -> new ArrayList<>());
             if (elementSets.contains(elements)) {
                 continue;
             }

@@ -492,7 +492,7 @@ public final class ExtensionEditors {
     private static Button addButton(DetailForm form, Runnable add) {
         Button button = new Button(Messages.get("desktop.common.action.add"));
         button.disableProperty().bind(form.editableProperty().not());
-        button.setOnAction(event -> form.apply(button, add));
+        button.setOnAction(_ -> form.apply(button, add));
         return button;
     }
 
@@ -501,7 +501,7 @@ public final class ExtensionEditors {
         Label text = new Label();
         Button removeButton = new Button(Messages.get("desktop.common.action.remove"));
         removeButton.disableProperty().bind(form.editableProperty().not());
-        removeButton.setOnAction(event -> form.apply(removeButton, remove));
+        removeButton.setOnAction(_ -> form.apply(removeButton, remove));
         form.section(null).node("detail.extension.measurements.measurement", new HBox(8, text, removeButton), null, () -> text.setText(label.get()));
     }
 

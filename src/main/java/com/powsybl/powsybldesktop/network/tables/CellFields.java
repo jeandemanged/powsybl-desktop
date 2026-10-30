@@ -82,7 +82,7 @@ public final class CellFields {
      */
     public static <S, T> void textColumn(TableColumn<S, T> column, StringConverter<T> converter, Predicate<S> rowEditable, RowKey rowKey) {
         KeyedFlash flash = new KeyedFlash();
-        column.setCellFactory(col -> new TextCell<>(flash, converter, rowEditable, rowKey));
+        column.setCellFactory(_ -> new TextCell<>(flash, converter, rowEditable, rowKey));
         TableColumnSupport.disableUnlessTableEditable(column);
     }
 
@@ -136,7 +136,7 @@ public final class CellFields {
     private static <S, T, E extends Node & ChoiceEditor<T>> void choiceColumn(TableColumn<S, T> column,
                                                                              BiFunction<TableCell<?, ?>, KeyedFlash, E> editorFactory) {
         KeyedFlash flash = new KeyedFlash();
-        column.setCellFactory(col -> new TableCell<>() {
+        column.setCellFactory(_ -> new TableCell<>() {
             private final E choiceBox = editorFactory.apply(this, flash);
 
             @Override
@@ -174,7 +174,7 @@ public final class CellFields {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
         KeyedFlash flash = new KeyedFlash();
-        column.setCellFactory(col -> new SidedCell<>(sideCount, cell -> editorFactory.apply(cell, flash), binder));
+        column.setCellFactory(_ -> new SidedCell<>(sideCount, cell -> editorFactory.apply(cell, flash), binder));
         TableColumnSupport.disableUnlessTableEditable(column);
     }
 
@@ -287,7 +287,7 @@ public final class CellFields {
                 previous.pause().stop();
             }
             show(node, key);
-            pause.setOnFinished(event -> {
+            pause.setOnFinished(_ -> {
                 flashes.remove(key);
                 List.copyOf(flashing.entrySet()).stream()
                     .filter(entry -> entry.getValue().equals(key))
@@ -335,8 +335,8 @@ public final class CellFields {
             getStyleClass().add(STYLE_CLASS);
             // as wide as its text, like a text cell, for the columns fitting their content
             prefColumnCountProperty().bind(textProperty().length());
-            setOnAction(event -> commitIfChanged());
-            focusedProperty().addListener((observable, wasFocused, focused) -> {
+            setOnAction(_ -> commitIfChanged());
+            focusedProperty().addListener((_, _, focused) -> {
                 if (focused) {
                     selectCell(cell);
                 } else {
@@ -479,7 +479,7 @@ public final class CellFields {
                 IndexedCell<?> rowCell = flow.getVisibleCell(row);
                 List<CellTextField> fields = rowCell == null ? List.of() : fieldsIn(rowCell, column);
                 if (!fields.isEmpty()) {
-                    fields.get(direction > 0 ? 0 : fields.size() - 1).focus();
+                    (direction > 0 ? fields.getFirst() : fields.getLast()).focus();
                     return;
                 }
             }
@@ -510,7 +510,7 @@ public final class CellFields {
                 setConverter(converter);
             }
             setMaxWidth(Double.MAX_VALUE);
-            focusedProperty().addListener((observable, wasFocused, focused) -> {
+            focusedProperty().addListener((_, _, focused) -> {
                 if (focused) {
                     selectCell(cell);
                 }
@@ -540,7 +540,7 @@ public final class CellFields {
             setConverter(converter);
             setMaxWidth(Double.MAX_VALUE);
             // the skin's search field takes the focus, not the combo box
-            focusWithinProperty().addListener((observable, wasFocused, focused) -> {
+            focusWithinProperty().addListener((_, _, focused) -> {
                 if (focused) {
                     selectCell(cell);
                 }
@@ -580,7 +580,7 @@ public final class CellFields {
             this.editor = editor;
             this.flash = flash;
             this.value = value;
-            value.addListener((observable, oldValue, newValue) -> {
+            value.addListener((_, _, newValue) -> {
                 if (!showingValue && getter != null && !Objects.equals(newValue, getter.get())) {
                     Object edited = key;
                     CellFields.apply(editor, flash, edited, "", () -> setter.accept(newValue));
@@ -637,9 +637,9 @@ public final class CellFields {
             field.setMaxWidth(FIELD_WIDTH);
             field.setAlignment(Pos.CENTER_RIGHT);
             // after every display, the value being shown then
-            field.textProperty().addListener(observable -> updateButtons());
-            incrementButton.setOnAction(event -> field.apply(String.valueOf(getter.getAsInt() + 1)));
-            decrementButton.setOnAction(event -> field.apply(String.valueOf(getter.getAsInt() - 1)));
+            field.textProperty().addListener(_ -> updateButtons());
+            incrementButton.setOnAction(_ -> field.apply(String.valueOf(getter.getAsInt() + 1)));
+            decrementButton.setOnAction(_ -> field.apply(String.valueOf(getter.getAsInt() - 1)));
             VBox buttons = new VBox(incrementButton, decrementButton);
             buttons.setAlignment(Pos.CENTER);
             getChildren().addAll(field, buttons);

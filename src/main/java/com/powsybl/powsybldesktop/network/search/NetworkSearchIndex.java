@@ -139,7 +139,7 @@ public final class NetworkSearchIndex implements Closeable {
                     byId.put(identifiable.getId(), identifiable);
                     if (kind == NetworkSearch.Kind.BUS) {
                         Bus bus = (Bus) identifiable;
-                        busIdsByVoltageLevel.computeIfAbsent(bus.getVoltageLevel().getId(), v -> new HashSet<>()).add(bus.getId());
+                        busIdsByVoltageLevel.computeIfAbsent(bus.getVoltageLevel().getId(), _ -> new HashSet<>()).add(bus.getId());
                     }
                 }
             }
@@ -176,7 +176,7 @@ public final class NetworkSearchIndex implements Closeable {
         busIdsByVoltageLevel.clear();
         buses.forEach(bus -> {
             byId.put(bus.getId(), bus);
-            busIdsByVoltageLevel.computeIfAbsent(bus.getVoltageLevel().getId(), v -> new HashSet<>()).add(bus.getId());
+            busIdsByVoltageLevel.computeIfAbsent(bus.getVoltageLevel().getId(), _ -> new HashSet<>()).add(bus.getId());
         });
     }
 

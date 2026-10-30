@@ -37,7 +37,7 @@ class SceneModelTest {
         System.setProperty("glass.platform", "Headless");
         try {
             Platform.startup(() -> { });
-        } catch (IllegalStateException alreadyStarted) {
+        } catch (IllegalStateException _) {
             // toolkit already started by another test class running in this fork
         }
     }
@@ -110,7 +110,7 @@ class SceneModelTest {
     void networkChangeGuardIsOnlyAskedForAnotherNetwork() {
         MainModel mainModel = mainModel();
         int[] asked = {0};
-        mainModel.setNetworkChangeGuard(target -> {
+        mainModel.setNetworkChangeGuard(_ -> {
             asked[0]++;
             return false;
         });

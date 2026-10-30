@@ -101,7 +101,7 @@ public class VscConverterStationsController extends AbstractEquipmentTableContro
         TableColumnSupport.configureDetailNameColumn(nameColumn, item -> EquipmentDetails.open(sceneModel, item));
 
         hvdcLineColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        hvdcLineColumn.setCellFactory(col -> new TableCell<VscConverterStation, VscConverterStation>() {
+        hvdcLineColumn.setCellFactory(_ -> new TableCell<VscConverterStation, VscConverterStation>() {
             @Override
             protected void updateItem(VscConverterStation item, boolean empty) {
                 super.updateItem(item, empty);
@@ -155,7 +155,7 @@ public class VscConverterStationsController extends AbstractEquipmentTableContro
     private Hyperlink hvdcLineLink(HvdcLine hvdcLine, VscConverterStation item) {
         Hyperlink link = new Hyperlink(hvdcLine.getNameOrId());
         link.getStyleClass().add("container-link");
-        link.setOnAction(event -> {
+        link.setOnAction(_ -> {
             if (isEmbedded()) {
                 sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
                         ContainerNavigationState.create(item.getTerminal().getVoltageLevel(), ContainerNavigationState.ContainerTab.HVDC_LINES)));

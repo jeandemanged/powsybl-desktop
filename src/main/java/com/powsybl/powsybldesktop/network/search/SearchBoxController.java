@@ -65,11 +65,11 @@ public class SearchBoxController {
 
     private final PauseTransition searchDebounce = new PauseTransition(SEARCH_DEBOUNCE);
     private final SearchService searchService = new SearchService();
-    private final ChangeListener<NetworkSearchIndex.State> indexStateListener = (observable, oldState, newState) -> updateIndexState();
+    private final ChangeListener<NetworkSearchIndex.State> indexStateListener = (_, _, _) -> updateIndexState();
     // the cached index is mutated in place by NetworkSearchIndex.refreshBuses() (see MainController) after a
     // topology change, which doesn't touch searchIndexStateProperty (it stays READY throughout) - so a query
     // currently in progress needs its own nudge to pick up buses added/removed/invalidated by that change
-    private final ChangeListener<Instant> updateListener = (observable, oldValue, newValue) -> refreshIfSearching();
+    private final ChangeListener<Instant> updateListener = (_, _, _) -> refreshIfSearching();
 
     private MainModel mainModel;
     private SceneModel sceneModel;
@@ -82,11 +82,11 @@ public class SearchBoxController {
 
     @FXML
     private void initialize() {
-        searchDebounce.setOnFinished(event -> runSearch(searchField.getText()));
-        searchField.textProperty().addListener((observable, oldValue, newValue) -> searchDebounce.playFromStart());
+        searchDebounce.setOnFinished(_ -> runSearch(searchField.getText()));
+        searchField.textProperty().addListener((_, _, _) -> searchDebounce.playFromStart());
         // resolved here, on the FX thread, since resolving reads the network (see NetworkSearchIndex.Candidates)
-        searchService.setOnSucceeded(event -> onSearchResult(searchService.getValue().resolve()));
-        searchService.setOnFailed(event -> onSearchResult(new NetworkSearchIndex.Result(List.of(), false)));
+        searchService.setOnSucceeded(_ -> onSearchResult(searchService.getValue().resolve()));
+        searchService.setOnFailed(_ -> onSearchResult(new NetworkSearchIndex.Result(List.of(), false)));
     }
 
     /**

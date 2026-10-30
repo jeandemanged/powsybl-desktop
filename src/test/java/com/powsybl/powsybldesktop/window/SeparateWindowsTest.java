@@ -175,7 +175,7 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
 
     @Test
     void singleInstanceWindowIsReusedAndSurvivesNetworkChanges() {
-        Runnable openLogs = () -> separateWindows.openSingleInstance("logs", () -> "Logs", scene -> SeparateWindows.<LogsViewController>load("logs/logs-view.fxml",
+        Runnable openLogs = () -> separateWindows.openSingleInstance("logs", () -> "Logs", _ -> SeparateWindows.<LogsViewController>load("logs/logs-view.fxml",
                 controller -> controller.setModels(mainModel.getLogsModel(), mainModel.getParametersModel())));
         interact(openLogs);
         interact(openLogs);
@@ -225,7 +225,7 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
 
     // a view whose controller counts its disposals in disposed
     private void openPlain(String key, boolean bound, AtomicInteger disposed) {
-        Function<SceneModel, SeparateWindows.View> factory = scene -> new SeparateWindows.View(new StackPane(), disposed::incrementAndGet);
+        Function<SceneModel, SeparateWindows.View> factory = _ -> new SeparateWindows.View(new StackPane(), disposed::incrementAndGet);
         if (bound) {
             separateWindows.open(key, () -> key, factory);
         } else {
@@ -305,7 +305,7 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
     @Test
     void groupViewsGatherInTheirGroupWindowRecreatedOnceClosed() {
         AtomicInteger disposed = new AtomicInteger();
-        Function<SceneModel, SeparateWindows.View> factory = scene -> new SeparateWindows.View(new StackPane(), disposed::incrementAndGet);
+        Function<SceneModel, SeparateWindows.View> factory = _ -> new SeparateWindows.View(new StackPane(), disposed::incrementAndGet);
         String details = Messages.get("separateWindows.group.details");
         interact(() -> {
             separateWindows.open(SeparateWindows.Group.DETAILS, "detail:a", () -> "a", factory);
@@ -466,7 +466,7 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
     void relocalizeRebuildsTheViewsAndTranslatesTheirTitlesAndDefaultNames() {
         AtomicInteger built = new AtomicInteger();
         AtomicInteger disposed = new AtomicInteger();
-        Function<SceneModel, SeparateWindows.View> factory = scene -> {
+        Function<SceneModel, SeparateWindows.View> factory = _ -> {
             built.incrementAndGet();
             return new SeparateWindows.View(new StackPane(), disposed::incrementAndGet);
         };

@@ -348,7 +348,7 @@ record MapNetworkData(List<Color> colors,
                 Math.max((maxX - minX) / GRID_SIZE, 1e-9), Math.max((maxY - minY) / GRID_SIZE, 1e-9), null, null);
         // cells as one flat item array: a first pass counts each cell's items, a second one fills them in
         int[] cellStart = new int[GRID_SIZE * GRID_SIZE + 1];
-        forEachGridItem(bounds, substationX, substationY, lineStart, pointX, pointY, (item, cell) -> cellStart[cell + 1]++);
+        forEachGridItem(bounds, substationX, substationY, lineStart, pointX, pointY, (_, cell) -> cellStart[cell + 1]++);
         for (int cell = 0; cell < GRID_SIZE * GRID_SIZE; cell++) {
             cellStart[cell + 1] += cellStart[cell];
         }

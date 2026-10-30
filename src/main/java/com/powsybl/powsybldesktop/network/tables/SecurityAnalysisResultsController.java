@@ -188,7 +188,7 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
                 .moveBefore("preContingencyValue", "value")
                 .moveBefore("preContingencyLoading", "loading");
 
-        install(flowByEquipmentTableView, flowByEquipmentData, row -> false);
+        install(flowByEquipmentTableView, flowByEquipmentData, _ -> false);
         new ViolationColumns<>(flowByEquipmentTableView, () -> sceneModel, this::guiParameters)
                 .subject("securityAnalysisResults.column.subject", row -> row.worstRow().worst().violation())
                 .equipmentType(EquipmentFlowRow::equipment)
@@ -223,16 +223,16 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
     private static <S> void install(TableView<S> table, ObservableList<S> data, Predicate<S> preContingency) {
         SortedList<S> sorted = new SortedList<>(data);
         sorted.comparatorProperty().bind(Bindings.createObjectBinding(() -> Comparator.comparing((S row) -> !preContingency.test(row))
-                .thenComparing(Objects.requireNonNullElse(table.getComparator(), (a, b) -> 0)), table.comparatorProperty()));
+                .thenComparing(Objects.requireNonNullElse(table.getComparator(), (_, _) -> 0)), table.comparatorProperty()));
         // the default policy rejects a SortedList whose comparator isn't bound to the table's
-        table.setSortPolicy(t -> true);
+        table.setSortPolicy(_ -> true);
         table.setItems(sorted);
         TableAutoFitLimiter.install(table);
     }
 
     private static void configureStatusColumn(TableColumn<ContingencyRow, ContingencyRow> column) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new StatusTableCell());
+        column.setCellFactory(_ -> new StatusTableCell());
         column.setComparator(Comparator.comparing((ContingencyRow row) -> !row.state().failed())
                 .thenComparing(row -> Messages.get(row.state().statusMessageKey())));
     }
@@ -362,7 +362,7 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
             return null;
         }
         // BusView.getMergedBus throws on some node/breaker topology buses
-        Bus busViewBus = busViewBusesByBusBreakerViewId.computeIfAbsent(voltageLevel.getId(), id -> {
+        Bus busViewBus = busViewBusesByBusBreakerViewId.computeIfAbsent(voltageLevel.getId(), _ -> {
             Map<String, Bus> busViewBuses = new HashMap<>();
             voltageLevel.getBusView().getBusStream().forEach(busViewBusOf -> voltageLevel.getBusBreakerView()
                     .getBusStreamFromBusViewBusId(busViewBusOf.getId())
@@ -400,7 +400,7 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
         if (identifiable != null) {
             try {
                 container = NetworkSearch.containerOf(identifiable);
-            } catch (IllegalArgumentException e) {
+            } catch (IllegalArgumentException _) {
                 container = null;
             }
         }
@@ -410,7 +410,7 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
         Hyperlink link = new Hyperlink(subjectName);
         link.getStyleClass().add("container-link");
         Container<?> target = container;
-        link.setOnAction(event -> scene.navigate(
+        link.setOnAction(_ -> scene.navigate(
                 NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(target))));
         return link;
     }
@@ -429,10 +429,10 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
         this.sceneModel = Objects.requireNonNull(sceneModel);
         this.mainModel = sceneModel.getMainModel();
         updateResults();
-        listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> updateResults());
-        listenerManager.listen(this.mainModel.updateProperty(), (observable, oldValue, newValue) -> updateResults());
+        listenerManager.listen(sceneModel.networkProperty(), (_, _, _) -> updateResults());
+        listenerManager.listen(this.mainModel.updateProperty(), (_, _, _) -> updateResults());
         // for the decimal places, read by the cells on every render
-        listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> {
+        listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (_, _, _) -> {
             contingenciesTableView.refresh();
             flowByContingencyTableView.refresh();
             flowByEquipmentTableView.refresh();
@@ -494,7 +494,7 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
             }
             switch (violation.getLimitType()) {
                 case CURRENT, ACTIVE_POWER, APPARENT_POWER -> flowViolations
-                        .computeIfAbsent(violation.getSubjectId(), id -> new ArrayList<>())
+                        .computeIfAbsent(violation.getSubjectId(), _ -> new ArrayList<>())
                         .add(FlowViolation.of(violation, root));
                 case LOW_VOLTAGE, HIGH_VOLTAGE -> {
                     VoltageViolation voltageViolation = VoltageViolation.of(violation, root);
@@ -519,7 +519,7 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
 
     private static List<EquipmentFlowRow> equipmentRows(List<ContingencyFlowRow> flows) {
         Map<Identifiable<?>, List<ContingencyFlowRow>> byEquipment = new LinkedHashMap<>();
-        flows.forEach(row -> byEquipment.computeIfAbsent(row.equipment(), equipment -> new ArrayList<>()).add(row));
+        flows.forEach(row -> byEquipment.computeIfAbsent(row.equipment(), _ -> new ArrayList<>()).add(row));
         return byEquipment.entrySet().stream()
                 .map(entry -> new EquipmentFlowRow(entry.getKey(), entry.getValue().stream().sorted(Comparator.comparing(ContingencyFlowRow::worst)).toList()))
                 .sorted(Comparator.comparing(row -> row.worstRow().worst()))

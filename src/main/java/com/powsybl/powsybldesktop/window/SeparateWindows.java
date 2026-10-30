@@ -228,8 +228,8 @@ public final class SeparateWindows {
             StackPane root = new StackPane(tabPane, nameBox);
             StackPane.setAlignment(nameBox, Pos.TOP_LEFT);
 
-            name.addListener((observable, oldName, newName) -> updateTitle());
-            tabPane.getSelectionModel().selectedItemProperty().addListener((observable, oldTab, newTab) -> updateTitle());
+            name.addListener((_, _, _) -> updateTitle());
+            tabPane.getSelectionModel().selectedItemProperty().addListener((_, _, _) -> updateTitle());
             updateTitle();
             stage.getIcons().add(new Image(Objects.requireNonNull(MainApplication.class.getResourceAsStream("logo.png"))));
             Scene scene = new Scene(root, width, height);
@@ -243,7 +243,7 @@ public final class SeparateWindows {
                         () -> new Insets(padding.getTop(), padding.getRight(), padding.getBottom(), nameBox.getWidth()), nameBox.widthProperty()));
                 nameBox.prefHeightProperty().bind(header.heightProperty());
             }
-            stage.setOnHidden(event -> {
+            stage.setOnHidden(_ -> {
                 tabPane.getTabs().forEach(tab -> dispose(view(tab)));
                 windows.remove(this);
             });
@@ -330,13 +330,13 @@ public final class SeparateWindows {
         private void editName() {
             TextField field = new TextField(name.get());
             field.setPrefColumnCount(12);
-            field.setOnAction(event -> endEditName(field, true));
+            field.setOnAction(_ -> endEditName(field, true));
             field.setOnKeyPressed(event -> {
                 if (event.getCode() == KeyCode.ESCAPE) {
                     endEditName(field, false);
                 }
             });
-            field.focusedProperty().addListener((observable, oldValue, focused) -> {
+            field.focusedProperty().addListener((_, _, focused) -> {
                 if (!focused) {
                     endEditName(field, true);
                 }
@@ -373,7 +373,7 @@ public final class SeparateWindows {
     public SeparateWindows(MainModel mainModel, Supplier<Window> mainWindow) {
         this.mainModel = Objects.requireNonNull(mainModel);
         this.mainWindow = Objects.requireNonNull(mainWindow);
-        networkListener = (observable, oldNetwork, newNetwork) -> {
+        networkListener = (_, _, newNetwork) -> {
             close(boundToOtherThan(newNetwork));
             // the views left whose title may name the network: those following the selection
             views.stream().filter(view -> !view.bound).forEach(this::retitle);
@@ -570,7 +570,7 @@ public final class SeparateWindows {
             }
             event.consume();
         });
-        view.tab.setOnClosed(event -> {
+        view.tab.setOnClosed(_ -> {
             dispose(view);
             view.window.closeIfEmpty();
         });
@@ -808,16 +808,16 @@ public final class SeparateWindows {
         SplitMenuButton button = new SplitMenuButton();
         button.setGraphic(new FontIcon("mdi2o-open-in-new"));
         button.setTooltip(new Tooltip(Messages.get("separateWindows.open")));
-        button.setOnAction(event -> openIn(null, open));
+        button.setOnAction(_ -> openIn(null, open));
         MenuItem newWindow = new MenuItem(Messages.get("separateWindows.newWindow"));
-        newWindow.setOnAction(event -> openIn(null, open));
+        newWindow.setOnAction(_ -> openIn(null, open));
         button.getItems().setAll(newWindow);
-        button.setOnShowing(event -> {
+        button.setOnShowing(_ -> {
             button.getItems().setAll(newWindow);
             windows.forEach(window -> {
                 MenuItem item = new MenuItem(window.getName());
                 item.setMnemonicParsing(false);
-                item.setOnAction(itemEvent -> openIn(window, open));
+                item.setOnAction(_ -> openIn(window, open));
                 button.getItems().add(item);
             });
         });

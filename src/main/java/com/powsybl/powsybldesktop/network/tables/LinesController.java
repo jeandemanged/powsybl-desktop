@@ -109,17 +109,17 @@ public class LinesController extends AbstractEquipmentTableController<Line> {
         // R/X/G1/B1/G2/B2 are single values (not per-terminal like P/Q/I above), rendered as a multi-sided column
         // with a single slot - like Transformers' R/X/G/B for a two-windings transformer - centered in the row.
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(rColumn, line -> List.of(line.getR()),
-                (line, index, value) -> line.setR(value), format(GuiParameters.Quantity.IMPEDANCE));
+                (line, _, value) -> line.setR(value), format(GuiParameters.Quantity.IMPEDANCE));
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(xColumn, line -> List.of(line.getX()),
-                (line, index, value) -> line.setX(value), format(GuiParameters.Quantity.IMPEDANCE));
+                (line, _, value) -> line.setX(value), format(GuiParameters.Quantity.IMPEDANCE));
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(g1Column, line -> List.of(line.getG1()),
-                (line, index, value) -> line.setG1(value), format(GuiParameters.Quantity.ADMITTANCE));
+                (line, _, value) -> line.setG1(value), format(GuiParameters.Quantity.ADMITTANCE));
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(b1Column, line -> List.of(line.getB1()),
-                (line, index, value) -> line.setB1(value), format(GuiParameters.Quantity.ADMITTANCE));
+                (line, _, value) -> line.setB1(value), format(GuiParameters.Quantity.ADMITTANCE));
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(g2Column, line -> List.of(line.getG2()),
-                (line, index, value) -> line.setG2(value), format(GuiParameters.Quantity.ADMITTANCE));
+                (line, _, value) -> line.setG2(value), format(GuiParameters.Quantity.ADMITTANCE));
         TableColumnSupport.configureMultiSidedEditableDoubleColumn(b2Column, line -> List.of(line.getB2()),
-                (line, index, value) -> line.setB2(value), format(GuiParameters.Quantity.ADMITTANCE));
+                (line, _, value) -> line.setB2(value), format(GuiParameters.Quantity.ADMITTANCE));
 
         TableColumnSupport.configureTwoSidedDoubleColumn(pColumn,
                 line -> line.getTerminal1().getP(), line -> line.getTerminal2().getP(), format(GuiParameters.Quantity.POWER));

@@ -152,35 +152,35 @@ public final class ContainerDiagram extends AbstractDisposableController {
         detailsButton.setGraphic(new FontIcon("mdi2i-information-outline"));
         detailsButton.setTooltip(new Tooltip(Messages.get("substations.diagram.details")));
         detailsButton.setDisable(true);
-        detailsButton.setOnAction(event -> EquipmentDetails.open(sceneModel, container));
+        detailsButton.setOnAction(_ -> EquipmentDetails.open(sceneModel, container));
         pane.getToolBar().getItems().addAll(new Separator(Orientation.VERTICAL), detailsButton);
-        renderService.setOnSucceeded(event -> {
+        renderService.setOnSucceeded(_ -> {
             sldMetadata = renderService.getValue().metadata();
             pane.showDiagram(renderService.getValue().svg());
         });
-        renderService.setOnFailed(event -> LOGGER.error(renderService.getException().getMessage(), renderService.getException()));
+        renderService.setOnFailed(_ -> LOGGER.error(renderService.getException().getMessage(), renderService.getException()));
 
         var parametersModel = mainModel.getParametersModel();
         if (kind == Kind.SINGLE_LINE) {
             pane.setOnEngineLoaded(() -> ((JSObject) pane.getWebView().getEngine().executeScript("window")).setMember("controller", this));
             pane.loadShell(SLD_HTML_SHELL.replace("%__JS__%", readSldJs()));
-            pane.getWebView().addEventFilter(MouseEvent.MOUSE_PRESSED, event -> contextMenu.hide());
+            pane.getWebView().addEventFilter(MouseEvent.MOUSE_PRESSED, _ -> contextMenu.hide());
             pane.getWebView().addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, this::onContextMenuRequested);
             pane.getToolBar().getItems().add(editMenuButton());
             // remembered across navigation/views (see SceneModel)
-            listenerManager.listen(pane.zoomProperty(), (observable, oldValue, newValue) -> sceneModel.diagramZoomProperty().set(newValue.doubleValue()));
-            listenerManager.listen(pane.fitToScreenProperty(), (observable, oldValue, newValue) -> sceneModel.diagramFitToScreenProperty().set(newValue));
+            listenerManager.listen(pane.zoomProperty(), (_, _, newValue) -> sceneModel.diagramZoomProperty().set(newValue.doubleValue()));
+            listenerManager.listen(pane.fitToScreenProperty(), (_, _, newValue) -> sceneModel.diagramFitToScreenProperty().set(newValue));
             pane.restoreZoom(sceneModel.diagramZoomProperty().get(), sceneModel.diagramFitToScreenProperty().get());
-            listenerManager.listen(parametersModel.sldParametersRevisionProperty(), (observable, oldValue, newValue) -> refresh());
+            listenerManager.listen(parametersModel.sldParametersRevisionProperty(), (_, _, _) -> refresh());
         } else {
             depth = sceneModel.diagramAreaDepthProperty().get();
             addDepthControl();
-            listenerManager.listen(parametersModel.nadParametersRevisionProperty(), (observable, oldValue, newValue) -> refresh());
+            listenerManager.listen(parametersModel.nadParametersRevisionProperty(), (_, _, _) -> refresh());
         }
-        listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
+        listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> refresh());
         // GUI parameters also hold e.g. the map basemap: only a decimals change is worth re-rendering
         decimals = parametersModel.getGuiParameters().getDecimals();
-        listenerManager.listen(parametersModel.guiParametersRevisionProperty(), (observable, oldValue, newValue) -> {
+        listenerManager.listen(parametersModel.guiParametersRevisionProperty(), (_, _, _) -> {
             Map<GuiParameters.Quantity, Integer> newDecimals = parametersModel.getGuiParameters().getDecimals();
             if (!newDecimals.equals(decimals)) {
                 decimals = newDecimals;
@@ -225,7 +225,7 @@ public final class ContainerDiagram extends AbstractDisposableController {
     private MenuButton editMenuButton() {
         MenuButton button = new MenuButton(null, new FontIcon("mdi2p-plus"));
         button.setTooltip(new Tooltip(Messages.get("edit.menu.tooltip")));
-        button.setOnShowing(event -> button.getItems().setAll(container == null ? List.of()
+        button.setOnShowing(_ -> button.getItems().setAll(container == null ? List.of()
                 : EditMenus.items(sceneModel, () -> pane.getWebView().getScene().getWindow(), container.getParentNetwork(), container)));
         return button;
     }
@@ -290,8 +290,8 @@ public final class ContainerDiagram extends AbstractDisposableController {
         // debounced: dragging the slider across several depths would otherwise start a render per depth, each
         // running to completion in the background even once superseded (see AbstractNetworkTask)
         PauseTransition depthDebounce = new PauseTransition(Duration.millis(300));
-        depthDebounce.setOnFinished(event -> refresh());
-        depthSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+        depthDebounce.setOnFinished(_ -> refresh());
+        depthSlider.valueProperty().addListener((_, _, newValue) -> {
             int newDepth = newValue.intValue();
             if (newDepth != depth) {
                 depth = newDepth;
@@ -391,17 +391,17 @@ public final class ContainerDiagram extends AbstractDisposableController {
         List<MenuItem> items = new ArrayList<>();
         if (EquipmentDetails.supports(equipment)) {
             MenuItem detailsItem = new MenuItem(Messages.get("detail.open.tooltip"));
-            detailsItem.setOnAction(event -> EquipmentDetails.open(sceneModel, equipment));
+            detailsItem.setOnAction(_ -> EquipmentDetails.open(sceneModel, equipment));
             items.add(detailsItem);
             if (equipment instanceof HvdcConverterStation<?> station && station.getHvdcLine() != null) {
                 MenuItem hvdcItem = new MenuItem(Messages.get("substations.diagram.equipment.hvdcLineDetails"));
-                hvdcItem.setOnAction(event -> EquipmentDetails.open(sceneModel, station.getHvdcLine()));
+                hvdcItem.setOnAction(_ -> EquipmentDetails.open(sceneModel, station.getHvdcLine()));
                 items.add(hvdcItem);
             }
             MenuItem showItem = new MenuItem(node.getNextVId() != null
                     ? Messages.get("substations.diagram.equipment.goTo", container.getNetwork().getVoltageLevel(node.getNextVId()).getNameOrId())
                     : Messages.get("substations.diagram.equipment.showInTable"));
-            showItem.setOnAction(event -> showEquipment(node, equipment));
+            showItem.setOnAction(_ -> showEquipment(node, equipment));
             items.add(showItem);
         }
         List<MenuItem> edits = EditMenus.items(sceneModel, () -> pane.getWebView().getScene().getWindow(), equipment.getParentNetwork(), equipment);

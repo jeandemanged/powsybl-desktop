@@ -168,7 +168,7 @@ public class TieLinesController extends AbstractEquipmentTableController<TieLine
     private Hyperlink boundaryLineLink(BoundaryLine boundaryLine, TieLine item) {
         Hyperlink link = new Hyperlink(boundaryLine.getNameOrId());
         link.getStyleClass().add("container-link");
-        link.setOnAction(event -> {
+        link.setOnAction(_ -> {
             if (isEmbedded()) {
                 sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
                         ContainerNavigationState.create(boundaryLine.getTerminal().getVoltageLevel(), ContainerNavigationState.ContainerTab.BOUNDARY_LINES)));

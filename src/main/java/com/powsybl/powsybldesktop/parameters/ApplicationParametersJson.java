@@ -580,7 +580,7 @@ public final class ApplicationParametersJson {
                 }
                 try {
                     setter.accept(Enum.valueOf(type, value.textValue()));
-                } catch (IllegalArgumentException e) {
+                } catch (IllegalArgumentException _) {
                     throw invalid(path(name));
                 }
             }

@@ -73,7 +73,7 @@ public final class KeyValueTablePane extends VBox implements DetailPart {
         HBox.setHgrow(valueField, Priority.ALWAYS);
         Button addButton = new Button(Messages.get("desktop.common.action.add"));
         addButton.disableProperty().bind(editable.not().or(keyField.textProperty().isEmpty()));
-        addButton.setOnAction(event -> {
+        addButton.setOnAction(_ -> {
             String key = keyField.getText().trim();
             String value = valueField.getText().trim();
             if (DetailForm.apply(addButton, () -> {
@@ -89,7 +89,7 @@ public final class KeyValueTablePane extends VBox implements DetailPart {
         });
         Button removeButton = new Button(Messages.get("desktop.common.action.remove"));
         removeButton.disableProperty().bind(editable.not().or(tableView.getSelectionModel().selectedItemProperty().isNull()));
-        removeButton.setOnAction(event -> {
+        removeButton.setOnAction(_ -> {
             String key = tableView.getSelectionModel().getSelectedItem();
             DetailForm.apply(removeButton, () -> remover.accept(key), onEdit);
             refresh();

@@ -305,7 +305,7 @@ class GeneratorDetailControllerTest extends AbstractHeadlessApplicationTest {
 
         List<TextField> fields = controller.aliasesPane.lookupAll(".text-field").stream().map(TextField.class::cast).toList();
         interact(() -> {
-            fields.get(0).setText("alias2");
+            fields.getFirst().setText("alias2");
             button(controller.aliasesPane, "desktop.common.action.add").fire();
         });
         assertTrue(generator.getAliases().contains("alias2"));

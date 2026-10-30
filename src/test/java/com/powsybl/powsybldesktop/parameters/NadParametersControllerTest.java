@@ -71,10 +71,10 @@ class NadParametersControllerTest extends AbstractHeadlessApplicationTest {
 
     @SuppressWarnings("unchecked")
     private GridPane selectCategory(String title) {
-        ListView<String> categories = (ListView<String>) controller.splitPane.getItems().get(0);
+        ListView<String> categories = (ListView<String>) controller.splitPane.getItems().getFirst();
         StackPane detail = (StackPane) controller.splitPane.getItems().get(1);
         interact(() -> categories.getSelectionModel().select(title));
-        ScrollPane scrollPane = (ScrollPane) detail.getChildren().get(0);
+        ScrollPane scrollPane = (ScrollPane) detail.getChildren().getFirst();
         return (GridPane) scrollPane.getContent();
     }
 
@@ -103,7 +103,7 @@ class NadParametersControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void categoryListShowsAllExpectedTitles() {
         @SuppressWarnings("unchecked")
-        ListView<String> categories = (ListView<String>) controller.splitPane.getItems().get(0);
+        ListView<String> categories = (ListView<String>) controller.splitPane.getItems().getFirst();
         assertEquals(14, categories.getItems().size());
     }
 
@@ -163,7 +163,7 @@ class NadParametersControllerTest extends AbstractHeadlessApplicationTest {
         GridPane grid = selectCategory(Messages.get("parameters.nad.category.sizing"));
         HBox box = (HBox) nodeForLabel(grid, Messages.get("parameters.nad.param.sizeConstraint.label"));
         @SuppressWarnings("unchecked")
-        ChoiceBox<SvgParameters.SizeConstraint> modeChoiceBox = (ChoiceBox<SvgParameters.SizeConstraint>) box.getChildren().get(0);
+        ChoiceBox<SvgParameters.SizeConstraint> modeChoiceBox = (ChoiceBox<SvgParameters.SizeConstraint>) box.getChildren().getFirst();
         TextField widthField = (TextField) box.getChildren().get(2);
 
         assertEquals(SvgParameters.SizeConstraint.FIXED_SCALE, params.get().getSvgParameters().getSizeConstraint());

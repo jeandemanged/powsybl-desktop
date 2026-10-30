@@ -53,7 +53,6 @@ import javafx.util.converter.DefaultStringConverter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 /**
  * Generic inline editor reused for all 6 equipment-criterion {@link ContingencyList} types (see
@@ -122,13 +121,13 @@ public class CriterionListFormController {
     private void initialize() {
         propertyCriteriaTableView.setItems(propertyRows);
         propertyKeyColumn.setCellValueFactory(cellData -> cellData.getValue().keyProperty());
-        CellFields.textColumn(propertyKeyColumn, new DefaultStringConverter(), row -> true, CellFields.RowKey.ITEM);
+        CellFields.textColumn(propertyKeyColumn, new DefaultStringConverter(), _ -> true, CellFields.RowKey.ITEM);
         propertyKeyColumn.setOnEditCommit(event -> {
             event.getRowValue().keyProperty().set(event.getNewValue());
             replace();
         });
         propertyValuesColumn.setCellValueFactory(cellData -> cellData.getValue().valuesProperty());
-        CellFields.textColumn(propertyValuesColumn, new DefaultStringConverter(), row -> true, CellFields.RowKey.ITEM);
+        CellFields.textColumn(propertyValuesColumn, new DefaultStringConverter(), _ -> true, CellFields.RowKey.ITEM);
         propertyValuesColumn.setOnEditCommit(event -> {
             event.getRowValue().valuesProperty().set(event.getNewValue());
             replace();
@@ -159,7 +158,7 @@ public class CriterionListFormController {
         nameField.setText(list.getName());
         buildCriteriaControls();
         populateFromList(list);
-        propertyRows.setAll(list.getPropertyCriteria().stream().map(PropertyCriterionRow::new).collect(Collectors.toList()));
+        propertyRows.setAll(list.getPropertyCriteria().stream().map(PropertyCriterionRow::new).toList());
         regexField.setText(list.getRegexCriterion() == null ? "" : list.getRegexCriterion().getRegex());
         boolean showType = kind.hasIdentifiableTypePicker();
         identifiableTypeBox.setVisible(showType);
@@ -167,7 +166,7 @@ public class CriterionListFormController {
         if (showType) {
             identifiableTypeChoiceBox.setItems(FXCollections.observableArrayList(ContingencyListKind.INJECTION_TYPES));
             identifiableTypeChoiceBox.getSelectionModel().select(list.getIdentifiableType());
-            identifiableTypeChoiceBox.valueProperty().addListener((obs, oldValue, newValue) -> commit());
+            identifiableTypeChoiceBox.valueProperty().addListener((_, _, _) -> commit());
         }
         // Populating the country/voltage controls fires their change listeners - committing then would push a
         // spurious replacement, possibly while the lists are still mid-change (the form is rebuilt from the
@@ -200,18 +199,18 @@ public class CriterionListFormController {
 
     private void populateFromList(AbstractEquipmentCriterionContingencyList list) {
         if (kind.countryArity() == 1 && list.getCountryCriterion() instanceof SingleCountryCriterion c) {
-            countryGroups.get(0).setValue(c.getCountries());
+            countryGroups.getFirst().setValue(c.getCountries());
         } else if (kind.countryArity() == 2 && list.getCountryCriterion() instanceof TwoCountriesCriterion c) {
-            countryGroups.get(0).setValue(c.getCountries1());
+            countryGroups.getFirst().setValue(c.getCountries1());
             countryGroups.get(1).setValue(c.getCountries2());
         }
         if (kind.voltageArity() == 1 && list.getNominalVoltageCriterion() instanceof SingleNominalVoltageCriterion v) {
-            voltageGroups.get(0).setValue(v.getVoltageInterval());
+            voltageGroups.getFirst().setValue(v.getVoltageInterval());
         } else if (kind.voltageArity() == 2 && list.getNominalVoltageCriterion() instanceof TwoNominalVoltageCriterion v) {
-            voltageGroups.get(0).setValue(v.getVoltageInterval1().orElse(null));
+            voltageGroups.getFirst().setValue(v.getVoltageInterval1().orElse(null));
             voltageGroups.get(1).setValue(v.getVoltageInterval2().orElse(null));
         } else if (kind.voltageArity() == 3 && list.getNominalVoltageCriterion() instanceof ThreeNominalVoltageCriterion v) {
-            voltageGroups.get(0).setValue(v.getVoltageInterval1().orElse(null));
+            voltageGroups.getFirst().setValue(v.getVoltageInterval1().orElse(null));
             voltageGroups.get(1).setValue(v.getVoltageInterval2().orElse(null));
             voltageGroups.get(2).setValue(v.getVoltageInterval3().orElse(null));
         }
@@ -220,7 +219,7 @@ public class CriterionListFormController {
     private void commit() {
         try {
             replace();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
             // e.g. a voltage interval with its low bound above its high bound, or a criterion checkEvaluable
             // rejects: keep the last valid list
         }
@@ -235,7 +234,7 @@ public class CriterionListFormController {
 
     private ContingencyList rebuild() {
         String name = nameField.getText();
-        List<PropertyCriterion> propertyCriteria = propertyRows.stream().map(PropertyCriterionRow::toCriterion).collect(Collectors.toList());
+        List<PropertyCriterion> propertyCriteria = propertyRows.stream().map(PropertyCriterionRow::toCriterion).toList();
         propertyCriteria.forEach(this::checkEvaluable);
         RegexCriterion regex = regexField.getText() == null || regexField.getText().isBlank() ? null : new RegexCriterion(regexField.getText());
         if (regex != null) {
@@ -280,29 +279,29 @@ public class CriterionListFormController {
     }
 
     private SingleCountryCriterion singleCountry() {
-        List<Country> selected = countryGroups.get(0).getChecked();
+        List<Country> selected = countryGroups.getFirst().getChecked();
         return selected.isEmpty() ? null : new SingleCountryCriterion(selected);
     }
 
     private TwoCountriesCriterion twoCountries() {
-        List<Country> countries1 = countryGroups.get(0).getChecked();
+        List<Country> countries1 = countryGroups.getFirst().getChecked();
         List<Country> countries2 = countryGroups.get(1).getChecked();
         return countries1.isEmpty() && countries2.isEmpty() ? null : new TwoCountriesCriterion(countries1, countries2);
     }
 
     private SingleNominalVoltageCriterion singleVoltage() {
-        VoltageInterval interval = voltageGroups.get(0).toInterval();
+        VoltageInterval interval = voltageGroups.getFirst().toInterval();
         return interval == null ? null : new SingleNominalVoltageCriterion(interval);
     }
 
     private TwoNominalVoltageCriterion twoVoltage() {
-        VoltageInterval interval1 = voltageGroups.get(0).toInterval();
+        VoltageInterval interval1 = voltageGroups.getFirst().toInterval();
         VoltageInterval interval2 = voltageGroups.get(1).toInterval();
         return interval1 == null && interval2 == null ? null : new TwoNominalVoltageCriterion(interval1, interval2);
     }
 
     private ThreeNominalVoltageCriterion threeVoltage() {
-        VoltageInterval interval1 = voltageGroups.get(0).toInterval();
+        VoltageInterval interval1 = voltageGroups.getFirst().toInterval();
         VoltageInterval interval2 = voltageGroups.get(1).toInterval();
         VoltageInterval interval3 = voltageGroups.get(2).toInterval();
         return interval1 == null && interval2 == null && interval3 == null ? null : new ThreeNominalVoltageCriterion(interval1, interval2, interval3);
@@ -324,8 +323,8 @@ public class CriterionListFormController {
     }
 
     private static void commitOnChange(TextField field, Runnable onCommit) {
-        field.setOnAction(event -> onCommit.run());
-        field.focusedProperty().addListener((obs, wasFocused, isFocused) -> {
+        field.setOnAction(_ -> onCommit.run());
+        field.focusedProperty().addListener((_, _, isFocused) -> {
             if (Boolean.FALSE.equals(isFocused)) {
                 onCommit.run();
             }
@@ -365,8 +364,8 @@ public class CriterionListFormController {
             root = new VBox(4, new Label(Messages.get(titleKey)), lowBox, highBox);
             commitOnChange(lowField, onCommit);
             commitOnChange(highField, onCommit);
-            lowClosedCheckBox.selectedProperty().addListener((obs, oldValue, newValue) -> onCommit.run());
-            highClosedCheckBox.selectedProperty().addListener((obs, oldValue, newValue) -> onCommit.run());
+            lowClosedCheckBox.selectedProperty().addListener((_, _, _) -> onCommit.run());
+            highClosedCheckBox.selectedProperty().addListener((_, _, _) -> onCommit.run());
         }
 
         void setValue(VoltageInterval interval) {
@@ -398,7 +397,7 @@ public class CriterionListFormController {
             }
             try {
                 return Double.valueOf(text.trim());
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException _) {
                 return null;
             }
         }

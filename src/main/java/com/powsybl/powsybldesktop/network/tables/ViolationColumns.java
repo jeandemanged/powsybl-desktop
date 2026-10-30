@@ -77,7 +77,7 @@ final class ViolationColumns<S> {
     ViolationColumns<S> subject(String headerKey, Function<S, LimitViolation> violationGetter) {
         TableColumn<S, S> column = add("subject", headerKey, 150, null);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new TableCell<>() {
+        column.setCellFactory(_ -> new TableCell<>() {
             @Override
             protected void updateItem(S row, boolean empty) {
                 super.updateItem(row, empty);

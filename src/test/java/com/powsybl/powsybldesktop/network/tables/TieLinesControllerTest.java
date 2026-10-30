@@ -120,11 +120,11 @@ class TieLinesControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals(tieLine.getPairingKey(), cellValue(controller.pairingKeyColumn, row));
 
         VBox voltageLevelBox = cellBox(controller.voltageLevelColumn, row);
-        assertEquals(voltageLevel1.getNameOrId(), ((Hyperlink) voltageLevelBox.getChildren().get(0)).getText());
+        assertEquals(voltageLevel1.getNameOrId(), ((Hyperlink) voltageLevelBox.getChildren().getFirst()).getText());
         assertEquals(voltageLevel2.getNameOrId(), ((Hyperlink) voltageLevelBox.getChildren().get(1)).getText());
 
         VBox substationBox = cellBox(controller.substationColumn, row);
-        assertEquals(voltageLevel1.getSubstation().orElseThrow().getNameOrId(), ((Hyperlink) substationBox.getChildren().get(0)).getText());
+        assertEquals(voltageLevel1.getSubstation().orElseThrow().getNameOrId(), ((Hyperlink) substationBox.getChildren().getFirst()).getText());
         assertEquals(voltageLevel2.getSubstation().orElseThrow().getNameOrId(), ((Hyperlink) substationBox.getChildren().get(1)).getText());
     }
 
@@ -133,7 +133,7 @@ class TieLinesControllerTest extends AbstractHeadlessApplicationTest {
         TieLine tieLine = network.getTieLineStream().findFirst().orElseThrow();
         VBox box = cellBox(controller.boundaryLineColumn, rowOf(tieLine));
 
-        Hyperlink link1 = (Hyperlink) box.getChildren().get(0);
+        Hyperlink link1 = (Hyperlink) box.getChildren().getFirst();
         Hyperlink link2 = (Hyperlink) box.getChildren().get(1);
         assertEquals(tieLine.getBoundaryLine1().getNameOrId(), link1.getText());
         assertEquals(tieLine.getBoundaryLine2().getNameOrId(), link2.getText());
@@ -149,7 +149,7 @@ class TieLinesControllerTest extends AbstractHeadlessApplicationTest {
         TieLine tieLine = network.getTieLineStream().findFirst().orElseThrow();
         VBox box = cellBox(controller.connectedColumn, rowOf(tieLine));
 
-        assertEquals(tieLine.getTerminal1().isConnected(), ((CheckBox) box.getChildren().get(0)).isSelected());
+        assertEquals(tieLine.getTerminal1().isConnected(), ((CheckBox) box.getChildren().getFirst()).isSelected());
         assertEquals(tieLine.getTerminal2().isConnected(), ((CheckBox) box.getChildren().get(1)).isSelected());
     }
 
@@ -157,7 +157,7 @@ class TieLinesControllerTest extends AbstractHeadlessApplicationTest {
     void togglingConnectedCheckBoxesDisconnectsAndReconnectsEachTerminal() {
         TieLine tieLine = network.getTieLineStream().findFirst().orElseThrow();
         VBox box = cellBox(controller.connectedColumn, rowOf(tieLine));
-        CheckBox terminal1CheckBox = (CheckBox) box.getChildren().get(0);
+        CheckBox terminal1CheckBox = (CheckBox) box.getChildren().getFirst();
         CheckBox terminal2CheckBox = (CheckBox) box.getChildren().get(1);
         assertTrue(tieLine.getTerminal1().isConnected());
         assertTrue(tieLine.getTerminal2().isConnected());
@@ -198,22 +198,22 @@ class TieLinesControllerTest extends AbstractHeadlessApplicationTest {
 
         VBox ccBox = cellBox(controller.connectedComponentColumn, row);
         assertEquals(String.valueOf(tieLine.getTerminal1().getBusView().getBus().getConnectedComponent().getNum()),
-                ((Label) ccBox.getChildren().get(0)).getText());
+                ((Label) ccBox.getChildren().getFirst()).getText());
         assertEquals(String.valueOf(tieLine.getTerminal2().getBusView().getBus().getConnectedComponent().getNum()),
                 ((Label) ccBox.getChildren().get(1)).getText());
 
         VBox scBox = cellBox(controller.synchronousComponentColumn, row);
         assertEquals(String.valueOf(tieLine.getTerminal1().getBusView().getBus().getSynchronousComponent().getNum()),
-                ((Label) scBox.getChildren().get(0)).getText());
+                ((Label) scBox.getChildren().getFirst()).getText());
         assertEquals(String.valueOf(tieLine.getTerminal2().getBusView().getBus().getSynchronousComponent().getNum()),
                 ((Label) scBox.getChildren().get(1)).getText());
 
         VBox pBox = cellBox(controller.pColumn, row);
-        assertEquals(powerText(tieLine.getTerminal1().getP()), ((Label) pBox.getChildren().get(0)).getText());
+        assertEquals(powerText(tieLine.getTerminal1().getP()), ((Label) pBox.getChildren().getFirst()).getText());
         assertEquals(powerText(tieLine.getTerminal2().getP()), ((Label) pBox.getChildren().get(1)).getText());
 
         VBox qBox = cellBox(controller.qColumn, row);
-        assertEquals(powerText(tieLine.getTerminal1().getQ()), ((Label) qBox.getChildren().get(0)).getText());
+        assertEquals(powerText(tieLine.getTerminal1().getQ()), ((Label) qBox.getChildren().getFirst()).getText());
         assertEquals(powerText(tieLine.getTerminal2().getQ()), ((Label) qBox.getChildren().get(1)).getText());
     }
 
@@ -287,7 +287,7 @@ class TieLinesControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> controller.goToTieLine(tieLine));
         List<TablePosition> selectedCells = controller.tieLinesTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(row, selectedCells.get(0).getRow());
+        assertEquals(row, selectedCells.getFirst().getRow());
 
         interact(() -> controller.goToTieLine(null));
         assertTrue(controller.tieLinesTableView.getSelectionModel().getSelectedCells().isEmpty());
@@ -308,14 +308,14 @@ class TieLinesControllerTest extends AbstractHeadlessApplicationTest {
 
         List<TablePosition> selectedCells = controller.tieLinesTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(sortedRow, selectedCells.get(0).getRow());
+        assertEquals(sortedRow, selectedCells.getFirst().getRow());
     }
 
     @Test
     void clickingVoltageLevel1LinkNavigatesToIt() {
         TieLine tieLine = network.getTieLineStream().findFirst().orElseThrow();
         VoltageLevel voltageLevel1 = tieLine.getTerminal1().getVoltageLevel();
-        Hyperlink link = (Hyperlink) cellBox(controller.voltageLevelColumn, rowOf(tieLine)).getChildren().get(0);
+        Hyperlink link = (Hyperlink) cellBox(controller.voltageLevelColumn, rowOf(tieLine)).getChildren().getFirst();
 
         interact(link::fire);
 
@@ -328,7 +328,7 @@ class TieLinesControllerTest extends AbstractHeadlessApplicationTest {
     void clickingSubstation1LinkNavigatesToIt() {
         TieLine tieLine = network.getTieLineStream().findFirst().orElseThrow();
         Substation substation1 = tieLine.getTerminal1().getVoltageLevel().getSubstation().orElseThrow();
-        Hyperlink link = (Hyperlink) cellBox(controller.substationColumn, rowOf(tieLine)).getChildren().get(0);
+        Hyperlink link = (Hyperlink) cellBox(controller.substationColumn, rowOf(tieLine)).getChildren().getFirst();
 
         interact(link::fire);
 

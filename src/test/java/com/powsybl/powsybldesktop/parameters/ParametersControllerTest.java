@@ -76,7 +76,7 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
     void hostsParametersTabsInOrder() {
         List<Tab> tabs = tabPane.getTabs();
         assertEquals(7, tabs.size());
-        assertEquals("User Interface", tabs.get(0).getText());
+        assertEquals("User Interface", tabs.getFirst().getText());
         assertEquals("Network Import", tabs.get(1).getText());
         assertEquals("Network Export", tabs.get(2).getText());
         assertEquals("Single Line Diagram", tabs.get(3).getText());
@@ -88,10 +88,10 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void guiTabEditsAndFollowsGuiParameters() {
         GuiParameters gui = mainModel.getParametersModel().getGuiParameters();
-        ListView<?> categoryList = from(tabPane.getTabs().get(0).getContent()).lookup(".list-view").queryListView();
+        ListView<?> categoryList = from(tabPane.getTabs().getFirst().getContent()).lookup(".list-view").queryListView();
         assertEquals("Decimal Places", categoryList.getItems().getFirst());
         // the first text field is the voltage decimal places
-        TextField voltageField = from(tabPane.getTabs().get(0).getContent()).lookup(".text-field").query();
+        TextField voltageField = from(tabPane.getTabs().getFirst().getContent()).lookup(".text-field").query();
         assertEquals("1", voltageField.getText());
         interact(() -> {
             voltageField.setText("3");
@@ -102,7 +102,7 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
 
         interact(() -> categoryList.getSelectionModel().select(1));
         // the first check box is the first voltage range of the Map category
-        CheckBox checkBox = from(tabPane.getTabs().get(0).getContent()).lookup(".check-box").query();
+        CheckBox checkBox = from(tabPane.getTabs().getFirst().getContent()).lookup(".check-box").query();
         clickOn(checkBox);
         assertEquals(1, gui.getMapHiddenBaseVoltages().size());
         assertEquals(2, mainModel.getParametersModel().guiParametersRevisionProperty().get());

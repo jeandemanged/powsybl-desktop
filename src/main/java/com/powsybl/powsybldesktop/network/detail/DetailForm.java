@@ -177,7 +177,7 @@ public final class DetailForm implements DetailPart {
     public DetailForm booleanField(String labelKey, BooleanSupplier getter, Consumer<Boolean> setter) {
         CheckBox checkBox = new CheckBox();
         checkBox.disableProperty().bind(editable.not());
-        checkBox.setOnAction(event -> {
+        checkBox.setOnAction(_ -> {
             apply(checkBox, () -> setter.accept(checkBox.isSelected()));
             checkBox.setSelected(getter.getAsBoolean());
         });
@@ -225,7 +225,7 @@ public final class DetailForm implements DetailPart {
             value.set(getter.get());
             refreshing[0] = false;
         };
-        value.addListener((observable, oldValue, newValue) -> {
+        value.addListener((_, _, newValue) -> {
             if (!refreshing[0] && newValue != null && !newValue.equals(getter.get())) {
                 apply(control, () -> setter.accept(newValue));
                 // reverting a rejected value from within this change would leave the skin's popup checking it
@@ -311,8 +311,8 @@ public final class DetailForm implements DetailPart {
                 show.run();
             }
         };
-        field.setOnAction(event -> commitIfChanged.run());
-        field.focusedProperty().addListener((observable, wasFocused, focused) -> {
+        field.setOnAction(_ -> commitIfChanged.run());
+        field.focusedProperty().addListener((_, _, focused) -> {
             if (!focused) {
                 commitIfChanged.run();
             }
@@ -358,7 +358,7 @@ public final class DetailForm implements DetailPart {
         }
         try {
             return Double.parseDouble(text.trim());
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException _) {
             throw new PowsyblException(Messages.get("desktop.common.editError.invalidNumber", text.trim()));
         }
     }
@@ -369,7 +369,7 @@ public final class DetailForm implements DetailPart {
         }
         try {
             return Integer.valueOf(text.trim());
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException _) {
             throw new PowsyblException(Messages.get("desktop.common.editError.invalidNumber", text.trim()));
         }
     }

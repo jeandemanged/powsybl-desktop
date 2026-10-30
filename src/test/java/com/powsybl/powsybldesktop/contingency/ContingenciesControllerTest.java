@@ -90,7 +90,7 @@ class ContingenciesControllerTest extends AbstractHeadlessApplicationTest {
 
         List<Contingency> shown = controller.contingenciesTableView.getItems();
         assertEquals(1, shown.size());
-        assertEquals("does-not-exist", shown.get(0).getId());
+        assertEquals("does-not-exist", shown.getFirst().getId());
         assertTrue(ContingencyList.getValidContingencies(shown, network).isEmpty());
     }
 
@@ -115,7 +115,7 @@ class ContingenciesControllerTest extends AbstractHeadlessApplicationTest {
 
         SearchableCheckComboBox<Country> countries = lookup(node -> node instanceof SearchableCheckComboBox).query();
         interact(() -> countries.setChecked(List.of(Country.FR)));
-        assertSame(mainModel.getStudy(network).getContingencyLists().get(0), listView.getSelectionModel().getSelectedItem());
+        assertSame(mainModel.getStudy(network).getContingencyLists().getFirst(), listView.getSelectionModel().getSelectedItem());
 
         Button removeButton = lookup("#removeButton").query();
         interact(removeButton::fire);
@@ -167,7 +167,7 @@ class ContingenciesControllerTest extends AbstractHeadlessApplicationTest {
         // the name field still has focus as its form is torn down for the newly selected list, and commits then
         interact(() -> listView.getSelectionModel().select(1));
 
-        assertEquals("renamed", mainModel.getStudy(network).getContingencyLists().get(0).getName());
+        assertEquals("renamed", mainModel.getStudy(network).getContingencyLists().getFirst().getName());
         assertSame(mainModel.getStudy(network).getContingencyLists().get(1), listView.getSelectionModel().getSelectedItem());
         assertEquals("second", lookup("#nameField").<TextField>query().getText());
     }

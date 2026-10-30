@@ -70,10 +70,10 @@ class SldParametersControllerTest extends AbstractHeadlessApplicationTest {
 
     @SuppressWarnings("unchecked")
     private GridPane selectCategory(String title) {
-        ListView<String> categories = (ListView<String>) controller.splitPane.getItems().get(0);
+        ListView<String> categories = (ListView<String>) controller.splitPane.getItems().getFirst();
         StackPane detail = (StackPane) controller.splitPane.getItems().get(1);
         interact(() -> categories.getSelectionModel().select(title));
-        ScrollPane scrollPane = (ScrollPane) detail.getChildren().get(0);
+        ScrollPane scrollPane = (ScrollPane) detail.getChildren().getFirst();
         return (GridPane) scrollPane.getContent();
     }
 
@@ -102,7 +102,7 @@ class SldParametersControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void categoryListShowsAllExpectedTitles() {
         @SuppressWarnings("unchecked")
-        ListView<String> categories = (ListView<String>) controller.splitPane.getItems().get(0);
+        ListView<String> categories = (ListView<String>) controller.splitPane.getItems().getFirst();
         assertEquals(15, categories.getItems().size());
     }
 

@@ -65,8 +65,8 @@ final class GeographicalTagsDialog {
                 newTagField.clear();
             }
         };
-        addButton.setOnAction(event -> addTag.run());
-        newTagField.setOnAction(event -> addTag.run());
+        addButton.setOnAction(_ -> addTag.run());
+        newTagField.setOnAction(_ -> addTag.run());
 
         VBox content = new VBox(8, tagsTableView, new HBox(5, newTagField, addButton));
         content.setPadding(new Insets(10));

@@ -40,8 +40,8 @@ class ContingencyListsIOTest {
         ListOfContingencyLists loadedList = assertInstanceOf(ListOfContingencyLists.class, loaded);
         assertEquals("my-lists", loadedList.getName());
         assertEquals(2, loadedList.getContingencyLists().size());
-        assertInstanceOf(DefaultContingencyList.class, loadedList.getContingencyLists().get(0));
+        assertInstanceOf(DefaultContingencyList.class, loadedList.getContingencyLists().getFirst());
         assertInstanceOf(LineCriterionContingencyList.class, loadedList.getContingencyLists().get(1));
-        assertEquals("explicit", loadedList.getContingencyLists().get(0).getName());
+        assertEquals("explicit", loadedList.getContingencyLists().getFirst().getName());
     }
 }

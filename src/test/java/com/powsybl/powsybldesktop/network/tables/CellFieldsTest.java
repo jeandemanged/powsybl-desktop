@@ -74,7 +74,7 @@ class CellFieldsTest extends AbstractHeadlessApplicationTest {
         nameColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().name));
         valueColumn = new TableColumn<>("Value");
         valueColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().value));
-        CellFields.textColumn(valueColumn, FORMAT, row -> true, CellFields.RowKey.ITEM);
+        CellFields.textColumn(valueColumn, FORMAT, _ -> true, CellFields.RowKey.ITEM);
         valueColumn.setOnEditCommit(event -> {
             if (event.getNewValue() < 0) {
                 throw new PowsyblException("negative");
@@ -258,7 +258,7 @@ class CellFieldsTest extends AbstractHeadlessApplicationTest {
 
     @Test
     void fieldsAreDisabledWhileTheTableIsNotEditable() {
-        TextField field = field(rows.get(0));
+        TextField field = field(rows.getFirst());
         interact(() -> table.setEditable(false));
         assertTrue(field.isDisabled());
         interact(() -> table.setEditable(true));

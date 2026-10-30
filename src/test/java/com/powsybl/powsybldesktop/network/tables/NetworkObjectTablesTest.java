@@ -108,7 +108,7 @@ class NetworkObjectTablesTest extends AbstractHeadlessApplicationTest {
         OverloadManagementSystem system = network.getOverloadManagementSystem("OMS");
         assertEquals(1, systems.overloadManagementSystemsTableView.getItems().size());
 
-        interact(() -> NetworkEdits.apply(mainModel, network, n -> system.remove()));
+        interact(() -> NetworkEdits.apply(mainModel, network, _ -> system.remove()));
 
         assertEquals(0, systems.overloadManagementSystemsTableView.getItems().size());
     }

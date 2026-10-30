@@ -48,7 +48,7 @@ public class MainApplication extends Application {
         MainModel mainModel = new MainModel();
         Optional<Notification> parametersLoadError = ParametersConfigFile.load(mainModel.getParametersModel(), ParametersConfigFile.defaultPath());
         // only once the main view listens to notifications, for the error to pop up
-        stage.setOnShown(event -> parametersLoadError.ifPresent(mainModel.getNotificationsModel()::add));
+        stage.setOnShown(_ -> parametersLoadError.ifPresent(mainModel.getNotificationsModel()::add));
 
         SplashScreen splash = new SplashScreen();
         splash.show();
@@ -57,14 +57,14 @@ public class MainApplication extends Application {
         // Loaded on the FX thread, since MainController.initialize() builds controls and drives the first navigation;
         // the short pause lets the splash screen be painted first, as this blocks the FX thread while loading.
         PauseTransition splashPainted = new PauseTransition(Duration.millis(50));
-        splashPainted.setOnFinished(event -> {
+        splashPainted.setOnFinished(_ -> {
             Parent mainView = loadMainView(mainModel, splash);
             Runnable showMainView = () -> showMainView(stage, mainView, splash);
             Duration elapsed = Duration.millis(System.currentTimeMillis() - splashShownAt);
             Duration remaining = MIN_SPLASH_DURATION.subtract(elapsed);
             if (remaining.greaterThan(Duration.ZERO)) {
                 PauseTransition delay = new PauseTransition(remaining);
-                delay.setOnFinished(e -> showMainView.run());
+                delay.setOnFinished(_ -> showMainView.run());
                 delay.play();
             } else {
                 showMainView.run();
@@ -80,7 +80,7 @@ public class MainApplication extends Application {
         stage.getIcons().add(new Image(Objects.requireNonNull(MainApplication.class.getResourceAsStream("logo.png"))));
         stage.setScene(scene);
         // separate windows are independent stages, which would otherwise keep the application running
-        stage.setOnCloseRequest(event -> Platform.exit());
+        stage.setOnCloseRequest(_ -> Platform.exit());
         stage.show();
         splash.close();
     }
@@ -89,7 +89,7 @@ public class MainApplication extends Application {
         Parent root = null;
         try {
             FXMLLoader loader = new FXMLLoader(MainApplication.class.getResource("main-view.fxml"), Messages.bundle());
-            loader.setControllerFactory(type -> new MainController(mainModel));
+            loader.setControllerFactory(_ -> new MainController(mainModel));
             root = loader.load();
             return root;
         } catch (IOException e) {

@@ -107,7 +107,7 @@ public final class ExtensionsPane<O extends Extendable<O>> extends VBox implemen
                 .filter(editor -> editor.creator() != null && extendable.getExtension(editor.type()) == null)
                 .map(editor -> {
                     MenuItem item = new MenuItem(Messages.get(editor.labelKey()));
-                    item.setOnAction(event -> {
+                    item.setOnAction(_ -> {
                         DetailForm.apply(addButton, () -> editor.creator().accept(extendable), onEdit);
                         refresh();
                     });
@@ -129,7 +129,7 @@ public final class ExtensionsPane<O extends Extendable<O>> extends VBox implemen
         forms.add(form);
         Button removeButton = new Button(Messages.get("desktop.common.action.remove"));
         removeButton.disableProperty().bind(editable.not());
-        removeButton.setOnAction(event -> {
+        removeButton.setOnAction(_ -> {
             DetailForm.apply(removeButton, () -> extendable.removeExtension((Class) editor.type()), onEdit);
             refresh();
         });

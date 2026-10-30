@@ -62,8 +62,9 @@ final class ViolationsTestSupport {
 
     static String loadingText(Node flowViolationGraphic) {
         return ((Parent) flowViolationGraphic).getChildrenUnmodifiable().stream()
-                .filter(node -> node instanceof Label)
-                .map(node -> ((Label) node).getText())
+                .filter(Label.class::isInstance)
+                .map(Label.class::cast)
+                .map(Label::getText)
                 .findFirst().orElseThrow();
     }
 }

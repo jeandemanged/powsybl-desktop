@@ -45,7 +45,7 @@ public final class DateTimePicker extends HBox {
     private ZonedDateTime value;
     // set while the controls show a new value, which isn't an edit
     private boolean showing;
-    private Consumer<ZonedDateTime> onEdit = edited -> { };
+    private Consumer<ZonedDateTime> onEdit = _ -> { };
 
     // for FXML
     public DateTimePicker() {
@@ -75,10 +75,10 @@ public final class DateTimePicker extends HBox {
         // squeezed, e.g. in a form's value column, the spinners' digits are hidden
         getChildren().forEach(child -> ((Region) child).setMinWidth(Region.USE_PREF_SIZE));
         setValue(initial);
-        datePicker.valueProperty().addListener((observable, oldValue, newValue) -> edited());
-        hourSpinner.valueProperty().addListener((observable, oldValue, newValue) -> edited());
-        minuteSpinner.valueProperty().addListener((observable, oldValue, newValue) -> edited());
-        zoneComboBox.valueProperty().addListener((observable, oldValue, newValue) -> edited());
+        datePicker.valueProperty().addListener((_, _, _) -> edited());
+        hourSpinner.valueProperty().addListener((_, _, _) -> edited());
+        minuteSpinner.valueProperty().addListener((_, _, _) -> edited());
+        zoneComboBox.valueProperty().addListener((_, _, _) -> edited());
     }
 
     public ZonedDateTime getValue() {
@@ -139,7 +139,7 @@ public final class DateTimePicker extends HBox {
                 try {
                     int number = Integer.parseInt(string.trim());
                     return number >= 0 && number <= max ? number : factory.getValue();
-                } catch (NumberFormatException e) {
+                } catch (NumberFormatException _) {
                     return factory.getValue();
                 }
             }
@@ -148,7 +148,7 @@ public final class DateTimePicker extends HBox {
         spinner.setEditable(true);
         spinner.setPrefWidth(65);
         // typed text is otherwise only committed on Enter
-        spinner.focusedProperty().addListener((observable, wasFocused, focused) -> {
+        spinner.focusedProperty().addListener((_, _, focused) -> {
             if (!focused) {
                 spinner.getEditor().setText(factory.getConverter().toString(factory.getConverter().fromString(spinner.getEditor().getText())));
                 spinner.commitValue();

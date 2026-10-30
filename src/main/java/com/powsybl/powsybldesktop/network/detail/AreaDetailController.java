@@ -99,7 +99,7 @@ public class AreaDetailController extends AbstractEquipmentDetailController<Area
         protected Button button(String textKey, String icon, Runnable action) {
             Button button = new Button(Messages.get(textKey), new FontIcon(icon));
             button.disableProperty().bind(editable.not());
-            button.setOnAction(event -> DetailForm.apply(button, action, onEdit()));
+            button.setOnAction(_ -> DetailForm.apply(button, action, onEdit()));
             return button;
         }
     }
@@ -147,7 +147,7 @@ public class AreaDetailController extends AbstractEquipmentDetailController<Area
             ac.disableProperty().bind(editable.not());
             Button add = new Button(Messages.get("desktop.common.action.add"), new FontIcon("mdi2p-plus"));
             add.disableProperty().bind(editable.not());
-            add.setOnAction(event -> TerminalPickerDialog.show(add.getScene().getWindow(), sceneModel)
+            add.setOnAction(_ -> TerminalPickerDialog.show(add.getScene().getWindow(), sceneModel)
                     .ifPresent(terminal -> DetailForm.apply(add, () -> equipment.newAreaBoundary().setTerminal(terminal).setAc(ac.isSelected()).add(), onEdit())));
             Button remove = button("desktop.common.action.remove", "mdi2d-delete", () -> {
                 AreaBoundary selected = table.getSelectionModel().getSelectedItem();

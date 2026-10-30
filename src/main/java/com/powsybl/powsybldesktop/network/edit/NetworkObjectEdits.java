@@ -91,7 +91,7 @@ public final class NetworkObjectEdits {
                 adder.setInterchangeTarget(interchangeTarget.get());
             }
             voltageLevels.getCheckModel().getCheckedItems().forEach(adder::addVoltageLevel);
-            NetworkEdits.apply(sceneModel.getMainModel(), network, n -> adder.add());
+            NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> adder.add());
             return network.getArea(areaId);
         });
     }
@@ -133,7 +133,7 @@ public final class NetworkObjectEdits {
                     OverloadManagementSystemAdder adder = substation.newOverloadManagementSystem().setId(systemId).setName(name.get())
                             .setEnabled(enabled.get()).setMonitoredElementId(monitored.get().getId()).setMonitoredElementSide(monitoredSide.get());
                     trippings.getItems().forEach(row -> addTripping(adder, row));
-                    NetworkEdits.apply(sceneModel.getMainModel(), network, n -> adder.add());
+                    NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> adder.add());
                     return network.getOverloadManagementSystem(systemId);
                 });
     }
@@ -186,7 +186,7 @@ public final class NetworkObjectEdits {
             });
             sideBox.setValue(sideBox.getItems().stream().findFirst().orElse(null));
         };
-        ((ComboBox<?>) type.getEditor()).valueProperty().addListener((observable, oldValue, newValue) -> showElements.run());
+        ((ComboBox<?>) type.getEditor()).valueProperty().addListener((_, _, _) -> showElements.run());
         showElements.run();
         form.custom("edit.oms.trippingElement", elementBox, null, () -> null);
         form.custom("desktop.common.column.side", sideBox, null, () -> null);
@@ -195,14 +195,14 @@ public final class NetworkObjectEdits {
         Button add = new Button(Messages.get("desktop.common.action.add"), new FontIcon("mdi2p-plus"));
         Button remove = new Button(Messages.get("desktop.common.action.remove"), new FontIcon("mdi2d-delete"));
         remove.disableProperty().bind(trippings.getSelectionModel().selectedItemProperty().isNull());
-        add.setOnAction(event -> {
+        add.setOnAction(_ -> {
             if (elementBox.getValue() == null || Double.isNaN(currentLimit.get())) {
                 return;
             }
             trippings.getItems().add(new TrippingRow(type.get(), elementBox.getValue(), sideBox.getValue(),
                     "T" + (trippings.getItems().size() + 1), currentLimit.get(), open.get()));
         });
-        remove.setOnAction(event -> trippings.getItems().remove(trippings.getSelectionModel().getSelectedItem()));
+        remove.setOnAction(_ -> trippings.getItems().remove(trippings.getSelectionModel().getSelectedItem()));
         HBox buttons = new HBox(8, add, remove);
         buttons.setAlignment(Pos.CENTER_LEFT);
         form.custom("edit.oms.trippingActions", buttons, null, () -> null);
@@ -230,7 +230,7 @@ public final class NetworkObjectEdits {
             if (!Double.isNaN(high.get())) {
                 adder.setHighLimit(high.get());
             }
-            return NetworkEdits.apply(sceneModel.getMainModel(), network, n -> adder.add());
+            return NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> adder.add());
         });
     }
 
@@ -248,7 +248,7 @@ public final class NetworkObjectEdits {
         Terminal[] terminal = {null};
         Button pick = new Button(null, new FontIcon("mdi2p-pencil"));
         pick.getStyleClass().add("icon-button");
-        pick.setOnAction(event -> TerminalPickerDialog.show(pick.getScene().getWindow(), sceneModel).ifPresent(picked -> {
+        pick.setOnAction(_ -> TerminalPickerDialog.show(pick.getScene().getWindow(), sceneModel).ifPresent(picked -> {
             terminal[0] = picked;
             label.setText(picked.getConnectable().getNameOrId() + (picked.getSide() == null ? "" : " (" + picked.getSide() + ")"));
         }));
@@ -275,7 +275,7 @@ public final class NetworkObjectEdits {
             return;
         }
         try {
-            NetworkEdits.apply(mainModel, limit.getTerminalFrom().getVoltageLevel().getParentNetwork(), network -> limit.remove());
+            NetworkEdits.apply(mainModel, limit.getTerminalFrom().getVoltageLevel().getParentNetwork(), _ -> limit.remove());
         } catch (PowsyblException e) {
             mainModel.getNotificationsModel().add(Notification.createError(Instant.now(), "edit.remove.failed").withMessageArgs(description, e.getMessage()));
         }

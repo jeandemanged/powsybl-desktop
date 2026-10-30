@@ -103,7 +103,7 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
 
     // single values rendered as a one-slot multi-sided column: a StackPane slot holding the field (see CellFields.sidedColumn)
     private static TextField fieldOf(VBox box, int index) {
-        return (TextField) ((StackPane) box.getChildren().get(index)).getChildren().get(0);
+        return (TextField) ((StackPane) box.getChildren().get(index)).getChildren().getFirst();
     }
 
     @Test
@@ -125,11 +125,11 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals(line.getNameOrId(), cellValue(controller.nameColumn, row));
 
         VBox voltageLevelBox = cellBox(controller.voltageLevelColumn, row);
-        assertEquals(voltageLevel1.getNameOrId(), ((Hyperlink) voltageLevelBox.getChildren().get(0)).getText());
+        assertEquals(voltageLevel1.getNameOrId(), ((Hyperlink) voltageLevelBox.getChildren().getFirst()).getText());
         assertEquals(voltageLevel2.getNameOrId(), ((Hyperlink) voltageLevelBox.getChildren().get(1)).getText());
 
         VBox substationBox = cellBox(controller.substationColumn, row);
-        assertEquals(voltageLevel1.getSubstation().orElseThrow().getNameOrId(), ((Hyperlink) substationBox.getChildren().get(0)).getText());
+        assertEquals(voltageLevel1.getSubstation().orElseThrow().getNameOrId(), ((Hyperlink) substationBox.getChildren().getFirst()).getText());
         assertEquals(voltageLevel2.getSubstation().orElseThrow().getNameOrId(), ((Hyperlink) substationBox.getChildren().get(1)).getText());
     }
 
@@ -138,7 +138,7 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
         Line line = network.getLineStream().findFirst().orElseThrow();
         VBox box = cellBox(controller.connectedColumn, rowOf(line));
 
-        assertEquals(line.getTerminal1().isConnected(), ((CheckBox) box.getChildren().get(0)).isSelected());
+        assertEquals(line.getTerminal1().isConnected(), ((CheckBox) box.getChildren().getFirst()).isSelected());
         assertEquals(line.getTerminal2().isConnected(), ((CheckBox) box.getChildren().get(1)).isSelected());
     }
 
@@ -146,7 +146,7 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
     void togglingConnectedCheckBoxesDisconnectsAndReconnectsEachTerminal() {
         Line line = network.getLineStream().findFirst().orElseThrow();
         VBox box = cellBox(controller.connectedColumn, rowOf(line));
-        CheckBox terminal1CheckBox = (CheckBox) box.getChildren().get(0);
+        CheckBox terminal1CheckBox = (CheckBox) box.getChildren().getFirst();
         CheckBox terminal2CheckBox = (CheckBox) box.getChildren().get(1);
         assertTrue(line.getTerminal1().isConnected());
         assertTrue(line.getTerminal2().isConnected());
@@ -167,22 +167,22 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
 
         VBox ccBox = cellBox(controller.connectedComponentColumn, row);
         assertEquals(String.valueOf(line.getTerminal1().getBusView().getBus().getConnectedComponent().getNum()),
-                ((Label) ccBox.getChildren().get(0)).getText());
+                ((Label) ccBox.getChildren().getFirst()).getText());
         assertEquals(String.valueOf(line.getTerminal2().getBusView().getBus().getConnectedComponent().getNum()),
                 ((Label) ccBox.getChildren().get(1)).getText());
 
         VBox scBox = cellBox(controller.synchronousComponentColumn, row);
         assertEquals(String.valueOf(line.getTerminal1().getBusView().getBus().getSynchronousComponent().getNum()),
-                ((Label) scBox.getChildren().get(0)).getText());
+                ((Label) scBox.getChildren().getFirst()).getText());
         assertEquals(String.valueOf(line.getTerminal2().getBusView().getBus().getSynchronousComponent().getNum()),
                 ((Label) scBox.getChildren().get(1)).getText());
 
         VBox pBox = cellBox(controller.pColumn, row);
-        assertEquals(powerText(line.getTerminal1().getP()), ((Label) pBox.getChildren().get(0)).getText());
+        assertEquals(powerText(line.getTerminal1().getP()), ((Label) pBox.getChildren().getFirst()).getText());
         assertEquals(powerText(line.getTerminal2().getP()), ((Label) pBox.getChildren().get(1)).getText());
 
         VBox qBox = cellBox(controller.qColumn, row);
-        assertEquals(powerText(line.getTerminal1().getQ()), ((Label) qBox.getChildren().get(0)).getText());
+        assertEquals(powerText(line.getTerminal1().getQ()), ((Label) qBox.getChildren().getFirst()).getText());
         assertEquals(powerText(line.getTerminal2().getQ()), ((Label) qBox.getChildren().get(1)).getText());
     }
 
@@ -342,7 +342,7 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> mainModel.setUpdate());
 
         VBox substationBox = cellBox(controller.substationColumn, rowOf(line));
-        assertFalse(substationBox.getChildren().get(0) instanceof Hyperlink);
+        assertFalse(substationBox.getChildren().getFirst() instanceof Hyperlink);
         assertFalse(substationBox.getChildren().get(1) instanceof Hyperlink);
     }
 
@@ -354,7 +354,7 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> controller.goToLine(line));
         List<TablePosition> selectedCells = controller.linesTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(row, selectedCells.get(0).getRow());
+        assertEquals(row, selectedCells.getFirst().getRow());
 
         interact(() -> controller.goToLine(null));
         assertTrue(controller.linesTableView.getSelectionModel().getSelectedCells().isEmpty());
@@ -375,14 +375,14 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
 
         List<TablePosition> selectedCells = controller.linesTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(sortedRow, selectedCells.get(0).getRow());
+        assertEquals(sortedRow, selectedCells.getFirst().getRow());
     }
 
     @Test
     void clickingVoltageLevel1LinkNavigatesToIt() {
         Line line = network.getLineStream().findFirst().orElseThrow();
         VoltageLevel voltageLevel1 = line.getTerminal1().getVoltageLevel();
-        Hyperlink link = (Hyperlink) cellBox(controller.voltageLevelColumn, rowOf(line)).getChildren().get(0);
+        Hyperlink link = (Hyperlink) cellBox(controller.voltageLevelColumn, rowOf(line)).getChildren().getFirst();
 
         interact(link::fire);
 
@@ -395,7 +395,7 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
     void clickingSubstation1LinkNavigatesToIt() {
         Line line = network.getLineStream().findFirst().orElseThrow();
         Substation substation1 = line.getTerminal1().getVoltageLevel().getSubstation().orElseThrow();
-        Hyperlink link = (Hyperlink) cellBox(controller.substationColumn, rowOf(line)).getChildren().get(0);
+        Hyperlink link = (Hyperlink) cellBox(controller.substationColumn, rowOf(line)).getChildren().getFirst();
 
         interact(link::fire);
 

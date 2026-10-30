@@ -81,11 +81,11 @@ public class VoltageAngleLimitsController extends AbstractNetworkObjectTableCont
         Button addButton = new Button(null, new FontIcon("mdi2p-plus"));
         addButton.setTooltip(new Tooltip(Messages.get("edit.menu.new")));
         addButton.disableProperty().bind(mainModel.networkBusyProperty().or(sceneModel.networkProperty().isNull()));
-        addButton.setOnAction(event -> NetworkObjectEdits.newVoltageAngleLimit(sceneModel, toolBar.getScene().getWindow(), sceneModel.getNetwork()));
+        addButton.setOnAction(_ -> NetworkObjectEdits.newVoltageAngleLimit(sceneModel, toolBar.getScene().getWindow(), sceneModel.getNetwork()));
         Button removeButton = new Button(null, new FontIcon("mdi2d-delete"));
         removeButton.setTooltip(new Tooltip(Messages.get("desktop.common.action.remove")));
         removeButton.disableProperty().bind(mainModel.networkBusyProperty().or(voltageAngleLimitsTableView.getSelectionModel().selectedItemProperty().isNull()));
-        removeButton.setOnAction(event -> NetworkObjectEdits.removeVoltageAngleLimit(mainModel, toolBar.getScene().getWindow(),
+        removeButton.setOnAction(_ -> NetworkObjectEdits.removeVoltageAngleLimit(mainModel, toolBar.getScene().getWindow(),
                 voltageAngleLimitsTableView.getSelectionModel().getSelectedItem()));
         toolBar.getItems().addAll(0, List.of(addButton, removeButton, new Separator(Orientation.VERTICAL)));
     }

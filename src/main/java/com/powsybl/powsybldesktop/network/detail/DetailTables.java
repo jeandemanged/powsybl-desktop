@@ -62,7 +62,7 @@ public final class DetailTables {
         column.setSortable(false);
         column.setEditable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
-        column.setCellFactory(col -> new TableCell<>() {
+        column.setCellFactory(_ -> new TableCell<>() {
             @Override
             protected void updateItem(T value, boolean empty) {
                 super.updateItem(value, empty);
@@ -77,7 +77,7 @@ public final class DetailTables {
      */
     public static <R, T> TableColumn<R, T> editableColumn(String titleKey, StringConverter<T> format, Function<R, T> getter,
                                                           BiConsumer<R, T> setter, Runnable onEdit) {
-        return editableColumn(titleKey, format, getter, setter, onEdit, row -> true);
+        return editableColumn(titleKey, format, getter, setter, onEdit, _ -> true);
     }
 
     /**
@@ -102,7 +102,7 @@ public final class DetailTables {
         column.setSortable(false);
         column.setEditable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
-        column.setCellFactory(col -> new CheckBoxCell<>(getter, setter, onEdit, editable));
+        column.setCellFactory(_ -> new CheckBoxCell<>(getter, setter, onEdit, editable));
         return column;
     }
 
@@ -122,7 +122,7 @@ public final class DetailTables {
 
         private CheckBoxCell(Function<R, Boolean> getter, BiConsumer<R, Boolean> setter, Runnable onEdit, BooleanProperty editable) {
             checkBox.disableProperty().bind(editable.not());
-            checkBox.setOnAction(event -> {
+            checkBox.setOnAction(_ -> {
                 R row = getTableRow().getItem();
                 DetailForm.apply(checkBox, () -> setter.accept(row, checkBox.isSelected()), onEdit);
                 checkBox.setSelected(getter.apply(row));

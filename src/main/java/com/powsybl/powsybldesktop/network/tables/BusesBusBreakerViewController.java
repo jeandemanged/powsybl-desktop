@@ -52,7 +52,7 @@ public class BusesBusBreakerViewController extends AbstractBusesController {
 
     private void configureBusInBusViewColumn() {
         busInBusViewColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        busInBusViewColumn.setCellFactory(col -> new TableCell<Bus, Bus>() {
+        busInBusViewColumn.setCellFactory(_ -> new TableCell<Bus, Bus>() {
             @Override
             protected void updateItem(Bus bus, boolean empty) {
                 super.updateItem(bus, empty);
@@ -65,7 +65,7 @@ public class BusesBusBreakerViewController extends AbstractBusesController {
         return busViewBusOf(bus).<Node>map(busViewBus -> {
             Hyperlink link = new Hyperlink(busViewBus.getNameOrId());
             link.getStyleClass().add("container-link");
-            link.setOnAction(event -> {
+            link.setOnAction(_ -> {
                 if (isEmbedded()) {
                     sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
                             ContainerNavigationState.create(busViewBus.getVoltageLevel(), ContainerNavigationState.ContainerTab.BUSES_BUS_VIEW)));

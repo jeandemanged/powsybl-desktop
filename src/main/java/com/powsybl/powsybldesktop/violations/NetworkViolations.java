@@ -80,10 +80,10 @@ public final class NetworkViolations {
     public static NetworkViolations compute(Network network, LimitsComputer<Identifiable<?>, LoadingLimits> limitsComputer) {
         Objects.requireNonNull(limitsComputer);
         Map<String, List<FlowViolation>> flowViolations = new HashMap<>();
-        Consumer<FlowViolation> flowConsumer = v -> flowViolations.computeIfAbsent(v.violation().getSubjectId(), id -> new ArrayList<>()).add(v);
+        Consumer<FlowViolation> flowConsumer = v -> flowViolations.computeIfAbsent(v.violation().getSubjectId(), _ -> new ArrayList<>()).add(v);
         Map<String, Map<ThreeSides, Double>> loadings = new HashMap<>();
         LoadingConsumer loadingConsumer = (equipment, side, percent) -> loadings
-                .computeIfAbsent(equipment.getId(), id -> new EnumMap<>(ThreeSides.class))
+                .computeIfAbsent(equipment.getId(), _ -> new EnumMap<>(ThreeSides.class))
                 .merge(side, percent, Math::max);
         network.getBranchStream().forEach(branch -> {
             for (TwoSides side : TwoSides.values()) {
@@ -100,7 +100,7 @@ public final class NetworkViolations {
         network.getBoundaryLineStream(BoundaryLineFilter.UNPAIRED).forEach(boundaryLine ->
                 checkFlows(boundaryLine, ThreeSides.ONE, boundaryLine.getTerminal(), type -> unmodifiedLimits(boundaryLine, type),
                         flowConsumer, loadingConsumer));
-        flowViolations.replaceAll((id, violations) -> violations.stream().sorted(FlowViolation.SEVERITY).toList());
+        flowViolations.replaceAll((_, violations) -> violations.stream().sorted(FlowViolation.SEVERITY).toList());
 
         Map<String, VoltageViolation> voltageViolations = new HashMap<>();
         network.getVoltageLevelStream()

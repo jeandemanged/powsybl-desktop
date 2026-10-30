@@ -164,15 +164,15 @@ class ShuntCompensatorsControllerTest extends AbstractHeadlessApplicationTest {
     // VBox with the increment (top) and decrement (bottom) buttons.
     private HBox stepperOf(ShuntCompensator shuntCompensator) {
         VBox box = (VBox) cellGraphic(controller.sectionColumn, rowOf(shuntCompensator));
-        return (HBox) ((StackPane) box.getChildren().get(0)).getChildren().get(0);
+        return (HBox) ((StackPane) box.getChildren().getFirst()).getChildren().getFirst();
     }
 
     private static TextField sectionFieldOf(HBox stepperBox) {
-        return (TextField) stepperBox.getChildren().get(0);
+        return (TextField) stepperBox.getChildren().getFirst();
     }
 
     private static Button sectionIncrementButtonOf(HBox stepperBox) {
-        return (Button) ((VBox) stepperBox.getChildren().get(1)).getChildren().get(0);
+        return (Button) ((VBox) stepperBox.getChildren().get(1)).getChildren().getFirst();
     }
 
     private static Button sectionDecrementButtonOf(HBox stepperBox) {
@@ -326,7 +326,7 @@ class ShuntCompensatorsControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> controller.goToShuntCompensator(shuntCompensator));
         List<TablePosition> selectedCells = controller.shuntCompensatorsTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(row, selectedCells.get(0).getRow());
+        assertEquals(row, selectedCells.getFirst().getRow());
 
         interact(() -> controller.goToShuntCompensator(null));
         assertTrue(controller.shuntCompensatorsTableView.getSelectionModel().getSelectedCells().isEmpty());
@@ -347,7 +347,7 @@ class ShuntCompensatorsControllerTest extends AbstractHeadlessApplicationTest {
 
         List<TablePosition> selectedCells = controller.shuntCompensatorsTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(sortedRow, selectedCells.get(0).getRow());
+        assertEquals(sortedRow, selectedCells.getFirst().getRow());
     }
 
     @Test

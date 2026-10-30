@@ -79,10 +79,10 @@ class LoadFlowParametersControllerTest extends AbstractHeadlessApplicationTest {
 
     @SuppressWarnings("unchecked")
     private GridPane selectCategory(String title) {
-        ListView<String> categories = (ListView<String>) controller.splitPane.getItems().get(0);
+        ListView<String> categories = (ListView<String>) controller.splitPane.getItems().getFirst();
         StackPane detail = (StackPane) controller.splitPane.getItems().get(1);
         interact(() -> categories.getSelectionModel().select(title));
-        ScrollPane scrollPane = (ScrollPane) detail.getChildren().get(0);
+        ScrollPane scrollPane = (ScrollPane) detail.getChildren().getFirst();
         return (GridPane) scrollPane.getContent();
     }
 
@@ -97,7 +97,7 @@ class LoadFlowParametersControllerTest extends AbstractHeadlessApplicationTest {
                             Integer r = GridPane.getRowIndex(n);
                             return (r == null ? 0 : r) == row;
                         })
-                        .map(n -> (Control) n)
+                        .map(Control.class::cast)
                         .findFirst()
                         .orElseThrow(() -> new AssertionError("No control next to label: " + labelText));
             }
@@ -108,7 +108,7 @@ class LoadFlowParametersControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void categoryListShowsAllExpectedTitlesInOrder() {
         @SuppressWarnings("unchecked")
-        ListView<String> categories = (ListView<String>) controller.splitPane.getItems().get(0);
+        ListView<String> categories = (ListView<String>) controller.splitPane.getItems().getFirst();
         assertEquals(List.copyOf(LoadFlowParametersController.buildCategoryTitles().values()), categories.getItems());
     }
 
@@ -189,7 +189,7 @@ class LoadFlowParametersControllerTest extends AbstractHeadlessApplicationTest {
         List<Path> failures = new ArrayList<>();
 
         interact(() -> {
-            controller.setOnImportFailed((path, e) -> failures.add(path));
+            controller.setOnImportFailed((path, _) -> failures.add(path));
             controller.importFrom(file);
         });
 

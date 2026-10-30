@@ -201,7 +201,7 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
             Hyperlink link = new Hyperlink(container.getNameOrId());
             link.getStyleClass().add("container-link");
             // a diagram tab selects no row
-            link.setOnAction(event -> sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
+            link.setOnAction(_ -> sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
                     ContainerNavigationState.create(container, tab, tab == ContainerNavigationState.ContainerTab.SINGLE_LINE ? null : equipment))));
             linksBox.getChildren().add(link);
         }
@@ -210,14 +210,14 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
             HBox.setHgrow(spacer, Priority.ALWAYS);
             Button removeButton = new Button(Messages.get("desktop.common.action.remove"), new FontIcon("mdi2d-delete"));
             removeButton.disableProperty().bind(editable.not());
-            removeButton.setOnAction(event -> Removals.remove(mainModel, removeButton.getScene().getWindow(), equipment));
+            removeButton.setOnAction(_ -> Removals.remove(mainModel, removeButton.getScene().getWindow(), equipment));
             linksBox.getChildren().addAll(spacer, removeButton);
         }
 
-        listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
-        listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> refresh());
+        listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> refresh());
+        listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (_, _, _) -> refresh());
         // the symbol's component library
-        listenerManager.listen(mainModel.getParametersModel().sldParametersProperty(), (observable, oldValue, newValue) -> refresh());
+        listenerManager.listen(mainModel.getParametersModel().sldParametersProperty(), (_, _, _) -> refresh());
         refresh();
     }
 

@@ -49,7 +49,7 @@ class MainControllerSecurityAnalysisTest extends AbstractHeadlessApplicationTest
 
         FXMLLoader loader = new FXMLLoader(getClass().getResource(
                 "/com/powsybl/powsybldesktop/main-view.fxml"), Messages.bundle());
-        loader.setControllerFactory(type -> controller);
+        loader.setControllerFactory(_ -> controller);
         Parent root = loader.load();
 
         stage.setScene(new Scene(root));

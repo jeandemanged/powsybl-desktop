@@ -235,7 +235,7 @@ class LoadsControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> controller.goToLoad(load));
         List<TablePosition> selectedCells = controller.loadsTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(row, selectedCells.get(0).getRow());
+        assertEquals(row, selectedCells.getFirst().getRow());
 
         interact(() -> controller.goToLoad(null));
         assertTrue(controller.loadsTableView.getSelectionModel().getSelectedCells().isEmpty());
@@ -256,7 +256,7 @@ class LoadsControllerTest extends AbstractHeadlessApplicationTest {
 
         List<TablePosition> selectedCells = controller.loadsTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(sortedRow, selectedCells.get(0).getRow());
+        assertEquals(sortedRow, selectedCells.getFirst().getRow());
     }
 
     @Test

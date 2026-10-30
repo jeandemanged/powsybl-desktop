@@ -249,7 +249,7 @@ public final class BranchCreations {
                         .setRatedU(Double.isNaN(leg.ratedU().get()) ? voltageLevel.getNominalV() : leg.ratedU().get())
                         .setVoltageLevel(voltageLevel.getId());
                 if (connection.isNodeBreaker()) {
-                    nodes[i] = nextNodes.merge(voltageLevel, voltageLevel.getNodeBreakerView().getMaximumNodeIndex() + 1, (previous, unused) -> previous + 1);
+                    nodes[i] = nextNodes.merge(voltageLevel, voltageLevel.getNodeBreakerView().getMaximumNodeIndex() + 1, (previous, _) -> previous + 1);
                     legAdder.setNode(nodes[i]);
                 } else {
                     legAdder.setBus(connection.busOrBusbarSectionId()).setConnectableBus(connection.busOrBusbarSectionId());

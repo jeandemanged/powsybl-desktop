@@ -76,7 +76,7 @@ class MapNetworkDataTest {
                 .setVoltageLevel2("VL_ALONE").setBus2("VL_ALONE_B")
                 .setR(1).setX(10)
                 .add();
-        data = MapNetworkData.build(network, nominalV -> null, (baseVoltage, defaultColor) -> defaultColor);
+        data = MapNetworkData.build(network, _ -> null, (_, defaultColor) -> defaultColor);
     }
 
     private static void addSubstation(Network network, String id, Coordinate coordinate) {

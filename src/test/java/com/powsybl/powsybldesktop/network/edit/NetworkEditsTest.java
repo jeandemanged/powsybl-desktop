@@ -52,7 +52,7 @@ class NetworkEditsTest {
         System.setProperty("glass.platform", "Headless");
         try {
             Platform.startup(() -> { });
-        } catch (IllegalStateException alreadyStarted) {
+        } catch (IllegalStateException _) {
             // toolkit already started by another test class running in this fork
         }
     }
@@ -60,7 +60,7 @@ class NetworkEditsTest {
     @BeforeEach
     void setUp() {
         mainModel.addNetwork(network);
-        mainModel.structureChangeProperty().addListener((observable, oldValue, change) -> {
+        mainModel.structureChangeProperty().addListener((_, _, change) -> {
             if (change != null) {
                 changes.add(change);
             }

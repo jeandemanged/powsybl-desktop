@@ -117,7 +117,7 @@ public final class TapChangerPane extends VBox implements DetailPart {
         if (shown == null) {
             Button addButton = new Button(Messages.get("desktop.common.action.add"));
             addButton.disableProperty().bind(editable.not());
-            addButton.setOnAction(event -> {
+            addButton.setOnAction(_ -> {
                 DetailForm.apply(addButton, creator, onEdit);
                 refresh();
             });
@@ -146,14 +146,14 @@ public final class TapChangerPane extends VBox implements DetailPart {
         stepsTable = stepsTable(changer);
         Button addStepButton = new Button(Messages.get("detail.tapChanger.addStep"));
         addStepButton.disableProperty().bind(editable.not());
-        addStepButton.setOnAction(event -> DetailForm.apply(addStepButton, () -> addStep(changer), onEdit));
+        addStepButton.setOnAction(_ -> DetailForm.apply(addStepButton, () -> addStep(changer), onEdit));
         Button removeStepButton = new Button(Messages.get("detail.tapChanger.removeStep"));
         removeStepButton.disableProperty().bind(editable.not().or(stepsTable.getSelectionModel().selectedItemProperty().isNull()));
-        removeStepButton.setOnAction(event -> DetailForm.apply(removeStepButton,
+        removeStepButton.setOnAction(_ -> DetailForm.apply(removeStepButton,
                 () -> removeStep(changer, stepsTable.getSelectionModel().getSelectedItem()), onEdit));
         Button removeButton = new Button(Messages.get("desktop.common.action.remove"));
         removeButton.disableProperty().bind(editable.not());
-        removeButton.setOnAction(event -> {
+        removeButton.setOnAction(_ -> {
             DetailForm.apply(removeButton, changer::remove, onEdit);
             refresh();
         });

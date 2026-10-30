@@ -257,7 +257,7 @@ class BoundaryLinesControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> controller.goToBoundaryLine(boundaryLine));
         List<TablePosition> selectedCells = controller.boundaryLinesTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(row, selectedCells.get(0).getRow());
+        assertEquals(row, selectedCells.getFirst().getRow());
 
         interact(() -> controller.goToBoundaryLine(null));
         assertTrue(controller.boundaryLinesTableView.getSelectionModel().getSelectedCells().isEmpty());

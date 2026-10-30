@@ -51,7 +51,7 @@ public class NotificationView extends VBox {
     private final Region statusMarker = new Region();
     private final Arc statusArc = new Arc(5, 5, 5, 5, 90, 270);
     private final RotateTransition statusArcRotation = new RotateTransition(Duration.seconds(1), statusArc);
-    private final Timeline elapsedTimeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> this.refreshMessage()));
+    private final Timeline elapsedTimeline = new Timeline(new KeyFrame(Duration.seconds(1), _ -> this.refreshMessage()));
     private final StackPane statusIndicator = new StackPane(statusMarker, statusArc);
     private final Label messageLabel = new Label();
     private final Label timeLabel = new Label();
@@ -77,7 +77,7 @@ public class NotificationView extends VBox {
         HBox.setHgrow(messageLabel, Priority.ALWAYS);
         timeLabel.getStyleClass().add("notification-timestamp");
         closeIcon.getStyleClass().add("notification-close");
-        closeIcon.setOnMouseClicked(e -> {
+        closeIcon.setOnMouseClicked(_ -> {
             if (onClose != null && item != null) {
                 onClose.accept(item);
             }
@@ -144,7 +144,7 @@ public class NotificationView extends VBox {
             return List.of();
         }
         Button button = new Button(Messages.get("desktop.common.action.cancel"));
-        button.setOnAction(e -> onCancel.run());
+        button.setOnAction(_ -> onCancel.run());
         return List.of(button);
     }
 

@@ -57,7 +57,7 @@ public class GuiParametersController extends AbstractDiagramParametersController
         setParametersProperty(parametersModel.guiParametersProperty());
         setOnChange(parametersModel::guiParametersChanged);
         // edited from the map, logs and reports views and the creation dialogs too
-        listenerManager.listen(parametersModel.guiParametersRevisionProperty(), (observable, oldValue, newValue) -> refresh());
+        listenerManager.listen(parametersModel.guiParametersRevisionProperty(), (_, _, _) -> refresh());
     }
 
     @Override
@@ -98,7 +98,7 @@ public class GuiParametersController extends AbstractDiagramParametersController
             }
         });
         refreshers.add(() -> choiceBox.setValue(getter.apply(parametersProperty.getValue())));
-        choiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+        choiceBox.valueProperty().addListener((_, _, newValue) -> {
             if (!refreshing && newValue != null) {
                 setter.accept(parametersProperty.getValue(), newValue);
                 notifyChange();
@@ -114,9 +114,9 @@ public class GuiParametersController extends AbstractDiagramParametersController
         });
         refreshers.add(() -> checkBoxes.setHidden(parametersProperty.getValue().getMapHiddenBaseVoltages()));
         Hyperlink checkAllLink = new Hyperlink(Messages.get("map.baseVoltages.checkAll"));
-        checkAllLink.setOnAction(event -> checkBoxes.setAllSelected(true));
+        checkAllLink.setOnAction(_ -> checkBoxes.setAllSelected(true));
         Hyperlink checkNoneLink = new Hyperlink(Messages.get("map.baseVoltages.checkNone"));
-        checkNoneLink.setOnAction(event -> checkBoxes.setAllSelected(false));
+        checkNoneLink.setOnAction(_ -> checkBoxes.setAllSelected(false));
         VBox box = new VBox(4, new HBox(4, checkAllLink, checkNoneLink));
         box.getChildren().addAll(checkBoxes.getCheckBoxes());
         addRow(CAT_MAP, Messages.get("map.baseVoltages"), null, box);

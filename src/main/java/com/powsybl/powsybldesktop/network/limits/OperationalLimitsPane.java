@@ -300,7 +300,7 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
         table.getColumns().add(column("limits.column.acceptableDuration", OperationalLimitsPane::durationText));
         table.getColumns().add(column("limits.column.fictitious", row -> row.fictitious() ? Messages.get("limits.fictitious") : ""));
         table.getItems().setAll(rows);
-        table.setRowFactory(t -> new TableRow<>() {
+        table.setRowFactory(_ -> new TableRow<>() {
             @Override
             protected void updateItem(LimitRow row, boolean empty) {
                 super.updateItem(row, empty);
@@ -374,7 +374,7 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
             idField.setPromptText(Messages.get("limits.edit.groupId"));
             Button addGroupButton = new Button(Messages.get("limits.edit.addGroup"));
             addGroupButton.disableProperty().bind(editable.not().or(idField.textProperty().isEmpty()));
-            addGroupButton.setOnAction(event -> edit(addGroupButton, () -> side.newGroup().accept(idField.getText().trim())));
+            addGroupButton.setOnAction(_ -> edit(addGroupButton, () -> side.newGroup().accept(idField.getText().trim())));
             HBox addGroup = new HBox(4, idField, addGroupButton);
             addGroup.setAlignment(Pos.CENTER_LEFT);
             getChildren().add(addGroup);
@@ -390,10 +390,10 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
         CheckBox selected = new CheckBox(Messages.get("limits.edit.selected"));
         selected.setSelected(side.selectedGroups().get().contains(group));
         selected.disableProperty().bind(editable.not());
-        selected.setOnAction(event -> edit(selected, () -> (selected.isSelected() ? side.select() : side.deselect()).accept(group.getId())));
+        selected.setOnAction(_ -> edit(selected, () -> (selected.isSelected() ? side.select() : side.deselect()).accept(group.getId())));
         Button removeButton = new Button(Messages.get("limits.edit.removeGroup"));
         removeButton.disableProperty().bind(editable.not());
-        removeButton.setOnAction(event -> edit(removeButton, () -> side.removeGroup().accept(group.getId())));
+        removeButton.setOnAction(_ -> edit(removeButton, () -> side.removeGroup().accept(group.getId())));
         HBox header = new HBox(8, title, selected, removeButton);
         header.setAlignment(Pos.CENTER_LEFT);
         VBox box = new VBox(6, header);
@@ -407,7 +407,7 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
                 box.getChildren().addAll(editableLimitsHeader(side, group, type), editableLimitsTable(group, type));
             } else {
                 MenuItem item = new MenuItem(Messages.get("desktop.common.limitViolationType." + type.name()));
-                item.setOnAction(event -> edit(addLimitsButton, () -> newLimits(group, type).add()));
+                item.setOnAction(_ -> edit(addLimitsButton, () -> newLimits(group, type).add()));
                 addLimitsButton.getItems().add(item);
             }
         }
@@ -422,14 +422,14 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
         tableRefreshers.add(() -> label.setText(limitsHeader(side, type, true).getText()));
         Button addButton = new Button(Messages.get("limits.edit.addTemporaryLimit"));
         addButton.disableProperty().bind(editable.not());
-        addButton.setOnAction(event -> edit(addButton, () -> replace(group, type, rows -> {
+        addButton.setOnAction(_ -> edit(addButton, () -> replace(group, type, rows -> {
             List<LimitRow> newRows = new ArrayList<>(rows);
             newRows.add(newTemporaryLimit(rows));
             return newRows;
         })));
         Button removeButton = new Button(Messages.get("limits.edit.removeLimits"));
         removeButton.disableProperty().bind(editable.not());
-        removeButton.setOnAction(event -> edit(removeButton, () -> {
+        removeButton.setOnAction(_ -> edit(removeButton, () -> {
             switch (type) {
                 case CURRENT -> group.removeCurrentLimits();
                 case ACTIVE_POWER -> group.removeActivePowerLimits();
@@ -484,7 +484,7 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
 
         Button removeButton = new Button(Messages.get("limits.edit.removeTemporaryLimit"));
         removeButton.disableProperty().bind(editable.not().or(table.getSelectionModel().selectedItemProperty().isNull()));
-        removeButton.setOnAction(event -> {
+        removeButton.setOnAction(_ -> {
             LimitRow selected = table.getSelectionModel().getSelectedItem();
             edit(removeButton, () -> {
                 if (selected.acceptableDuration() == null) {
@@ -500,7 +500,7 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
     private static MenuItem menuItem(Button button) {
         MenuItem item = new MenuItem(button.getText());
         item.disableProperty().bind(button.disableProperty());
-        item.setOnAction(event -> button.fire());
+        item.setOnAction(_ -> button.fire());
         return item;
     }
 

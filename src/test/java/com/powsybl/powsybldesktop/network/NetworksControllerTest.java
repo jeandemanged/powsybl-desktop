@@ -177,7 +177,7 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
     void treeShowsAddedNetworks() {
         TreeView<Network> tree = treeView();
         assertEquals(2, tree.getRoot().getChildren().size());
-        assertEquals(ieee14, tree.getRoot().getChildren().get(0).getValue());
+        assertEquals(ieee14, tree.getRoot().getChildren().getFirst().getValue());
         assertEquals(ieee118, tree.getRoot().getChildren().get(1).getValue());
     }
 
@@ -370,7 +370,7 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
         selectNetwork(ieee14);
 
         List<Pair<String, String>> rows = networkInfoTable().getItems();
-        assertEquals("Buses (Bus/Breaker View)", rows.get(0).getKey());
+        assertEquals("Buses (Bus/Breaker View)", rows.getFirst().getKey());
         assertEquals("Buses (Bus/Branch View)", rows.get(1).getKey());
 
         long busBreakerTotal = ieee14.getVoltageLevelStream()
@@ -378,7 +378,7 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
         long busBreakerMainCC = ieee14.getVoltageLevelStream()
                 .flatMap(vl -> vl.getBusBreakerView().getBusStream())
                 .filter(Bus::isInMainConnectedComponent).count();
-        assertEquals(busBreakerTotal + " (" + busBreakerMainCC + " in main connected component)", rows.get(0).getValue());
+        assertEquals(busBreakerTotal + " (" + busBreakerMainCC + " in main connected component)", rows.getFirst().getValue());
 
         long busViewTotal = ieee14.getVoltageLevelStream()
                 .flatMap(vl -> vl.getBusView().getBusStream()).count();

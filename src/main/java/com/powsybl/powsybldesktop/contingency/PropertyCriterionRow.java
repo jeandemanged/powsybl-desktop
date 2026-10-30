@@ -15,7 +15,6 @@ import javafx.beans.property.SimpleStringProperty;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Editable row backing {@link CriterionListFormController}'s property criteria table - {@code values} is
@@ -45,7 +44,7 @@ public class PropertyCriterionRow {
         List<String> parsedValues = Arrays.stream(values.get().split(","))
                 .map(String::trim)
                 .filter(v -> !v.isEmpty())
-                .collect(Collectors.toList());
+                .toList();
         return new PropertyCriterion(key.get(), parsedValues, equipmentToCheck.get(), sideToCheck.get());
     }
 

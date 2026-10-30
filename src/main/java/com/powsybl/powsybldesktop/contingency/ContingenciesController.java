@@ -125,7 +125,7 @@ public class ContingenciesController extends AbstractDisposableController implem
     private void initialize() {
         for (ContingencyListKind kind : ContingencyListKind.values()) {
             MenuItem item = new MenuItem(kind.label());
-            item.setOnAction(event -> addContingencyList(kind));
+            item.setOnAction(_ -> addContingencyList(kind));
             addMenuButton.getItems().add(item);
         }
         removeButton.disableProperty().bind(contingencyListsListView.getSelectionModel().selectedItemProperty().isNull());
@@ -140,12 +140,12 @@ public class ContingenciesController extends AbstractDisposableController implem
                 throw new UnsupportedOperationException();
             }
         }));
-        contingencyListsListView.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> showForm(newValue));
+        contingencyListsListView.getSelectionModel().selectedItemProperty().addListener((_, _, newValue) -> showForm(newValue));
 
         nameColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(ContingencyNames.displayName(cellData.getValue(), network)));
         elementsColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(ContingencyNames.elementsSummary(cellData.getValue(), network)));
         validColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(validContingencyIds.contains(cellData.getValue().getId())));
-        validColumn.setCellFactory(col -> new TableCell<>() {
+        validColumn.setCellFactory(_ -> new TableCell<>() {
             private final CheckBox checkBox = new CheckBox();
 
             {
@@ -169,7 +169,7 @@ public class ContingenciesController extends AbstractDisposableController implem
     public void setSceneModel(SceneModel sceneModel) {
         this.sceneModel = Objects.requireNonNull(sceneModel);
         this.mainModel = sceneModel.getMainModel();
-        listenerManager.listen(sceneModel.networkProperty(), (obs, oldValue, newValue) -> refreshForNetwork(newValue));
+        listenerManager.listen(sceneModel.networkProperty(), (_, _, newValue) -> refreshForNetwork(newValue));
         refreshForNetwork(sceneModel.getNetwork());
     }
 
@@ -191,7 +191,7 @@ public class ContingenciesController extends AbstractDisposableController implem
             // here, since refreshInstantiatedTable() always reads mainModel.getStudy(this.network).getContingencyLists() -
             // and it's what makes every mutation (add/remove/import/a form's onReplace) redraw the right pane
             // without each of those call sites needing to remember to call refreshInstantiatedTable() itself.
-            listenerManager.listen(mainModel.getStudy(newNetwork).getContingencyLists(), change -> refreshInstantiatedTable());
+            listenerManager.listen(mainModel.getStudy(newNetwork).getContingencyLists(), _ -> refreshInstantiatedTable());
         }
         showForm(null);
         refreshInstantiatedTable();
@@ -207,7 +207,7 @@ public class ContingenciesController extends AbstractDisposableController implem
         List<Contingency> contingencies = ContingencyNames.deduplicate(mainModel.getStudy(network).getContingencyLists().stream()
                 .filter(list -> enabledProperty(list).get())
                 .flatMap(this::contingenciesOf)
-                .collect(Collectors.toList()));
+                .toList());
         validContingencyIds = ContingencyList.getValidContingencies(contingencies, network).stream()
                 .map(Contingency::getId)
                 .collect(Collectors.toSet());
@@ -219,7 +219,7 @@ public class ContingenciesController extends AbstractDisposableController implem
         BooleanProperty property = mainModel.getStudy(network).contingencyListEnabledProperty(list);
         if (listenedEnabledLists.add(list)) {
             // the property is held by NetworkStudy and outlives this view
-            listenerManager.listen(property, (obs, oldValue, newValue) -> refreshInstantiatedTable());
+            listenerManager.listen(property, (_, _, _) -> refreshInstantiatedTable());
         }
         return property;
     }

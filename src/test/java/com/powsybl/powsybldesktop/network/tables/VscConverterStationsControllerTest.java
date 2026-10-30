@@ -177,7 +177,7 @@ class VscConverterStationsControllerTest extends AbstractHeadlessApplicationTest
         interact(() -> controller.goToVscConverterStation(station));
         List<TablePosition> selectedCells = controller.vscConverterStationsTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(row, selectedCells.get(0).getRow());
+        assertEquals(row, selectedCells.getFirst().getRow());
 
         interact(() -> controller.goToVscConverterStation(null));
         assertTrue(controller.vscConverterStationsTableView.getSelectionModel().getSelectedCells().isEmpty());

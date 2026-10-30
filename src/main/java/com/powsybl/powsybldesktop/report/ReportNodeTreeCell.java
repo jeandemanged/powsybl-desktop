@@ -81,7 +81,7 @@ public class ReportNodeTreeCell extends TreeCell<ReportNode> {
         contextMenu.getItems().clear();
 
         MenuItem copyMessage = new MenuItem(Messages.get("desktop.common.action.copyMessage"));
-        copyMessage.setOnAction(e -> copyToClipboard(item.getMessage()));
+        copyMessage.setOnAction(_ -> copyToClipboard(item.getMessage()));
         contextMenu.getItems().add(copyMessage);
 
         Map<String, TypedValue> values = item.getValues();
@@ -91,7 +91,7 @@ public class ReportNodeTreeCell extends TreeCell<ReportNode> {
                 String key = entry.getKey();
                 String value = valueAsString(entry.getValue());
                 MenuItem copyValue = new MenuItem(Messages.get("reports.copyValue", key, value));
-                copyValue.setOnAction(e -> copyToClipboard(value));
+                copyValue.setOnAction(_ -> copyToClipboard(value));
                 contextMenu.getItems().add(copyValue);
             }
         }

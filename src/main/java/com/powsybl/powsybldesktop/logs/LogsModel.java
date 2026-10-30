@@ -32,7 +32,7 @@ public class LogsModel {
     private final ObservableList<ILoggingEvent> logs = FXCollections.observableArrayList();
     private final Queue<ILoggingEvent> pendingLogs = new ConcurrentLinkedQueue<>();
     // kept as a field: an unreferenced running Timeline is eligible for GC and would silently stop ticking
-    private final Timeline flushTimeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> flushPendingLogs()));
+    private final Timeline flushTimeline = new Timeline(new KeyFrame(Duration.seconds(1), _ -> flushPendingLogs()));
 
     public LogsModel() {
         Appender appender = new Appender();

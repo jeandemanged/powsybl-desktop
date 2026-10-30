@@ -129,7 +129,7 @@ public class DiagramPaneController {
     private void initialize() {
         webView.setContextMenuEnabled(false);
         webView.getEngine().loadContent(DEFAULT_HTML_SHELL);
-        webView.getEngine().getLoadWorker().stateProperty().addListener((observable, oldValue, newValue) -> {
+        webView.getEngine().getLoadWorker().stateProperty().addListener((_, _, newValue) -> {
             if (newValue == Worker.State.SUCCEEDED) {
                 if (pendingContent != null) {
                     inject(pendingContent);
@@ -149,12 +149,12 @@ public class DiagramPaneController {
         setZoom(zoom.get(), false);
 
         // re-fit whenever the diagram viewport is resized (e.g. the split pane divider is dragged)
-        webView.widthProperty().addListener((observable, oldValue, newValue) -> {
+        webView.widthProperty().addListener((_, _, _) -> {
             if (fitToScreenToggleButton.isSelected()) {
                 applyFitToScreen();
             }
         });
-        webView.heightProperty().addListener((observable, oldValue, newValue) -> {
+        webView.heightProperty().addListener((_, _, _) -> {
             if (fitToScreenToggleButton.isSelected()) {
                 applyFitToScreen();
             }
@@ -164,7 +164,7 @@ public class DiagramPaneController {
         webView.addEventFilter(MouseEvent.MOUSE_DRAGGED, this::onMouseDragged);
         webView.addEventFilter(MouseEvent.MOUSE_RELEASED, this::onMouseReleased);
 
-        svg.addListener((observable, oldValue, newValue) -> {
+        svg.addListener((_, _, newValue) -> {
             if (!newValue.isEmpty()) {
                 parseDiagramSize(newValue);
                 if (fitToScreenToggleButton.isSelected()) {

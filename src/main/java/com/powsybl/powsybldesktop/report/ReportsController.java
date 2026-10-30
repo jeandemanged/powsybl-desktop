@@ -59,7 +59,7 @@ public class ReportsController extends AbstractDisposableController implements S
 
     @FXML
     private void initialize() {
-        reportsListView.setCellFactory(lv -> new ListCell<>() {
+        reportsListView.setCellFactory(_ -> new ListCell<>() {
             @Override
             protected void updateItem(ReportNode item, boolean empty) {
                 super.updateItem(item, empty);
@@ -72,9 +72,9 @@ public class ReportsController extends AbstractDisposableController implements S
             }
         });
         exportButton.disableProperty().bind(reportsListView.getSelectionModel().selectedItemProperty().isNull());
-        reportsListView.getSelectionModel().selectedItemProperty().addListener((obs, oldItem, newItem) ->
+        reportsListView.getSelectionModel().selectedItemProperty().addListener((_, _, newItem) ->
                 reportDetailController.setRootReportNode(newItem));
-        severityToggleGroup.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
+        severityToggleGroup.selectedToggleProperty().addListener((_, oldToggle, newToggle) -> {
             // clicking the selected toggle would otherwise leave none selected
             if (newToggle == null) {
                 oldToggle.setSelected(true);
@@ -95,13 +95,13 @@ public class ReportsController extends AbstractDisposableController implements S
         this.mainModel = sceneModel.getMainModel();
         reportsListView.setItems(mainModel.getReports());
         noReportsLabel.setVisible(mainModel.getReports().isEmpty());
-        listenerManager.listen(mainModel.getReports(), change -> noReportsLabel.setVisible(mainModel.getReports().isEmpty()));
+        listenerManager.listen(mainModel.getReports(), _ -> noReportsLabel.setVisible(mainModel.getReports().isEmpty()));
         if (!mainModel.getReports().isEmpty()) {
             reportsListView.getSelectionModel().select(mainModel.getReports().size() - 1);
         }
         applyGuiParameters();
         // edited from this view or the parameters view, or replaced by a parameters reset or import
-        listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> applyGuiParameters());
+        listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (_, _, _) -> applyGuiParameters());
     }
 
     private GuiParameters gui() {

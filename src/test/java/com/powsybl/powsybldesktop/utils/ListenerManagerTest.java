@@ -25,7 +25,7 @@ class ListenerManagerTest {
     void disposeDetachesPropertyListener() {
         SimpleObjectProperty<String> property = new SimpleObjectProperty<>("initial");
         int[] callCount = {0};
-        listenerManager.listen(property, (observable, oldValue, newValue) -> callCount[0]++);
+        listenerManager.listen(property, (_, _, _) -> callCount[0]++);
 
         property.set("changed");
         assertEquals(1, callCount[0]);
@@ -39,7 +39,7 @@ class ListenerManagerTest {
     void disposeDetachesListListener() {
         ObservableList<String> list = FXCollections.observableArrayList();
         int[] callCount = {0};
-        listenerManager.listen(list, change -> callCount[0]++);
+        listenerManager.listen(list, _ -> callCount[0]++);
 
         list.add("a");
         assertEquals(1, callCount[0]);

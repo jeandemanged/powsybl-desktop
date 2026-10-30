@@ -161,7 +161,7 @@ class LccConverterStationsControllerTest extends AbstractHeadlessApplicationTest
         interact(() -> controller.goToLccConverterStation(station));
         List<TablePosition> selectedCells = controller.lccConverterStationsTableView.getSelectionModel().getSelectedCells();
         assertEquals(1, selectedCells.size());
-        assertEquals(row, selectedCells.get(0).getRow());
+        assertEquals(row, selectedCells.getFirst().getRow());
 
         interact(() -> controller.goToLccConverterStation(null));
         assertTrue(controller.lccConverterStationsTableView.getSelectionModel().getSelectedCells().isEmpty());

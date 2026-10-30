@@ -65,7 +65,7 @@ public abstract class AbstractDiagramParametersController<T> extends AbstractDis
     public void setParametersProperty(ObjectProperty<T> parametersProperty) {
         this.parametersProperty = Objects.requireNonNull(parametersProperty);
         refresh();
-        listenerManager.listen(parametersProperty, (observable, oldValue, newValue) -> refresh());
+        listenerManager.listen(parametersProperty, (_, _, _) -> refresh());
     }
 
     public void setOnChange(Runnable onChange) {
@@ -107,7 +107,7 @@ public abstract class AbstractDiagramParametersController<T> extends AbstractDis
         });
 
         StackPane detailPane = new StackPane();
-        categoryListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+        categoryListView.getSelectionModel().selectedItemProperty().addListener((_, _, newValue) -> {
             if (newValue != null) {
                 detailPane.getChildren().setAll(categoryPanes.get(newValue));
             }
@@ -166,8 +166,8 @@ public abstract class AbstractDiagramParametersController<T> extends AbstractDis
     }
 
     protected static void bindCommit(TextField textField, Runnable commit) {
-        textField.setOnAction(event -> commit.run());
-        textField.focusedProperty().addListener((observable, wasFocused, isFocused) -> {
+        textField.setOnAction(_ -> commit.run());
+        textField.focusedProperty().addListener((_, wasFocused, isFocused) -> {
             if (Boolean.TRUE.equals(wasFocused) && Boolean.FALSE.equals(isFocused)) {
                 commit.run();
             }
@@ -178,7 +178,7 @@ public abstract class AbstractDiagramParametersController<T> extends AbstractDis
                                     Predicate<T> getter, BiConsumer<T, Boolean> setter) {
         CheckBox checkBox = new CheckBox();
         refreshers.add(() -> checkBox.setSelected(getter.test(parametersProperty.getValue())));
-        checkBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
+        checkBox.selectedProperty().addListener((_, _, newValue) -> {
             if (!refreshing) {
                 setter.accept(parametersProperty.getValue(), newValue);
                 notifyChange();
@@ -191,7 +191,7 @@ public abstract class AbstractDiagramParametersController<T> extends AbstractDis
                                                      Function<T, E> getter, BiConsumer<T, E> setter) {
         ChoiceBox<E> choiceBox = new ChoiceBox<>(FXCollections.observableArrayList(enumClass.getEnumConstants()));
         refreshers.add(() -> choiceBox.setValue(getter.apply(parametersProperty.getValue())));
-        choiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+        choiceBox.valueProperty().addListener((_, _, newValue) -> {
             if (!refreshing && newValue != null) {
                 setter.accept(parametersProperty.getValue(), newValue);
                 notifyChange();
@@ -216,7 +216,7 @@ public abstract class AbstractDiagramParametersController<T> extends AbstractDis
                 }
                 setter.accept(parametersProperty.getValue(), value);
                 notifyChange();
-            } catch (IllegalArgumentException e) { // NumberFormatException, or a value rejected by a parameters builder
+            } catch (IllegalArgumentException _) { // NumberFormatException, or a value rejected by a parameters builder
                 refresh();
             }
         };
@@ -235,7 +235,7 @@ public abstract class AbstractDiagramParametersController<T> extends AbstractDis
             try {
                 setter.accept(parametersProperty.getValue(), Integer.parseInt(textField.getText()));
                 notifyChange();
-            } catch (IllegalArgumentException e) { // NumberFormatException, or a value rejected by a parameters builder
+            } catch (IllegalArgumentException _) { // NumberFormatException, or a value rejected by a parameters builder
                 refresh();
             }
         };

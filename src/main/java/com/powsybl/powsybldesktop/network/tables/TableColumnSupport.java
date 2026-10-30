@@ -126,7 +126,7 @@ public final class TableColumnSupport {
                                               Function<S, Optional<? extends Container<?>>> containerGetter,
                                               BiFunction<Container<?>, S, Node> linkFactory) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new TableCell<S, S>() {
+        column.setCellFactory(_ -> new TableCell<S, S>() {
             @Override
             protected void updateItem(S item, boolean empty) {
                 super.updateItem(item, empty);
@@ -142,7 +142,7 @@ public final class TableColumnSupport {
                                                        BiFunction<Container<?>, S, Node> linkFactory) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new TableCell<S, S>() {
+        column.setCellFactory(_ -> new TableCell<S, S>() {
             @Override
             protected void updateItem(S item, boolean empty) {
                 super.updateItem(item, empty);
@@ -177,7 +177,7 @@ public final class TableColumnSupport {
                                             Function<List<Node>, Node> layout) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
         CellFields.KeyedFlash flash = new CellFields.KeyedFlash();
-        column.setCellFactory(col -> new TableCell<S, S>() {
+        column.setCellFactory(_ -> new TableCell<S, S>() {
             @Override
             protected void updateItem(S item, boolean empty) {
                 super.updateItem(item, empty);
@@ -197,7 +197,7 @@ public final class TableColumnSupport {
             Component component = bus == null ? null : componentGetter.apply(bus);
             return new ReadOnlyObjectWrapper<>(component == null ? null : component.getNum());
         });
-        column.setCellFactory(col -> new TableCell<S, Integer>() {
+        column.setCellFactory(_ -> new TableCell<S, Integer>() {
             @Override
             protected void updateItem(Integer num, boolean empty) {
                 super.updateItem(num, empty);
@@ -211,7 +211,7 @@ public final class TableColumnSupport {
                                                        Function<S, Bus> bus2Getter, Function<Bus, Component> componentGetter) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new TableCell<S, S>() {
+        column.setCellFactory(_ -> new TableCell<S, S>() {
             @Override
             protected void updateItem(S item, boolean empty) {
                 super.updateItem(item, empty);
@@ -230,9 +230,9 @@ public final class TableColumnSupport {
     // also used for read-only values, in columns made non-editable
     static <S> void configureDoubleColumn(TableColumn<S, Double> column, StringConverter<Double> format) {
         if (column.isEditable()) {
-            CellFields.textColumn(column, format, row -> true, CellFields.RowKey.ITEM);
+            CellFields.textColumn(column, format, _ -> true, CellFields.RowKey.ITEM);
         } else {
-            column.setCellFactory(col -> new TableCell<>() {
+            column.setCellFactory(_ -> new TableCell<>() {
                 @Override
                 protected void updateItem(Double value, boolean empty) {
                     super.updateItem(value, empty);
@@ -259,7 +259,7 @@ public final class TableColumnSupport {
     // Nullable like doubleFormat's "-": unlike configureNullableEditableDoubleColumn, every row can be edited here
     // (the field just may hold no value), so clearing the text field back to "-"/blank is how a value gets unset.
     static <S> void configureEditableTextColumn(TableColumn<S, String> column) {
-        CellFields.textColumn(column, STRING_FORMAT, row -> true, CellFields.RowKey.ITEM);
+        CellFields.textColumn(column, STRING_FORMAT, _ -> true, CellFields.RowKey.ITEM);
     }
 
     // For a field that only exists on some rows (e.g. a boundary line's optional generation part): shows "-" where the
@@ -276,7 +276,7 @@ public final class TableColumnSupport {
     static <S> void configureNullableEditableBooleanColumn(TableColumn<S, Boolean> column, Function<S, Boolean> getter,
                                                              BiConsumer<S, Boolean> setter) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
-        column.setCellFactory(col -> new TableCell<S, Boolean>() {
+        column.setCellFactory(_ -> new TableCell<S, Boolean>() {
             @Override
             protected void updateItem(Boolean value, boolean empty) {
                 super.updateItem(value, empty);
@@ -303,7 +303,7 @@ public final class TableColumnSupport {
     static <S> void configureLoadingColumn(TableColumn<S, Loading> column, Function<S, Loading> loadingGetter,
                                            Supplier<GuiParameters> guiParameters, BiConsumer<Window, S> onInfoClick) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(loadingGetter.apply(cellData.getValue())));
-        column.setCellFactory(col -> new LoadingTableCell<>(guiParameters, onInfoClick));
+        column.setCellFactory(_ -> new LoadingTableCell<>(guiParameters, onInfoClick));
         column.setComparator(missingLast(column, Objects::isNull));
     }
 
@@ -322,7 +322,7 @@ public final class TableColumnSupport {
                 infoButton.getStyleClass().add("icon-button");
                 infoButton.setTooltip(new Tooltip(Messages.get("violations.details")));
                 // a read-only popup: unlike configureInfoButtonColumn's, not disabled while the network is busy
-                infoButton.setOnAction(event -> {
+                infoButton.setOnAction(_ -> {
                     S row = getTableRow() == null ? null : getTableRow().getItem();
                     if (row != null) {
                         onInfoClick.accept(infoButton.getScene().getWindow(), row);
@@ -456,7 +456,7 @@ public final class TableColumnSupport {
     static <S> void configureVoltageRangeColumn(TableColumn<S, VoltageRange> column, Function<S, VoltageRange> rangeGetter,
                                                 Supplier<GuiParameters> guiParameters) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(rangeGetter.apply(cellData.getValue())));
-        column.setCellFactory(col -> new VoltageRangeTableCell<>(guiParameters));
+        column.setCellFactory(_ -> new VoltageRangeTableCell<>(guiParameters));
         column.setComparator(missingLast(column, Objects::isNull));
     }
 
@@ -593,7 +593,7 @@ public final class TableColumnSupport {
     // formatting of its own (e.g. an Optional-backed enum) - "-" when absent, T::toString otherwise.
     static <S, T extends Comparable<T>> void configureNullableColumn(TableColumn<S, T> column, Function<S, T> valueGetter) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(valueGetter.apply(cellData.getValue())));
-        column.setCellFactory(col -> new TableCell<S, T>() {
+        column.setCellFactory(_ -> new TableCell<S, T>() {
             @Override
             protected void updateItem(T value, boolean empty) {
                 super.updateItem(value, empty);
@@ -605,7 +605,7 @@ public final class TableColumnSupport {
 
     static <S> void configureNullableIntColumn(TableColumn<S, Integer> column, Function<S, Integer> valueGetter) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(valueGetter.apply(cellData.getValue())));
-        column.setCellFactory(col -> new TableCell<S, Integer>() {
+        column.setCellFactory(_ -> new TableCell<S, Integer>() {
             @Override
             protected void updateItem(Integer value, boolean empty) {
                 super.updateItem(value, empty);
@@ -617,14 +617,14 @@ public final class TableColumnSupport {
 
     static <S> void configureNullableDoubleColumn(TableColumn<S, Double> column, Function<S, Double> valueGetter,
                                                    StringConverter<Double> format) {
-        configureNullableDoubleColumn(column, valueGetter, row -> format);
+        configureNullableDoubleColumn(column, valueGetter, _ -> format);
     }
 
     // For a column whose unit depends on the row, e.g. a limit violation's value
     static <S> void configureNullableDoubleColumn(TableColumn<S, Double> column, Function<S, Double> valueGetter,
                                                    Function<S, StringConverter<Double>> formatGetter) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(valueGetter.apply(cellData.getValue())));
-        column.setCellFactory(col -> new TableCell<S, Double>() {
+        column.setCellFactory(_ -> new TableCell<S, Double>() {
             @Override
             protected void updateItem(Double value, boolean empty) {
                 super.updateItem(value, empty);
@@ -643,7 +643,7 @@ public final class TableColumnSupport {
                                                    Function<S, Double> value2Getter, StringConverter<Double> format) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new TableCell<S, S>() {
+        column.setCellFactory(_ -> new TableCell<S, S>() {
             @Override
             protected void updateItem(S item, boolean empty) {
                 super.updateItem(item, empty);
@@ -657,7 +657,7 @@ public final class TableColumnSupport {
                                                  Function<S, String> value2Getter) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new TableCell<S, S>() {
+        column.setCellFactory(_ -> new TableCell<S, S>() {
             @Override
             protected void updateItem(S item, boolean empty) {
                 super.updateItem(item, empty);
@@ -671,7 +671,7 @@ public final class TableColumnSupport {
                                                     Function<S, T> value2Getter, BiFunction<T, S, Hyperlink> linkFactory) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new TableCell<S, S>() {
+        column.setCellFactory(_ -> new TableCell<S, S>() {
             @Override
             protected void updateItem(S item, boolean empty) {
                 super.updateItem(item, empty);
@@ -705,7 +705,7 @@ public final class TableColumnSupport {
                                                          BiFunction<Container<?>, S, Node> linkFactory) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new TableCell<S, S>() {
+        column.setCellFactory(_ -> new TableCell<S, S>() {
             @Override
             protected void updateItem(S item, boolean empty) {
                 super.updateItem(item, empty);
@@ -719,7 +719,7 @@ public final class TableColumnSupport {
                                                          Function<Bus, Component> componentGetter) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new TableCell<S, S>() {
+        column.setCellFactory(_ -> new TableCell<S, S>() {
             @Override
             protected void updateItem(S item, boolean empty) {
                 super.updateItem(item, empty);
@@ -733,7 +733,7 @@ public final class TableColumnSupport {
                                                      StringConverter<Double> format) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new TableCell<S, S>() {
+        column.setCellFactory(_ -> new TableCell<S, S>() {
             @Override
             protected void updateItem(S item, boolean empty) {
                 super.updateItem(item, empty);
@@ -816,7 +816,7 @@ public final class TableColumnSupport {
                                                                  BiConsumer<TapChanger<?, ?, ?, ?>, Boolean> setter) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new TableCell<S, S>() {
+        column.setCellFactory(_ -> new TableCell<S, S>() {
             @Override
             protected void updateItem(S item, boolean empty) {
                 super.updateItem(item, empty);
@@ -856,7 +856,7 @@ public final class TableColumnSupport {
                                                                      Function<TapChanger<?, ?, ?, ?>, Integer> getter) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        column.setCellFactory(col -> new TableCell<S, S>() {
+        column.setCellFactory(_ -> new TableCell<S, S>() {
             @Override
             protected void updateItem(S item, boolean empty) {
                 super.updateItem(item, empty);
@@ -893,7 +893,7 @@ public final class TableColumnSupport {
     static <S, T> void configureSingleSlotChoiceColumn(TableColumn<S, S> column, Function<S, T> getter, BiConsumer<S, T> setter,
                                                         List<T> choices, StringConverter<T> converter) {
         CellFields.sidedColumn(column, row -> 1, (cell, flash) -> new CellFields.CellChoiceBox<>(cell, flash, choices, converter),
-            (choiceBox, key, row, side) -> {
+            (choiceBox, key, row, _) -> {
                 choiceBox.bind(key, () -> getter.apply(row), value -> setter.accept(row, value));
                 return true;
             });
@@ -903,18 +903,18 @@ public final class TableColumnSupport {
     // name from the button's menu). Unlike editing controls, the buttons stay enabled while the network is busy: the
     // (non-modal) detail view has its own busy lock.
     static <S extends Identifiable<?>> void configureDetailNameColumn(TableColumn<S, String> column, Consumer<S> onDetail) {
-        column.setCellFactory(col -> new NameTableCell<>(onDetail));
+        column.setCellFactory(_ -> new NameTableCell<>(onDetail));
     }
 
     // The name of an object without detail view (e.g. a bus), after a button copying its id (its name from the button's
     // menu).
     static <S extends Identifiable<?>> void configureNameColumn(TableColumn<S, String> column) {
-        column.setCellFactory(col -> new NameTableCell<>(null));
+        column.setCellFactory(_ -> new NameTableCell<>(null));
     }
 
     // A text, e.g. an id, after a button copying it.
     static <S> void configureCopyableColumn(TableColumn<S, String> column) {
-        column.setCellFactory(col -> new CopyableTableCell<>());
+        column.setCellFactory(_ -> new CopyableTableCell<>());
     }
 
     // The info button opening a detail view and the button copying the id (the name from its menu), before content
@@ -940,7 +940,7 @@ public final class TableColumnSupport {
         // tells EditLockTest this button opens a view, not an editing dialog
         infoButton.getStyleClass().addAll("icon-button", CopyButtons.NON_EDITING_BUTTON);
         infoButton.setTooltip(new Tooltip(Messages.get("detail.open.tooltip")));
-        infoButton.setOnAction(event -> onDetail.run());
+        infoButton.setOnAction(_ -> onDetail.run());
         return infoButton;
     }
 
@@ -992,7 +992,7 @@ public final class TableColumnSupport {
     // The section field's [min, max] range is per-row (clamped to each shunt compensator's own maximum section count).
     static <S> void configureSpinnerIntColumn(TableColumn<S, S> column, Function<S, Integer> valueGetter,
                                                Function<S, Integer> maxGetter, BiConsumer<S, Integer> setter) {
-        CellFields.sidedColumn(column, row -> 1, CellFields.IntStepper::new, (stepper, key, row, side) -> {
+        CellFields.sidedColumn(column, row -> 1, CellFields.IntStepper::new, (stepper, key, row, _) -> {
             stepper.bind(key, 0, maxGetter.apply(row), () -> valueGetter.apply(row), value -> setter.accept(row, value));
             return true;
         });
@@ -1016,7 +1016,7 @@ public final class TableColumnSupport {
                                                     BiConsumer<S, Boolean> setter, Predicate<S> editable) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
         CellFields.KeyedFlash flash = new CellFields.KeyedFlash();
-        column.setCellFactory(col -> new EditableBooleanTableCell<>(setter, editable, flash));
+        column.setCellFactory(_ -> new EditableBooleanTableCell<>(setter, editable, flash));
         disableUnlessTableEditable(column);
     }
 
@@ -1043,7 +1043,7 @@ public final class TableColumnSupport {
             CheckBox checkBox = new CheckBox();
             checkBox.setSelected(value);
             checkBox.setDisable(editable != null && !editable.test(row));
-            checkBox.setOnAction(event -> {
+            checkBox.setOnAction(_ -> {
                 try {
                     setter.accept(row, checkBox.isSelected());
                     flash.flash(this, row, EDIT_SUCCESS_STYLE_CLASS);
@@ -1075,7 +1075,7 @@ public final class TableColumnSupport {
     private static <S> CheckBox connectedCheckBox(TableCell<?, ?> cell, S row, Terminal terminal, Consumer<Terminal> onToggle, CellFields.KeyedFlash flash) {
         CheckBox checkBox = new CheckBox();
         checkBox.setSelected(terminal.isConnected());
-        checkBox.setOnAction(event -> {
+        checkBox.setOnAction(_ -> {
             try {
                 toggleConnection(terminal);
                 flash.flash(cell, row, EDIT_SUCCESS_STYLE_CLASS);
@@ -1093,7 +1093,7 @@ public final class TableColumnSupport {
     private static CheckBox booleanCheckBox(TableCell<?, ?> cell, boolean selected, Consumer<Boolean> onChange) {
         CheckBox checkBox = new CheckBox();
         checkBox.setSelected(selected);
-        checkBox.setOnAction(event -> {
+        checkBox.setOnAction(_ -> {
             boolean newValue = checkBox.isSelected();
             try {
                 onChange.accept(newValue);
@@ -1130,7 +1130,7 @@ public final class TableColumnSupport {
     private static void flash(Node node, String styleClass) {
         node.getStyleClass().add(styleClass);
         PauseTransition pause = new PauseTransition(flashDuration(styleClass));
-        pause.setOnFinished(event -> node.getStyleClass().remove(styleClass));
+        pause.setOnFinished(_ -> node.getStyleClass().remove(styleClass));
         pause.play();
     }
 

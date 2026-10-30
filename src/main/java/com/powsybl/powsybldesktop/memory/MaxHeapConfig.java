@@ -60,7 +60,7 @@ public final class MaxHeapConfig {
         Path appDirectory;
         try {
             appDirectory = Path.of(MaxHeapConfig.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent();
-        } catch (URISyntaxException e) {
+        } catch (URISyntaxException _) {
             return Optional.empty();
         }
         return Optional.of(appDirectory.resolve(launcherName + ".cfg")).filter(Files::isRegularFile);

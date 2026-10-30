@@ -101,7 +101,7 @@ final class FlowViolationsDialog {
         TableColumn<Entry, FlowViolation> worstColumn = new TableColumn<>();
         worstColumn.setSortable(false);
         worstColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().violation()));
-        worstColumn.setCellFactory(col -> new TableCell<>() {
+        worstColumn.setCellFactory(_ -> new TableCell<>() {
             @Override
             protected void updateItem(FlowViolation violation, boolean empty) {
                 super.updateItem(violation, empty);
@@ -117,7 +117,7 @@ final class FlowViolationsDialog {
             }
         });
         worstColumn.setPrefWidth(30);
-        table.setRowFactory(t -> new TableRow<>() {
+        table.setRowFactory(_ -> new TableRow<>() {
             @Override
             protected void updateItem(Entry entry, boolean empty) {
                 super.updateItem(entry, empty);

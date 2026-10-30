@@ -30,7 +30,7 @@ public class NavigationHistory {
     private final ObservableList<NavigationEvent> future = FXCollections.unmodifiableObservableList(modifiableFuture);
     private final ObjectProperty<NavigationEvent> currentEvent = new SimpleObjectProperty<>();
     // may veto a navigation, e.g. to another network while separate windows show this one
-    private Predicate<NavigationEvent> guard = event -> true;
+    private Predicate<NavigationEvent> guard = _ -> true;
 
     public void setGuard(Predicate<NavigationEvent> guard) {
         this.guard = Objects.requireNonNull(guard);

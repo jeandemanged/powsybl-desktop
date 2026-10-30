@@ -73,12 +73,12 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
     private final List<Runnable> refreshers = new ArrayList<>();
     private boolean refreshing;
     private Runnable onChange = () -> { };
-    private BiConsumer<Path, RuntimeException> onImportFailed = (path, e) -> { };
+    private BiConsumer<Path, RuntimeException> onImportFailed = (_, _) -> { };
 
     public void setSecurityAnalysisParametersProperty(ObjectProperty<SecurityAnalysisParameters> securityAnalysisParametersProperty) {
         this.securityAnalysisParametersProperty = Objects.requireNonNull(securityAnalysisParametersProperty);
         refresh();
-        listenerManager.listen(securityAnalysisParametersProperty, (observable, oldValue, newValue) -> refresh());
+        listenerManager.listen(securityAnalysisParametersProperty, (_, _, _) -> refresh());
     }
 
     public void setOnChange(Runnable onChange) {
@@ -122,7 +122,7 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
         });
 
         StackPane detailPane = new StackPane();
-        categoryListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+        categoryListView.getSelectionModel().selectedItemProperty().addListener((_, _, newValue) -> {
             if (newValue != null) {
                 detailPane.getChildren().setAll(categoryPanes.get(newValue));
             }
@@ -172,8 +172,8 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
     }
 
     private static void bindCommit(TextField textField, Runnable commit) {
-        textField.setOnAction(event -> commit.run());
-        textField.focusedProperty().addListener((observable, wasFocused, isFocused) -> {
+        textField.setOnAction(_ -> commit.run());
+        textField.focusedProperty().addListener((_, wasFocused, isFocused) -> {
             if (Boolean.TRUE.equals(wasFocused) && Boolean.FALSE.equals(isFocused)) {
                 commit.run();
             }
@@ -248,7 +248,7 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
                                   Predicate<SecurityAnalysisParameters> getter, BiConsumer<SecurityAnalysisParameters, Boolean> setter) {
         CheckBox checkBox = new CheckBox();
         refreshers.add(() -> checkBox.setSelected(getter.test(securityAnalysisParametersProperty.getValue())));
-        checkBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
+        checkBox.selectedProperty().addListener((_, _, newValue) -> {
             if (!refreshing) {
                 setter.accept(securityAnalysisParametersProperty.getValue(), newValue);
                 onChange.run();
@@ -268,7 +268,7 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
             try {
                 setter.accept(securityAnalysisParametersProperty.getValue(), Double.parseDouble(textField.getText()));
                 onChange.run();
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException _) {
                 refresh();
             }
         };
@@ -287,7 +287,7 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
             try {
                 setter.accept(securityAnalysisParametersProperty.getValue(), Integer.parseInt(textField.getText()));
                 onChange.run();
-            } catch (IllegalArgumentException e) {
+            } catch (IllegalArgumentException _) {
                 refresh();
             }
         };
@@ -314,7 +314,7 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
         ChoiceBox<String> choiceBox = new ChoiceBox<>(FXCollections.observableArrayList(
                 ContingencyActivePowerLossDistribution.findAll().stream().map(ContingencyActivePowerLossDistribution::getName).toList()));
         refreshers.add(() -> choiceBox.setValue(ext(securityAnalysisParametersProperty.getValue()).getContingencyActivePowerLossDistribution()));
-        choiceBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+        choiceBox.valueProperty().addListener((_, _, newValue) -> {
             if (!refreshing && newValue != null) {
                 ext(securityAnalysisParametersProperty.getValue()).setContingencyActivePowerLossDistribution(newValue);
                 onChange.run();

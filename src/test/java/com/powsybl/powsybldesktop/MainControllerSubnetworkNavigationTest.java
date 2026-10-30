@@ -49,7 +49,7 @@ class MainControllerSubnetworkNavigationTest extends AbstractHeadlessApplication
         mainModel = new MainModel();
         controller = new MainController(mainModel);
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/powsybl/powsybldesktop/main-view.fxml"), Messages.bundle());
-        loader.setControllerFactory(type -> controller);
+        loader.setControllerFactory(_ -> controller);
         Parent root = loader.load();
         stage.setScene(new Scene(root));
         stage.show();

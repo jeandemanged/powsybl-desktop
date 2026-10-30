@@ -58,12 +58,12 @@ final class ConnectionSection {
                 .visibleWhen(busBox.valueProperty().map(BusbarSection.class::isInstance).orElse(false));
         TextField orderField = (TextField) positionOrder.getEditor();
         orderField.setTooltip(new Tooltip(Messages.get("edit.create.connection.positionOrderHint")));
-        busBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+        busBox.valueProperty().addListener((_, _, newValue) -> {
             if (newValue instanceof BusbarSection busbarSection) {
                 orderField.setText(String.valueOf(suggestedPositionOrder(busbarSection)));
             }
         });
-        voltageLevelBox.valueProperty().addListener((observable, oldValue, newValue) -> showBusesOf(busBox, newValue, null));
+        voltageLevelBox.valueProperty().addListener((_, _, newValue) -> showBusesOf(busBox, newValue, null));
         showBusesOf(busBox, initialVoltageLevel, initial);
     }
 

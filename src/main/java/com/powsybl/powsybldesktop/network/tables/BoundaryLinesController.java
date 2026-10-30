@@ -132,7 +132,7 @@ public class BoundaryLinesController extends AbstractEquipmentTableController<Bo
         pairingKeyColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getPairingKey()));
 
         tieLineColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
-        tieLineColumn.setCellFactory(col -> new TableCell<BoundaryLine, BoundaryLine>() {
+        tieLineColumn.setCellFactory(_ -> new TableCell<BoundaryLine, BoundaryLine>() {
             @Override
             protected void updateItem(BoundaryLine item, boolean empty) {
                 super.updateItem(item, empty);
@@ -236,7 +236,7 @@ public class BoundaryLinesController extends AbstractEquipmentTableController<Bo
     private Hyperlink tieLineLink(TieLine tieLine, BoundaryLine item) {
         Hyperlink link = new Hyperlink(tieLine.getNameOrId());
         link.getStyleClass().add("container-link");
-        link.setOnAction(event -> {
+        link.setOnAction(_ -> {
             if (isEmbedded()) {
                 sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
                         ContainerNavigationState.create(item.getTerminal().getVoltageLevel(), ContainerNavigationState.ContainerTab.TIE_LINES)));

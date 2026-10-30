@@ -221,21 +221,21 @@ public class NetworksController extends AbstractDisposableController {
         updateNetworkList();
         updateNetworkInfo(mainModel.getNetwork());
         updateSelectionState();
-        listenerManager.listen(mainModel.getNetworks(), c -> updateNetworkList());
-        listenerManager.listen(mainModel.networkProperty(), (obs, oldNetwork, newNetwork) -> updateNetworkInfo(newNetwork));
-        listenerManager.listen(networksTreeView.getSelectionModel().getSelectedItems(), c -> updateSelectionState());
-        listenerManager.listen(mainModel.networkBusyProperty(), (obs, wasBusy, isBusy) -> updateMergeDetachButtons(getSelectedNetworks()));
+        listenerManager.listen(mainModel.getNetworks(), _ -> updateNetworkList());
+        listenerManager.listen(mainModel.networkProperty(), (_, _, newNetwork) -> updateNetworkInfo(newNetwork));
+        listenerManager.listen(networksTreeView.getSelectionModel().getSelectedItems(), _ -> updateSelectionState());
+        listenerManager.listen(mainModel.networkBusyProperty(), (_, _, _) -> updateMergeDetachButtons(getSelectedNetworks()));
         // the selected network's name, like its tables (see AbstractEquipmentTableController.setMainModel)
         nameField.disableProperty().bind(mainModel.networkBusyProperty());
         caseDatePicker.disableProperty().bind(mainModel.networkBusyProperty());
         forecastDistanceField.disableProperty().bind(mainModel.networkBusyProperty());
-        listenerManager.listen(mainModel.structureChangeProperty(), (obs, oldValue, change) -> {
+        listenerManager.listen(mainModel.structureChangeProperty(), (_, _, change) -> {
             if (change != null && selectedNetwork != null && change.rootNetwork() == selectedNetwork.getNetwork()) {
                 showStructure(selectedNetwork);
                 networksTreeView.refresh();
             }
         });
-        listenerManager.listen(mainModel.updateProperty(), (obs, oldValue, newValue) -> refreshNetworkDetails());
+        listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> refreshNetworkDetails());
     }
 
     private void updateMergeDetachButtons(List<Network> selectedNetworks) {
@@ -362,8 +362,8 @@ public class NetworksController extends AbstractDisposableController {
     }
 
     private static void commitOnEnterOrFocusLoss(TextField field, Runnable commit) {
-        field.setOnAction(event -> commit.run());
-        field.focusedProperty().addListener((obs, wasFocused, isFocused) -> {
+        field.setOnAction(_ -> commit.run());
+        field.focusedProperty().addListener((_, _, isFocused) -> {
             if (Boolean.FALSE.equals(isFocused)) {
                 commit.run();
             }
@@ -532,7 +532,7 @@ public class NetworksController extends AbstractDisposableController {
         nameCopyButton = CopyButtons.copy(() -> selectedNetwork.getOptionalName().orElse(null));
         details.add(nameCopyButton, 2, 1);
         networksTreeView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        networksTreeView.setCellFactory(dummy -> new TreeCell<>() {
+        networksTreeView.setCellFactory(_ -> new TreeCell<>() {
             @Override
             public void updateItem(Network item, boolean empty) {
                 super.updateItem(item, empty);
@@ -570,15 +570,15 @@ public class NetworksController extends AbstractDisposableController {
             // single file; the importer's DataSource transparently reads all files in a directory.
             if ("CGMES".equals(format)) {
                 MenuItem fromFolderItem = new MenuItem(Messages.get("networks.toolbar.import.fromFolder"));
-                fromFolderItem.setOnAction(event -> importNetwork(format, importers, true));
+                fromFolderItem.setOnAction(_ -> importNetwork(format, importers, true));
                 MenuItem fromFileItem = new MenuItem(Messages.get("networks.toolbar.import.fromFile"));
-                fromFileItem.setOnAction(event -> importNetwork(format, importers, false));
+                fromFileItem.setOnAction(_ -> importNetwork(format, importers, false));
                 Menu cgmesMenu = new Menu(format);
                 cgmesMenu.getItems().addAll(fromFolderItem, fromFileItem);
                 importMenuButton.getItems().add(cgmesMenu);
             } else {
                 MenuItem formatItem = new MenuItem(format);
-                formatItem.setOnAction(event -> importNetwork(format, importers, false));
+                formatItem.setOnAction(_ -> importNetwork(format, importers, false));
                 importMenuButton.getItems().add(formatItem);
             }
         });
@@ -757,11 +757,11 @@ public class NetworksController extends AbstractDisposableController {
 
         Menu mapTestsMenu = new Menu("Map performance tests");
         MenuItem mapTest10kItem = new MenuItem("Map test 10k");
-        mapTest10kItem.setOnAction(event -> loadSample(MapTestNetworkFactory::create));
+        mapTest10kItem.setOnAction(_ -> loadSample(MapTestNetworkFactory::create));
         MenuItem mapTest50kItem = new MenuItem("Map test 50k");
-        mapTest50kItem.setOnAction(event -> loadSample(MapTestNetworkFactory::createEurope));
+        mapTest50kItem.setOnAction(_ -> loadSample(MapTestNetworkFactory::createEurope));
         MenuItem mapTest200kItem = new MenuItem("Map test 200k");
-        mapTest200kItem.setOnAction(event -> loadSample(MapTestNetworkFactory::createEuropeAfrica));
+        mapTest200kItem.setOnAction(_ -> loadSample(MapTestNetworkFactory::createEuropeAfrica));
         mapTestsMenu.getItems().addAll(mapTest10kItem, mapTest50kItem, mapTest200kItem);
         miscellaneousMenu.getItems().add(mapTestsMenu);
         sampleNetworksMenu.getItems().add(miscellaneousMenu);
@@ -770,7 +770,7 @@ public class NetworksController extends AbstractDisposableController {
 
     private void addSampleItem(Menu parent, String label, Supplier<Network> supplier) {
         MenuItem item = new MenuItem(label);
-        item.setOnAction(event -> loadSample(supplier));
+        item.setOnAction(_ -> loadSample(supplier));
         parent.getItems().add(item);
     }
 
@@ -801,7 +801,7 @@ public class NetworksController extends AbstractDisposableController {
     private void initializeExportMenu() {
         NetworkFormatParametersController.exportFormats().forEach(format -> {
             MenuItem formatItem = new MenuItem(format);
-            formatItem.setOnAction(event -> exportNetwork(selectedNetwork, format));
+            formatItem.setOnAction(_ -> exportNetwork(selectedNetwork, format));
             exportMenuButton.getItems().add(formatItem);
         });
     }
@@ -844,7 +844,7 @@ public class NetworksController extends AbstractDisposableController {
             event.consume();
         });
         networksDropPane.setOnDragEntered(event -> dropOverlay.setVisible(isExternalFileDrag(event)));
-        networksDropPane.setOnDragExited(event -> dropOverlay.setVisible(false));
+        networksDropPane.setOnDragExited(_ -> dropOverlay.setVisible(false));
         networksDropPane.setOnDragDropped(event -> {
             boolean accepted = isExternalFileDrag(event);
             event.setDropCompleted(accepted);
@@ -884,7 +884,7 @@ public class NetworksController extends AbstractDisposableController {
                 };
             }
         };
-        detectionService.setOnSucceeded(event -> {
+        detectionService.setOnSucceeded(_ -> {
             List<DroppedPath> dropped = detectionService.getValue();
             long importable = dropped.stream().filter(droppedPath -> !droppedPath.accepting().isEmpty()).count();
             if (importable > MAX_DROPPED_IMPORTS) {
@@ -1017,7 +1017,7 @@ public class NetworksController extends AbstractDisposableController {
             mainModel.addNetwork(networkAndReport.network());
             mainModel.addReport(networkAndReport.reportNode());
 
-            NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", e ->
+            NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", _ ->
                     mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.REPORTS,
                             ReportNavigationState.create(networkAndReport.reportNode()))));
 
@@ -1028,13 +1028,13 @@ public class NetworksController extends AbstractDisposableController {
             Throwable exception = event.getSource().getException();
             LOGGER.error(exception.toString(), exception);
 
-            NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", e ->
+            NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", _ ->
                     mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS)));
 
             mainModel.getNotificationsModel().replace(runningNotification,
                     Notification.createError(runningNotification.startTimestamp(), "main.networkImport.failed", viewLogsAction));
         });
-        networkImportService.setOnCancelled(event -> mainModel.getNotificationsModel().replace(runningNotification,
+        networkImportService.setOnCancelled(_ -> mainModel.getNotificationsModel().replace(runningNotification,
                 Notification.createCancelled(runningNotification.startTimestamp(), "main.networkImport.cancelled")));
         networkImportService.start();
     }
@@ -1092,26 +1092,26 @@ public class NetworksController extends AbstractDisposableController {
                 importService.start();
             }
         };
-        importService.setOnSucceeded(event -> {
+        importService.setOnSucceeded(_ -> {
             NetworkAndReport networkAndReport = importService.getValue();
             mainModel.addNetwork(networkAndReport.network());
             mainModel.addReport(networkAndReport.reportNode());
             succeeded[0]++;
             next.run();
         });
-        importService.setOnFailed(event -> {
+        importService.setOnFailed(_ -> {
             LOGGER.error("Failed to import network from {}", requests.get(succeeded[0] + failed[0]).path(), importService.getException());
             failed[0]++;
             next.run();
         });
-        importService.setOnCancelled(event -> mainModel.getNotificationsModel().replace(currentNotification[0],
+        importService.setOnCancelled(_ -> mainModel.getNotificationsModel().replace(currentNotification[0],
                 Notification.createCancelled(runningNotification.startTimestamp(), "main.networkImports.cancelled")
                         .withMessageArgs(succeeded[0], total, failed[0])));
         importService.start();
     }
 
     private Notification importsOutcome(Instant startTimestamp, int total, int succeeded, int failed) {
-        NotificationAction viewReportsAction = new NotificationAction("main.report.viewReports", e ->
+        NotificationAction viewReportsAction = new NotificationAction("main.report.viewReports", _ ->
                 mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.REPORTS)));
         if (failed == 0) {
             return Notification.createSuccess(startTimestamp, "main.networkImports.completed", viewReportsAction)
@@ -1121,7 +1121,7 @@ public class NetworksController extends AbstractDisposableController {
         if (succeeded > 0) {
             actions.add(viewReportsAction);
         }
-        actions.add(new NotificationAction("main.viewLogs", e -> mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS))));
+        actions.add(new NotificationAction("main.viewLogs", _ -> mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS))));
         return Notification.createError(startTimestamp, "main.networkImports.failed", actions.toArray(NotificationAction[]::new))
                 .withMessageArgs(succeeded, total, failed);
     }
@@ -1150,13 +1150,13 @@ public class NetworksController extends AbstractDisposableController {
             Throwable exception = event.getSource().getException();
             LOGGER.error(exception.toString(), exception);
 
-            NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", e ->
+            NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", _ ->
                     mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS)));
 
             mainModel.getNotificationsModel().replace(runningNotification,
                     Notification.createError(runningNotification.startTimestamp(), "main.sampleNetwork.failed", viewLogsAction));
         });
-        networkLoadingService.setOnCancelled(event -> mainModel.getNotificationsModel().replace(runningNotification,
+        networkLoadingService.setOnCancelled(_ -> mainModel.getNotificationsModel().replace(runningNotification,
                 Notification.createCancelled(runningNotification.startTimestamp(), "main.sampleNetwork.cancelled")));
         networkLoadingService.start();
     }
@@ -1252,10 +1252,10 @@ public class NetworksController extends AbstractDisposableController {
         Notification runningNotification = Notification.createRunning("main.networkExport.running", exportService::cancel);
         mainModel.getNotificationsModel().add(runningNotification);
 
-        exportService.setOnSucceeded(event -> {
+        exportService.setOnSucceeded(_ -> {
             mainModel.addReport(reportNode);
 
-            NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", e ->
+            NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", _ ->
                     mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.REPORTS,
                             ReportNavigationState.create(reportNode))));
 
@@ -1266,13 +1266,13 @@ public class NetworksController extends AbstractDisposableController {
             Throwable exception = event.getSource().getException();
             LOGGER.error(exception.toString(), exception);
 
-            NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", e ->
+            NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", _ ->
                     mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS)));
 
             mainModel.getNotificationsModel().replace(runningNotification,
                     Notification.createError(runningNotification.startTimestamp(), "main.networkExport.failed", viewLogsAction));
         });
-        exportService.setOnCancelled(event -> mainModel.getNotificationsModel().replace(runningNotification,
+        exportService.setOnCancelled(_ -> mainModel.getNotificationsModel().replace(runningNotification,
                 Notification.createCancelled(runningNotification.startTimestamp(), "main.networkExport.cancelled")));
         exportService.start();
     }

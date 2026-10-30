@@ -106,7 +106,7 @@ public final class TerminalPickerDialog {
     static String terminalLabel(Terminal terminal) {
         Identifiable<?> connectable = terminal.getConnectable();
         String side = Terminal.getConnectableSide(terminal)
-                .filter(s -> connectable instanceof Connectable<?> c && c.getTerminals().size() > 1)
+                .filter(_ -> connectable instanceof Connectable<?> c && c.getTerminals().size() > 1)
                 .map(s -> " " + Messages.get("limits.side", s.getNum()))
                 .orElse("");
         return connectable.getNameOrId() + side + " (" + terminal.getVoltageLevel().getNameOrId() + ")";

@@ -161,7 +161,7 @@ public final class DetailSections {
     public static void equipmentLink(DetailForm form, String labelKey, SceneModel sceneModel, Supplier<? extends Identifiable<?>> target) {
         Hyperlink link = new Hyperlink();
         link.getStyleClass().add("container-link");
-        link.setOnAction(event -> EquipmentDetails.open(sceneModel, target.get()));
+        link.setOnAction(_ -> EquipmentDetails.open(sceneModel, target.get()));
         form.node(labelKey, link, null, () -> {
             Identifiable<?> identifiable = target.get();
             link.setText(identifiable == null ? "-" : identifiable.getNameOrId());
@@ -173,7 +173,7 @@ public final class DetailSections {
         Label label = new Label();
         Button removeButton = iconButton("mdi2d-delete-outline", "detail.voltageRegulation.remove");
         removeButton.disableProperty().bind(form.editableProperty().not());
-        removeButton.setOnAction(event -> form.apply(removeButton, holder::removeVoltageRegulation));
+        removeButton.setOnAction(_ -> form.apply(removeButton, holder::removeVoltageRegulation));
         HBox box = new HBox(4, label, removeButton);
         box.setAlignment(Pos.CENTER_LEFT);
         form.node("detail.voltageRegulation.defined", box, null, () -> {
@@ -209,7 +209,7 @@ public final class DetailSections {
         Label localLabel = new Label(Messages.get("detail.voltageRegulation.local"));
         Hyperlink link = new Hyperlink();
         link.getStyleClass().add("container-link");
-        link.setOnAction(event -> {
+        link.setOnAction(_ -> {
             Terminal terminal = getter.get();
             if (terminal != null) {
                 sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(terminal.getVoltageLevel())));
@@ -217,11 +217,11 @@ public final class DetailSections {
         });
         Button pickButton = iconButton("mdi2p-pencil", "detail.voltageRegulation.pickTerminal");
         pickButton.disableProperty().bind(form.editableProperty().not());
-        pickButton.setOnAction(event -> TerminalPickerDialog.show(pickButton.getScene().getWindow(), sceneModel)
+        pickButton.setOnAction(_ -> TerminalPickerDialog.show(pickButton.getScene().getWindow(), sceneModel)
                 .ifPresent(terminal -> form.apply(pickButton, () -> setter.accept(terminal))));
         Button localButton = iconButton("mdi2m-map-marker-off-outline", "detail.voltageRegulation.setLocal");
         localButton.disableProperty().bind(form.editableProperty().not());
-        localButton.setOnAction(event -> form.apply(localButton, () -> setter.accept(null)));
+        localButton.setOnAction(_ -> form.apply(localButton, () -> setter.accept(null)));
         HBox box = new HBox(4, localLabel, link, pickButton, localButton);
         box.setAlignment(Pos.CENTER_LEFT);
         form.node(labelKey, box, null, () -> {

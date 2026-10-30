@@ -33,7 +33,7 @@ class NetworkTaskTest {
         System.setProperty("glass.platform", "Headless");
         try {
             Platform.startup(() -> { });
-        } catch (IllegalStateException alreadyStarted) {
+        } catch (IllegalStateException _) {
             // toolkit already started by another test class running in this fork
         }
     }
