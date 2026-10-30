@@ -119,6 +119,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -149,10 +150,22 @@ public class MainController extends AbstractDisposableController {
     public RadioMenuItem languageFrenchItem;
     @FXML
     public ToggleButton notificationsButton;
+    @FXML
+    private Button mapButton;
+    @FXML
+    private Button contingenciesButton;
+    @FXML
+    private Button parametersButton;
+    @FXML
+    private Button logsButton;
+    @FXML
+    private Button reportsButton;
 
     private static final String LOGS_WINDOW = "logs";
     private static final String REPORTS_WINDOW = "reports";
     private static final String PARAMETERS_WINDOW = "parameters";
+    private static final String MAP_FXML = "map/map-view.fxml";
+    private static final String CONTINGENCIES_FXML = "contingency/contingencies-view.fxml";
 
     private final MainModel mainModel;
     private final SeparateWindows separateWindows;
@@ -687,12 +700,24 @@ public class MainController extends AbstractDisposableController {
     // whole network
     private <T extends SceneView> T ensureSceneView(Class<T> controllerClass, String fxml, NavigationType type) {
         return ensureController(controllerClass, fxml, c -> c.setSceneModel(sceneModel),
-                root -> separateWindows.addOpenButton(root, () -> separateWindows.open(type.name(), () -> viewTitle(type),
-                        scene -> SeparateWindows.<T>load(fxml, c -> c.setSceneModel(scene)))));
+                root -> separateWindows.addOpenButton(root, () -> detachSceneView(fxml, type)));
+    }
+
+    private void detachSceneView(String fxml, NavigationType type) {
+        Function<SceneModel, SeparateWindows.View> viewFactory = scene -> SeparateWindows.<SceneView>load(fxml, c -> c.setSceneModel(scene));
+        if (type == NavigationType.MAP) {
+            separateWindows.openFollowingSelection(type.name(), () -> viewTitle(type), viewFactory);
+        } else {
+            separateWindows.open(type.name(), () -> viewTitle(type), viewFactory);
+        }
     }
 
     private String viewTitle(NavigationType type) {
         Network network = mainModel.getNetwork();
+        // the map shows the whole root network
+        if (network != null && type == NavigationType.MAP) {
+            network = network.getNetwork();
+        }
         return (network == null ? NavigationEvent.create(type) : NavigationEvent.create(type, NetworkNavigationState.create(network))).describe();
     }
 
@@ -731,6 +756,12 @@ public class MainController extends AbstractDisposableController {
         // also on showing: windows' names and tabs change without changing the list
         windowsMenu.setOnShowing(event -> updateWindowsMenu());
         updateWindowsMenu();
+        separateWindows.addDragToOpen(mapButton, NavigationType.MAP.name(), () -> detachSceneView(MAP_FXML, NavigationType.MAP));
+        separateWindows.addDragToOpen(contingenciesButton, NavigationType.CONTINGENCIES.name(),
+                () -> detachSceneView(CONTINGENCIES_FXML, NavigationType.CONTINGENCIES));
+        separateWindows.addDragToOpen(parametersButton, PARAMETERS_WINDOW, this::detachParameters);
+        separateWindows.addDragToOpen(logsButton, LOGS_WINDOW, this::detachLogs);
+        separateWindows.addDragToOpen(reportsButton, REPORTS_WINDOW, this::detachReports);
 
         FXMLLoader notificationsLoader = new FXMLLoader(getClass().getResource("notification/notifications-view.fxml"), Messages.bundle());
         try {
@@ -889,9 +920,7 @@ public class MainController extends AbstractDisposableController {
         }
         if (newValue.navigationType() == NavigationType.LOGS) {
             ensureController(LogsViewController.class, "logs/logs-view.fxml", c -> c.setModels(mainModel.getLogsModel(), mainModel.getParametersModel()),
-                    root -> separateWindows.addOpenButton(root, () -> separateWindows.openSingleInstance(LOGS_WINDOW, () -> NavigationEvent.create(NavigationType.LOGS).describe(),
-                            scene -> SeparateWindows.<LogsViewController>load("logs/logs-view.fxml",
-                                    c -> c.setModels(mainModel.getLogsModel(), mainModel.getParametersModel())))));
+                    root -> separateWindows.addOpenButton(root, this::detachLogs));
         } else if (newValue.navigationType() == NavigationType.NETWORKS) {
             NetworksController controller = ensureController(NetworksController.class, "network/networks-view.fxml", c -> c.setMainModel(mainModel));
             if (newValue.state() instanceof NetworkNavigationState state) {
@@ -907,9 +936,9 @@ public class MainController extends AbstractDisposableController {
                 controller.navigateTo(null);
             }
         } else if (newValue.navigationType() == NavigationType.MAP) {
-            ensureSceneView(MapController.class, "map/map-view.fxml", NavigationType.MAP);
+            ensureSceneView(MapController.class, MAP_FXML, NavigationType.MAP);
         } else if (newValue.navigationType() == NavigationType.CONTINGENCIES) {
-            ensureSceneView(ContingenciesController.class, "contingency/contingencies-view.fxml", NavigationType.CONTINGENCIES);
+            ensureSceneView(ContingenciesController.class, CONTINGENCIES_FXML, NavigationType.CONTINGENCIES);
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SUBSTATIONS) {
             SubstationsTableController controller = ensureSceneView(SubstationsTableController.class,
                     "network/tables/substations-view.fxml", NavigationType.NETWORK_TABLE_SUBSTATIONS);
@@ -1057,8 +1086,7 @@ public class MainController extends AbstractDisposableController {
                     root -> separateWindows.addOpenButton(root, this::detachParameters));
         } else if (newValue.navigationType() == NavigationType.REPORTS) {
             ReportsController controller = ensureController(ReportsController.class, "report/reports-view.fxml", c -> c.setSceneModel(sceneModel),
-                    root -> separateWindows.addOpenButton(root, () -> separateWindows.openSingleInstance(REPORTS_WINDOW, () -> NavigationEvent.create(NavigationType.REPORTS).describe(),
-                            scene -> SeparateWindows.<ReportsController>load("report/reports-view.fxml", c -> c.setSceneModel(scene)))));
+                    root -> separateWindows.addOpenButton(root, this::detachReports));
             if (newValue.state() instanceof ReportNavigationState state) {
                 controller.selectReport(state.getReportNode());
             }
@@ -1122,6 +1150,17 @@ public class MainController extends AbstractDisposableController {
             SeparateWindows.View view = SeparateWindows.<ParametersController>load("parameters/parameters-view.fxml", c -> c.setMainModel(mainModel));
             return new SeparateWindows.View(view.root(), view.controller(), 1000, 700);
         });
+    }
+
+    private void detachLogs() {
+        separateWindows.openSingleInstance(LOGS_WINDOW, () -> NavigationEvent.create(NavigationType.LOGS).describe(),
+                scene -> SeparateWindows.<LogsViewController>load("logs/logs-view.fxml",
+                        c -> c.setModels(mainModel.getLogsModel(), mainModel.getParametersModel())));
+    }
+
+    private void detachReports() {
+        separateWindows.openSingleInstance(REPORTS_WINDOW, () -> NavigationEvent.create(NavigationType.REPORTS).describe(),
+                scene -> SeparateWindows.<ReportsController>load("report/reports-view.fxml", c -> c.setSceneModel(scene)));
     }
 
     public void onLogs() {

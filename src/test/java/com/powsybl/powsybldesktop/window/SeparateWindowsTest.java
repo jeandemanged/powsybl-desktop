@@ -40,13 +40,16 @@ import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -362,6 +365,55 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
+    void droppedOverAWindowOpensANewTabOfIt() {
+        AtomicInteger disposed = new AtomicInteger();
+        interact(() -> openPlain("a", false, disposed));
+        Stage stage = windows("a").getFirst();
+
+        interact(() -> separateWindows.dropToOpen("b", () -> openPlain("b", false, disposed), stage.getX() + stage.getWidth() - 10, stage.getY() + 50));
+
+        assertEquals(1, separateWindows.getOpenWindows().size());
+        assertEquals(List.of("a", "b"), separateWindows.getOpenWindows().getFirst().getTabTitles());
+    }
+
+    @Test
+    void droppedOutsideAnyWindowOpensANewOneThere() {
+        AtomicInteger disposed = new AtomicInteger();
+        interact(() -> openPlain("a", false, disposed));
+        Stage stage = windows("a").getFirst();
+        double x = stage.getX() + stage.getWidth() + 10;
+
+        interact(() -> separateWindows.dropToOpen("b", () -> openPlain("b", false, disposed), x, 20));
+
+        assertEquals(2, separateWindows.getOpenWindows().size());
+        assertEquals(x, windows("b").getFirst().getX());
+    }
+
+    // the view already open moves, as its tab would
+    @Test
+    void droppedWhileOpenMovesTheView() {
+        AtomicInteger disposed = new AtomicInteger();
+        interact(() -> {
+            openPlain("a", false, disposed);
+            openPlain("b", false, disposed);
+        });
+        Stage first = windows("a").getFirst();
+        first.setX(0);
+        first.setY(0);
+        Stage second = windows("b").getFirst();
+        interact(() -> {
+            second.setX(first.getWidth() + 10);
+            second.setY(0);
+        });
+
+        interact(() -> separateWindows.dropToOpen("b", () -> fail("already open"), first.getWidth() - 10, 50));
+
+        assertEquals(1, separateWindows.getOpenWindows().size());
+        assertEquals(List.of("a", "b"), separateWindows.getOpenWindows().getFirst().getTabTitles());
+        assertEquals(0, disposed.get());
+    }
+
+    @Test
     void networkChangeClosesOnlyBoundTabs() {
         AtomicInteger disposed = new AtomicInteger();
         interact(() -> openPlain("logs", false, disposed));
@@ -375,6 +427,23 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
         assertEquals(List.of(window), separateWindows.getOpenWindows());
         assertEquals(List.of("logs"), window.getTabTitles());
         assertEquals(2, disposed.get());
+    }
+
+    @Test
+    void viewFollowingTheSelectionStaysOpenOnItsNetworkAndIsRetitled() {
+        AtomicInteger disposed = new AtomicInteger();
+        AtomicReference<SceneModel> scene = new AtomicReference<>();
+        interact(() -> separateWindows.openFollowingSelection("map", () -> "map " + mainModel.getNetwork().getId(), sceneModel -> {
+            scene.set(sceneModel);
+            return new SeparateWindows.View(new StackPane(), disposed::incrementAndGet);
+        }));
+        assertTrue(separateWindows.confirmNetworkChange(otherNetwork));
+
+        interact(() -> mainModel.setNetwork(otherNetwork));
+
+        assertEquals(List.of("map " + otherNetwork.getId()), separateWindows.getOpenWindows().getFirst().getTabTitles());
+        assertSame(otherNetwork, scene.get().getNetwork());
+        assertEquals(0, disposed.get());
     }
 
     @Test

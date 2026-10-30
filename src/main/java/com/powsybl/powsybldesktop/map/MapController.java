@@ -268,7 +268,7 @@ public class MapController extends AbstractDisposableController implements Scene
     private final Service<MapNetworkData> networkDataService = new Service<>() {
         @Override
         protected Task<MapNetworkData> createTask() {
-            Network network = sceneModel.getNetwork();
+            Network network = network();
             buildingNetwork = network;
             return new AbstractNetworkTask<>(mainModel, network) {
                 @Override
@@ -392,9 +392,11 @@ public class MapController extends AbstractDisposableController implements Scene
             applyBasemap();
         });
         listenerManager.listen(sceneModel.networkProperty(), (observable, oldValue, newValue) -> {
-            stopEdit();
-            unplacedSubstations.clear();
-            refresh();
+            if (root(newValue) != root(oldValue)) {
+                stopEdit();
+                unplacedSubstations.clear();
+                refresh();
+            }
         });
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
         createBaseVoltageCheckBoxes();
@@ -412,9 +414,18 @@ public class MapController extends AbstractDisposableController implements Scene
     private record SearchFocus(double[] bounds, List<double[]> highlights) {
     }
 
+    // the selected network's root: the map shows a network with all its subnetworks
+    private Network network() {
+        return root(sceneModel.getNetwork());
+    }
+
+    private static Network root(Network network) {
+        return network == null ? null : network.getNetwork();
+    }
+
     private void onSearchMatch(Identifiable<?> match) {
         // not drawn yet, or still drawn from the previous network
-        if (networkData == null || displayedNetwork != sceneModel.getNetwork()) {
+        if (networkData == null || displayedNetwork != network()) {
             return;
         }
         SearchFocus focus = searchFocus(match);
@@ -607,7 +618,7 @@ public class MapController extends AbstractDisposableController implements Scene
     @SuppressWarnings("unused") // called from map.js
     public void onMapClick(double latitude, double longitude, double zoom) {
         MapNetworkData.Hit hit = networkData == null ? null : networkData.hitTest(latitude, longitude, zoom, hiddenBaseVoltages);
-        Network network = sceneModel.getNetwork();
+        Network network = network();
         if (hit == null || network == null) {
             return;
         }
@@ -623,7 +634,7 @@ public class MapController extends AbstractDisposableController implements Scene
     // the clicked substation's and its voltage levels' diagrams, then creation in it, or of a substation at the clicked place
     @SuppressWarnings("unused") // called from map.js
     public void onMapContextMenu(double latitude, double longitude, double zoom) {
-        Network network = sceneModel.getNetwork();
+        Network network = network();
         if (network == null) {
             return;
         }
@@ -740,7 +751,7 @@ public class MapController extends AbstractDisposableController implements Scene
         // not from within the JavaScript call: the edit refreshes the map
         Platform.runLater(() -> {
             MapNetworkData.UnplacedSubstation selected = unplacedListView.getSelectionModel().getSelectedItem();
-            Network network = sceneModel.getNetwork();
+            Network network = network();
             Substation substation = selected == null || network == null ? null : network.getSubstation(selected.id());
             if (!placing || substation == null) {
                 return;
@@ -756,7 +767,7 @@ public class MapController extends AbstractDisposableController implements Scene
 
     @FXML
     private void createStraightRoutes() {
-        Network network = sceneModel.getNetwork();
+        Network network = network();
         if (network == null || networkData == null) {
             return;
         }

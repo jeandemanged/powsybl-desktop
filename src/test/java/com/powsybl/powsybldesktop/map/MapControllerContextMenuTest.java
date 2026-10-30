@@ -15,6 +15,7 @@ import com.powsybl.iidm.network.extensions.SubstationPosition;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
+import com.powsybl.powsybldesktop.testutil.SubnetworksTestFactory;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.event.Event;
 import javafx.fxml.FXMLLoader;
@@ -55,6 +56,7 @@ class MapControllerContextMenuTest extends AbstractHeadlessApplicationTest {
     private ListView<MapNetworkData.UnplacedSubstation> unplacedList;
     private TitledPane positionsPane;
     private Network network;
+    private MainModel mainModel;
 
     @Override
     @SuppressWarnings("unchecked")
@@ -68,7 +70,7 @@ class MapControllerContextMenuTest extends AbstractHeadlessApplicationTest {
         // in the titled pane's content, only part of the scene graph once its skin exists
         unplacedList = (ListView<MapNetworkData.UnplacedSubstation>) positionsPane.getContent().lookup("#unplacedListView");
 
-        MainModel mainModel = new MainModel();
+        mainModel = new MainModel();
         network = IeeeCdfNetworkFactory.create14();
         mainModel.addNetwork(network);
         mainModel.setNetwork(network);
@@ -122,6 +124,22 @@ class MapControllerContextMenuTest extends AbstractHeadlessApplicationTest {
         Substation substation = network.getSubstation(first);
         assertEquals(Messages.get("map.contextMenu.singleLineDiagram", substation.getNameOrId()), items.getFirst());
         assertEquals(substation.getVoltageLevelStream().count(), items.subList(1, items.indexOf(null)).size());
+    }
+
+    // none of these substations has a position: the unplaced ones are all of the network shown
+    @Test
+    void showsTheWholeRootNetworkOfASelectedSubnetwork() throws TimeoutException {
+        waitForEngine();
+        Network root = SubnetworksTestFactory.create();
+        Network subnetwork = root.getSubnetwork(SubnetworksTestFactory.NODE_BREAKER);
+        assertTrue(subnetwork.getSubstationCount() < root.getSubstationCount());
+
+        interact(() -> {
+            mainModel.addNetwork(root);
+            mainModel.setNetwork(subnetwork);
+        });
+
+        WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> unplacedList.getItems().size() == root.getSubstationCount());
     }
 
     private void waitForEngine() throws TimeoutException {

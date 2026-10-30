@@ -70,12 +70,12 @@
                                 <FontIcon iconLiteral="mdi2h-hubspot" iconSize="16" />
                             </graphic>
                         </Button>
-                        <Button mnemonicParsing="false" onAction="#onMap" text="%main.toolbar.map">
+                        <Button fx:id="mapButton" mnemonicParsing="false" onAction="#onMap" text="%main.toolbar.map">
                             <graphic>
                                 <FontIcon iconLiteral="mdi2e-earth" iconSize="16" />
                             </graphic>
                         </Button>
-                        <Button mnemonicParsing="false" onAction="#onContingencies" text="%main.toolbar.contingencies">
+                        <Button fx:id="contingenciesButton" mnemonicParsing="false" onAction="#onContingencies" text="%main.toolbar.contingencies">
                             <graphic>
                                 <FontIcon iconLiteral="mdi2f-flash-off" iconSize="16" />
                             </graphic>
@@ -126,18 +126,18 @@
                                 <MenuItem mnemonicParsing="false" onAction="#onSecurityAnalysis" text="%desktop.common.securityAnalysis" />
                             </items>
                         </MenuButton>
-                        <Button mnemonicParsing="false" onAction="#onParameters" text="%desktop.common.parameters">
+                        <Button fx:id="parametersButton" mnemonicParsing="false" onAction="#onParameters" text="%desktop.common.parameters">
                             <graphic>
                                 <FontIcon iconLiteral="mdi2c-cog" iconSize="16" />
                             </graphic>
                         </Button>
                         <Separator orientation="VERTICAL" />
-                        <Button mnemonicParsing="false" onAction="#onLogs" text="%main.toolbar.logs">
+                        <Button fx:id="logsButton" mnemonicParsing="false" onAction="#onLogs" text="%main.toolbar.logs">
                             <graphic>
                                 <FontIcon iconLiteral="mdi2f-file-alert" iconSize="16" />
                             </graphic>
                         </Button>
-                        <Button mnemonicParsing="false" onAction="#onReports" text="%main.toolbar.reports">
+                        <Button fx:id="reportsButton" mnemonicParsing="false" onAction="#onReports" text="%main.toolbar.reports">
                             <graphic>
                                 <FontIcon iconLiteral="mdi2f-file-check" iconSize="16" />
                             </graphic>

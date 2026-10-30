@@ -301,6 +301,18 @@
     -fx-font-style: italic;
 }
 
+/* ===== Separate windows (SeparateWindows) ===== */
+
+/* Follows the mouse while a main toolbar button is dragged, telling where its view will open. */
+.drag-to-open-hint {
+    -fx-background-color: derive(-fx-base, 20%);
+    -fx-border-color: -fx-accent;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-padding: 4px 8px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 8, 0, 0, 2);
+}
+
 /* ===== Substations view (SubstationsController) ===== */
 
 /* Catch-all tree group ("no area", "no substation", "no subnetwork"), as opposed to an actual area/subnetwork. */

@@ -20,7 +20,9 @@ import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.BoundingBox;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
@@ -29,6 +31,7 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonBase;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
@@ -44,6 +47,7 @@ import javafx.scene.input.DataFormat;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -53,6 +57,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.robot.Robot;
+import javafx.stage.Popup;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import org.kordamp.ikonli.javafx.FontIcon;
@@ -87,7 +92,8 @@ import java.util.stream.IntStream;
  * stays open while the main window moves within that root network (navigation crosses subnetworks, e.g. to a tie line
  * held by the root network), and before the main window selects another root network, {@link #confirmNetworkChange}
  * asks whether to close it, closed anyway once the selection changes (e.g. the network was closed). Logs and reports
- * views aren't bound, and are single-instance.
+ * views aren't bound, and are single-instance; nor is the map, which follows the selected network (see
+ * {@link #openFollowingSelection}).
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -98,6 +104,10 @@ public final class SeparateWindows {
 
     private static final double DEFAULT_WIDTH = 900;
     private static final double DEFAULT_HEIGHT = 600;
+
+    private static final double DRAG_THRESHOLD = 6;
+    // of the drag to open hint from the mouse, so as not to hide what is under it
+    private static final double HINT_OFFSET = 14;
 
     // only tells drop targets that a tab is dragged, the tab itself being draggedView: a drag never leaves the application
     private static final DataFormat TAB_FORMAT = new DataFormat("application/x-powsybl-desktop-tab");
@@ -363,7 +373,11 @@ public final class SeparateWindows {
     public SeparateWindows(MainModel mainModel, Supplier<Window> mainWindow) {
         this.mainModel = Objects.requireNonNull(mainModel);
         this.mainWindow = Objects.requireNonNull(mainWindow);
-        networkListener = (observable, oldNetwork, newNetwork) -> close(boundToOtherThan(newNetwork));
+        networkListener = (observable, oldNetwork, newNetwork) -> {
+            close(boundToOtherThan(newNetwork));
+            // the views left whose title may name the network: those following the selection
+            views.stream().filter(view -> !view.bound).forEach(this::retitle);
+        };
         mainModel.networkProperty().addListener(networkListener);
     }
 
@@ -444,6 +458,18 @@ public final class SeparateWindows {
     }
 
     /**
+     * Same as {@link #openSingleInstance}, for a view following the selected network instead of being bound to one,
+     * kept open when the selection changes, its title re-resolved.
+     */
+    public void openFollowingSelection(String key, Supplier<String> title, Function<SceneModel, View> viewFactory) {
+        if (!focusOpen(Objects.requireNonNull(key))) {
+            SceneModel sceneModel = SceneModel.separateFollowingSelection(mainModel, this::bringMainWindowToFront, this);
+            View view = viewFactory.apply(sceneModel);
+            show(new SeparateView(key, title, viewFactory, sceneModel, false, view), view);
+        }
+    }
+
+    /**
      * Brings the view of {@code key} to front, if open.
      */
     public boolean focusOpen(String key) {
@@ -459,10 +485,14 @@ public final class SeparateWindows {
     public void retarget(DisposableController controller, String key) {
         views.stream().filter(view -> view.controller == controller).findFirst().ifPresent(view -> {
             view.key = key;
-            view.title = view.titleSupplier.get();
-            view.label.setText(view.title);
-            view.window.updateTitle();
+            retitle(view);
         });
+    }
+
+    private void retitle(SeparateView view) {
+        view.title = view.titleSupplier.get();
+        view.label.setText(view.title);
+        view.window.updateTitle();
     }
 
     public void close(String key) {
@@ -663,6 +693,111 @@ public final class SeparateWindows {
         } else {
             throw new IllegalArgumentException("No place for an open in new window button in " + viewRoot);
         }
+    }
+
+    /**
+     * Lets {@code button} (e.g. a main toolbar button) be dragged to open the view of {@code key}, which {@code open}
+     * opens, as a new tab of the window it is released over, or in a new window where released outside any; a label
+     * following the mouse tells which. Released back over the button, it is a click. Dragging it while the view is
+     * open moves the view, as dragging its tab does.
+     * <p>
+     * A plain mouse drag rather than a drag and drop gesture: outside the application, or over a part of it not
+     * accepting the drop, the platform shows a "forbidden" cursor although releasing there opens a new window.
+     */
+    public void addDragToOpen(ButtonBase button, String key, Runnable open) {
+        new DragToOpen(button, Objects.requireNonNull(key), open);
+    }
+
+    private final class DragToOpen {
+        private final ButtonBase button;
+        private final String key;
+        private final Runnable open;
+        private final Label hint = new Label();
+        private final Popup popup = new Popup();
+        // on the scene rather than the button: the gesture leaves it
+        private final EventHandler<MouseEvent> dragged = this::dragged;
+        private final EventHandler<MouseEvent> released = this::released;
+        private Scene scene;
+        private Point2D pressed;
+
+        private DragToOpen(ButtonBase button, String key, Runnable open) {
+            this.button = button;
+            this.key = key;
+            this.open = open;
+            hint.getStyleClass().add("drag-to-open-hint");
+            // a Popup doesn't inherit its owner's stylesheets
+            hint.getStylesheets().add(Objects.requireNonNull(MainApplication.class.getResource("styles.css")).toExternalForm());
+            popup.getContent().add(hint);
+            button.addEventHandler(MouseEvent.MOUSE_PRESSED, event -> {
+                if (event.getButton() == MouseButton.PRIMARY && button.getScene() != null) {
+                    pressed = new Point2D(event.getScreenX(), event.getScreenY());
+                    scene = button.getScene();
+                    scene.addEventFilter(MouseEvent.MOUSE_DRAGGED, dragged);
+                    scene.addEventFilter(MouseEvent.MOUSE_RELEASED, released);
+                }
+            });
+        }
+
+        private void dragged(MouseEvent event) {
+            if (!popup.isShowing() && pressed.distance(event.getScreenX(), event.getScreenY()) < DRAG_THRESHOLD) {
+                return;
+            }
+            DetachedWindow target = windowAt(event.getScreenX(), event.getScreenY());
+            hint.setText(target == null ? Messages.get("separateWindows.newWindow") : Messages.get("separateWindows.newTab", target.getName()));
+            double x = event.getScreenX() + HINT_OFFSET;
+            double y = event.getScreenY() + HINT_OFFSET;
+            if (button.contains(button.screenToLocal(event.getScreenX(), event.getScreenY()))) {
+                popup.hide();
+            } else if (popup.isShowing()) {
+                popup.setX(x);
+                popup.setY(y);
+            } else {
+                popup.show(button, x, y);
+            }
+            event.consume();
+        }
+
+        private void released(MouseEvent event) {
+            scene.removeEventFilter(MouseEvent.MOUSE_DRAGGED, dragged);
+            scene.removeEventFilter(MouseEvent.MOUSE_RELEASED, released);
+            if (popup.isShowing()) {
+                popup.hide();
+                // released away from the button, which would otherwise stay armed
+                button.disarm();
+                event.consume();
+                dropToOpen(key, open, event.getScreenX(), event.getScreenY());
+            }
+        }
+    }
+
+    // package-private for tests: the headless platform doesn't deliver a drag leaving its window
+    void dropToOpen(String key, Runnable open, double screenX, double screenY) {
+        DetachedWindow target = windowAt(screenX, screenY);
+        SeparateView view = find(key).orElse(null);
+        if (view == null) {
+            openIn(target, open);
+            view = find(key).orElse(null);
+            if (view == null) {
+                return;
+            }
+        }
+        if (target == null) {
+            tearOff(view, new Point2D(screenX, screenY));
+        } else {
+            Scene scene = target.stage.getScene();
+            move(view, target, target.dropIndex(view, screenX - scene.getWindow().getX() - scene.getX()));
+            focus(target.stage);
+        }
+    }
+
+    // the topmost can't be told, the most recently opened is taken
+    private DetachedWindow windowAt(double screenX, double screenY) {
+        return windows.reversed().stream()
+                .filter(window -> window.stage.isShowing() && !window.stage.isIconified())
+                .filter(window -> new BoundingBox(window.stage.getX(), window.stage.getY(), window.stage.getWidth(), window.stage.getHeight())
+                        .contains(screenX, screenY))
+                .findFirst()
+                .orElse(null);
     }
 
     public void addOpenButton(ToolBar toolBar, Runnable open) {

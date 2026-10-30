@@ -29,8 +29,9 @@ import java.util.Optional;
  * The main window's scene follows the selected network and records its own navigation. A separate window's scene
  * shows one view in a fixed context: its network is the one selected when it was opened - such windows are closed
  * before the selection changes to another root network, so the root network's {@link MainModel} state (busy) still
- * applies to it, while its search boxes search its own network (see {@link #getNetwork}) - and its navigation drives
- * the main window without recording its own state.
+ * applies to it, while its search boxes search its own network (see {@link #getNetwork}) - or, for a view following
+ * the selection (the map), the selected network; its navigation drives the main window without recording its own
+ * state.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -87,6 +88,15 @@ public final class SceneModel {
     public static SceneModel separate(MainModel mainModel, Runnable onNavigate, SeparateWindows detailWindows) {
         return new SceneModel(mainModel, new ReadOnlyObjectWrapper<>(mainModel.getNetwork()).getReadOnlyProperty(), true,
                 Objects.requireNonNull(onNavigate),
+                new SimpleDoubleProperty(mainModel.getDiagramZoom()), new SimpleBooleanProperty(mainModel.isDiagramFitToScreen()),
+                new SimpleIntegerProperty(mainModel.getDiagramAreaDepth()), null, detailWindows);
+    }
+
+    /**
+     * Same as {@link #separate(MainModel, Runnable, SeparateWindows)}, but following the selected network.
+     */
+    public static SceneModel separateFollowingSelection(MainModel mainModel, Runnable onNavigate, SeparateWindows detailWindows) {
+        return new SceneModel(mainModel, mainModel.networkProperty(), true, Objects.requireNonNull(onNavigate),
                 new SimpleDoubleProperty(mainModel.getDiagramZoom()), new SimpleBooleanProperty(mainModel.isDiagramFitToScreen()),
                 new SimpleIntegerProperty(mainModel.getDiagramAreaDepth()), null, detailWindows);
     }

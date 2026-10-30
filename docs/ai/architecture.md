@@ -139,6 +139,12 @@ menu, blank and taken names rejected):
   `openInNewWindowHost` Pane): by `MainController.ensureSceneView` for whole views (tables, map, contingencies), by
   `SubstationsController` for its diagram panes (`network/ContainerDiagram`, shared with its own tabs) and equipment
   tabs (fixed to the selected container), and for logs/reports (single-instance, not network-bound);
+- the main toolbar's map, contingencies, parameters, logs and reports buttons can also be dragged
+  (`separateWindows.addDragToOpen(button, key, open)`): released over a separate window, the view opens as a new tab
+  of it, elsewhere in a new window at the release point, a hint following the mouse telling which; if the view of `key`
+  is already open, the drag moves it as its tab's would. A plain mouse drag (scene filters), not platform drag and
+  drop, whose "forbidden" cursor outside accepting targets would be misleading; tests call `dropToOpen` directly,
+  since the headless platform doesn't deliver a drag leaving its window;
 - views of one kind gather as tabs of their group's window instead of a window each (`open(Group, key, ...)`,
   `SeparateWindows.Group`): detail views in "Details", diagrams opened from the map in "Diagrams"; the window is
   created, named after its group, on the first one, and reused while open (even renamed);
@@ -148,6 +154,9 @@ menu, blank and taken names rejected):
   (`SeparateWindows.retarget`; `ContainerDiagram.open` titles and rebuilds it from what it currently shows);
 - network-bound views (tabs) close when the selection changes to another root network (`confirmNetworkChange` asks
   first), not while it moves between a root network and its subnetworks;
+- the map isn't bound: opened with `openFollowingSelection`, its scene (`SceneModel.separateFollowingSelection`) follows
+  the selected network, its tab kept open and retitled when the selection changes; in any window, the map shows the
+  selected network's root network, with all its subnetworks (`MapController.network()`);
 - a tab can be dragged to another window's tab strip, reordered, or dropped outside any window to get its own window
   (moved with its controller, not disposed); a window closes with its last tab, disposing its views' controllers;
 - one view per key: whole-network views (tables, map, contingencies) are keyed by `NavigationType`, container
