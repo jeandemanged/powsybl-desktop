@@ -28,6 +28,7 @@ import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
@@ -42,6 +43,7 @@ import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
@@ -184,6 +186,19 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
         clickOn(ieee118.getNameOrId());
 
         assertEquals(ieee118, mainModel.getNetwork());
+    }
+
+    @Test
+    void copiesIdAndName() {
+        clickOn(ieee14.getNameOrId());
+        GridPane details = (GridPane) idLabel().getParent();
+        List<Button> copyButtons = details.getChildren().stream()
+                .filter(node -> GridPane.getColumnIndex(node) != null && GridPane.getColumnIndex(node) == 2)
+                .map(Button.class::cast)
+                .toList();
+        interact(() -> copyButtons.getFirst().fire());
+        assertEquals(ieee14.getId(), clipboardString());
+        assertEquals(ieee14.getOptionalName().isPresent(), copyButtons.getLast().isVisible());
     }
 
     @Test

@@ -13,6 +13,7 @@ import com.powsybl.iidm.network.MinMaxReactiveLimits;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.ReactiveCapabilityCurve;
 import com.powsybl.iidm.network.ReactiveLimitsKind;
+import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.ActivePowerControl;
 import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.powsybldesktop.MainModel;
@@ -118,7 +119,7 @@ class GeneratorDetailControllerTest extends AbstractHeadlessApplicationTest {
         assertTrue(controller.titleLabel.getText().contains(generator.getNameOrId()));
         assertEquals(generator.getTerminal().getVoltageLevel().getNameOrId(), ((Hyperlink) controller.linksBox.getChildren().get(1)).getText());
         Node form = controller.form.getNode();
-        assertEquals(generator.getId(), field(form, "desktop.common.column.id", Label.class).getText());
+        assertEquals(generator.getId(), field(form, "desktop.common.column.id", TextField.class).getText());
         assertEquals(generator.getEnergySource(), field(form, "detail.generator.energySource", ChoiceBox.class).getValue());
         assertEquals(4, controller.tabPane.getTabs().size());
         assertEquals(generator, controller.getEquipment());
@@ -136,6 +137,60 @@ class GeneratorDetailControllerTest extends AbstractHeadlessApplicationTest {
             mainModel.setUpdate();
         });
         assertEquals("321.0", field(controller.form.getNode(), "desktop.common.column.maxP", TextField.class).getText());
+    }
+
+    @Test
+    void editsId() {
+        commit(controller.form.getNode(), "desktop.common.column.id", "B1-G2");
+        assertEquals("B1-G2", generator.getId());
+        assertEquals(generator, network.getGenerator("B1-G2"));
+        // IIDM refuses an existing id
+        commit(controller.form.getNode(), "desktop.common.column.id", "B2-G");
+        assertEquals("B1-G2", generator.getId());
+    }
+
+    @Test
+    void copiesIdAndName() {
+        List<Node> copyButtons = controller.form.getNode().lookupAll(".icon-button").stream().limit(2).toList();
+        interact(() -> ((Button) copyButtons.getFirst()).fire());
+        assertEquals(generator.getId(), clipboardString());
+        // no name
+        assertFalse(copyButtons.getLast().isVisible());
+        interact(() -> {
+            generator.setName("Generator 1");
+            mainModel.setUpdate();
+        });
+        assertTrue(copyButtons.getLast().isVisible());
+        interact(() -> ((Button) copyButtons.getLast()).fire());
+        assertEquals("Generator 1", clipboardString());
+    }
+
+    @Test
+    void connectsFromSymbol() {
+        Node symbol = controller.titleLabel.getScene().getRoot().lookup(".equipment-symbol");
+        assertTrue(symbol.lookupAll(".symbol-value").stream()
+                .anyMatch(label -> ((Label) label).getText().startsWith(Messages.get("desktop.common.column.p") + " = ")));
+        CheckBox connected = (CheckBox) symbol.lookup(".check-box");
+        interact(connected::fire);
+        assertFalse(generator.getTerminal().isConnected());
+        assertFalse(connected.isSelected());
+        interact(connected::fire);
+        assertTrue(generator.getTerminal().isConnected());
+    }
+
+    @Test
+    void movesToAnotherBus() {
+        VoltageLevel voltageLevel = generator.getTerminal().getVoltageLevel();
+        interact(() -> {
+            voltageLevel.getBusBreakerView().newBus().setId("B1-BIS").add();
+            mainModel.setUpdate();
+        });
+        @SuppressWarnings("unchecked")
+        ChoiceBox<String> bus = field(controller.form.getNode(), "detail.bus.busBreakerView", ChoiceBox.class);
+        assertTrue(bus.getItems().contains("B1-BIS"));
+        interact(() -> bus.setValue("B1-BIS"));
+        assertEquals("B1-BIS", generator.getTerminal().getBusBreakerView().getConnectableBus().getId());
+        assertTrue(generator.getTerminal().isConnected());
     }
 
     @Test

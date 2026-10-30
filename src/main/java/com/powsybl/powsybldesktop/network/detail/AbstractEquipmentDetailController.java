@@ -35,6 +35,7 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
@@ -49,8 +50,9 @@ import java.util.function.Supplier;
 /**
  * Detail view of one equipment, non-modal (see {@link EquipmentDetails}), one subclass per equipment type, all on
  * {@code equipment-detail-view.fxml}. This base builds what every type shares: the title and voltage level links,
- * the main tab's form starting with the general section (id, name, fictitious), the extensions, properties and
- * aliases tabs; subclasses add their main rows, a main tab side node (e.g. a P/Q diagram) and tabs of their own.
+ * the main tab's form starting with the general section (id, editable, name, fictitious), the extensions, properties
+ * and aliases tabs; subclasses add their main rows, an {@link EquipmentSymbol} above the tabs, a main tab side node
+ * (e.g. a P/Q diagram) and tabs of their own.
  * Edits write straight to the equipment, as in the tables; every {@link #register registered} part is re-read on
  * each network update and read-only while the network is busy.
  *
@@ -62,6 +64,8 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
     Label titleLabel;
     @FXML
     HBox linksBox;
+    @FXML
+    private HBox symbolHost;
     @FXML
     TabPane tabPane;
     @FXML
@@ -128,6 +132,18 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
     }
 
     /**
+     * Drawn above the tabs, e.g. {@code newSymbol().injection(...)}; none by default.
+     */
+    protected EquipmentSymbol symbol() {
+        return null;
+    }
+
+    protected EquipmentSymbol newSymbol() {
+        return new EquipmentSymbol(() -> mainModel.getParametersModel().sldParametersProperty().getValue().getComponentLibrary(),
+                guiParameters(), onEdit());
+    }
+
+    /**
      * Tabs between the main tab and the extensions tab.
      */
     protected List<Tab> extraTabs() {
@@ -151,8 +167,10 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
 
         form = register(newForm());
         form.section("detail.section.general")
-                .text("desktop.common.column.id", equipment::getId)
+                .textField("desktop.common.column.id", equipment::getId, this::setId)
+                .copyButton(equipment::getId)
                 .textField("desktop.common.column.name", () -> equipment.getOptionalName().orElse(null), equipment::setName)
+                .copyButton(() -> equipment.getOptionalName().orElse(null))
                 .booleanField("detail.fictitious", equipment::isFictitious, equipment::setFictitious);
         buildMain(form);
         mainScrollPane.setContent(form.getNode());
@@ -163,6 +181,12 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
             mainSplitPane.getItems().remove(mainSideHost);
         }
         tabPane.getTabs().addAll(1, extraTabs());
+        EquipmentSymbol symbol = symbol();
+        if (symbol != null) {
+            symbolHost.getChildren().setAll(register(symbol));
+        } else {
+            ((Pane) symbolHost.getParent()).getChildren().remove(symbolHost);
+        }
 
         extensionsPane = register(new ExtensionsPane<>(equipment, extensionEditors(), guiParameters(), onEdit()));
         extensionsScrollPane.setContent(extensionsPane);
@@ -192,6 +216,8 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
 
         listenerManager.listen(mainModel.updateProperty(), (observable, oldValue, newValue) -> refresh());
         listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (observable, oldValue, newValue) -> refresh());
+        // the symbol's component library
+        listenerManager.listen(mainModel.getParametersModel().sldParametersProperty(), (observable, oldValue, newValue) -> refresh());
         refresh();
     }
 
@@ -262,6 +288,14 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
         scrollPane.setFitToWidth(true);
         scrollPane.setPadding(new Insets(8));
         return scrollPane;
+    }
+
+    /**
+     * IIDM checks the id is new; the separate window's tab is re-keyed to it.
+     */
+    private void setId(String id) {
+        equipment.setId(id);
+        sceneModel.getDetailWindows().ifPresent(windows -> windows.retarget(this, EquipmentDetails.key(equipment)));
     }
 
     private void refresh() {

@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop.parameters;
 
+import com.powsybl.powsybldesktop.diagram.BaseVoltages;
 import com.powsybl.powsybldesktop.map.MapBaseVoltages;
 import com.powsybl.powsybldesktop.map.MapController;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -39,7 +40,7 @@ public class GuiParametersController extends AbstractDiagramParametersController
     private static final String CAT_DECIMALS = "decimals";
     private static final String CAT_NETWORK_EDITING = "networkEditing";
 
-    private final MapBaseVoltages mapBaseVoltages = new MapBaseVoltages();
+    private final MapBaseVoltages mapBaseVoltages = new MapBaseVoltages(new BaseVoltages());
 
     @FXML
     private void initialize() {

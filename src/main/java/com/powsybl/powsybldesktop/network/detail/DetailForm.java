@@ -10,6 +10,7 @@ package com.powsybl.powsybldesktop.network.detail;
 import com.powsybl.commons.PowsyblException;
 import com.powsybl.powsybldesktop.network.tables.TableColumnSupport;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.powsybldesktop.utils.CopyButtons;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
@@ -19,6 +20,7 @@ import javafx.collections.FXCollections;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
+import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Control;
@@ -186,7 +188,22 @@ public final class DetailForm implements DetailPart {
         ChoiceBox<T> choiceBox = new ChoiceBox<>();
         choiceBox.getItems().setAll(choices);
         choiceBox.setConverter(converter);
-        return choiceField(labelKey, choiceBox, choiceBox.valueProperty(), getter, setter);
+        return choiceField(labelKey, choiceBox, choiceBox.valueProperty(), getter, setter, () -> { });
+    }
+
+    /**
+     * Like {@link #choiceField(String, List, StringConverter, Supplier, Consumer)}, the choices re-read on refresh, e.g.
+     * a voltage level's buses.
+     */
+    public <T> DetailForm choiceField(String labelKey, Supplier<List<T>> choices, StringConverter<T> converter, Supplier<T> getter, Consumer<T> setter) {
+        ChoiceBox<T> choiceBox = new ChoiceBox<>();
+        choiceBox.setConverter(converter);
+        return choiceField(labelKey, choiceBox, choiceBox.valueProperty(), getter, setter, () -> {
+            List<T> current = choices.get();
+            if (!choiceBox.getItems().equals(current)) {
+                choiceBox.getItems().setAll(current);
+            }
+        });
     }
 
     /**
@@ -195,14 +212,16 @@ public final class DetailForm implements DetailPart {
     public <T> DetailForm searchableChoiceField(String labelKey, List<T> choices, StringConverter<T> converter, Supplier<T> getter, Consumer<T> setter) {
         SearchableComboBox<T> comboBox = new SearchableComboBox<>(FXCollections.observableArrayList(choices));
         comboBox.setConverter(converter);
-        return choiceField(labelKey, comboBox, comboBox.valueProperty(), getter, setter);
+        return choiceField(labelKey, comboBox, comboBox.valueProperty(), getter, setter, () -> { });
     }
 
-    private <T> DetailForm choiceField(String labelKey, Control control, ObjectProperty<T> value, Supplier<T> getter, Consumer<T> setter) {
+    private <T> DetailForm choiceField(String labelKey, Control control, ObjectProperty<T> value, Supplier<T> getter, Consumer<T> setter,
+                                       Runnable updateChoices) {
         control.disableProperty().bind(editable.not());
         boolean[] refreshing = {false};
         Runnable refresher = () -> {
             refreshing[0] = true;
+            updateChoices.run();
             value.set(getter.get());
             refreshing[0] = false;
         };
@@ -235,6 +254,19 @@ public final class DetailForm implements DetailPart {
             refreshers.add(refresher);
             refresher.run();
         }
+        return this;
+    }
+
+    /**
+     * A button in the last row's unit column copying {@code text} to the clipboard, hidden while there is none (e.g. an
+     * unset name).
+     */
+    public DetailForm copyButton(Supplier<String> text) {
+        Button button = CopyButtons.copy(text);
+        root.add(button, 2, row - 1);
+        Runnable refresher = () -> button.setVisible(text.get() != null);
+        refreshers.add(refresher);
+        refresher.run();
         return this;
     }
 

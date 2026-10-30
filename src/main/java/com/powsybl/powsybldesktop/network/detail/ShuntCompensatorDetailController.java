@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop.network.detail;
 
+import com.powsybl.diagram.util.IidmUtil;
 import com.powsybl.iidm.network.ShuntCompensator;
 import com.powsybl.iidm.network.ShuntCompensatorLinearModel;
 import com.powsybl.iidm.network.ShuntCompensatorModelType;
@@ -17,6 +18,7 @@ import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.network.tables.ShuntCompensatorsController;
 import com.powsybl.powsybldesktop.network.tables.TableColumnSupport;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.sld.library.SldComponentTypeName;
 import javafx.geometry.Insets;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TableView;
@@ -72,7 +74,7 @@ public class ShuntCompensatorDetailController extends AbstractEquipmentDetailCon
                 .value("detail.shunt.g", DetailForm.SIEMENS, GuiParameters.Quantity.ADMITTANCE, equipment::getG);
         DetailSections.localTargets(form, equipment, false);
         DetailSections.voltageRegulation(form, "desktop.common.column.voltageRegulation", equipment, REGULATION_MODES, sceneModel);
-        DetailSections.solvedValues(form, "desktop.common.columnGroup.solvedValues", equipment::getTerminal);
+        form.section("desktop.common.columnGroup.solvedValues");
         form.text("detail.shunt.solvedSectionCount", () -> equipment.findSolvedSectionCount().isPresent()
                 ? String.valueOf(equipment.getSolvedSectionCount()) : null);
     }
@@ -112,6 +114,11 @@ public class ShuntCompensatorDetailController extends AbstractEquipmentDetailCon
 
     private double nominalV2() {
         return Math.pow(equipment.getTerminal().getVoltageLevel().getNominalV(), 2);
+    }
+
+    @Override
+    protected EquipmentSymbol symbol() {
+        return newSymbol().injection(() -> IidmUtil.isCapacitor(equipment) ? SldComponentTypeName.CAPACITOR : SldComponentTypeName.INDUCTOR, equipment::getTerminal);
     }
 
     @Override

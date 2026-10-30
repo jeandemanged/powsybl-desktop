@@ -12,6 +12,7 @@ import com.powsybl.iidm.network.LoadType;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.sld.library.SldComponentTypeName;
 
 import java.util.List;
 
@@ -41,7 +42,11 @@ public class LoadDetailController extends AbstractEquipmentDetailController<Load
         form.section("detail.section.setpoints")
                 .doubleField("desktop.common.column.p0", DetailForm.MW, GuiParameters.Quantity.POWER, equipment::getP0, equipment::setP0)
                 .doubleField("desktop.common.column.q0", DetailForm.MVAR, GuiParameters.Quantity.POWER, equipment::getQ0, equipment::setQ0);
-        DetailSections.solvedValues(form, "desktop.common.columnGroup.solvedValues", equipment::getTerminal);
+    }
+
+    @Override
+    protected EquipmentSymbol symbol() {
+        return newSymbol().injection(() -> SldComponentTypeName.LOAD, equipment::getTerminal);
     }
 
     @Override

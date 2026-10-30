@@ -57,13 +57,6 @@ public class BoundaryLineDetailController extends AbstractEquipmentDetailControl
                     .booleanField("desktop.common.column.voltageRegulation", generation::isVoltageRegulationOn, generation::setVoltageRegulationOn)
                     .doubleField("desktop.common.column.targetV", DetailForm.KV, GuiParameters.Quantity.VOLTAGE, generation::getTargetV, generation::setTargetV);
         }
-        DetailSections.solvedValues(form, "desktop.common.columnGroup.solvedValues", equipment::getTerminal);
-        form.section("detail.boundaryLine.boundary")
-                .value("desktop.common.column.p", DetailForm.MW, GuiParameters.Quantity.POWER, () -> equipment.getBoundary().getP())
-                .value("desktop.common.column.q", DetailForm.MVAR, GuiParameters.Quantity.POWER, () -> equipment.getBoundary().getQ())
-                .value("desktop.common.column.i", DetailForm.A, GuiParameters.Quantity.CURRENT, () -> equipment.getBoundary().getI())
-                .value("detail.busV", DetailForm.KV, GuiParameters.Quantity.VOLTAGE, () -> equipment.getBoundary().getV())
-                .value("detail.busAngle", DetailForm.DEGREE, GuiParameters.Quantity.ANGLE, () -> equipment.getBoundary().getAngle());
     }
 
     @Override
@@ -77,6 +70,11 @@ public class BoundaryLineDetailController extends AbstractEquipmentDetailControl
         }
         tabs.add(limitsTab());
         return tabs;
+    }
+
+    @Override
+    protected EquipmentSymbol symbol() {
+        return newSymbol().boundaryLine(equipment);
     }
 
     @Override

@@ -11,6 +11,7 @@ import com.powsybl.iidm.network.HvdcLine;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.VscConverterStation;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
+import com.powsybl.sld.library.SldComponentTypeName;
 import javafx.scene.Node;
 import javafx.scene.control.Tab;
 
@@ -41,7 +42,6 @@ public class VscConverterStationDetailController extends AbstractEquipmentDetail
         DetailSections.localTargets(form, equipment, true);
         // IIDM's settable modes for a VSC converter station are a generator's (VoltageRegulationUtils)
         DetailSections.voltageRegulation(form, "desktop.common.column.voltageRegulation", equipment, GeneratorDetailController.REGULATION_MODES, sceneModel);
-        DetailSections.solvedValues(form, "desktop.common.columnGroup.solvedValues", equipment::getTerminal);
     }
 
     @Override
@@ -52,6 +52,11 @@ public class VscConverterStationDetailController extends AbstractEquipmentDetail
     @Override
     protected List<Tab> extraTabs() {
         return List.of(reactiveLimitsTab(equipment, () -> -maxP(), this::maxP, this::operatingPoints));
+    }
+
+    @Override
+    protected EquipmentSymbol symbol() {
+        return newSymbol().injection(() -> SldComponentTypeName.VSC_CONVERTER_STATION, equipment::getTerminal);
     }
 
     @Override

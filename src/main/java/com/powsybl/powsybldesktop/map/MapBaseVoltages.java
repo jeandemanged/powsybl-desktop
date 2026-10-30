@@ -8,55 +8,29 @@
 package com.powsybl.powsybldesktop.map;
 
 import com.powsybl.commons.config.BaseVoltageConfig;
-import com.powsybl.commons.config.BaseVoltagesConfig;
+import com.powsybl.powsybldesktop.diagram.BaseVoltages;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.scene.control.CheckBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * The base voltage ranges the map colors substations and lines by, like single line diagrams: ranges from the
- * {@link BaseVoltagesConfig}, colors from the single line diagram's {@code baseVoltages.css}. The highest base voltage
- * range is open-ended here, so e.g. 750 kV equipment is shown as the 300-500 kV range rather than uncolored.
+ * The map's base voltage filter: a checkbox per {@link BaseVoltages} range, in its color.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 public final class MapBaseVoltages {
 
-    private static final Pattern BASE_VOLTAGE_COLOR = Pattern.compile("\\.sld-(\\w+)\\s*\\{\\s*--sld-vl-color:\\s*(#\\w+)\\s*}");
+    private final BaseVoltages baseVoltages;
 
-    private final BaseVoltagesConfig baseVoltagesConfig = BaseVoltagesConfig.fromPlatformConfig();
-    private final Map<String, String> baseVoltageColors = readBaseVoltageColors();
-    private final List<BaseVoltageConfig> baseVoltages = baseVoltagesConfig.getBaseVoltages().stream()
-            .filter(baseVoltage -> baseVoltage.getProfile().equals(baseVoltagesConfig.getDefaultProfile()))
-            .toList();
-    private final BaseVoltageConfig highestBaseVoltage = baseVoltages.stream()
-            .max(Comparator.comparingDouble(BaseVoltageConfig::getMaxValue))
-            .orElse(null);
-
-    String baseVoltageName(double nominalV) {
-        if (highestBaseVoltage != null && nominalV >= highestBaseVoltage.getMinValue()) {
-            return highestBaseVoltage.getName();
-        }
-        return baseVoltagesConfig.getBaseVoltageName(nominalV, baseVoltagesConfig.getDefaultProfile()).orElse(null);
-    }
-
-    String color(String baseVoltage, String defaultColor) {
-        return baseVoltage == null ? defaultColor : baseVoltageColors.getOrDefault(baseVoltage, defaultColor);
+    public MapBaseVoltages(BaseVoltages baseVoltages) {
+        this.baseVoltages = Objects.requireNonNull(baseVoltages);
     }
 
     /**
@@ -74,14 +48,14 @@ public final class MapBaseVoltages {
 
         private CheckBoxes(Consumer<Set<String>> onChange) {
             this.onChange = Objects.requireNonNull(onChange);
-            checkBoxes = baseVoltages.stream().map(this::createCheckBox).toList();
+            checkBoxes = baseVoltages.getBaseVoltages().stream().map(this::createCheckBox).toList();
         }
 
         private CheckBox createCheckBox(BaseVoltageConfig baseVoltage) {
-            CheckBox checkBox = new CheckBox(baseVoltage == highestBaseVoltage
+            CheckBox checkBox = new CheckBox(baseVoltages.isHighest(baseVoltage)
                     ? Messages.get("map.baseVoltages.rangeAbove", baseVoltage.getMinValue())
                     : Messages.get("map.baseVoltages.range", baseVoltage.getMinValue(), baseVoltage.getMaxValue()));
-            checkBox.setGraphic(new Rectangle(10, 10, Color.web(color(baseVoltage.getName(), MapNetworkData.DEFAULT_SUBSTATION_COLOR))));
+            checkBox.setGraphic(new Rectangle(10, 10, Color.web(baseVoltages.color(baseVoltage.getName(), MapNetworkData.DEFAULT_SUBSTATION_COLOR))));
             checkBox.setUserData(baseVoltage.getName());
             checkBox.setSelected(true);
             checkBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
@@ -121,23 +95,6 @@ public final class MapBaseVoltages {
                     .filter(checkBox -> !checkBox.isSelected())
                     .map(checkBox -> (String) checkBox.getUserData())
                     .collect(Collectors.toSet());
-        }
-    }
-
-    private Map<String, String> readBaseVoltageColors() {
-        Map<String, String> colors = new HashMap<>();
-        Matcher matcher = BASE_VOLTAGE_COLOR.matcher(readResource("/baseVoltages.css"));
-        while (matcher.find()) {
-            colors.put(matcher.group(1), matcher.group(2));
-        }
-        return colors;
-    }
-
-    private String readResource(String name) {
-        try (var stream = getClass().getResourceAsStream(name)) {
-            return new String(Objects.requireNonNull(stream).readAllBytes(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
         }
     }
 }

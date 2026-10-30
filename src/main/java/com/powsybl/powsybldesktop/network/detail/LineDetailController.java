@@ -16,7 +16,7 @@ import javafx.scene.control.Tab;
 import java.util.List;
 
 /**
- * Line detail: characteristics, each side's connection and solved values, editable flow limits.
+ * Line detail: characteristics, each side's connection, editable flow limits; solved values are the symbol's.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -47,6 +47,11 @@ public class LineDetailController extends AbstractEquipmentDetailController<Line
     @Override
     protected List<Tab> extraTabs() {
         return List.of(limitsTab());
+    }
+
+    @Override
+    protected EquipmentSymbol symbol() {
+        return newSymbol().branch(null, equipment::getTerminal1, equipment::getTerminal2);
     }
 
     @Override

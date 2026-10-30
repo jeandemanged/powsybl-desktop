@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop.testutil;
 
+import javafx.scene.input.Clipboard;
 import org.testfx.framework.junit5.ApplicationTest;
 
 /**
@@ -25,5 +26,14 @@ public abstract class AbstractHeadlessApplicationTest extends ApplicationTest {
         System.setProperty("prism.order", "sw");
         System.setProperty("java.awt.headless", "true");
         System.setProperty("glass.platform", "Headless");
+    }
+
+    /**
+     * The clipboard's text, read on the FX thread.
+     */
+    protected String clipboardString() {
+        String[] text = new String[1];
+        interact(() -> text[0] = Clipboard.getSystemClipboard().getString());
+        return text[0];
     }
 }

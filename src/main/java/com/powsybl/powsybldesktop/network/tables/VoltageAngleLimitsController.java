@@ -58,6 +58,7 @@ public class VoltageAngleLimitsController extends AbstractNetworkObjectTableCont
     private void initialize() {
         initializeTable();
         idColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getId()));
+        TableColumnSupport.configureCopyableColumn(idColumn);
         fromColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(describe(cellData.getValue().getTerminalFrom())));
         toColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(describe(cellData.getValue().getTerminalTo())));
         TableColumnSupport.configureNullableDoubleColumn(lowLimitColumn, limit -> valueOrNull(limit.getLowLimit()), format(GuiParameters.Quantity.ANGLE));

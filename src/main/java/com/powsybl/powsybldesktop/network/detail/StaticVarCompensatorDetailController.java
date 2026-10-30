@@ -12,6 +12,7 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.sld.library.SldComponentTypeName;
 
 import java.util.List;
 
@@ -44,7 +45,11 @@ public class StaticVarCompensatorDetailController extends AbstractEquipmentDetai
                 .doubleField("detail.svc.bMax", DetailForm.SIEMENS, GuiParameters.Quantity.ADMITTANCE, equipment::getBmax, equipment::setBmax);
         DetailSections.localTargets(form, equipment, true);
         DetailSections.voltageRegulation(form, "desktop.common.column.voltageRegulation", equipment, REGULATION_MODES, sceneModel);
-        DetailSections.solvedValues(form, "desktop.common.columnGroup.solvedValues", equipment::getTerminal);
+    }
+
+    @Override
+    protected EquipmentSymbol symbol() {
+        return newSymbol().injection(() -> SldComponentTypeName.STATIC_VAR_COMPENSATOR, equipment::getTerminal);
     }
 
     @Override

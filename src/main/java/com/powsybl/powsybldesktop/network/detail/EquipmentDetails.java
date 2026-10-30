@@ -93,12 +93,19 @@ public final class EquipmentDetails {
         if (kind.isEmpty()) {
             return;
         }
-        sceneModel.getDetailWindows().ifPresent(windows -> windows.open(SeparateWindows.Group.DETAILS, "detail:" + equipment.getId(),
+        sceneModel.getDetailWindows().ifPresent(windows -> windows.open(SeparateWindows.Group.DETAILS, key(equipment),
                 () -> Messages.get("detail.title", Messages.get(kind.get().typeKey()), equipment.getNameOrId()),
                 scene -> {
                     SeparateWindows.View view = load(equipment, scene);
                     return new SeparateWindows.View(view.root(), view.controller(), WIDTH, HEIGHT);
                 }));
+    }
+
+    /**
+     * The key of {@code equipment}'s detail view in its separate window.
+     */
+    static String key(Identifiable<?> equipment) {
+        return "detail:" + equipment.getId();
     }
 
     /**

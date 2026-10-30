@@ -8,13 +8,14 @@
 package com.powsybl.powsybldesktop.network.detail;
 
 import com.powsybl.iidm.network.Switch;
+import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 
 import java.util.List;
 
 /**
- * Switch detail: kind, open and retained states.
+ * Switch detail: kind, open and retained states, its nodes or buses, read-only.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -35,6 +36,15 @@ public class SwitchDetailController extends AbstractEquipmentDetailController<Sw
         form.text("switches.column.kind", () -> equipment.getKind().name())
                 .booleanField("switches.column.open", equipment::isOpen, equipment::setOpen)
                 .booleanField("switches.column.retained", equipment::isRetained, equipment::setRetained);
+        // IIDM can't move a switch
+        VoltageLevel voltageLevel = equipment.getVoltageLevel();
+        if (voltageLevel.getTopologyKind() == TopologyKind.NODE_BREAKER) {
+            form.text("detail.switch.node1", () -> String.valueOf(voltageLevel.getNodeBreakerView().getNode1(equipment.getId())))
+                    .text("detail.switch.node2", () -> String.valueOf(voltageLevel.getNodeBreakerView().getNode2(equipment.getId())));
+        } else {
+            form.text("detail.switch.bus1", () -> voltageLevel.getBusBreakerView().getBus1(equipment.getId()).getId())
+                    .text("detail.switch.bus2", () -> voltageLevel.getBusBreakerView().getBus2(equipment.getId()).getId());
+        }
     }
 
     @Override

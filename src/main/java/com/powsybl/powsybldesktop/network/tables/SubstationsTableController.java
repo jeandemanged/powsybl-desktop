@@ -93,7 +93,7 @@ public class SubstationsTableController extends AbstractDisposableController imp
         TableAutoFitLimiter.install(substationsTableView);
 
         TableColumnSupport.configureContainerColumn(nameColumn, substation -> Optional.of(substation),
-                (container, item) -> TableColumnSupport.withDetailButton(containerLink(container, item), () -> EquipmentDetails.open(sceneModel, item)));
+                (container, item) -> TableColumnSupport.withDetailAndCopyButtons(containerLink(container, item), item, () -> EquipmentDetails.open(sceneModel, item)));
 
         TableColumnSupport.configureSearchableChoiceColumn(countryColumn, Substation::getNullableCountry, Substation::setCountry, COUNTRY_CHOICES,
                 Labels.countryFormat());

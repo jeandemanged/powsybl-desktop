@@ -7,11 +7,11 @@
  */
 package com.powsybl.powsybldesktop.network.detail;
 
-import com.powsybl.commons.PowsyblException;
 import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.Component;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Terminal;
+import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.iidm.network.regulation.VoltageRegulation;
 import com.powsybl.iidm.network.regulation.VoltageRegulationHolder;
@@ -29,6 +29,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
 import javafx.util.StringConverter;
+import javafx.util.converter.DefaultStringConverter;
 import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.util.Arrays;
@@ -38,7 +39,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
- * {@link DetailForm} sections shared by several equipment types: a terminal's connection and solved values, a
+ * {@link DetailForm} sections shared by several equipment types: a terminal's connection, a
  * {@link VoltageRegulationHolder}'s voltage regulation as IIDM holds it.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -49,45 +50,36 @@ public final class DetailSections {
     }
 
     /**
-     * Voltage level, bus, connection (editable) and components of {@code terminal}, in a new section unless
-     * {@code titleKey} is null.
+     * Voltage level, node (node/breaker topology, editable) or bus/breaker view bus (bus/breaker topology, editable),
+     * bus/branch view bus and components of {@code terminal}, in a new section unless {@code titleKey} is null. Its
+     * connection and solved values are the {@link EquipmentSymbol}'s.
      */
     public static void connection(DetailForm form, String titleKey, Supplier<Terminal> terminal) {
         if (titleKey != null) {
             form.section(titleKey);
         }
-        form.text("desktop.common.equipment.voltageLevel", () -> terminal.get().getVoltageLevel().getNameOrId())
-                .text("desktop.common.equipment.bus", () -> {
-                    Bus bus = terminal.get().getBusView().getBus();
-                    return bus == null ? null : bus.getId();
-                })
-                .booleanField("desktop.common.column.connected", () -> terminal.get().isConnected(), connected -> {
-                    Terminal t = terminal.get();
-                    if (!(connected ? t.connect() : t.disconnect())) {
-                        throw new PowsyblException(Messages.get("desktop.common.editError.connectionUnchanged"));
-                    }
-                })
+        form.text("desktop.common.equipment.voltageLevel", () -> terminal.get().getVoltageLevel().getNameOrId());
+        if (terminal.get().getVoltageLevel().getTopologyKind() == TopologyKind.NODE_BREAKER) {
+            form.intField("detail.node", () -> terminal.get().getNodeBreakerView().getNode(), node -> {
+                Terminal t = terminal.get();
+                t.getNodeBreakerView().moveConnectable(DetailForm.mandatory(node), t.getVoltageLevel().getId());
+            });
+            form.text("detail.bus.busBreakerView", () -> busId(terminal.get().getBusBreakerView().getBus()));
+        } else {
+            form.choiceField("detail.bus.busBreakerView",
+                    () -> terminal.get().getVoltageLevel().getBusBreakerView().getBusStream().map(Bus::getId).toList(),
+                    new DefaultStringConverter(), () -> busId(terminal.get().getBusBreakerView().getConnectableBus()), busId -> {
+                        Terminal t = terminal.get();
+                        t.getBusBreakerView().moveConnectable(busId, t.isConnected());
+                    });
+        }
+        form.text("detail.bus.busView", () -> busId(terminal.get().getBusView().getBus()))
                 .text("desktop.common.column.connectedComponent", () -> component(terminal.get(), Bus::getConnectedComponent))
                 .text("desktop.common.column.synchronousComponent", () -> component(terminal.get(), Bus::getSynchronousComponent));
     }
 
-    /**
-     * Read-only P, Q, I and the bus voltage and angle of {@code terminal}, in a new section unless {@code titleKey}
-     * is null.
-     */
-    public static void solvedValues(DetailForm form, String titleKey, Supplier<Terminal> terminal) {
-        if (titleKey != null) {
-            form.section(titleKey);
-        }
-        form.value("desktop.common.column.p", DetailForm.MW, GuiParameters.Quantity.POWER, () -> terminal.get().getP())
-                .value("desktop.common.column.q", DetailForm.MVAR, GuiParameters.Quantity.POWER, () -> terminal.get().getQ())
-                .value("desktop.common.column.i", DetailForm.A, GuiParameters.Quantity.CURRENT, () -> terminal.get().getI());
-        busValues(form, terminal);
-    }
-
-    public static void busValues(DetailForm form, Supplier<Terminal> terminal) {
-        form.value("detail.busV", DetailForm.KV, GuiParameters.Quantity.VOLTAGE, () -> busValue(terminal.get(), true))
-                .value("detail.busAngle", DetailForm.DEGREE, GuiParameters.Quantity.ANGLE, () -> busValue(terminal.get(), false));
+    private static String busId(Bus bus) {
+        return bus == null ? null : bus.getId();
     }
 
     public static double busValue(Terminal terminal, boolean voltage) {
@@ -154,13 +146,12 @@ public final class DetailSections {
     }
 
     /**
-     * Each terminal's connection and solved values, in a section per side.
+     * Each terminal's connection, in a section per side.
      */
     public static void sides(DetailForm form, List<Supplier<Terminal>> terminals) {
         for (int i = 0; i < terminals.size(); i++) {
             form.section("limits.side", i + 1);
             connection(form, null, terminals.get(i));
-            solvedValues(form, null, terminals.get(i));
         }
     }
 

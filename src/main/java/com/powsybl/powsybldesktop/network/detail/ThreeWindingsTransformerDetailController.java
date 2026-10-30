@@ -19,7 +19,7 @@ import javafx.scene.layout.VBox;
 import java.util.List;
 
 /**
- * Three-winding transformer detail: star rated voltage, each leg's characteristics, connection and solved values,
+ * Three-winding transformer detail: star rated voltage, each leg's characteristics and connection,
  * each leg's ratio and phase tap changers, editable flow limits.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -48,7 +48,6 @@ public class ThreeWindingsTransformerDetailController extends AbstractEquipmentD
                     .doubleField("transformers.column.ratedU", DetailForm.KV, GuiParameters.Quantity.VOLTAGE, leg::getRatedU, leg::setRatedU)
                     .doubleField("transformers.column.ratedS", DetailForm.MVA, GuiParameters.Quantity.POWER, leg::getRatedS, leg::setRatedS);
             DetailSections.connection(form, null, leg::getTerminal);
-            DetailSections.solvedValues(form, null, leg::getTerminal);
         }
     }
 
@@ -64,6 +63,11 @@ public class ThreeWindingsTransformerDetailController extends AbstractEquipmentD
             tapChangers.getChildren().addAll(title, ratio, phase);
         }
         return List.of(tab("detail.tab.tapChangers", scrolling(tapChangers)), limitsTab());
+    }
+
+    @Override
+    protected EquipmentSymbol symbol() {
+        return newSymbol().threeWindingsTransformer(equipment);
     }
 
     @Override

@@ -47,6 +47,9 @@ Requires JDK 25. Tests run headless (no display needed). Report test results fai
 
 Easy to get wrong:
 
+- The code base is Java 25: write current Java, in tests too. `getFirst()`/`getLast()` (sequenced collections), never
+  `get(0)` or `get(size() - 1)`; `Stream.toList()`; pattern matching for `instanceof` and `switch`; switch expressions;
+  records for plain data carriers; text blocks.
 - Checkstyle standalone is `mvn checkstyle:check@default` (or `mvn validate`), never bare `mvn checkstyle:check`,
   which runs Sun's default rules instead of powsybl's — see `docs/ai/build-and-testing.md`.
 - PowSyBl module versions come from the `powsybl-starter` BOM, not from plain numbers in `pom.xml`: resolve them with

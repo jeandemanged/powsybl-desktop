@@ -69,6 +69,7 @@ abstract class AbstractBusesController extends AbstractEquipmentTableController<
         TableColumnSupport.configureContainerColumn(substationColumn, bus -> bus.getVoltageLevel().getSubstation(), this::containerCell);
         TableColumnSupport.configureContainerColumn(voltageLevelColumn, bus -> Optional.of(bus.getVoltageLevel()), this::containerCell);
         nameColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getNameOrId()));
+        TableColumnSupport.configureNameColumn(nameColumn);
         TableColumnSupport.configureComponentColumn(connectedComponentColumn, bus -> bus, Bus::getConnectedComponent);
         TableColumnSupport.configureComponentColumn(synchronousComponentColumn, bus -> bus, Bus::getSynchronousComponent);
         TableColumnSupport.configureNullableDoubleColumn(vColumn, Bus::getV, format(GuiParameters.Quantity.VOLTAGE));

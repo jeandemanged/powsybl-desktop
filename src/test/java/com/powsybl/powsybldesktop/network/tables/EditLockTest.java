@@ -13,6 +13,7 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
+import com.powsybl.powsybldesktop.utils.CopyButtons;
 import com.powsybl.powsybldesktop.utils.DisposableController;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
@@ -131,11 +132,11 @@ class EditLockTest extends AbstractHeadlessApplicationTest {
                 .toList();
     }
 
-    // holding an input control (buttons included: they open edit dialogs) - hyperlinks only navigate, detail buttons
-    // open a detail view with its own busy lock
+    // holding an input control (buttons included: they open edit dialogs) - hyperlinks only navigate, non-editing
+    // buttons open a detail view with its own busy lock or copy text
     private static boolean isEditor(TableCell<?, ?> cell) {
         return cell.lookupAll("*").stream().anyMatch(node ->
-                node instanceof ButtonBase && !(node instanceof Hyperlink) && !node.getStyleClass().contains("detail-button")
+                node instanceof ButtonBase && !(node instanceof Hyperlink) && !node.getStyleClass().contains(CopyButtons.NON_EDITING_BUTTON)
                 || node instanceof ChoiceBox<?> || node instanceof ComboBoxBase<?> || node instanceof TextInputControl
                 || node instanceof Spinner<?>);
     }

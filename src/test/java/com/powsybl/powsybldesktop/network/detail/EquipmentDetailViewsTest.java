@@ -8,6 +8,8 @@
 package com.powsybl.powsybldesktop.network.detail;
 
 import com.powsybl.iidm.network.Area;
+import com.powsybl.iidm.network.Container;
+import com.powsybl.iidm.network.Generator;
 import com.powsybl.iidm.network.Ground;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.LimitType;
@@ -17,6 +19,7 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.OperationalLimitsGroup;
 import com.powsybl.iidm.network.OverloadManagementSystem;
 import com.powsybl.iidm.network.ShuntCompensator;
+import com.powsybl.iidm.network.Switch;
 import com.powsybl.iidm.network.TapChanger;
 import com.powsybl.iidm.network.ThreeSides;
 import com.powsybl.iidm.network.TwoSides;
@@ -45,6 +48,7 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
@@ -136,6 +140,7 @@ class EquipmentDetailViewsTest extends AbstractHeadlessApplicationTest {
             // main, extensions and properties tabs at least
             assertTrue(controller.tabPane.getTabs().size() >= 3, equipment.getId());
             assertFalse(controller.linksBox.getChildren().size() < 2, equipment.getId());
+            assertEquals(!(equipment instanceof Switch || equipment instanceof Container<?>), host.lookup(".equipment-symbol") != null, equipment.getId());
         }
     }
 
@@ -164,6 +169,44 @@ class EquipmentDetailViewsTest extends AbstractHeadlessApplicationTest {
             button(pane, Button.class, Messages.get("desktop.common.action.add")).fire();
         });
         assertEquals(voltageLevels + 1, area.getVoltageLevelStream().count());
+    }
+
+    @Test
+    void movesNodeInNodeBreakerTopology() {
+        Network network = FourSubstationsNodeBreakerFactory.create();
+        Generator generator = network.getGenerator("GH1");
+        TextField node = formField(open(network, generator), "detail.node", TextField.class);
+        interact(() -> {
+            node.setText("99");
+            node.getOnAction().handle(null);
+        });
+        assertEquals(99, generator.getTerminal().getNodeBreakerView().getNode());
+        assertEquals("99", node.getText());
+    }
+
+    @Test
+    void showsSwitchNodes() {
+        Network network = FourSubstationsNodeBreakerFactory.create();
+        Switch sw = network.getSwitchStream().findFirst().orElseThrow();
+        AbstractEquipmentDetailController<?> controller = open(network, sw);
+        assertEquals(String.valueOf(sw.getVoltageLevel().getNodeBreakerView().getNode1(sw.getId())),
+                formField(controller, "detail.switch.node1", Labeled.class).getText());
+        assertEquals(String.valueOf(sw.getVoltageLevel().getNodeBreakerView().getNode2(sw.getId())),
+                formField(controller, "detail.switch.node2", Labeled.class).getText());
+    }
+
+    /**
+     * The editor in the main form's row of {@code labelKey}.
+     */
+    private static <T extends Node> T formField(AbstractEquipmentDetailController<?> controller, String labelKey, Class<T> type) {
+        GridPane form = (GridPane) controller.form.getNode();
+        String label = Messages.get(labelKey);
+        Node labelNode = form.getChildren().stream()
+                .filter(node -> node instanceof Labeled labeled && label.equals(labeled.getText()))
+                .findFirst().orElseThrow();
+        return type.cast(form.getChildren().stream()
+                .filter(node -> GridPane.getColumnIndex(node) == 1 && GridPane.getRowIndex(node).equals(GridPane.getRowIndex(labelNode)))
+                .findFirst().orElseThrow());
     }
 
     @Test

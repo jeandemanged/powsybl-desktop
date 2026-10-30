@@ -13,9 +13,11 @@ import com.powsybl.contingency.violations.LimitViolationType;
 import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.Component;
 import com.powsybl.iidm.network.Container;
+import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.TapChanger;
 import com.powsybl.iidm.network.Terminal;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.powsybldesktop.utils.CopyButtons;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.violations.FlowViolation;
 import com.powsybl.powsybldesktop.violations.Loading;
@@ -897,16 +899,37 @@ public final class TableColumnSupport {
             });
     }
 
-    // The name of an equipment with a detail view, after an info button opening it. Unlike editing controls, the button
-    // stays enabled while the network is busy: the (non-modal) detail view has its own busy lock.
-    static <S> void configureDetailNameColumn(TableColumn<S, String> column, Consumer<S> onDetail) {
-        column.setCellFactory(col -> new DetailNameTableCell<>(onDetail));
+    // The name of an equipment with a detail view, after an info button opening it and a button copying its id (its
+    // name from the button's menu). Unlike editing controls, the buttons stay enabled while the network is busy: the
+    // (non-modal) detail view has its own busy lock.
+    static <S extends Identifiable<?>> void configureDetailNameColumn(TableColumn<S, String> column, Consumer<S> onDetail) {
+        column.setCellFactory(col -> new NameTableCell<>(onDetail));
     }
 
-    // The info button opening a detail view, before content (e.g. a container link), for name columns whose cells
-    // aren't plain text (see configureDetailNameColumn).
-    static HBox withDetailButton(Node content, Runnable onDetail) {
-        HBox box = new HBox(4, detailButton(onDetail), content);
+    // The name of an object without detail view (e.g. a bus), after a button copying its id (its name from the button's
+    // menu).
+    static <S extends Identifiable<?>> void configureNameColumn(TableColumn<S, String> column) {
+        column.setCellFactory(col -> new NameTableCell<>(null));
+    }
+
+    // A text, e.g. an id, after a button copying it.
+    static <S> void configureCopyableColumn(TableColumn<S, String> column) {
+        column.setCellFactory(col -> new CopyableTableCell<>());
+    }
+
+    // The info button opening a detail view and the button copying the id (the name from its menu), before content
+    // (e.g. a container link), for name columns whose cells aren't plain text (see configureDetailNameColumn).
+    static HBox withDetailAndCopyButtons(Node content, Identifiable<?> item, Runnable onDetail) {
+        return buttonsBox(content, () -> item, onDetail);
+    }
+
+    // onDetail null: no info button
+    private static HBox buttonsBox(Node content, Supplier<? extends Identifiable<?>> item, Runnable onDetail) {
+        HBox box = new HBox(4);
+        if (onDetail != null) {
+            box.getChildren().add(detailButton(onDetail));
+        }
+        box.getChildren().addAll(CopyButtons.copyIdOrName(() -> item.get().getId(), () -> item.get().getOptionalName().orElse(null)), content);
         box.setAlignment(Pos.CENTER_LEFT);
         return box;
     }
@@ -914,22 +937,22 @@ public final class TableColumnSupport {
     private static Button detailButton(Runnable onDetail) {
         Button infoButton = new Button();
         infoButton.setGraphic(new FontIcon("mdi2i-information-outline"));
-        // detail-button: tells EditLockTest this button opens a view, not an editing dialog
-        infoButton.getStyleClass().addAll("icon-button", "detail-button");
+        // tells EditLockTest this button opens a view, not an editing dialog
+        infoButton.getStyleClass().addAll("icon-button", CopyButtons.NON_EDITING_BUTTON);
         infoButton.setTooltip(new Tooltip(Messages.get("detail.open.tooltip")));
         infoButton.setOnAction(event -> onDetail.run());
         return infoButton;
     }
 
-    private static final class DetailNameTableCell<S> extends TableCell<S, String> {
+    private static final class NameTableCell<S extends Identifiable<?>> extends TableCell<S, String> {
         private final Label label = new Label();
         private final HBox box;
 
-        DetailNameTableCell(Consumer<S> onDetail) {
-            box = withDetailButton(label, () -> {
-                S item = getTableRow() == null ? null : getTableRow().getItem();
-                if (item != null) {
-                    onDetail.accept(item);
+        NameTableCell(Consumer<S> onDetail) {
+            Supplier<S> item = () -> getTableRow() == null ? null : getTableRow().getItem();
+            box = buttonsBox(label, item, onDetail == null ? null : () -> {
+                if (item.get() != null) {
+                    onDetail.accept(item.get());
                 }
             });
         }
@@ -941,6 +964,26 @@ public final class TableColumnSupport {
                 setGraphic(null);
             } else {
                 label.setText(name);
+                setGraphic(box);
+            }
+        }
+    }
+
+    private static final class CopyableTableCell<S> extends TableCell<S, String> {
+        private final Label label = new Label();
+        private final HBox box = new HBox(4, CopyButtons.copy(this::getItem), label);
+
+        CopyableTableCell() {
+            box.setAlignment(Pos.CENTER_LEFT);
+        }
+
+        @Override
+        protected void updateItem(String text, boolean empty) {
+            super.updateItem(text, empty);
+            if (empty || text == null) {
+                setGraphic(null);
+            } else {
+                label.setText(text);
                 setGraphic(box);
             }
         }

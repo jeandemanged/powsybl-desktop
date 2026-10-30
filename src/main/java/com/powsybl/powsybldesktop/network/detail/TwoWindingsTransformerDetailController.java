@@ -11,13 +11,14 @@ import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.sld.library.SldComponentTypeName;
 import javafx.scene.control.Tab;
 import javafx.scene.layout.VBox;
 
 import java.util.List;
 
 /**
- * Two-winding transformer detail: characteristics, each side's connection and solved values, ratio and phase tap
+ * Two-winding transformer detail: characteristics, each side's connection, ratio and phase tap
  * changers (replacing the transformers table's former steps dialog), editable flow limits.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -53,6 +54,12 @@ public class TwoWindingsTransformerDetailController extends AbstractEquipmentDet
                 register(TapChangerPane.ratio(equipment, "transformers.column.ratioTapChanger", sceneModel, guiParameters(), onEdit())),
                 register(TapChangerPane.phase(equipment, "transformers.column.phaseTapChanger", sceneModel, guiParameters(), onEdit())));
         return List.of(tab("detail.tab.tapChangers", scrolling(tapChangers)), limitsTab());
+    }
+
+    @Override
+    protected EquipmentSymbol symbol() {
+        return newSymbol().branch(() -> equipment.hasPhaseTapChanger() ? SldComponentTypeName.PHASE_SHIFT_TRANSFORMER : SldComponentTypeName.TWO_WINDINGS_TRANSFORMER,
+                equipment::getTerminal1, equipment::getTerminal2);
     }
 
     @Override

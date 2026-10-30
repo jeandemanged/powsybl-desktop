@@ -62,6 +62,7 @@ import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
 import com.powsybl.powsybldesktop.parameters.NetworkFormatParametersController;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
+import com.powsybl.powsybldesktop.utils.CopyButtons;
 import com.powsybl.powsybldesktop.utils.DateTimePicker;
 import com.powsybl.powsybldesktop.utils.FileChooserPreferences;
 import com.powsybl.powsybldesktop.utils.Labels;
@@ -92,6 +93,7 @@ import javafx.scene.control.TreeView;
 import javafx.scene.input.DragEvent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
@@ -173,6 +175,8 @@ public class NetworksController extends AbstractDisposableController {
 
     @FXML
     private TextField nameField;
+
+    private Button nameCopyButton;
 
     @FXML
     private Label sourceFormatLabel;
@@ -376,6 +380,7 @@ public class NetworksController extends AbstractDisposableController {
         }
         if (!newName.equals(selectedNetwork.getOptionalName().orElse(""))) {
             selectedNetwork.setName(newName);
+            nameCopyButton.setVisible(true);
             networksTreeView.refresh();
             mainModel.setUpdate();
         }
@@ -402,6 +407,7 @@ public class NetworksController extends AbstractDisposableController {
         validationLevelLabel.setText(network.getValidationLevel().name());
         idLabel.setText(network.getId());
         nameField.setText(network.getOptionalName().orElse(""));
+        nameCopyButton.setVisible(network.getOptionalName().isPresent());
         sourceFormatLabel.setText(network.getSourceFormat());
         showStructure(network);
     }
@@ -520,6 +526,11 @@ public class NetworksController extends AbstractDisposableController {
 
     @FXML
     private void initialize() {
+        // in a third column of the details grid, as the equipment detail views' copy buttons
+        GridPane details = (GridPane) idLabel.getParent();
+        details.add(CopyButtons.copy(() -> selectedNetwork.getId()), 2, 0);
+        nameCopyButton = CopyButtons.copy(() -> selectedNetwork.getOptionalName().orElse(null));
+        details.add(nameCopyButton, 2, 1);
         networksTreeView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         networksTreeView.setCellFactory(dummy -> new TreeCell<>() {
             @Override

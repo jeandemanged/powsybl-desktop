@@ -92,7 +92,7 @@ public class VoltageLevelsController extends AbstractDisposableController implem
                 voltageLevel -> voltageLevel.getSubstation().map(Substation::getNullableCountry).orElse(null));
         TableColumnSupport.configureContainerColumn(substationColumn, VoltageLevel::getSubstation, this::containerLink);
         TableColumnSupport.configureContainerColumn(nameColumn, voltageLevel -> Optional.of(voltageLevel),
-                (container, item) -> TableColumnSupport.withDetailButton(containerLink(container, item), () -> EquipmentDetails.open(sceneModel, item)));
+                (container, item) -> TableColumnSupport.withDetailAndCopyButtons(containerLink(container, item), item, () -> EquipmentDetails.open(sceneModel, item)));
 
         topologyKindColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTopologyKind()));
 

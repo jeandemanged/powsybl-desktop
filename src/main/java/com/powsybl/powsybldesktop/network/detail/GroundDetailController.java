@@ -10,6 +10,7 @@ package com.powsybl.powsybldesktop.network.detail;
 import com.powsybl.iidm.network.Ground;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
+import com.powsybl.sld.library.SldComponentTypeName;
 
 import java.util.List;
 
@@ -33,6 +34,11 @@ public class GroundDetailController extends AbstractEquipmentDetailController<Gr
     @Override
     protected void buildMain(DetailForm form) {
         DetailSections.connection(form, "detail.section.connection", equipment::getTerminal);
+    }
+
+    @Override
+    protected EquipmentSymbol symbol() {
+        return newSymbol().injection(() -> SldComponentTypeName.GROUND, equipment::getTerminal);
     }
 
     @Override

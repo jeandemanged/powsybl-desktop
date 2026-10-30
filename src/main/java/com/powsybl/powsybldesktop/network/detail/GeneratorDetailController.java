@@ -13,6 +13,7 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.sld.library.SldComponentTypeName;
 import javafx.scene.Node;
 import javafx.scene.control.Tab;
 
@@ -51,7 +52,6 @@ public class GeneratorDetailController extends AbstractEquipmentDetailController
                 .doubleField("generators.column.targetP", DetailForm.MW, GuiParameters.Quantity.POWER, equipment::getTargetP, equipment::setTargetP);
         DetailSections.localTargets(form, equipment, true);
         DetailSections.voltageRegulation(form, "desktop.common.column.voltageRegulation", equipment, REGULATION_MODES, sceneModel);
-        DetailSections.solvedValues(form, "desktop.common.columnGroup.solvedValues", equipment::getTerminal);
     }
 
     @Override
@@ -62,6 +62,11 @@ public class GeneratorDetailController extends AbstractEquipmentDetailController
     @Override
     protected List<Tab> extraTabs() {
         return List.of(reactiveLimitsTab(equipment, equipment::getMinP, equipment::getMaxP, this::operatingPoints));
+    }
+
+    @Override
+    protected EquipmentSymbol symbol() {
+        return newSymbol().injection(() -> SldComponentTypeName.GENERATOR, equipment::getTerminal);
     }
 
     @Override

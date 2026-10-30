@@ -10,12 +10,11 @@ package com.powsybl.powsybldesktop.network.detail;
 import com.powsybl.iidm.network.BusbarSection;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
-import com.powsybl.powsybldesktop.parameters.GuiParameters;
 
 import java.util.List;
 
 /**
- * Busbar section detail: connection and solved voltage.
+ * Busbar section detail: connection, its solved voltage being the symbol's.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -34,9 +33,11 @@ public class BusbarSectionDetailController extends AbstractEquipmentDetailContro
     @Override
     protected void buildMain(DetailForm form) {
         DetailSections.connection(form, "detail.section.connection", equipment::getTerminal);
-        form.section("desktop.common.columnGroup.solvedValues")
-                .value("detail.busV", DetailForm.KV, GuiParameters.Quantity.VOLTAGE, equipment::getV)
-                .value("detail.busAngle", DetailForm.DEGREE, GuiParameters.Quantity.ANGLE, equipment::getAngle);
+    }
+
+    @Override
+    protected EquipmentSymbol symbol() {
+        return newSymbol().busbarSection(equipment);
     }
 
     @Override

@@ -21,11 +21,13 @@ import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
+import com.powsybl.powsybldesktop.utils.CopyButtons;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.TableCell;
@@ -99,6 +101,31 @@ class GeneratorsControllerTest extends AbstractHeadlessApplicationTest {
     private static <S, T> void fireEditCommit(TableView<S> tableView, TableColumn<S, T> column, int row, T newValue) {
         TablePosition<S, T> position = new TablePosition<>(tableView, row, column);
         column.getOnEditCommit().handle(new TableColumn.CellEditEvent<>(tableView, position, TableColumn.editCommitEvent(), newValue));
+    }
+
+    @Test
+    void nameCellCopiesIdAndName() {
+        Button copy = (Button) controller.generatorsTableView.lookupAll("." + CopyButtons.NON_EDITING_BUTTON).stream()
+                .filter(button -> Messages.get("desktop.common.action.copyToClipboard").equals(((Button) button).getTooltip().getText()))
+                .findFirst().orElseThrow();
+        Node node = copy;
+        while (!(node instanceof TableCell<?, ?> cell)) {
+            node = node.getParent();
+        }
+        Generator generator = (Generator) cell.getTableRow().getItem();
+        generator.setName(null);
+        // no name: copied at once
+        interact(copy::fire);
+        assertEquals(generator.getId(), clipboardString());
+        interact(() -> {
+            generator.setName("Generator 1");
+            copy.fire();
+        });
+        assertTrue(copy.getContextMenu().isShowing());
+        interact(() -> copy.getContextMenu().getItems().getLast().fire());
+        assertEquals("Generator 1", clipboardString());
+        interact(() -> copy.getContextMenu().getItems().getFirst().fire());
+        assertEquals(generator.getId(), clipboardString());
     }
 
     @Test

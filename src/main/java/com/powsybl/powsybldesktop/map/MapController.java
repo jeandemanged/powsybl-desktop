@@ -26,6 +26,7 @@ import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.NetworkStudy;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.SceneView;
+import com.powsybl.powsybldesktop.diagram.BaseVoltages;
 import com.powsybl.powsybldesktop.network.ContainerDiagram;
 import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
 import com.powsybl.powsybldesktop.network.edit.ContainerCreations;
@@ -118,7 +119,7 @@ import java.util.stream.Collectors;
  * The default basemap is {@link Basemap#OFFLINE}, drawn in the same tiles below the network, so the view works
  * without internet access. OpenStreetMap tiles are opt-in.
  * <p>
- * Substations and lines are colored by base voltage (see {@link MapBaseVoltages}). Each base voltage can be hidden
+ * Substations and lines are colored by base voltage (see {@link BaseVoltages}). Each base voltage can be hidden
  * from an overlay checkbox. The basemap and hidden base voltages are {@link GuiParameters}, also editable from the
  * parameters view.
  * <p>
@@ -194,7 +195,8 @@ public class MapController extends AbstractDisposableController implements Scene
     }
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final MapBaseVoltages mapBaseVoltages = new MapBaseVoltages();
+    private final BaseVoltages baseVoltages = new BaseVoltages();
+    private final MapBaseVoltages mapBaseVoltages = new MapBaseVoltages(baseVoltages);
     private MapBaseVoltages.CheckBoxes baseVoltageCheckBoxes;
 
     @FXML
@@ -273,7 +275,7 @@ public class MapController extends AbstractDisposableController implements Scene
             return new AbstractNetworkTask<>(mainModel, network) {
                 @Override
                 protected MapNetworkData compute() {
-                    return MapNetworkData.build(network, mapBaseVoltages::baseVoltageName, mapBaseVoltages::color);
+                    return MapNetworkData.build(network, baseVoltages::name, baseVoltages::color);
                 }
             };
         }

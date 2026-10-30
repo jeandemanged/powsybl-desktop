@@ -199,20 +199,31 @@ shared `equipment-detail-view.fxml` (no `fx:controller`: `EquipmentDetails.load`
 - Opened by `EquipmentDetails.open(sceneModel, equipment)` (a no-op for an unsupported type) as a tab of the
   "Details" window (`SeparateWindows.Group.DETAILS`) keyed by equipment id; works from separate windows too, through `SceneModel.getDetailWindows()`. Add a type with a
   subclass and a `Kind` entry in `EquipmentDetails`. Entry points: every equipment table's name column info button
-  (`TableColumnSupport.configureDetailNameColumn`, or `withDetailButton` around a container link for the substations and
+  (`TableColumnSupport.configureDetailNameColumn`, or `withDetailAndCopyButtons` around a container link for the substations and
   voltage levels tables); the SLD/NAD toolbar info button for the shown substation or voltage level
   (`ContainerDiagram`); in the SLD (`ContainerDiagram` / `sld.js`), a feeder click (unless
   the feeder leads to another voltage level, which the click keeps navigating to), a click on a busbar section or on
   a transformer drawn inside the diagram, and a right-click on any equipment (details, HVDC line details for a
   converter station, go to / show in table); on the map, a click on a line, tie line or boundary line (a click on a
   substation opens its single line diagram in the "Diagrams" window).
-- The base builds the header (title, voltage level links), the main tab's general section (id, name, fictitious), the
-  extensions and properties/aliases tabs; a subclass adds its main rows (`buildMain`), a main side node
+- The base builds the header (title, voltage level links), the main tab's general section (id - editable, IIDM's
+  `setId`, the separate window's tab re-keyed (`SeparateWindows.retarget`); nothing else referring to the old id is
+  updated, e.g. contingencies -, name, fictitious; id and name have a copy to clipboard button, `DetailForm.copyButton`; `utils/CopyButtons` are the copy buttons used
+  everywhere: equipment tables' name cells (`TableColumnSupport.configureDetailNameColumn`, `configureNameColumn`,
+  `withDetailAndCopyButtons`: an icon after the info one copying the id, or offering id or name when there is a name),
+  the networks details pane), the extensions and properties/aliases tabs; a subclass adds its main
+  rows (`buildMain`), an `EquipmentSymbol` above the tabs (`symbol()`, from `newSymbol()`), a main side node
   (`mainSide`, e.g. `capabilityChart(...)`) and tabs (`extraTabs`: `reactiveLimitsTab(...)`, `limitsTab()`,
   `TapChangerPane`s, ...). Every part is a `DetailPart` passed to `register(...)`: the base re-reads it after every
   network update and binds its `editableProperty()` to the busy lock. Edits run `onEdit()` (`mainModel.setUpdate`).
 - Reuse, never duplicate, the shared pieces: `DetailForm` (label/editor/unit rows; commits on Enter or focus loss,
-  Escape reverts; same error/flash feedback as tables), `DetailSections` (terminal connection, solved values, sides,
+  Escape reverts; same error/flash feedback as tables), `EquipmentSymbol` (every connectable, tie line and HVDC line drawn
+  with the SLD parameters' component library and its CSS, transformed and anchored as SLD does, colored by
+  `diagram/BaseVoltages`, disconnected grey; each end's solved P, Q, I, bus V and angle and its connected checkbox (none for a busbar section):
+  the only place these are shown, not in the form; sides left to right, a three-winding transformer's side 1 on top),
+  `DetailSections` (terminal connection: node, editable, in node/breaker topology, else the bus/breaker view bus,
+  editable, then the bus/branch view bus, both labelled with their view - a switch's nodes or buses are read-only, IIDM
+  can't move a switch -; sides,
   local targets, a `VoltageRegulationHolder`'s voltage regulation as IIDM holds it - also used by ratio tap changers -,
   regulated terminal row with `TerminalPickerDialog`, links to other equipment's details), `DetailTables` (editable row
   table columns, fields keyed by row index), `ReactiveLimitsPane` (staged edits + Apply/Revert, IIDM reactive limits being

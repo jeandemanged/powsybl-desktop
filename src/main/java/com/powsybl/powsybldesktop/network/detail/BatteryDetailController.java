@@ -11,6 +11,7 @@ import com.powsybl.iidm.network.Battery;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.sld.library.SldComponentTypeName;
 import javafx.scene.Node;
 import javafx.scene.control.Tab;
 
@@ -43,7 +44,6 @@ public class BatteryDetailController extends AbstractEquipmentDetailController<B
         DetailSections.localTargets(form, equipment, true);
         // IIDM's settable modes for a battery are a generator's (VoltageRegulationUtils)
         DetailSections.voltageRegulation(form, "desktop.common.column.voltageRegulation", equipment, GeneratorDetailController.REGULATION_MODES, sceneModel);
-        DetailSections.solvedValues(form, "desktop.common.columnGroup.solvedValues", equipment::getTerminal);
     }
 
     @Override
@@ -54,6 +54,11 @@ public class BatteryDetailController extends AbstractEquipmentDetailController<B
     @Override
     protected List<Tab> extraTabs() {
         return List.of(reactiveLimitsTab(equipment, equipment::getMinP, equipment::getMaxP, this::operatingPoints));
+    }
+
+    @Override
+    protected EquipmentSymbol symbol() {
+        return newSymbol().injection(() -> SldComponentTypeName.BATTERY, equipment::getTerminal);
     }
 
     @Override

@@ -27,6 +27,11 @@
         </padding>
         <Label fx:id="titleLabel" styleClass="detail-title"/>
     </HBox>
+    <HBox fx:id="symbolHost" alignment="CENTER">
+        <padding>
+            <Insets top="4" right="8" bottom="8" left="8"/>
+        </padding>
+    </HBox>
     <TabPane fx:id="tabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
         <Tab fx:id="mainTab" text="%detail.tab.main">
             <SplitPane fx:id="mainSplitPane" dividerPositions="0.55">

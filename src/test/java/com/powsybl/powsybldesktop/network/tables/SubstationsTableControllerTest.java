@@ -178,8 +178,8 @@ class SubstationsTableControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals(substation, ((ContainerNavigationState) event.state()).getContainer());
     }
 
-    // after its detail view's info button
+    // after its detail view's info button and the copy button
     private Hyperlink nameLink(int row) {
-        return (Hyperlink) ((HBox) cellGraphic(controller.nameColumn, row)).getChildren().get(1);
+        return (Hyperlink) ((HBox) cellGraphic(controller.nameColumn, row)).getChildren().getLast();
     }
 }

@@ -17,7 +17,7 @@ import java.util.List;
 
 /**
  * Tie line detail: its boundary lines (linked to their own detail views, where their characteristics are edited), the
- * resulting characteristics, read-only, each side's connection and solved values, editable flow limits (the boundary
+ * resulting characteristics, read-only, each side's connection, editable flow limits (the boundary
  * lines').
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -52,6 +52,11 @@ public class TieLineDetailController extends AbstractEquipmentDetailController<T
     @Override
     protected List<Tab> extraTabs() {
         return List.of(limitsTab());
+    }
+
+    @Override
+    protected EquipmentSymbol symbol() {
+        return newSymbol().branch(null, equipment::getTerminal1, equipment::getTerminal2);
     }
 
     @Override

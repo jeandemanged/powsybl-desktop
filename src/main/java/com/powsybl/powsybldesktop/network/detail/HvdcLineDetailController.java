@@ -18,7 +18,7 @@ import java.util.List;
 
 /**
  * HVDC line detail: characteristics, setpoint and converters mode, then each side's converter station (linked to its
- * own detail view), connection and solved values.
+ * own detail view) and connection, solved values being the symbol's.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -53,8 +53,12 @@ public class HvdcLineDetailController extends AbstractEquipmentDetailController<
             form.section("limits.side", side.getNum());
             DetailSections.equipmentLink(form, "hvdcLines.column.converterStation", sceneModel, () -> equipment.getConverterStation(side));
             DetailSections.connection(form, null, () -> equipment.getConverterStation(side).getTerminal());
-            DetailSections.solvedValues(form, null, () -> equipment.getConverterStation(side).getTerminal());
         }
+    }
+
+    @Override
+    protected EquipmentSymbol symbol() {
+        return newSymbol().hvdcLine(equipment);
     }
 
     @Override

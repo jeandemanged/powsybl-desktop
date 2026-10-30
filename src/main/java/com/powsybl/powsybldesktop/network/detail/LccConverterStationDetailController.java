@@ -11,6 +11,7 @@ import com.powsybl.iidm.network.LccConverterStation;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.sld.library.SldComponentTypeName;
 
 import java.util.List;
 
@@ -37,7 +38,11 @@ public class LccConverterStationDetailController extends AbstractEquipmentDetail
         form.doubleField("lccConverterStations.column.powerFactor", null, GuiParameters.Quantity.POWER_FACTOR,
                 equipment::getPowerFactor, powerFactor -> equipment.setPowerFactor((float) powerFactor));
         DetailSections.connection(form, "detail.section.connection", equipment::getTerminal);
-        DetailSections.solvedValues(form, "desktop.common.columnGroup.solvedValues", equipment::getTerminal);
+    }
+
+    @Override
+    protected EquipmentSymbol symbol() {
+        return newSymbol().injection(() -> SldComponentTypeName.LCC_CONVERTER_STATION, equipment::getTerminal);
     }
 
     @Override
