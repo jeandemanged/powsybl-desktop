@@ -431,6 +431,8 @@ public final class ApplicationParametersJson {
         logs.bool("newestOnTop", p::isLogsNewestOnTop, p::setLogsNewestOnTop);
         Binder reports = b.child("reports");
         reports.string("minSeverity", p::getReportsMinSeverity, p::setReportsMinSeverity);
+        Binder networkEditing = b.child("networkEditing");
+        networkEditing.bool("openDetailsAfterCreation", p::isOpenDetailsAfterCreation, p::setOpenDetailsAfterCreation);
         Binder decimals = b.child("decimals");
         for (GuiParameters.Quantity quantity : GuiParameters.Quantity.values()) {
             decimals.integer(camelCase(quantity.name()), () -> p.getDecimals(quantity), v -> p.setDecimals(quantity, v));

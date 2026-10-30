@@ -23,13 +23,17 @@ import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationStatus;
 import com.powsybl.powsybldesktop.parameters.NetworkFormatParametersController;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
+import com.powsybl.powsybldesktop.utils.DateTimePicker;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.Spinner;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TableView;
@@ -50,7 +54,7 @@ import org.testfx.util.WaitForAsyncUtils;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.ZonedDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -295,18 +299,25 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void caseDateAndForecastDistanceAreShownAndEditable() {
         selectNetwork(ieee14);
-        assertEquals(ieee14.getCaseDate().toString(), lookup("#caseDateField").queryAs(TextField.class).getText());
+        DateTimePicker caseDatePicker = lookup("#caseDatePicker").queryAs(DateTimePicker.class);
+        assertEquals(ieee14.getCaseDate(), caseDatePicker.getValue());
+        // shown, not only held: a zone set again used to show blank
+        assertEquals(ieee14.getCaseDate().getZone(), ((ComboBox<?>) caseDatePicker.getChildren().getLast()).getSelectionModel().getSelectedItem());
         assertEquals(String.valueOf(ieee14.getForecastDistance()), lookup("#forecastDistanceField").queryAs(TextField.class).getText());
         assertEquals(ieee14.getValidationLevel().name(), lookup("#validationLevelLabel").queryAs(Label.class).getText());
 
-        commit("#caseDateField", "2026-10-26T10:00+01:00");
-        assertEquals(ZonedDateTime.parse("2026-10-26T10:00+01:00").toInstant(), ieee14.getCaseDate().toInstant());
+        interact(() -> {
+            ((DatePicker) caseDatePicker.getChildren().getFirst()).setValue(LocalDate.of(2026, 10, 26));
+            @SuppressWarnings("unchecked")
+            Spinner<Integer> hourSpinner = (Spinner<Integer>) caseDatePicker.getChildren().get(1);
+            hourSpinner.getValueFactory().setValue(10);
+        });
+        assertEquals(LocalDate.of(2026, 10, 26), ieee14.getCaseDate().toLocalDate());
+        assertEquals(10, ieee14.getCaseDate().getHour());
         commit("#forecastDistanceField", "60");
         assertEquals(60, ieee14.getForecastDistance());
 
         // rejected, unchanged
-        commit("#caseDateField", "yesterday");
-        assertEquals(ZonedDateTime.parse("2026-10-26T10:00+01:00").toInstant(), ieee14.getCaseDate().toInstant());
         commit("#forecastDistanceField", "soon");
         assertEquals(60, ieee14.getForecastDistance());
     }

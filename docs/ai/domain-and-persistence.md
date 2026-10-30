@@ -83,12 +83,13 @@ are pinned to `powsybl-core.version` (7.3.0) because they are outside the BOM. R
   security analysis (whose embedded `LoadFlowParameters` is kept wired to the single authoritative load flow
   instance), SLD (`DesktopSldParameters`), NAD (`DesktopNadParameters`), per-format network import/export
   `Properties` (only user-edited values), and the app's own view settings, `…/parameters/GuiParameters.java` (map
-  basemap and hidden base voltages, logs level filter and sort order, reports severity filter).
+  basemap and hidden base voltages, logs level filter and sort order, reports severity filter, whether creation
+  dialogs then open the created object's details).
 - They are **edited in place** by the parameter tabs (two-way binding, no DTO). After an edit, a form calls its
   `onChange` hook, which bumps `ParametersModel.parametersChanged()` (and `sldParametersChanged()` /
   `nadParametersChanged()` for diagrams, so the displayed diagram re-renders).
 - `GuiParameters` are edited both from the parameters view ("User Interface" tab, `GuiParametersController`) and from
-  the map, logs and reports views' own controls. Either side writes the live `GuiParameters` and calls
+  the map, logs and reports views' own controls and the creation dialogs. Either side writes the live `GuiParameters` and calls
   `ParametersModel.guiParametersChanged()`; every side listens to `guiParametersRevisionProperty()` to re-apply them
   (also after a reset or import, which replace the instance). Read them through
   `ParametersModel.getGuiParameters()` each time rather than keeping a reference.

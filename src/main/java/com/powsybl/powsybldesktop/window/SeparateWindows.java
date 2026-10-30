@@ -61,8 +61,10 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -79,7 +81,7 @@ import java.util.stream.IntStream;
  * Each window is named ("Window 1" by default, renamed by double-clicking its name or from the main window's Windows
  * menu) and shows its views as tabs: a view is opened in a new window or as a tab of an existing one, and its tab can
  * be dragged to another window, reordered, or dropped outside any window to get its own. A window closes with its
- * last tab.
+ * last tab. Detail views, and diagrams opened from the map, gather in a window of their {@link Group}.
  * <p>
  * A network-bound view shows the network selected when it was opened, a root network or one of its subnetworks: it
  * stays open while the main window moves within that root network (navigation crosses subnetworks, e.g. to a tie line
@@ -101,6 +103,21 @@ public final class SeparateWindows {
     private static final DataFormat TAB_FORMAT = new DataFormat("application/x-powsybl-desktop-tab");
 
     /**
+     * A window gathering the views of one kind as tabs, instead of opening a window per view: created on the first
+     * one, named after its group until renamed, and reused while open.
+     */
+    public enum Group {
+        DETAILS("separateWindows.group.details"),
+        DIAGRAMS("separateWindows.group.diagrams");
+
+        private final String nameKey;
+
+        Group(String nameKey) {
+            this.nameKey = nameKey;
+        }
+    }
+
+    /**
      * A separate view's content: its root, the controller disposed when its tab closes, and its new window's size.
      */
     public record View(Parent root, DisposableController controller, double width, double height) {
@@ -110,7 +127,8 @@ public final class SeparateWindows {
     }
 
     private static final class SeparateView {
-        private final String key;
+        // changes with what the view shows, see retarget
+        private String key;
         // re-resolved, as is the content, on a language change, see relocalize
         private final Supplier<String> titleSupplier;
         private final Function<SceneModel, View> viewFactory;
@@ -160,6 +178,8 @@ public final class SeparateWindows {
         private final Stage stage = new Stage();
         // while the window has its default name, its number, to translate it on a language change; 0 once renamed
         private int defaultNumber = defaultNumber();
+        // while the window is named after its group, see nameAfter
+        private Group group;
         private final StringProperty name = new SimpleStringProperty(defaultName(defaultNumber));
         private final TabPane tabPane = new TabPane();
         private final Label nameLabel = new Label();
@@ -233,8 +253,15 @@ public final class SeparateWindows {
                 return false;
             }
             defaultNumber = 0;
+            group = null;
             name.set(trimmed);
             return true;
+        }
+
+        private void nameAfter(Group group) {
+            defaultNumber = 0;
+            this.group = group;
+            name.set(Messages.get(group.nameKey));
         }
 
         public List<String> getTabTitles() {
@@ -258,6 +285,8 @@ public final class SeparateWindows {
         private void relocalize() {
             if (defaultNumber > 0) {
                 name.set(defaultName(defaultNumber));
+            } else if (group != null) {
+                name.set(Messages.get(group.nameKey));
             }
             nameLabel.setTooltip(new Tooltip(Messages.get("separateWindows.renameHint")));
             tabPane.getTabs().forEach(tab -> view(tab).reload());
@@ -324,6 +353,8 @@ public final class SeparateWindows {
     private final ObservableList<DetachedWindow> windows = FXCollections.observableArrayList();
     // cached, see NavigationHistory's unmodifiable views
     private final ObservableList<DetachedWindow> openWindows = FXCollections.unmodifiableObservableList(windows);
+    // closed ones are left here, replaced by the next window of their group
+    private final Map<Group, DetachedWindow> groupWindows = new EnumMap<>(Group.class);
     private final ChangeListener<Network> networkListener;
     // the window the view being opened goes to, a new one if null, see openIn
     private DetachedWindow destination;
@@ -386,6 +417,22 @@ public final class SeparateWindows {
     }
 
     /**
+     * Same as {@link #open(String, Supplier, Function)}, as a tab of {@code group}'s window.
+     */
+    public void open(Group group, String key, Supplier<String> title, Function<SceneModel, View> viewFactory) {
+        DetachedWindow groupWindow = groupWindows.get(group);
+        boolean groupWindowOpen = windows.contains(groupWindow);
+        boolean alreadyOpen = find(key).isPresent();
+        openIn(groupWindowOpen ? groupWindow : null, () -> open(key, title, viewFactory));
+        if (!groupWindowOpen && !alreadyOpen) {
+            find(key).ifPresent(view -> {
+                groupWindows.put(group, view.window);
+                view.window.nameAfter(group);
+            });
+        }
+    }
+
+    /**
      * Opens the single view of {@code key} not bound to a network, or brings it to front if already open.
      */
     public void openSingleInstance(String key, Supplier<String> title, Function<SceneModel, View> viewFactory) {
@@ -403,6 +450,19 @@ public final class SeparateWindows {
         Optional<SeparateView> open = find(key);
         open.ifPresent(view -> view.window.showTab(view.window.tabPane.getTabs().indexOf(view.tab)));
         return open.isPresent();
+    }
+
+    /**
+     * Re-keys the view of {@code controller}, now showing what {@code key} names (e.g. a diagram navigated within its
+     * window to another container), and re-resolves its title.
+     */
+    public void retarget(DisposableController controller, String key) {
+        views.stream().filter(view -> view.controller == controller).findFirst().ifPresent(view -> {
+            view.key = key;
+            view.title = view.titleSupplier.get();
+            view.label.setText(view.title);
+            view.window.updateTitle();
+        });
     }
 
     public void close(String key) {

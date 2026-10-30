@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.map;
 
 import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
 import com.powsybl.powsybldesktop.MainModel;
@@ -115,7 +116,12 @@ class MapControllerContextMenuTest extends AbstractHeadlessApplicationTest {
 
         // the view is fitted to the only substation placed, which is then in its middle
         interact(() -> unplacedList.getSelectionModel().clearSelection());
-        assertTrue(rightClick(webView.getWidth() / 2, webView.getHeight() / 2).contains(Messages.get("map.edit.moveSubstation")));
+        List<String> items = rightClick(webView.getWidth() / 2, webView.getHeight() / 2);
+        assertTrue(items.contains(Messages.get("map.edit.moveSubstation")));
+        // its diagram and its voltage levels' come first
+        Substation substation = network.getSubstation(first);
+        assertEquals(Messages.get("map.contextMenu.singleLineDiagram", substation.getNameOrId()), items.getFirst());
+        assertEquals(substation.getVoltageLevelStream().count(), items.subList(1, items.indexOf(null)).size());
     }
 
     private void waitForEngine() throws TimeoutException {

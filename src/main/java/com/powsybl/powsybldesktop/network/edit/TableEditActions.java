@@ -17,7 +17,6 @@ import javafx.geometry.Orientation;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
-import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.Separator;
@@ -49,9 +48,7 @@ public final class TableEditActions {
      */
     public static <T extends Identifiable<?>> void install(TableView<T> table, SceneModel sceneModel, Supplier<List<MenuItem>> creations) {
         Supplier<Window> owner = () -> table.getScene().getWindow();
-        ContextMenu contextMenu = new ContextMenu();
-        contextMenu.setOnShowing(event -> contextMenu.getItems().setAll(rowItems(table, sceneModel, owner, creations)));
-        table.setContextMenu(contextMenu);
+        EditMenus.installContextMenu(table, () -> rowItems(table, sceneModel, owner, creations));
 
         ToolBar toolBar = toolBar(table);
         if (toolBar == null) {

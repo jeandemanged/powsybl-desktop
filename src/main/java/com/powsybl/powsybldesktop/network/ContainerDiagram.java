@@ -25,6 +25,7 @@ import com.powsybl.iidm.network.StaticVarCompensator;
 import com.powsybl.iidm.network.Switch;
 import com.powsybl.iidm.network.ThreeWindingsTransformer;
 import com.powsybl.iidm.network.TwoWindingsTransformer;
+import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.VscConverterStation;
 import com.powsybl.powsybldesktop.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.MainModel;
@@ -42,14 +43,18 @@ import com.powsybl.powsybldesktop.parameters.DesktopSldParameters;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.powsybldesktop.window.SeparateWindows;
 import com.powsybl.sld.svg.GraphMetadata;
 import javafx.animation.PauseTransition;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
+import javafx.fxml.FXMLLoader;
 import javafx.geometry.Orientation;
+import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.Separator;
 import javafx.scene.control.SeparatorMenuItem;
@@ -70,6 +75,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * The single line or network area diagram of one container, shown in a {@link DiagramPaneController}: rendered off
@@ -97,15 +105,6 @@ public final class ContainerDiagram extends AbstractDisposableController {
     private static final String SLD_HTML_SHELL = """
                 <html>
                     <script type="text/javascript">%__JS__%</script>
-                    <style>
-                        .sld-top-feeder,
-                        .sld-bottom-feeder,
-                        .sld-load-break-switch,
-                        .sld-breaker,
-                        .sld-disconnector {
-                            cursor: pointer;
-                        }
-                    </style>
                     <body style='margin: 0'>
                         <div id="svgContainer"></div>
                     </body>
@@ -167,6 +166,7 @@ public final class ContainerDiagram extends AbstractDisposableController {
             pane.loadShell(SLD_HTML_SHELL.replace("%__JS__%", readSldJs()));
             pane.getWebView().addEventFilter(MouseEvent.MOUSE_PRESSED, event -> contextMenu.hide());
             pane.getWebView().addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, this::onContextMenuRequested);
+            pane.getToolBar().getItems().add(editMenuButton());
             // remembered across navigation/views (see SceneModel)
             listenerManager.listen(pane.zoomProperty(), (observable, oldValue, newValue) -> sceneModel.diagramZoomProperty().set(newValue.doubleValue()));
             listenerManager.listen(pane.fitToScreenProperty(), (observable, oldValue, newValue) -> sceneModel.diagramFitToScreenProperty().set(newValue));
@@ -187,6 +187,47 @@ public final class ContainerDiagram extends AbstractDisposableController {
                 refresh();
             }
         });
+    }
+
+    /**
+     * Opens {@code container}'s diagram in a separate window: as a tab of {@code group}'s window, or in a new window if
+     * {@code group} is null.
+     */
+    public static void open(SeparateWindows separateWindows, SeparateWindows.Group group, Kind kind, Container<?> container) {
+        String titleKey = kind == Kind.SINGLE_LINE ? "desktop.common.singleLineDiagram" : "desktop.common.networkAreaDiagram";
+        // the diagram navigates within its window (see showEquipment): its title, and its rebuild on a language
+        // change, follow what it shows
+        AtomicReference<ContainerDiagram> shown = new AtomicReference<>();
+        Supplier<Container<?>> current = () -> shown.get() == null ? container : shown.get().getContainer();
+        Supplier<String> title = () -> Messages.get(titleKey) + " - " + current.get().getNameOrId();
+        Function<SceneModel, SeparateWindows.View> viewFactory = scene -> {
+            FXMLLoader loader = new FXMLLoader(DiagramPaneController.class.getResource("diagram-pane.fxml"), Messages.bundle());
+            try {
+                Parent root = loader.load();
+                ContainerDiagram diagram = new ContainerDiagram(kind, loader.getController(), scene);
+                diagram.setContainer(current.get());
+                shown.set(diagram);
+                diagram.setShowing(true);
+                return new SeparateWindows.View(root, diagram);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        };
+        String key = kind + "/" + container.getId();
+        if (group == null) {
+            separateWindows.open(key, title, viewFactory);
+        } else {
+            separateWindows.open(group, key, title, viewFactory);
+        }
+    }
+
+    // what can be created in the shown container, as from a right-click outside any equipment
+    private MenuButton editMenuButton() {
+        MenuButton button = new MenuButton(null, new FontIcon("mdi2p-plus"));
+        button.setTooltip(new Tooltip(Messages.get("edit.menu.tooltip")));
+        button.setOnShowing(event -> button.getItems().setAll(container == null ? List.of()
+                : EditMenus.items(sceneModel, () -> pane.getWebView().getScene().getWindow(), container.getParentNetwork(), container)));
+        return button;
     }
 
     private String readSldJs() {
@@ -316,18 +357,21 @@ public final class ContainerDiagram extends AbstractDisposableController {
     }
 
     /**
-     * Opens the detail view of a transformer drawn inside the diagram (not as a feeder, see onFeederTopBottomClick).
-     *
-     * @return whether {@code id} is such a transformer's node, JS otherwise trying the clicked element's parents
+     * Whether {@code id} is the node of a busbar section, or of a transformer drawn inside the diagram (not as a
+     * feeder, see onFeederTopBottomClick), JS otherwise trying the element's parents.
      */
     @SuppressWarnings("unused") // used by JS
-    public boolean onEquipmentClick(String id) {
+    public boolean isClickableEquipment(String id) {
         Identifiable<?> equipment = equipment(id);
-        if (equipment instanceof TwoWindingsTransformer || equipment instanceof ThreeWindingsTransformer) {
-            EquipmentDetails.open(sceneModel, equipment);
-            return true;
-        }
-        return false;
+        return equipment instanceof BusbarSection || equipment instanceof TwoWindingsTransformer || equipment instanceof ThreeWindingsTransformer;
+    }
+
+    /**
+     * Opens the detail view of a {@link #isClickableEquipment} node's equipment.
+     */
+    @SuppressWarnings("unused") // used by JS
+    public void onEquipmentClick(String id) {
+        EquipmentDetails.open(sceneModel, equipment(id));
     }
 
     /**
@@ -405,6 +449,13 @@ public final class ContainerDiagram extends AbstractDisposableController {
 
     private void showEquipment(GraphMetadata.NodeMetadata node, Identifiable<?> equipment) {
         Network network = container.getNetwork();
+        // a diagram leading to another stays in its own scene: in a separate window, this one shows it instead
+        if (node.getNextVId() != null && sceneModel.isSeparate()) {
+            VoltageLevel target = network.getVoltageLevel(node.getNextVId());
+            setContainer(target);
+            sceneModel.getDetailWindows().ifPresent(windows -> windows.retarget(this, kind + "/" + target.getId()));
+            return;
+        }
         Container<?> target = node.getNextVId() != null ? network.getVoltageLevel(node.getNextVId()) : container;
         ContainerNavigationState.ContainerTab tab = node.getNextVId() != null ? ContainerNavigationState.ContainerTab.SINGLE_LINE : equipmentTab(equipment);
         // this state isn't guaranteed to already be in history (e.g. reached via search, which doesn't record one):

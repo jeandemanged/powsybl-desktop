@@ -10,6 +10,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import com.powsybl.powsybldesktop.utils.DateTimePicker?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <SplitPane dividerPositions="0.35" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/17.0.12"
@@ -136,7 +137,7 @@
                                         <Label fx:id="countriesLabel" wrapText="true" GridPane.columnIndex="1"
                                                GridPane.rowIndex="3"/>
                                         <Label text="%networks.label.caseDate" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
-                                        <TextField fx:id="caseDateField" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+                                        <DateTimePicker fx:id="caseDatePicker" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
                                         <Label text="%networks.label.forecastDistance" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
                                         <TextField fx:id="forecastDistanceField" GridPane.columnIndex="1" GridPane.rowIndex="5"/>
                                         <Label text="%networks.label.validationLevel" GridPane.columnIndex="0" GridPane.rowIndex="6"/>

@@ -10,12 +10,16 @@ package com.powsybl.powsybldesktop.network.edit;
 import com.powsybl.iidm.network.HvdcLine;
 import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.ThreeSides;
 import com.powsybl.iidm.network.ThreeWindingsTransformer;
 import com.powsybl.iidm.network.TieLine;
+import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.ConnectablePosition;
+import com.powsybl.iidm.network.extensions.Coordinate;
+import com.powsybl.iidm.network.extensions.SubstationPositionAdder;
 import com.powsybl.iidm.network.test.EurostagTutorialExample1Factory;
 import com.powsybl.iidm.network.test.HvdcTestNetwork;
 import org.junit.jupiter.api.Test;
@@ -104,5 +108,28 @@ class BranchCreationsTest extends AbstractCreationDialogTest {
         assertNotNull(hvdcLine);
         assertEquals("C1", hvdcLine.getConverterStation1().getId());
         assertEquals("C2", hvdcLine.getConverterStation2().getId());
+    }
+
+    // the closest nominal voltage first, then the nearest substation, never the same substation
+    @Test
+    void lineOtherEndIsTheNearestSubstationAtTheClosestVoltage() {
+        Network network = Network.create("test", ContainerCreations.SOURCE_FORMAT);
+        VoltageLevel from = voltageLevel(network, "S1", 48.0, 2.0, 400);
+        voltageLevel(network, "S1", 48.0, 2.0, 225);
+        voltageLevel(network, "FAR", 50.0, 2.0, 400);
+        VoltageLevel near = voltageLevel(network, "NEAR", 48.1, 2.0, 400);
+        voltageLevel(network, "NEAREST", 48.01, 2.0, 225);
+
+        assertEquals(near, BranchCreations.otherEnd(network.getVoltageLevelStream().toList(), from));
+    }
+
+    private static VoltageLevel voltageLevel(Network network, String substationId, double latitude, double longitude, double nominalV) {
+        Substation substation = network.getSubstation(substationId);
+        if (substation == null) {
+            substation = network.newSubstation().setId(substationId).add();
+            substation.newExtension(SubstationPositionAdder.class).withCoordinate(new Coordinate(latitude, longitude)).add();
+        }
+        return substation.newVoltageLevel().setId(substationId + "_" + (int) nominalV).setNominalV(nominalV)
+                .setTopologyKind(TopologyKind.BUS_BREAKER).add();
     }
 }

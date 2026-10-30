@@ -25,12 +25,15 @@ import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.testfx.util.WaitForAsyncUtils;
@@ -203,5 +206,21 @@ class SubstationsControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals(Messages.get("desktop.common.equipment.generator.plural"), selected.getText());
         TableView<?> table = (TableView<?>) selected.getContent().lookup(".table-view");
         assertEquals(generator, table.getSelectionModel().getSelectedItem());
+    }
+
+    // a context menu doesn't show while empty: its edit items must be there before
+    @Test
+    void rightClickInTheTreeOffersTheEditMenu() {
+        interact(() -> treeView().getRoot().getChildren().forEach(item -> item.setExpanded(true)));
+        TreeCell<?> cell = lookup(".tree-cell").match(node -> "S1".equals(((TreeCell<?>) node).getText())).query();
+
+        rightClickOn(cell);
+
+        ContextMenu menu = Window.getWindows().stream()
+                .filter(window -> window instanceof ContextMenu && window.isShowing())
+                .map(ContextMenu.class::cast)
+                .findFirst().orElseThrow(() -> new AssertionError("No context menu"));
+        assertEquals(Messages.get("edit.menu.new"), menu.getItems().getFirst().getText());
+        interact(menu::hide);
     }
 }

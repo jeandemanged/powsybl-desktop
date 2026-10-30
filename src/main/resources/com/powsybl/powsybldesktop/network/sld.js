@@ -6,24 +6,49 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-document.addEventListener('click', function (event) {
-    if (event.target.closest('.sld-top-feeder')    ||
-        event.target.closest('.sld-bottom-feeder')) {
-        controller.onFeederTopBottomClick(event.target.parentElement.id);
-        return;
+// A busbar is a thin line, hard to point at: a wider transparent line over each, in its group, catches the pointer
+// for it. Added again whenever ContainerDiagram injects a new diagram.
+function widenBusbars() {
+    var lines = document.querySelectorAll('.sld-busbar-section > line');
+    for (var i = 0; i < lines.length; i++) {
+        var hitArea = lines[i].cloneNode(false);
+        hitArea.setAttribute('style', 'stroke: transparent; stroke-width: 12px; pointer-events: stroke');
+        lines[i].parentNode.insertBefore(hitArea, lines[i].nextSibling);
     }
-    if (event.target.closest('.sld-breaker')       ||
-        event.target.closest('.sld-disconnector')  ||
-        event.target.closest('.sld-load-break-switch')) {
-        controller.onSwitchClick(event.target.parentElement.id);
-        return;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    new MutationObserver(widenBusbars).observe(document.getElementById('svgContainer'), {childList: true});
+}, false);
+
+// what a click on target does, or null if nothing: the same lookup sets the pointer cursor, so that it shows exactly
+// over what can be clicked
+function clickAction(target) {
+    if (target.closest('.sld-top-feeder') || target.closest('.sld-bottom-feeder')) {
+        return function () { controller.onFeederTopBottomClick(target.parentElement.id); };
     }
-    // e.g. a transformer drawn inside the diagram: its node is one of the clicked element's ancestors
-    for (var element = event.target; element; element = element.parentElement) {
-        if (element.id && controller.onEquipmentClick(element.id)) {
-            break;
+    if (target.closest('.sld-breaker') || target.closest('.sld-disconnector') || target.closest('.sld-load-break-switch')) {
+        return function () { controller.onSwitchClick(target.parentElement.id); };
+    }
+    // e.g. a busbar or a transformer drawn inside the diagram: its node is one of the clicked element's ancestors
+    for (var element = target; element; element = element.parentElement) {
+        if (element.id && controller.isClickableEquipment(element.id)) {
+            var id = element.id;
+            return function () { controller.onEquipmentClick(id); };
         }
     }
+    return null;
+}
+
+document.addEventListener('click', function (event) {
+    var action = clickAction(event.target);
+    if (action) {
+        action();
+    }
+}, false);
+
+document.addEventListener('mouseover', function (event) {
+    document.body.style.cursor = clickAction(event.target) ? 'pointer' : '';
 }, false);
 
 // called by ContainerDiagram on a right-click, the WebView not dispatching contextmenu events to the page (its own

@@ -37,6 +37,7 @@ public class GuiParametersController extends AbstractDiagramParametersController
     private static final String CAT_LOGS = "logs";
     private static final String CAT_REPORTS = "reports";
     private static final String CAT_DECIMALS = "decimals";
+    private static final String CAT_NETWORK_EDITING = "networkEditing";
 
     private final MapBaseVoltages mapBaseVoltages = new MapBaseVoltages();
 
@@ -47,13 +48,14 @@ public class GuiParametersController extends AbstractDiagramParametersController
         titles.put(CAT_MAP, Messages.get("main.toolbar.map"));
         titles.put(CAT_LOGS, Messages.get("main.toolbar.logs"));
         titles.put(CAT_REPORTS, Messages.get("main.toolbar.reports"));
+        titles.put(CAT_NETWORK_EDITING, Messages.get("parameters.gui.category.networkEditing"));
         buildCategoryList(titles);
     }
 
     public void setParametersModel(ParametersModel parametersModel) {
         setParametersProperty(parametersModel.guiParametersProperty());
         setOnChange(parametersModel::guiParametersChanged);
-        // edited from the map, logs and reports views too
+        // edited from the map, logs and reports views and the creation dialogs too
         listenerManager.listen(parametersModel.guiParametersRevisionProperty(), (observable, oldValue, newValue) -> refresh());
     }
 
@@ -76,6 +78,8 @@ public class GuiParametersController extends AbstractDiagramParametersController
         addChoiceField(CAT_REPORTS, label("reportsMinSeverity"), GuiParameters.REPORT_SEVERITIES,
                 severity -> Messages.get("reports.filter." + severity.toLowerCase(Locale.ROOT)),
                 GuiParameters::getReportsMinSeverity, GuiParameters::setReportsMinSeverity);
+        addBooleanField(CAT_NETWORK_EDITING, Messages.get("edit.create.openDetails"), null,
+                GuiParameters::isOpenDetailsAfterCreation, GuiParameters::setOpenDetailsAfterCreation);
     }
 
     private <V> void addChoiceField(String category, String label, List<V> values, Function<V, String> toLabel,

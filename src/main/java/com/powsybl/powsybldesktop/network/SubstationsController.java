@@ -41,12 +41,9 @@ import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.utils.TreeItems;
 import com.powsybl.powsybldesktop.window.SeparateWindows;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -250,19 +247,7 @@ public class SubstationsController extends AbstractDisposableController implemen
         if (container == null) {
             return;
         }
-        String titleKey = kind == ContainerDiagram.Kind.SINGLE_LINE ? "desktop.common.singleLineDiagram" : "desktop.common.networkAreaDiagram";
-        separateWindows.open(kind + "/" + container.getId(), () -> Messages.get(titleKey) + " - " + container.getNameOrId(), scene -> {
-            FXMLLoader loader = new FXMLLoader(DiagramPaneController.class.getResource("diagram-pane.fxml"), Messages.bundle());
-            try {
-                Parent root = loader.load();
-                ContainerDiagram diagram = new ContainerDiagram(kind, loader.getController(), scene);
-                diagram.setContainer(container);
-                diagram.setShowing(true);
-                return new SeparateWindows.View(root, diagram);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        });
+        ContainerDiagram.open(separateWindows, null, kind, container);
     }
 
     private void openEquipmentTab(SeparateWindows separateWindows, EquipmentTab equipmentTab) {
@@ -626,10 +611,8 @@ public class SubstationsController extends AbstractDisposableController implemen
     }
 
     private void initializeTreeViews() {
-        // built on showing, for the then selected item
-        ContextMenu contextMenu = new ContextMenu();
-        contextMenu.setOnShowing(event -> contextMenu.getItems().setAll(editMenuItems()));
-        substationsTreeView.setContextMenu(contextMenu);
+        // for the then selected item, which a right-click selects
+        EditMenus.installContextMenu(substationsTreeView, this::editMenuItems);
         editMenuButton.setOnShowing(event -> editMenuButton.getItems().setAll(editMenuItems()));
 
         substationsTreeView.setCellFactory(dummy -> new TreeCell<>() {

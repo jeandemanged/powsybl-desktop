@@ -10,11 +10,13 @@ package com.powsybl.powsybldesktop.window;
 import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
 import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.logs.LogsViewController;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
+import com.powsybl.powsybldesktop.network.ContainerDiagram;
 import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
 import com.powsybl.powsybldesktop.network.tables.LinesController;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
@@ -26,6 +28,7 @@ import javafx.scene.control.SplitMenuButton;
 import javafx.scene.control.ToolBar;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import org.junit.jupiter.api.AfterEach;
@@ -34,6 +37,8 @@ import org.testfx.util.WaitForAsyncUtils;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
@@ -271,6 +276,49 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
 
         assertEquals(List.of("Diagrams", defaultName(2)), names());
         assertEquals(1, windows("Diagrams - a").size());
+    }
+
+    // the WebView runs the page: the line feeder is clicked through window.controller, as sld.js does
+    @Test
+    void separateSingleLineDiagramNavigatesWithinItsTab() throws TimeoutException {
+        VoltageLevel vl1 = network.getVoltageLevel("VL1");
+        String title = Messages.get("desktop.common.singleLineDiagram") + " - ";
+        interact(() -> ContainerDiagram.open(separateWindows, null, ContainerDiagram.Kind.SINGLE_LINE, vl1));
+        WebView webView = (WebView) windows(title + vl1.getNameOrId()).getFirst().getScene().getRoot().lookup(".web-view");
+        WaitForAsyncUtils.waitFor(60, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() -> webView.getEngine().executeScript(
+                "document.querySelector('[id^=\"idL\"].sld-top-feeder, [id^=\"idL\"].sld-bottom-feeder') != null")).get().equals(Boolean.TRUE));
+        int pastEvents = mainModel.getNavigationHistory().getPast().size();
+
+        interact(() -> webView.getEngine().executeScript("var feeder = document.querySelector('[id^=\"idL\"].sld-top-feeder, "
+                + "[id^=\"idL\"].sld-bottom-feeder'); window.controller.onFeederTopBottomClick(feeder.id)"));
+
+        assertEquals(1, separateWindows.getOpenWindows().size());
+        assertTrue(windows(title + vl1.getNameOrId()).isEmpty());
+        assertEquals(1, Window.getWindows().stream()
+                .filter(window -> window instanceof Stage stage && stage.getTitle() != null && stage.getTitle().contains(title)).count());
+        assertEquals(pastEvents, mainModel.getNavigationHistory().getPast().size());
+    }
+
+    @Test
+    void groupViewsGatherInTheirGroupWindowRecreatedOnceClosed() {
+        AtomicInteger disposed = new AtomicInteger();
+        Function<SceneModel, SeparateWindows.View> factory = scene -> new SeparateWindows.View(new StackPane(), disposed::incrementAndGet);
+        String details = Messages.get("separateWindows.group.details");
+        interact(() -> {
+            separateWindows.open(SeparateWindows.Group.DETAILS, "detail:a", () -> "a", factory);
+            openPlain("other", true, disposed);
+            separateWindows.open(SeparateWindows.Group.DETAILS, "detail:b", () -> "b", factory);
+        });
+
+        assertEquals(List.of(details, defaultName(1)), names());
+        assertEquals(List.of("a", "b"), separateWindows.getOpenWindows().getFirst().getTabTitles());
+
+        interact(() -> {
+            separateWindows.close("detail:a");
+            separateWindows.close("detail:b");
+            separateWindows.open(SeparateWindows.Group.DETAILS, "detail:c", () -> "c", factory);
+        });
+        assertEquals(List.of(defaultName(1), details), names());
     }
 
     @Test

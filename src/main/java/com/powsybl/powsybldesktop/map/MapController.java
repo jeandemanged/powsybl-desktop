@@ -26,12 +26,8 @@ import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.NetworkStudy;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.SceneView;
-import com.powsybl.powsybldesktop.navigation.BoundaryLineNavigationState;
-import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
-import com.powsybl.powsybldesktop.navigation.LineNavigationState;
-import com.powsybl.powsybldesktop.navigation.NavigationEvent;
-import com.powsybl.powsybldesktop.navigation.NavigationType;
-import com.powsybl.powsybldesktop.navigation.TieLineNavigationState;
+import com.powsybl.powsybldesktop.network.ContainerDiagram;
+import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
 import com.powsybl.powsybldesktop.network.edit.ContainerCreations;
 import com.powsybl.powsybldesktop.network.edit.EditMenus;
 import com.powsybl.powsybldesktop.network.edit.NetworkEdits;
@@ -41,6 +37,7 @@ import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.powsybldesktop.window.SeparateWindows;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -84,6 +81,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -100,9 +98,9 @@ import java.util.stream.Collectors;
  * Shows substations and lines on a basemap, using the coordinates carried by the IIDM
  * {@link SubstationPosition}/{@link LinePosition} network extensions - a substation without position isn't drawn, a
  * line without route is drawn thin and translucent straight between its substations if both have one. A line
- * disconnected on at least one side is dashed. Clicking a substation marker
- * or a line navigates to it in the substations view / lines, tie lines or boundary lines table, same as any other
- * cross-view link in this app.
+ * disconnected on at least one side is dashed. Clicking a substation marker opens its single line diagram as a tab of
+ * the diagrams window, clicking a line, tie line or boundary line opens its detail view as a tab of the details
+ * window (see {@link SeparateWindows.Group}).
  * <p>
  * Built the same way as the single line diagram ({@code SubstationsController}/{@code sld.js}): the
  * stylesheet and scripts are injected into a {@link WebView} shell, with a {@code window.controller}
@@ -615,17 +613,14 @@ public class MapController extends AbstractDisposableController implements Scene
         }
         Identifiable<?> identifiable = network.getIdentifiable(hit.id());
         if (identifiable instanceof Substation substation) {
-            sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(substation)));
-        } else if (identifiable instanceof Line line) {
-            sceneModel.navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_LINES, LineNavigationState.create(line)));
-        } else if (identifiable instanceof TieLine tieLine) {
-            sceneModel.navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_TIE_LINES, TieLineNavigationState.create(tieLine)));
-        } else if (identifiable instanceof BoundaryLine boundaryLine) {
-            sceneModel.navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_BOUNDARY_LINES, BoundaryLineNavigationState.create(boundaryLine)));
+            sceneModel.getDetailWindows().ifPresent(windows ->
+                    ContainerDiagram.open(windows, SeparateWindows.Group.DIAGRAMS, ContainerDiagram.Kind.SINGLE_LINE, substation));
+        } else {
+            EquipmentDetails.open(sceneModel, identifiable);
         }
     }
 
-    // creation in the clicked substation, or of a substation at the clicked place
+    // the clicked substation's and its voltage levels' diagrams, then creation in it, or of a substation at the clicked place
     @SuppressWarnings("unused") // called from map.js
     public void onMapContextMenu(double latitude, double longitude, double zoom) {
         Network network = sceneModel.getNetwork();
@@ -635,6 +630,14 @@ public class MapController extends AbstractDisposableController implements Scene
         MapNetworkData.Hit hit = networkData == null ? null : networkData.hitTest(latitude, longitude, zoom, hiddenBaseVoltages);
         Identifiable<?> identifiable = hit == null ? null : network.getIdentifiable(hit.id());
         List<MenuItem> items = new ArrayList<>();
+        if (identifiable instanceof Substation substation) {
+            items.add(diagramItem(substation, substation.getNameOrId()));
+            substation.getVoltageLevelStream()
+                    .sorted(Comparator.comparingDouble(VoltageLevel::getNominalV).reversed())
+                    .forEach(voltageLevel -> items.add(diagramItem(voltageLevel, voltageLevel.getNameOrId() + " ("
+                            + gui().format(GuiParameters.Quantity.VOLTAGE, voltageLevel.getNominalV()) + " kV)")));
+            items.add(new SeparatorMenuItem());
+        }
         MenuItem newSubstation = new MenuItem(Messages.get("edit.menu.newSubstationHere"), new FontIcon("mdi2p-plus"));
         newSubstation.setDisable(mainModel.isBusy(network));
         newSubstation.setOnAction(event -> ContainerCreations.newSubstation(sceneModel, webView.getScene().getWindow(), network,
@@ -655,6 +658,14 @@ public class MapController extends AbstractDisposableController implements Scene
         contextMenu.getItems().setAll(items);
         // not from within the JavaScript call
         Platform.runLater(() -> contextMenu.show(webView, contextMenuX, contextMenuY));
+    }
+
+    private MenuItem diagramItem(Container<?> container, String text) {
+        MenuItem item = new MenuItem(Messages.get("map.contextMenu.singleLineDiagram", text));
+        item.setMnemonicParsing(false);
+        item.setOnAction(event -> sceneModel.getDetailWindows().ifPresent(windows ->
+                ContainerDiagram.open(windows, SeparateWindows.Group.DIAGRAMS, ContainerDiagram.Kind.SINGLE_LINE, container)));
+        return item;
     }
 
     // the WebView, its own context menu disabled, doesn't dispatch contextmenu events to the page: map.js finds the

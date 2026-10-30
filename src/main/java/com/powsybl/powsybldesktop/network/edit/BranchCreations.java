@@ -26,6 +26,8 @@ import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.ConnectablePosition;
 import com.powsybl.iidm.network.extensions.ConnectablePositionAdder;
+import com.powsybl.iidm.network.extensions.Coordinate;
+import com.powsybl.iidm.network.extensions.SubstationPosition;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.network.detail.DetailForm;
 import com.powsybl.powsybldesktop.network.detail.DetailSections;
@@ -52,7 +54,8 @@ public final class BranchCreations {
     }
 
     /**
-     * Creates a line in {@code network}, its first side on {@code voltageLevel} and {@code busOrBusbarSection} if not null.
+     * Creates a line in {@code network}, its first side on {@code voltageLevel} and {@code busOrBusbarSection} if not
+     * null, its second side by default on the {@link #otherEnd} of {@code voltageLevel}.
      */
     public static Optional<Line> newLine(SceneModel sceneModel, Window owner, Network network, VoltageLevel voltageLevel,
                                          Identifiable<?> busOrBusbarSection) {
@@ -69,8 +72,8 @@ public final class BranchCreations {
         List<VoltageLevel> voltageLevels = network.getVoltageLevelStream().toList();
         ConnectionSection side1 = new ConnectionSection(form, Messages.get("limits.side", 1), voltageLevels, voltageLevel, busOrBusbarSection,
                 ConnectablePosition.Direction.TOP);
-        ConnectionSection side2 = new ConnectionSection(form, Messages.get("limits.side", 2), voltageLevels, otherThan(voltageLevels, voltageLevel), null,
-                ConnectablePosition.Direction.TOP);
+        ConnectionSection side2 = new ConnectionSection(form, Messages.get("limits.side", 2), voltageLevels,
+                otherEnd(voltageLevels, voltageLevel), null, ConnectablePosition.Direction.TOP);
         return CreateDialog.showThenDetails(sceneModel, owner, Messages.get("edit.create.title", Messages.get("desktop.common.equipment.line")), form, () -> {
             String lineId = id.get();
             BranchAdder<?, ?> adder = network.newLine().setId(lineId).setName(name.get())
@@ -142,6 +145,38 @@ public final class BranchCreations {
 
     private static List<VoltageLevel> byDecreasingVoltage(Substation substation) {
         return substation.getVoltageLevelStream().sorted(Comparator.comparingDouble(VoltageLevel::getNominalV).reversed()).toList();
+    }
+
+    /**
+     * The likeliest other end of a line from {@code voltageLevel}: a voltage level of another substation, of the
+     * closest nominal voltage, in the nearest substation (from their positions, unplaced ones last).
+     */
+    static VoltageLevel otherEnd(List<VoltageLevel> voltageLevels, VoltageLevel voltageLevel) {
+        if (voltageLevel == null) {
+            return otherThan(voltageLevels, null);
+        }
+        Substation substation = voltageLevel.getSubstation().orElse(null);
+        Coordinate position = coordinate(substation);
+        return voltageLevels.stream()
+                .filter(other -> other != voltageLevel && (substation == null || other.getSubstation().orElse(null) != substation))
+                .min(Comparator.<VoltageLevel>comparingDouble(other -> Math.abs(other.getNominalV() - voltageLevel.getNominalV()))
+                        .thenComparingDouble(other -> squaredDistance(position, coordinate(other.getSubstation().orElse(null)))))
+                .orElseGet(() -> otherThan(voltageLevels, voltageLevel));
+    }
+
+    private static Coordinate coordinate(Substation substation) {
+        SubstationPosition position = substation == null ? null : substation.getExtension(SubstationPosition.class);
+        return position == null ? null : position.getCoordinate();
+    }
+
+    // equirectangular, enough to rank substations by distance
+    private static double squaredDistance(Coordinate a, Coordinate b) {
+        if (a == null || b == null) {
+            return Double.MAX_VALUE;
+        }
+        double dx = (b.getLongitude() - a.getLongitude()) * Math.cos(Math.toRadians((a.getLatitude() + b.getLatitude()) / 2));
+        double dy = b.getLatitude() - a.getLatitude();
+        return dx * dx + dy * dy;
     }
 
     private static VoltageLevel otherThan(List<VoltageLevel> voltageLevels, VoltageLevel voltageLevel) {

@@ -22,9 +22,12 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.BusbarSectionPosition;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.utils.Messages;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.Control;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
+import javafx.scene.input.ContextMenuEvent;
 import javafx.stage.Window;
 import org.kordamp.ikonli.javafx.FontIcon;
 
@@ -107,9 +110,25 @@ public final class EditMenus {
     private static void addSubstationCreations(SceneModel sceneModel, Supplier<Window> owner, Substation substation, Menu create) {
         create.getItems().add(voltageLevelItem(sceneModel, owner, substation.getParentNetwork(), substation));
         create.getItems().add(new SeparatorMenuItem());
+        // from its highest voltage level, not the network's for a substation without any
+        VoltageLevel highest = voltageLevelOf(substation.getParentNetwork(), substation);
+        MenuItem line = lineItem(sceneModel, owner, substation.getParentNetwork(), highest, null);
+        line.setDisable(highest == null);
+        create.getItems().add(line);
         create.getItems().addAll(transformerItems(sceneModel, owner, substation, null, null));
         create.getItems().add(new SeparatorMenuItem());
         create.getItems().add(overloadManagementSystemItem(sceneModel, owner, substation.getParentNetwork(), substation));
+    }
+
+    /**
+     * Gives {@code control} a context menu of {@code items}, built for each right-click: a context menu doesn't
+     * show while empty, so building them only once it shows would leave it never shown.
+     */
+    public static void installContextMenu(Control control, Supplier<List<MenuItem>> items) {
+        ContextMenu contextMenu = new ContextMenu();
+        // a filter, to run before the control's own handler shows its context menu
+        control.addEventFilter(ContextMenuEvent.CONTEXT_MENU_REQUESTED, event -> contextMenu.getItems().setAll(items.get()));
+        control.setContextMenu(contextMenu);
     }
 
     public static MenuItem areaItem(SceneModel sceneModel, Supplier<Window> owner, Network network) {

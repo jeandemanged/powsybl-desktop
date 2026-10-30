@@ -72,8 +72,9 @@ record MapNetworkData(List<Color> colors,
     private static final int SUBSTATION_MAX_SIZE = 12;
     /** Pixels around a substation marker that still hit it. */
     private static final double SUBSTATION_CLICK_TOLERANCE = 5;
-    /** Same hit tolerance Leaflet's canvas renderer used for polylines: half the stroke width. */
-    private static final double LINE_HIT_DISTANCE = LINE_WEIGHT / 2;
+    /** Pixels around a line's stroke that still hit it: the stroke alone is too thin to aim at. */
+    private static final double LINE_CLICK_TOLERANCE = 4;
+    private static final double LINE_HIT_DISTANCE = LINE_WEIGHT / 2 + LINE_CLICK_TOLERANCE;
     /** The grid has this many cells along each axis. */
     private static final int GRID_SIZE = 128;
     /** Nearest neighbour distances are measured on at most this many substations, enough for a median. */

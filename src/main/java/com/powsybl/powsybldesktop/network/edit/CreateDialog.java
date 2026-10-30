@@ -12,6 +12,8 @@ import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
 import com.powsybl.powsybldesktop.network.tables.TableColumnSupport;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.powsybldesktop.parameters.ParametersModel;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.binding.Bindings;
 import javafx.event.ActionEvent;
@@ -50,13 +52,19 @@ public final class CreateDialog {
 
     /**
      * Same as {@link #show(Window, String, CreationForm, Supplier)}, then opens the created equipment's detail view
-     * unless the user unchecked it, to set what the form doesn't ask for.
+     * unless the user unchecked it, to set what the form doesn't ask for. The choice is remembered in the
+     * {@link GuiParameters}.
      */
     public static <T extends Identifiable<?>> Optional<T> showThenDetails(SceneModel sceneModel, Window owner, String title,
                                                                          CreationForm form, Supplier<T> apply) {
+        ParametersModel parametersModel = sceneModel.getMainModel().getParametersModel();
         CheckBox openDetails = new CheckBox(Messages.get("edit.create.openDetails"));
-        openDetails.setSelected(true);
+        openDetails.setSelected(parametersModel.getGuiParameters().isOpenDetailsAfterCreation());
         Optional<T> created = show(owner, title, form, openDetails, apply);
+        if (openDetails.isSelected() != parametersModel.getGuiParameters().isOpenDetailsAfterCreation()) {
+            parametersModel.getGuiParameters().setOpenDetailsAfterCreation(openDetails.isSelected());
+            parametersModel.guiParametersChanged();
+        }
         if (openDetails.isSelected()) {
             created.ifPresent(identifiable -> EquipmentDetails.open(sceneModel, identifiable));
         }
@@ -77,6 +85,9 @@ public final class CreateDialog {
         double maxHeight = Screen.getPrimary().getVisualBounds().getHeight() * MAX_SCREEN_HEIGHT_RATIO;
         scrollPane.prefViewportHeightProperty().bind(Bindings.createDoubleBinding(
                 () -> Math.min(maxHeight, form.getNode().prefHeight(-1)), form.getNode().layoutBoundsProperty()));
+        // a wider editor than its column's preferred width (e.g. a date and time) widens the form's minimum only
+        scrollPane.prefViewportWidthProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(form.getNode().prefWidth(-1), form.getNode().minWidth(-1)), form.getNode().layoutBoundsProperty()));
         scrollPane.getStyleClass().add("edge-to-edge");
         content.getChildren().add(scrollPane);
         if (footer != null) {

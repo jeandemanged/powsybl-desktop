@@ -158,19 +158,30 @@ Two established forms:
 ## Creation dialogs and edit menus
 
 - A creation dialog is a `network/edit/CreationForm` (the `DetailForm` grid, but fields holding values read on OK:
-  `text`, `id` (unique among the network's objects), `number`, `integer`, `check`, `choice`, `custom`, rows shown or
-  hidden with `visibleWhen`) shown by `CreateDialog.show` / `showThenDetails` (which then opens the created object's
-  detail view, where everything the form doesn't ask for is set). OK applies it and only closes once applied: a
+  `text`, `id` (unique among the network's objects), `number`, `integer`, `check`, `choice`, `dateTime`, `custom`,
+  rows shown or hidden with `visibleWhen`) shown by `CreateDialog.show` / `showThenDetails` (which then opens the
+  created object's detail view, where everything the form doesn't ask for is set, unless unchecked: the choice is
+  remembered, `GuiParameters.openDetailsAfterCreation`). The dialog widens to the form's minimum width, so an editor
+  wider than the value column's 260 px isn't cut. OK applies it and only closes once applied: a
   `CreationForm.FieldException` is shown on its editor, an IIDM error on the form. Forms ask for what IIDM requires,
   with defaults; a form with many fields is a small class with a `create` method (checkstyle limits lambdas to 20 lines).
 - Where a connectable is connected is a `ConnectionSection`: voltage level, busbar section (node breaker: position
   order, suggested at the end of the section, and direction) or bus (bus breaker). Orders are never refused:
   `FeederOrders` brings one out of the section's range back to its nearest end and, when it is taken, moves every
   following feeder of the voltage level up (moved back if the creation fails).
+- Dates with time are a `…/utils/DateTimePicker.java` (JavaFX has no date-time picker: a `DatePicker`, hour and
+  minute spinners, a time zone choice), reporting user edits only through `setOnEdit` - `setValue` shows a value
+  without reporting it (the networks view's case date, the new network dialog).
+- New lines default their second side to `BranchCreations.otherEnd`: another substation's voltage level of the
+  closest nominal voltage, nearest substation first (from their positions).
 - What can be created or removed for an object comes from `EditMenus.items(sceneModel, owner, network, context)` (a
   "New" submenu, a "Topology" submenu, the removal), the same in the substations tree (its "+" button and context
-  menu), the SLD context menu (on equipment, or on the background for the shown container), the map context menu
-  (plus "new substation here") and the table row context menus. Tables get add and remove buttons with
+  menu), the SLD (its toolbar "+" button for the shown container, and its context menu on equipment, or on the
+  background for the shown container), the map context menu (after, on a substation, its and its voltage levels'
+  single line diagrams, and "new substation here") and the table row context menus.
+- A context menu whose items depend on the selection is installed with `EditMenus.installContextMenu(control, items)`,
+  which builds them on the right-click: a `ContextMenu` doesn't show while empty, so filling it in its `onShowing`
+  leaves it never shown. Tables get add and remove buttons with
   `TableEditActions.install` (`AbstractEquipmentTableController.creationItems` for the base's tables). Detail views have
   a remove button. Removals (`Removals.remove`) confirm, listing what goes with the object.
 - Tables of objects outside voltage levels (areas, overload management systems, voltage angle limits) extend
@@ -185,15 +196,16 @@ voltage levels, grounds, areas, overload management systems), all on the
 shared `equipment-detail-view.fxml` (no `fx:controller`: `EquipmentDetails.load` sets it). Canonical examples:
 `GeneratorDetailController` (injection), `TwoWindingsTransformerDetailController` (branch).
 
-- Opened by `EquipmentDetails.open(sceneModel, equipment)` (a no-op for an unsupported type) as a `SeparateWindows` tab
-  keyed by equipment id; works from separate windows too, through `SceneModel.getDetailWindows()`. Add a type with a
+- Opened by `EquipmentDetails.open(sceneModel, equipment)` (a no-op for an unsupported type) as a tab of the
+  "Details" window (`SeparateWindows.Group.DETAILS`) keyed by equipment id; works from separate windows too, through `SceneModel.getDetailWindows()`. Add a type with a
   subclass and a `Kind` entry in `EquipmentDetails`. Entry points: every equipment table's name column info button
   (`TableColumnSupport.configureDetailNameColumn`, or `withDetailButton` around a container link for the substations and
   voltage levels tables); the SLD/NAD toolbar info button for the shown substation or voltage level
   (`ContainerDiagram`); in the SLD (`ContainerDiagram` / `sld.js`), a feeder click (unless
-  the feeder leads to another voltage level, which the click keeps navigating to), a click on a transformer drawn
-  inside the diagram, and a right-click on any equipment (details, HVDC line details for a converter station, go to /
-  show in table).
+  the feeder leads to another voltage level, which the click keeps navigating to), a click on a busbar section or on
+  a transformer drawn inside the diagram, and a right-click on any equipment (details, HVDC line details for a
+  converter station, go to / show in table); on the map, a click on a line, tie line or boundary line (a click on a
+  substation opens its single line diagram in the "Diagrams" window).
 - The base builds the header (title, voltage level links), the main tab's general section (id, name, fictitious), the
   extensions and properties/aliases tabs; a subclass adds its main rows (`buildMain`), a main side node
   (`mainSide`, e.g. `capabilityChart(...)`) and tabs (`extraTabs`: `reactiveLimitsTab(...)`, `limitsTab()`,
@@ -220,6 +232,12 @@ shared `equipment-detail-view.fxml` (no `fx:controller`: `EquipmentDetails.load`
   loaded); callback methods are public and annotated `@SuppressWarnings("unused") // used by JS`
   (`SubstationsController.onSwitchClick`, `onFeederTopBottomClick`). Keep JS (`network/sld.js`, `map/map.js`) and
   these method names in sync.
+- In `sld.js`, `clickAction` is the single answer to what a click on an element does: the click runs it, and the
+  pointer cursor shows exactly where it isn't null (feeders, switches, then `ContainerDiagram.isClickableEquipment`
+  up the element's ancestors). Busbars, a thin line, get a wider transparent line in their group to catch the
+  pointer, added again on every injected diagram; SVG exports use the rendered string, not the page.
+- Map hover and clicks are hit-tested in Java (`MapNetworkData.hitTest`): a few pixels of tolerance around substation
+  markers and line strokes, substations winning over lines.
 - The Map view does not draw the network in JavaScript: tiles are rendered in Java (`MapTileRenderer`) on a thread
   pool from an immutable `MapNetworkData` snapshot; Leaflet only displays tiles. Leaflet files are unpacked from the
   `org.webjars:leaflet` dependency at build time — not checked in.

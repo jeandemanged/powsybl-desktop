@@ -10,6 +10,7 @@ package com.powsybl.powsybldesktop.network.edit;
 import com.powsybl.commons.PowsyblException;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.powsybldesktop.utils.DateTimePicker;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
@@ -27,6 +28,7 @@ import javafx.scene.layout.GridPane;
 import javafx.util.StringConverter;
 import org.controlsfx.control.SearchableComboBox;
 
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -234,6 +236,11 @@ public final class CreationForm {
                 throw new FieldException(field, Messages.get("desktop.common.editError.invalidNumber", text));
             }
         });
+    }
+
+    public Field<ZonedDateTime> dateTime(String labelKey, ZonedDateTime initial) {
+        DateTimePicker picker = new DateTimePicker(initial);
+        return row(labelKey, picker, null, picker::getValue);
     }
 
     public Field<Boolean> check(String labelKey, boolean initial) {

@@ -139,7 +139,13 @@ menu, blank and taken names rejected):
   `openInNewWindowHost` Pane): by `MainController.ensureSceneView` for whole views (tables, map, contingencies), by
   `SubstationsController` for its diagram panes (`network/ContainerDiagram`, shared with its own tabs) and equipment
   tabs (fixed to the selected container), and for logs/reports (single-instance, not network-bound);
-- the window's view gets a `SceneModel.separate` scene: its navigation drives the main window and brings it to front;
+- views of one kind gather as tabs of their group's window instead of a window each (`open(Group, key, ...)`,
+  `SeparateWindows.Group`): detail views in "Details", diagrams opened from the map in "Diagrams"; the window is
+  created, named after its group, on the first one, and reused while open (even renamed);
+- the window's view gets a `SceneModel.separate` scene: its navigation drives the main window and brings it to front -
+  except a single line diagram leading to another voltage level (feeder click, "go to"), which stays in its own
+  scene: in a separate window, the diagram shows that voltage level itself, its tab re-keyed and retitled
+  (`SeparateWindows.retarget`; `ContainerDiagram.open` titles and rebuilds it from what it currently shows);
 - network-bound views (tabs) close when the selection changes to another root network (`confirmNetworkChange` asks
   first), not while it moves between a root network and its subnetworks;
 - a tab can be dragged to another window's tab strip, reordered, or dropped outside any window to get its own window

@@ -62,6 +62,7 @@ import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
 import com.powsybl.powsybldesktop.parameters.NetworkFormatParametersController;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
+import com.powsybl.powsybldesktop.utils.DateTimePicker;
 import com.powsybl.powsybldesktop.utils.FileChooserPreferences;
 import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -107,7 +108,6 @@ import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.IdentityHashMap;
@@ -184,7 +184,7 @@ public class NetworksController extends AbstractDisposableController {
     private Label countriesLabel;
 
     @FXML
-    private TextField caseDateField;
+    private DateTimePicker caseDatePicker;
 
     @FXML
     private TextField forecastDistanceField;
@@ -223,7 +223,7 @@ public class NetworksController extends AbstractDisposableController {
         listenerManager.listen(mainModel.networkBusyProperty(), (obs, wasBusy, isBusy) -> updateMergeDetachButtons(getSelectedNetworks()));
         // the selected network's name, like its tables (see AbstractEquipmentTableController.setMainModel)
         nameField.disableProperty().bind(mainModel.networkBusyProperty());
-        caseDateField.disableProperty().bind(mainModel.networkBusyProperty());
+        caseDatePicker.disableProperty().bind(mainModel.networkBusyProperty());
         forecastDistanceField.disableProperty().bind(mainModel.networkBusyProperty());
         listenerManager.listen(mainModel.structureChangeProperty(), (obs, oldValue, change) -> {
             if (change != null && selectedNetwork != null && change.rootNetwork() == selectedNetwork.getNetwork()) {
@@ -321,7 +321,7 @@ public class NetworksController extends AbstractDisposableController {
     private void refreshNetworkDetails() {
         if (selectedNetwork != null) {
             networkParts.forEach(DetailPart::refresh);
-            if (!caseDateField.isFocused() && !forecastDistanceField.isFocused()) {
+            if (!forecastDistanceField.isFocused()) {
                 showCaseDateAndForecastDistance(selectedNetwork);
             }
             validationLevelLabel.setText(selectedNetwork.getValidationLevel().name());
@@ -329,24 +329,16 @@ public class NetworksController extends AbstractDisposableController {
     }
 
     private void showCaseDateAndForecastDistance(Network network) {
-        caseDateField.setText(network.getCaseDate().toString());
+        caseDatePicker.setValue(network.getCaseDate());
         forecastDistanceField.setText(String.valueOf(network.getForecastDistance()));
     }
 
-    // an ISO date with offset and optional zone, e.g. 2026-10-26T10:00+01:00[Europe/Paris]
-    private void commitCaseDateChange() {
+    private void commitCaseDateChange(ZonedDateTime caseDate) {
         Network network = selectedNetwork;
-        if (network == null || caseDateField.getText().equals(network.getCaseDate().toString())) {
+        if (network == null || caseDate.equals(network.getCaseDate())) {
             return;
         }
-        DetailForm.apply(caseDateField, () -> {
-            try {
-                network.setCaseDate(ZonedDateTime.parse(caseDateField.getText().trim()));
-            } catch (DateTimeParseException e) {
-                throw new PowsyblException(Messages.get("networks.editError.invalidCaseDate", caseDateField.getText().trim()), e);
-            }
-        }, mainModel::setUpdate);
-        showCaseDateAndForecastDistance(network);
+        DetailForm.apply(caseDatePicker, () -> network.setCaseDate(caseDate), mainModel::setUpdate);
     }
 
     // in minutes
@@ -401,7 +393,6 @@ public class NetworksController extends AbstractDisposableController {
             nameField.setText("");
             sourceFormatLabel.setText("");
             countriesLabel.setText("");
-            caseDateField.setText("");
             forecastDistanceField.setText("");
             validationLevelLabel.setText("");
             networkInfoTable.setItems(FXCollections.observableArrayList());
@@ -548,7 +539,7 @@ public class NetworksController extends AbstractDisposableController {
         propertyColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getKey()));
         valueColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getValue()));
         commitOnEnterOrFocusLoss(nameField, this::commitNameChange);
-        commitOnEnterOrFocusLoss(caseDateField, this::commitCaseDateChange);
+        caseDatePicker.setOnEdit(this::commitCaseDateChange);
         commitOnEnterOrFocusLoss(forecastDistanceField, this::commitForecastDistanceChange);
     }
 

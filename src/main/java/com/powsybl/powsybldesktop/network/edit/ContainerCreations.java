@@ -31,7 +31,6 @@ import javafx.scene.control.ComboBox;
 import javafx.stage.Window;
 
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -46,7 +45,7 @@ import java.util.Optional;
 public final class ContainerCreations {
 
     // the source format of networks created from scratch
-    public static final String SOURCE_FORMAT = "powsybl-desktop";
+    public static final String SOURCE_FORMAT = "IIDM";
 
     private ContainerCreations() {
     }
@@ -58,17 +57,11 @@ public final class ContainerCreations {
         CreationForm form = new CreationForm();
         CreationForm.Field<String> id = form.text("desktop.common.column.id", uniqueNetworkId(mainModel), true);
         CreationForm.Field<String> name = form.text("desktop.common.column.name", null, false);
-        CreationForm.Field<String> caseDate = form.text("edit.create.caseDate", ZonedDateTime.now().withNano(0).toString(), true);
+        CreationForm.Field<ZonedDateTime> caseDate = form.dateTime("edit.create.caseDate", ZonedDateTime.now().withSecond(0).withNano(0));
         return CreateDialog.show(owner, Messages.get("edit.create.title", Messages.get("desktop.common.equipment.network")), form, () -> {
-            ZonedDateTime date;
-            try {
-                date = ZonedDateTime.parse(caseDate.get());
-            } catch (DateTimeParseException e) {
-                throw new CreationForm.FieldException(caseDate.getEditor(), Messages.get("networks.editError.invalidCaseDate", caseDate.get()));
-            }
             Network network = Network.create(id.get(), SOURCE_FORMAT);
             network.setName(name.get());
-            network.setCaseDate(date);
+            network.setCaseDate(caseDate.get());
             mainModel.addNetwork(network);
             return network;
         });

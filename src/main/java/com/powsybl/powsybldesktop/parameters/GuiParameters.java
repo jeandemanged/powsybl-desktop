@@ -70,6 +70,7 @@ public class GuiParameters {
     private LogLevel logsMinLevel = LogLevel.INFO;
     private boolean logsNewestOnTop = true;
     private String reportsMinSeverity = REPORT_SEVERITIES.getFirst();
+    private boolean openDetailsAfterCreation = true;
     private final Map<Quantity, Integer> decimals = new EnumMap<>(Quantity.class);
 
     public GuiParameters() {
@@ -119,6 +120,17 @@ public class GuiParameters {
             throw new IllegalArgumentException("Unknown report severity: " + reportsMinSeverity);
         }
         this.reportsMinSeverity = reportsMinSeverity;
+    }
+
+    /**
+     * Whether a creation dialog then opens the created object's detail view, to set what it doesn't ask for.
+     */
+    public boolean isOpenDetailsAfterCreation() {
+        return openDetailsAfterCreation;
+    }
+
+    public void setOpenDetailsAfterCreation(boolean openDetailsAfterCreation) {
+        this.openDetailsAfterCreation = openDetailsAfterCreation;
     }
 
     public int getDecimals(Quantity quantity) {
