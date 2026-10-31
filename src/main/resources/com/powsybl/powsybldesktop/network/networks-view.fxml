@@ -127,7 +127,7 @@
                                     </columnConstraints>
                                     <children>
                                         <Label fx:id="idCaptionLabel" text="%networks.label.id" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
-                                        <Label fx:id="idLabel" wrapText="true" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                                        <TextField fx:id="idField" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
                                         <Label text="%networks.label.name" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
                                         <TextField fx:id="nameField" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
                                         <Label text="%networks.label.sourceFormat" GridPane.columnIndex="0" GridPane.rowIndex="2"/>

@@ -171,7 +171,7 @@ public class NetworksController extends AbstractDisposableController {
     private StackPane multipleNetworksSelectedPane;
 
     @FXML
-    private Label idLabel;
+    private TextField idField;
 
     @FXML
     private TextField nameField;
@@ -225,7 +225,8 @@ public class NetworksController extends AbstractDisposableController {
         listenerManager.listen(mainModel.networkProperty(), (_, _, newNetwork) -> updateNetworkInfo(newNetwork));
         listenerManager.listen(networksTreeView.getSelectionModel().getSelectedItems(), _ -> updateSelectionState());
         listenerManager.listen(mainModel.networkBusyProperty(), (_, _, _) -> updateMergeDetachButtons(getSelectedNetworks()));
-        // the selected network's name, like its tables (see AbstractEquipmentTableController.setMainModel)
+        // the selected network's id and name, like its tables (see AbstractEquipmentTableController.setMainModel)
+        idField.disableProperty().bind(mainModel.networkBusyProperty());
         nameField.disableProperty().bind(mainModel.networkBusyProperty());
         caseDatePicker.disableProperty().bind(mainModel.networkBusyProperty());
         forecastDistanceField.disableProperty().bind(mainModel.networkBusyProperty());
@@ -370,6 +371,19 @@ public class NetworksController extends AbstractDisposableController {
         });
     }
 
+    // IIDM checks the id is new within the network
+    private void commitIdChange() {
+        Network network = selectedNetwork;
+        if (network == null) {
+            return;
+        }
+        String newId = idField.getText().trim();
+        if (!newId.equals(network.getId()) && DetailForm.apply(idField, () -> network.setId(newId), mainModel::setUpdate)) {
+            networksTreeView.refresh();
+        }
+        idField.setText(network.getId());
+    }
+
     private void commitNameChange() {
         if (selectedNetwork == null) {
             return;
@@ -395,6 +409,7 @@ public class NetworksController extends AbstractDisposableController {
         noNetworkSelectedPane.setVisible(network == null);
         buildNetworkParts(network);
         if (network == null) {
+            idField.setText("");
             nameField.setText("");
             sourceFormatLabel.setText("");
             countriesLabel.setText("");
@@ -405,7 +420,7 @@ public class NetworksController extends AbstractDisposableController {
         }
         showCaseDateAndForecastDistance(network);
         validationLevelLabel.setText(network.getValidationLevel().name());
-        idLabel.setText(network.getId());
+        idField.setText(network.getId());
         nameField.setText(network.getOptionalName().orElse(""));
         nameCopyButton.setVisible(network.getOptionalName().isPresent());
         sourceFormatLabel.setText(network.getSourceFormat());
@@ -527,7 +542,7 @@ public class NetworksController extends AbstractDisposableController {
     @FXML
     private void initialize() {
         // in a third column of the details grid, as the equipment detail views' copy buttons
-        GridPane details = (GridPane) idLabel.getParent();
+        GridPane details = (GridPane) idField.getParent();
         details.add(CopyButtons.copy(() -> selectedNetwork.getId()), 2, 0);
         nameCopyButton = CopyButtons.copy(() -> selectedNetwork.getOptionalName().orElse(null));
         details.add(nameCopyButton, 2, 1);
@@ -549,6 +564,7 @@ public class NetworksController extends AbstractDisposableController {
         initializeDropImport();
         propertyColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getKey()));
         valueColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getValue()));
+        commitOnEnterOrFocusLoss(idField, this::commitIdChange);
         commitOnEnterOrFocusLoss(nameField, this::commitNameChange);
         caseDatePicker.setOnEdit(this::commitCaseDateChange);
         commitOnEnterOrFocusLoss(forecastDistanceField, this::commitForecastDistanceChange);

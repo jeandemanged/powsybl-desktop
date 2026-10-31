@@ -65,7 +65,8 @@ code.
 - Extend `src/test/java/com/powsybl/powsybldesktop/testutil/AbstractHeadlessApplicationTest.java`. Its static
   initializer selects JavaFX's built-in headless Glass platform (`glass.platform=Headless`, `testfx.robot=glass`,
   `prism.order=sw`). Do **not** add `openjfx-monocle` or set `testfx.headless` — that makes TestFX install Monocle and
-  breaks the suite.
+  breaks the suite. The headless platform never positions a stage, so the base class places the shared primary stage
+  when it has no position: robot clicks (`clickOn`) on a stage at NaN miss, failing only after some test orders.
 - Surefire pins `-Duser.language=en -Duser.country=US` as a JVM arg so assertions on English UI strings are stable.
 - Test classes run in parallel across forked JVMs (`forkCount` `0.5C`, one per two cores: at `1C` a many-core dev box
   times out UI tests; CI passes `-DforkCount=1C` as runners have few cores; override with `-DforkCount=N`,

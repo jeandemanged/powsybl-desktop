@@ -115,8 +115,8 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
         return lookup("#idCaptionLabel").queryAs(Label.class);
     }
 
-    private Label idLabel() {
-        return lookup("#idLabel").queryAs(Label.class);
+    private TextField idField() {
+        return lookup("#idField").queryAs(TextField.class);
     }
 
     private TextField nameField() {
@@ -191,7 +191,7 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void copiesIdAndName() {
         clickOn(ieee14.getNameOrId());
-        GridPane details = (GridPane) idLabel().getParent();
+        GridPane details = (GridPane) idField().getParent();
         List<Button> copyButtons = details.getChildren().stream()
                 .filter(node -> GridPane.getColumnIndex(node) != null && GridPane.getColumnIndex(node) == 2)
                 .map(Button.class::cast)
@@ -207,7 +207,7 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
         push(KeyCode.DOWN);
 
         assertEquals(ieee118, mainModel.getNetwork());
-        assertEquals(ieee118.getId(), idLabel().getText());
+        assertEquals(ieee118.getId(), idField().getText());
     }
 
     @Test
@@ -238,7 +238,7 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
     void selectingNetworkShowsIdNameSourceFormatAndCountries() {
         selectNetwork(ieee118);
 
-        assertEquals(ieee118.getId(), idLabel().getText());
+        assertEquals(ieee118.getId(), idField().getText());
         assertEquals(ieee118.getOptionalName().orElse(""), nameField().getText());
         assertEquals(ieee118.getSourceFormat(), sourceFormatLabel().getText());
         String expectedCountries = ieee118.getCountries().stream()
@@ -309,6 +309,21 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
             field.setText(text);
             field.getOnAction().handle(null);
         });
+    }
+
+    @Test
+    void idIsEditable() {
+        selectNetwork(ieee14);
+        commit("#idField", "fourteen");
+        assertEquals("fourteen", ieee14.getId());
+        assertEquals("fourteen", idField().getText());
+
+        // rejected, unchanged: already the id of an object of the network, or blank
+        commit("#idField", ieee14.getSubstations().iterator().next().getId());
+        assertEquals("fourteen", ieee14.getId());
+        assertEquals("fourteen", idField().getText());
+        commit("#idField", " ");
+        assertEquals("fourteen", ieee14.getId());
     }
 
     @Test
