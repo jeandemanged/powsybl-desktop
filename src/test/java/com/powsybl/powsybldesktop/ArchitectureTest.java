@@ -71,7 +71,7 @@ class ArchitectureTest {
             .as("the shared state");
 
     // computations and their results, no UI
-    private static final DescribedPredicate<JavaClass> DOMAIN = packages("the domain", "violations", "loadflow", "security", "search");
+    private static final DescribedPredicate<JavaClass> DOMAIN = packages("the domain", "violations", "loadflow", "security", "search", "contingency");
 
     private static final DescribedPredicate<JavaClass> BASE = packages("the base utilities", "utils", "util", "reports");
 

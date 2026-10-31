@@ -16,17 +16,13 @@ import com.powsybl.cgmes.conformity.ReliCapGridCatalog;
 import com.powsybl.cgmes.conversion.CgmesImport;
 import com.powsybl.cgmes.model.GridModelReference;
 import com.powsybl.commons.PowsyblException;
-import com.powsybl.commons.datasource.DataSource;
-import com.powsybl.commons.datasource.ReadOnlyDataSource;
 import com.powsybl.commons.report.ReportNode;
 import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
 import com.powsybl.iidm.network.BoundaryLine;
 import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.Exporter;
-import com.powsybl.iidm.network.Exporters;
 import com.powsybl.iidm.network.Importer;
 import com.powsybl.iidm.network.Network;
-import com.powsybl.iidm.network.NetworkFactory;
 import com.powsybl.iidm.network.test.BatteryNetworkFactory;
 import com.powsybl.iidm.network.test.BoundaryLineNetworkFactory;
 import com.powsybl.iidm.network.test.DcDetailedNetworkFactory;
@@ -53,6 +49,7 @@ import com.powsybl.powsybldesktop.navigation.NetworkNavigationState;
 import com.powsybl.powsybldesktop.navigation.ReportNavigationState;
 import com.powsybl.powsybldesktop.network.MapTestNetworkFactory;
 import com.powsybl.powsybldesktop.network.NetworkAndReport;
+import com.powsybl.powsybldesktop.network.NetworkIO;
 import com.powsybl.powsybldesktop.network.NetworkTieLines;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
@@ -66,7 +63,6 @@ import com.powsybl.powsybldesktop.ui.network.detail.ExtensionEditors;
 import com.powsybl.powsybldesktop.ui.network.detail.ExtensionsPane;
 import com.powsybl.powsybldesktop.ui.network.detail.KeyValueTablePane;
 import com.powsybl.powsybldesktop.ui.network.edit.ContainerCreations;
-import com.powsybl.powsybldesktop.ui.parameters.NetworkFormatParametersController;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -109,14 +105,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -587,7 +581,7 @@ public class NetworksController extends AbstractDisposableController {
     }
 
     private void addImportFormatItems() {
-        NetworkFormatParametersController.importFormats().forEach((format, importers) -> {
+        NetworkIO.importFormats().forEach((format, importers) -> {
             // CGMES networks are commonly distributed as a folder of CIM files (EQ, TP, SV, SSH...) rather than a
             // single file; the importer's DataSource transparently reads all files in a directory.
             if ("CGMES".equals(format)) {
@@ -821,7 +815,7 @@ public class NetworksController extends AbstractDisposableController {
     }
 
     private void initializeExportMenu() {
-        NetworkFormatParametersController.exportFormats().forEach(format -> {
+        NetworkIO.exportFormats().forEach(format -> {
             MenuItem formatItem = new MenuItem(format);
             formatItem.setOnAction(_ -> exportNetwork(selectedNetwork, format));
             exportMenuButton.getItems().add(formatItem);
@@ -837,7 +831,7 @@ public class NetworksController extends AbstractDisposableController {
             selected = directoryChooser.showDialog(owner);
         } else {
             FileChooser fileChooser = new FileChooser();
-            addExtensionFilters(fileChooser, importers.stream().flatMap(importer -> importer.getSupportedExtensions().stream()).distinct().toList());
+            addExtensionFilters(fileChooser, NetworkIO.importExtensions(importers));
             FileChooserPreferences.applyLastDirectory(fileChooser);
             selected = fileChooser.showOpenDialog(owner);
         }
@@ -892,7 +886,7 @@ public class NetworksController extends AbstractDisposableController {
     }
 
     private void importDropped(List<Path> paths) {
-        Map<String, List<Importer>> formats = NetworkFormatParametersController.importFormats();
+        Map<String, List<Importer>> formats = NetworkIO.importFormats();
         // detection reads the dropped files, hence off the FX thread; this also defers the dialogs below until
         // after the drop handler has returned, since a modal dialog inside it blocks the drag source application
         Service<List<DroppedPath>> detectionService = new Service<>() {
@@ -901,7 +895,7 @@ public class NetworksController extends AbstractDisposableController {
                 return new Task<>() {
                     @Override
                     protected List<DroppedPath> call() {
-                        return paths.stream().map(path -> new DroppedPath(path, acceptingImporters(formats, path))).toList();
+                        return paths.stream().map(path -> new DroppedPath(path, NetworkIO.acceptingImporters(formats, path))).toList();
                     }
                 };
             }
@@ -938,38 +932,6 @@ public class NetworksController extends AbstractDisposableController {
             runImports(choices.stream()
                     .map(choice -> new ImportRequest(choice.path(), choice.importers(), importParameters(choice.format())))
                     .toList());
-        }
-    }
-
-    /**
-     * Formats of {@code formats}, in the same order, having at least one importer recognizing {@code path}, each
-     * mapped to its recognizing importers only.
-     */
-    static Map<String, List<Importer>> acceptingImporters(Map<String, List<Importer>> formats, Path path) {
-        Map<String, List<Importer>> accepting = new LinkedHashMap<>();
-        ReadOnlyDataSource dataSource;
-        try {
-            dataSource = Exporters.createDataSource(path);
-        } catch (PowsyblException | UncheckedIOException e) {
-            LOGGER.debug("Cannot read {}", path, e);
-            return accepting;
-        }
-        formats.forEach((format, importers) -> {
-            List<Importer> matching = importers.stream().filter(importer -> accepts(importer, dataSource)).toList();
-            if (!matching.isEmpty()) {
-                accepting.put(format, matching);
-            }
-        });
-        return accepting;
-    }
-
-    private static boolean accepts(Importer importer, ReadOnlyDataSource dataSource) {
-        try {
-            return importer.exists(dataSource);
-        } catch (PowsyblException | UncheckedIOException e) {
-            // some importers throw on content they cannot parse instead of returning false
-            LOGGER.debug("Importer {} failed to check data source {}", importer.getFormat(), dataSource.getBaseName(), e);
-            return false;
         }
     }
 
@@ -1026,7 +988,7 @@ public class NetworksController extends AbstractDisposableController {
                 return new Task<>() {
                     @Override
                     protected NetworkAndReport call() {
-                        return doImport(importers, inputPath, parameters);
+                        return NetworkIO.importNetwork(importers, inputPath, parameters);
                     }
                 };
             }
@@ -1061,19 +1023,6 @@ public class NetworksController extends AbstractDisposableController {
         networkImportService.start();
     }
 
-    private static NetworkAndReport doImport(List<Importer> importers, Path inputPath, Properties parameters) {
-        ReportNode reportNode = ReportNode.newRootReportNode()
-                .withAllResourceBundlesFromClasspath()
-                .withMessageTemplate("desktop.networkImport")
-                .withTimestamp()
-                .build();
-        ReadOnlyDataSource dataSource = Exporters.createDataSource(inputPath);
-        Importer importer = importers.size() == 1 ? importers.getFirst()
-                : importers.stream().filter(candidate -> candidate.exists(dataSource)).findFirst().orElse(importers.getFirst());
-        Network network = importer.importData(dataSource, NetworkFactory.findDefault(), parameters, reportNode);
-        return new NetworkAndReport(network, reportNode);
-    }
-
     private record ImportRequest(Path path, List<Importer> importers, Properties parameters) {
     }
 
@@ -1092,7 +1041,7 @@ public class NetworksController extends AbstractDisposableController {
                 return new Task<>() {
                     @Override
                     protected NetworkAndReport call() {
-                        return doImport(request.importers(), request.path(), request.parameters());
+                        return NetworkIO.importNetwork(request.importers(), request.path(), request.parameters());
                     }
                 };
             }
@@ -1238,35 +1187,26 @@ public class NetworksController extends AbstractDisposableController {
             return;
         }
         FileChooser fileChooser = new FileChooser();
-        // Exporter doesn't expose file extensions; the matching importer for the same format does.
-        Importer matchingImporter = Importer.find(format);
-        addExtensionFilters(fileChooser, matchingImporter == null ? List.of() : matchingImporter.getSupportedExtensions());
+        addExtensionFilters(fileChooser, NetworkIO.exportExtensions(format));
         FileChooserPreferences.applyLastDirectory(fileChooser);
         fileChooser.setInitialFileName(network.getNameOrId());
         File selectedFile = fileChooser.showSaveDialog(networksTreeView.getScene().getWindow());
         if (selectedFile != null) {
             FileChooserPreferences.saveLastDirectory(selectedFile);
             Properties parameters = new Properties();
-            parameters.putAll(mainModel.getParametersModel().getNetworkExportParameters(NetworkFormatParametersController.exportParametersKey(format)));
+            parameters.putAll(mainModel.getParametersModel().getNetworkExportParameters(NetworkIO.exportParametersKey(format)));
             runExport(network, exporter, selectedFile.toPath(), parameters);
         }
     }
 
     private void runExport(Network network, Exporter exporter, Path outputPath, Properties parameters) {
-        ReportNode reportNode = ReportNode.newRootReportNode()
-                .withAllResourceBundlesFromClasspath()
-                .withMessageTemplate("desktop.networkExport")
-                .withTimestamp()
-                .build();
-        Service<Void> exportService = new Service<>() {
+        Service<ReportNode> exportService = new Service<>() {
             @Override
-            protected Task<Void> createTask() {
+            protected Task<ReportNode> createTask() {
                 return new AbstractNetworkTask<>(mainModel, network) {
                     @Override
-                    protected Void compute() {
-                        DataSource dataSource = Exporters.createDataSource(outputPath);
-                        exporter.export(network, parameters, dataSource, reportNode);
-                        return null;
+                    protected ReportNode compute() {
+                        return NetworkIO.exportNetwork(network, exporter, outputPath, parameters);
                     }
                 };
             }
@@ -1275,6 +1215,7 @@ public class NetworksController extends AbstractDisposableController {
         mainModel.getNotificationsModel().add(runningNotification);
 
         exportService.setOnSucceeded(_ -> {
+            ReportNode reportNode = exportService.getValue();
             mainModel.addReport(reportNode);
 
             NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", _ ->

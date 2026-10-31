@@ -7,9 +7,7 @@
  */
 package com.powsybl.powsybldesktop.ui.network.tables;
 
-import com.powsybl.contingency.ContingencyContext;
 import com.powsybl.contingency.violations.LimitViolation;
-import com.powsybl.iidm.network.BoundaryLineFilter;
 import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.BusbarSection;
 import com.powsybl.iidm.network.Container;
@@ -38,7 +36,6 @@ import com.powsybl.powsybldesktop.violations.VoltageRange;
 import com.powsybl.powsybldesktop.violations.VoltageViolation;
 import com.powsybl.security.PostContingencyComputationStatus;
 import com.powsybl.security.SecurityAnalysisResult;
-import com.powsybl.security.monitor.StateMonitor;
 import com.powsybl.security.results.BranchResult;
 import com.powsybl.security.results.BusResult;
 import com.powsybl.security.results.NetworkResult;
@@ -70,10 +67,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * The network's security analysis result, like the Violations view: its pre- and post-contingency states with their
@@ -261,21 +255,8 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
         }
     }
 
-    /**
-     * Monitors the pre-contingency flows and voltages of all equipment, shown along the post-contingency violations:
-     * a single state, unlike monitoring the post-contingency ones.
-     */
-    public static StateMonitor preContingencyMonitor(Network network) {
-        Set<String> branchIds = Stream.concat(network.getBranchStream(), network.getBoundaryLineStream(BoundaryLineFilter.UNPAIRED))
-                .map(Identifiable::getId)
-                .collect(Collectors.toSet());
-        return new StateMonitor(ContingencyContext.none(), branchIds,
-                network.getVoltageLevelStream().map(Identifiable::getId).collect(Collectors.toSet()),
-                network.getThreeWindingsTransformerStream().map(Identifiable::getId).collect(Collectors.toSet()));
-    }
-
     // A post-contingency row's pre-contingency value: of the pre-contingency violation on the same side, limit type and
-    // operational limits group if any, otherwise as monitored (see preContingencyMonitor). Null for
+    // operational limits group if any, otherwise as monitored (see SecurityAnalysisRun.preContingencyMonitor). Null for
     // a pre-contingency row, or if unknown.
     private Double preContingencyValue(ContingencyFlowRow row) {
         if (row.state().preContingency()) {

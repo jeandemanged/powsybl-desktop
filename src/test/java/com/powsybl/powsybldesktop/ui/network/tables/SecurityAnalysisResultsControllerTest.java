@@ -19,6 +19,7 @@ import com.powsybl.iidm.network.test.FourSubstationsNodeBreakerFactory;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.security.SecurityAnalysisRun;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -80,7 +81,7 @@ class SecurityAnalysisResultsControllerTest extends AbstractHeadlessApplicationT
         mainModel = new MainModel();
         mainModel.addNetwork(network);
         SecurityAnalysisRunParameters runParameters = new SecurityAnalysisRunParameters()
-                .addMonitor(SecurityAnalysisResultsController.preContingencyMonitor(network));
+                .addMonitor(SecurityAnalysisRun.preContingencyMonitor(network));
         mainModel.getStudy(network).setSecurityAnalysisResult(SecurityAnalysis.find("OpenLoadFlow")
                 .run(network, List.of(Contingency.line(LINE_2), Contingency.line(LINE_1)), runParameters).getResult());
 
@@ -171,7 +172,7 @@ class SecurityAnalysisResultsControllerTest extends AbstractHeadlessApplicationT
             vlhv2.setLowVoltageLimit(v2 - 1);
             mainModel.getStudy(network).setSecurityAnalysisResult(SecurityAnalysis.find("OpenLoadFlow")
                     .run(network, List.of(Contingency.line(LINE_1)), new SecurityAnalysisRunParameters()
-                            .addMonitor(SecurityAnalysisResultsController.preContingencyMonitor(network))).getResult());
+                            .addMonitor(SecurityAnalysisRun.preContingencyMonitor(network))).getResult());
             mainModel.setUpdate();
         });
 

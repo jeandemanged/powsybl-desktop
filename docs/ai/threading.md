@@ -15,9 +15,9 @@ Paths `…/X.java` are relative to `src/main/java/com/powsybl/powsybldesktop/`.
    i.e. inside `Service.createTask()`.
 4. **Capture inputs on the FX thread** in `createTask()` (current container, parameter copies) and pass them into the
    task. Parameter objects edited in place by the parameters window must be copied first:
-   `LoadFlowParameters.copy()`, `MainController.copyParameters(SecurityAnalysisParameters)`,
+   `LoadFlowParameters.copy()`, `SecurityAnalysisRun.copyParameters(SecurityAnalysisParameters)`,
    `ApplicationParametersJson.copy(...)` for SLD/NAD.
-5. Network import (`NetworksController.runImport`) uses a plain `Task` because the network isn't loaded (no study
+5. Network import (`NetworksController.runImport`, calling `NetworkIO.importNetwork`) uses a plain `Task` because the network isn't loaded (no study
    to mark busy) yet. Format detection on dropped files does too.
 
 ## The busy lock
@@ -40,7 +40,7 @@ Paths `…/X.java` are relative to `src/main/java/com/powsybl/powsybldesktop/`.
 
 ```text
 check selection → use root network (never a subnetwork) → refuseIfBusy → copy parameters
-Service { createTask() → new AbstractNetworkTask<>(mainModel, network) { compute() { ... } } }
+Service { createTask() → new AbstractNetworkTask<>(mainModel, network) { compute() { LoadFlowRun.run(...) } } }
 add RUNNING notification (cancel = service::cancel)
 setOnSucceeded → store result in NetworkStudy, mainModel.setUpdate(), addReport, replace notification
 setOnFailed    → LOGGER.error(...), replace with error notification + "view logs" action
@@ -49,8 +49,10 @@ study.trackComputation(service) → service.start()
 ```
 
 Cancellable PowSyBl calls: `LoadFlow.run()`/`SecurityAnalysis.run()` block on `CompletableFuture.join()`, which
-ignores interruption, so the code uses `runAsync(...)` + `future.get()` and cancels the future on
-`InterruptedException`. Follow the same approach for other `runAsync`-capable PowSyBl APIs.
+ignores interruption, so the code uses `runAsync(...)` + `Futures.await(future)`, which cancels the future on
+`InterruptedException`. Follow the same approach for other `runAsync`-capable PowSyBl APIs. Keep the computation
+itself in a toolkit-free class (`LoadFlowRun`, `SecurityAnalysisRun`, `NetworkIO`) tested with plain JUnit; the
+controller only wires it to the `Service`, the notifications and the study.
 
 **Latest-wins rendering** — `SubstationsController.sldRenderService` / `nadRenderService`: a long-lived `Service`
 field restarted on each change (`restart()` drops the previous result); rendering is lazy (only while the tab is

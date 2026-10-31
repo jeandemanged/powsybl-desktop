@@ -26,20 +26,20 @@ directory. Code outside `ui` (and the shell) is therefore unit-testable without 
 | root (`…/`) | The shell: `Launcher`, `MainApplication`, `SplashScreen`, `MainController` |
 | `core` | The shared state: `MainModel`, `NetworkStudy`, `AbstractNetworkTask`, `NetworkStructureChange` |
 | `navigation` | `NavigationType`, `NavigationEvent` (record), `NavigationState` + one subclass per restorable selection, `NavigationHistory` |
-| `network` | `NetworkTieLines`, `VoltageRegulations` (IIDM voltage regulation helpers), `NetworkAndReport`, sample networks (`MapTestNetworkFactory`) |
+| `network` | `NetworkIO` (import/export formats, format detection of a file, import and export with their reports), `NetworkAndReport`, `NetworkTieLines`, `VoltageRegulations` (IIDM voltage regulation helpers), sample networks (`MapTestNetworkFactory`) |
 | `network/edit` | Changing the network structure: `NetworkEdits` (the single mutation funnel), `Removals` (what a removal takes along, and the removal itself), `PositionEdits`, `FeederOrders`, `Kinds` |
 | `search` | `NetworkSearch` (kinds, container resolution), `NetworkSearchIndex` (Lucene) |
 | `diagram` | `BaseVoltages` (base voltage ranges and colors as single line diagrams use them, for whatever colors equipment outside diagrams), `SubstationDiagramRenderer`, `NetworkAreaDiagramRenderer` |
 | `map` | `MapNetworkData` snapshot, `MapTileRenderer` |
 | `contingency` | `ContingencyListsIO` (JSON I/O), `ContingencyNames`, `ContingencyListKind`, the editor's row models |
-| `loadflow`, `security` | Result/report records and helpers (`LoadFlowConvergence`) |
-| `violations` | `NetworkViolations` (flow and voltage limit violations of the network's state), `FlowViolation`, `VoltageViolation` (also built from a security analysis' violations), `Loading`, `VoltageRange` |
+| `loadflow`, `security` | The runs (`LoadFlowRun`, `SecurityAnalysisRun`: report, cancellation, OpenLoadFlow's variant switch, parameter copy, pre-contingency monitor), result/report records, `LoadFlowConvergence` |
+| `violations` | `NetworkViolations` (flow and voltage limit violations of the network's state), `FlowViolation`, `VoltageViolation` (also built from a security analysis' violations), `Loading`, `VoltageRange`, `ViolationTexts` (how violations read in the views) |
 | `parameters` | `ParametersModel`, `ApplicationParameters` record (`GuiParameters`, with the map's `Basemap`, ...), `ApplicationParametersJson`, `ParametersConfigFile` |
 | `notification` | `Notification` record, `NotificationAction`, `NotificationStatus`, `NotificationsModel` |
 | `logs` | `LogsModel` (Logback appender → observable list) |
 | `memory` | `MaxHeapConfig` (the launcher `.cfg`'s `-Xmx` line) |
 | `reports` | `PowsyblDesktopReportResourceBundle` registering `reports(_fr).properties` |
-| `utils` | `Messages`, `Labels`, `ListenerManager`, `LanguagePreferences` |
+| `utils` | `Messages`, `Labels`, `ListenerManager`, `LanguagePreferences`, `Futures` (waiting on a PowSyBl future so that interruption cancels it) |
 | `ui` | `AbstractDisposableController`, `DisposableController` |
 | `ui/window` | A view's per-window context: `SceneModel`, `SceneView`, and `SeparateWindows` (the separate windows and their tabs) |
 | `ui/controls` | Reusable controls and helpers: `CopyButtons`, `DateTimePicker`, `SearchableCheckComboBox`, `TableAutoFitLimiter`, `TreeItems`, `FileChooserPreferences` |
@@ -71,7 +71,7 @@ each one using only the layers below it (from top to bottom):
 | Shell | `Launcher`, `MainApplication`, `MainController`, `SplashScreen` |
 | Views | everything not listed in the other layers |
 | State | `core`, `navigation`, and the sub-models with their values: `LogsModel`, `Notification*` (not the views), `ParametersModel`, `ApplicationParameters` and its parts (`Basemap` included), `ApplicationParametersJson`, `ParametersConfigFile` |
-| Domain | `violations`, `loadflow`, `security`, `search` (no `javafx.scene`/`javafx.stage`) |
+| Domain | `violations`, `loadflow`, `security`, `search`, `contingency` (no `javafx.scene`/`javafx.stage`) |
 | Base | `utils`, `util`, `reports` |
 
 The sub-models in the State layer are listed class by class because they share packages with views. So when you add a
@@ -237,7 +237,7 @@ User-facing outcome of any background or failing operation is a `notification/No
 - Messages are bundle keys resolved at render time; `{0}` is the elapsed time, extra args via `withMessageArgs`.
 - Actions (`NotificationAction("key", handler)`) typically navigate to `LOGS` (on failure) or to a report/results view.
 
-Canonical example: `MainController.onLoadFlow` (lines ~175–286) and `NetworksController.runImport`.
+Canonical example: `MainController.onLoadFlow` and `NetworksController.runImport`.
 
 ## Reports and logs
 

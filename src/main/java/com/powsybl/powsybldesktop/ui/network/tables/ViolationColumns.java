@@ -18,6 +18,7 @@ import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.violations.FlowViolation;
 import com.powsybl.powsybldesktop.violations.Loading;
+import com.powsybl.powsybldesktop.violations.ViolationTexts;
 import com.powsybl.powsybldesktop.violations.VoltageRange;
 import com.powsybl.powsybldesktop.violations.VoltageViolation;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -138,7 +139,7 @@ final class ViolationColumns<S> {
 
     private void limitType(Function<S, LimitViolation> violationGetter) {
         TableColumnSupport.configureNullableColumn(this.<String>add("limitType", "securityAnalysisResults.column.limitType", 0, "centered-column"),
-                row -> TableColumnSupport.limitViolationTypeText(violationGetter.apply(row).getLimitType()));
+                row -> ViolationTexts.limitViolationTypeText(violationGetter.apply(row).getLimitType()));
     }
 
     /**

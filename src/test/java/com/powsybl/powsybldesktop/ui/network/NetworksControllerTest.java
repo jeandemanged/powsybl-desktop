@@ -23,7 +23,6 @@ import com.powsybl.powsybldesktop.notification.NotificationStatus;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.ui.controls.DateTimePicker;
 import com.powsybl.powsybldesktop.ui.network.NetworksController.ImportChoice;
-import com.powsybl.powsybldesktop.ui.parameters.NetworkFormatParametersController;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
@@ -59,7 +58,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -476,24 +474,6 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> networkInfoTable().requestFocus());
 
         assertEquals("Original name", ieee14.getOptionalName().orElse(null));
-    }
-
-    @Test
-    void acceptingImportersKeepsOnlyFormatsRecognizingTheFile(@TempDir Path dir) {
-        Path file = dir.resolve("network.xiidm");
-        EurostagTutorialExample1Factory.create().write("XIIDM", new Properties(), file);
-
-        Map<String, List<Importer>> accepting = NetworksController.acceptingImporters(NetworkFormatParametersController.importFormats(), file);
-
-        assertEquals(List.of("IIDM"), List.copyOf(accepting.keySet()));
-        assertEquals(List.of("XIIDM"), accepting.get("IIDM").stream().map(Importer::getFormat).toList());
-    }
-
-    @Test
-    void acceptingImportersIsEmptyForAnUnsupportedFile(@TempDir Path dir) throws IOException {
-        Path file = Files.writeString(dir.resolve("notes.txt"), "not a network");
-
-        assertTrue(NetworksController.acceptingImporters(NetworkFormatParametersController.importFormats(), file).isEmpty());
     }
 
     private Notification importAllAndWait(List<ImportChoice> choices) throws TimeoutException {

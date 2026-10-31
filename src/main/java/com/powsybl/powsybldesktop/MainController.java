@@ -7,25 +7,20 @@
  */
 package com.powsybl.powsybldesktop;
 
-import com.powsybl.commons.report.ReportNode;
-import com.powsybl.contingency.Contingency;
 import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.contingency.list.ListOfContingencyLists;
 import com.powsybl.iidm.network.Network;
-import com.powsybl.iidm.network.VariantManager;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.limitmodification.LimitsComputer;
-import com.powsybl.loadflow.LoadFlow;
 import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.loadflow.LoadFlowResult;
-import com.powsybl.loadflow.LoadFlowRunParameters;
-import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.core.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkStructureChange;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
 import com.powsybl.powsybldesktop.loadflow.LoadFlowConvergence;
 import com.powsybl.powsybldesktop.loadflow.LoadFlowResultAndReport;
+import com.powsybl.powsybldesktop.loadflow.LoadFlowRun;
 import com.powsybl.powsybldesktop.navigation.*;
 import com.powsybl.powsybldesktop.navigation.AreaNavigationState;
 import com.powsybl.powsybldesktop.navigation.GroundNavigationState;
@@ -35,6 +30,7 @@ import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
 import com.powsybl.powsybldesktop.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.security.SecurityAnalysisResultAndReport;
+import com.powsybl.powsybldesktop.security.SecurityAnalysisRun;
 import com.powsybl.powsybldesktop.ui.AbstractDisposableController;
 import com.powsybl.powsybldesktop.ui.DisposableController;
 import com.powsybl.powsybldesktop.ui.contingency.ContingenciesController;
@@ -77,11 +73,7 @@ import com.powsybl.powsybldesktop.ui.window.SeparateWindows;
 import com.powsybl.powsybldesktop.utils.LanguagePreferences;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.violations.NetworkViolations;
-import com.powsybl.security.SecurityAnalysis;
 import com.powsybl.security.SecurityAnalysisParameters;
-import com.powsybl.security.SecurityAnalysisReport;
-import com.powsybl.security.SecurityAnalysisRunParameters;
-import com.powsybl.security.json.JsonSecurityAnalysisParameters;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.collections.ListChangeListener;
@@ -111,8 +103,6 @@ import javafx.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Instant;
@@ -121,9 +111,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -342,32 +329,7 @@ public class MainController extends AbstractDisposableController {
                 return new AbstractNetworkTask<>(mainModel, network) {
                     @Override
                     protected LoadFlowResultAndReport compute() throws Exception {
-                        ReportNode reportNode = ReportNode.newRootReportNode()
-                                .withAllResourceBundlesFromClasspath()
-                                .withMessageTemplate("desktop.loadFlow")
-                                .withTimestamp()
-                                .build();
-
-                        LoadFlowRunParameters runParameters = LoadFlowRunParameters.getDefault()
-                                .setParameters(parameters)
-                                .setReportNode(reportNode);
-                        // LoadFlow.run() blocks on CompletableFuture.join(), which ignores thread interruption,
-                        // so cancelling this task wouldn't stop the underlying computation - runAsync()+get() honors it
-                        CompletableFuture<LoadFlowResult> future = LoadFlow.runAsync(network, runParameters);
-                        try {
-                            LoadFlowResult loadFlowResult = future.get();
-                            return new LoadFlowResultAndReport(loadFlowResult, reportNode,
-                                    NetworkViolations.compute(network, LimitsComputer.NO_MODIFICATIONS));
-                        } catch (InterruptedException e) {
-                            future.cancel(true);
-                            Thread.currentThread().interrupt();
-                            throw e;
-                        } catch (ExecutionException e) {
-                            if (e.getCause() instanceof Exception cause) {
-                                throw cause;
-                            }
-                            throw e;
-                        }
+                        return LoadFlowRun.run(network, parameters);
                     }
                 };
             }
@@ -416,14 +378,6 @@ public class MainController extends AbstractDisposableController {
         return parameters.copy();
     }
 
-    private static SecurityAnalysisParameters copyParameters(SecurityAnalysisParameters parameters) {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        JsonSecurityAnalysisParameters.write(parameters, out);
-        SecurityAnalysisParameters copy = JsonSecurityAnalysisParameters.read(new ByteArrayInputStream(out.toByteArray()));
-        copy.setLoadFlowParameters(parameters.getLoadFlowParameters().copy());
-        return copy;
-    }
-
     // completing without exception doesn't mean converged - the outcome reflects the components' convergence
     private Notification loadFlowOutcome(Instant start, LoadFlowResultAndReport loadFlowResultAndReport) {
         NotificationAction viewResultsAction = new NotificationAction("desktop.common.action.viewResults", _ ->
@@ -450,62 +404,20 @@ public class MainController extends AbstractDisposableController {
         if (refuseIfBusy(network)) {
             return;
         }
-        SecurityAnalysisParameters parameters = copyParameters(mainModel.getParametersModel().securityAnalysisParametersProperty().getValue());
+        SecurityAnalysisParameters parameters = SecurityAnalysisRun.copyParameters(mainModel.getParametersModel().securityAnalysisParametersProperty().getValue());
         List<ContingencyList> enabledContingencyLists = mainModel.getStudy(network).getContingencyLists().stream()
                 .filter(list -> mainModel.getStudy(network).contingencyListEnabledProperty(list).get())
                 .toList();
         ContingencyList contingencyList = new ListOfContingencyLists(network.getNameOrId(), enabledContingencyLists);
 
-        // OpenLoadFlow's multi-threaded security analysis switches the network to thread-local variants while running,
-        // so that any other thread reading it meanwhile fails ("Variant index not set for current thread"), e.g. the FX
-        // thread opening a table. So the switch is made here, giving the FX thread (and the task's) its working variant,
-        // and undone once the computation is over: OpenLoadFlow then finds it on and leaves it on.
-        // The FX thread may still read the network while OpenLoadFlow's threads build their own networks from it, racing
-        // on IIDM's lazily computed caches (e.g. the bus view): running the security analysis on a copy of the network
-        // would isolate it fully, at the cost of a copy per run.
-        VariantManager variantManager = network.getVariantManager();
-        String variantId = variantManager.getWorkingVariantId();
-        boolean variantMultiThreadAccessAllowed = variantManager.isVariantMultiThreadAccessAllowed();
-        variantManager.allowVariantMultiThreadAccess(true);
-        variantManager.setWorkingVariant(variantId);
-        Runnable restoreVariantAccess = () -> variantManager.allowVariantMultiThreadAccess(variantMultiThreadAccessAllowed);
-        AtomicReference<CompletableFuture<SecurityAnalysisReport>> computation = new AtomicReference<>();
-
+        SecurityAnalysisRun run = SecurityAnalysisRun.prepare(network, contingencyList, parameters);
         Service<SecurityAnalysisResultAndReport> securityAnalysisService = new Service<>() {
             @Override
             protected Task<SecurityAnalysisResultAndReport> createTask() {
                 return new AbstractNetworkTask<>(mainModel, network) {
                     @Override
                     protected SecurityAnalysisResultAndReport compute() throws Exception {
-                        variantManager.setWorkingVariant(variantId);
-                        ReportNode reportNode = ReportNode.newRootReportNode()
-                                .withAllResourceBundlesFromClasspath()
-                                .withMessageTemplate("desktop.securityAnalysis")
-                                .withTimestamp()
-                                .build();
-
-                        List<Contingency> contingencies = ContingencyNames.deduplicate(contingencyList.getContingencies(network));
-                        SecurityAnalysisRunParameters runParameters = SecurityAnalysisRunParameters.getDefault()
-                                .setSecurityAnalysisParameters(parameters)
-                                .addMonitor(SecurityAnalysisResultsController.preContingencyMonitor(network))
-                                .setReportNode(reportNode);
-                        // SecurityAnalysis.run() blocks on CompletableFuture.join(), which ignores thread interruption,
-                        // so cancelling this task wouldn't stop the underlying computation - runAsync()+get() honors it
-                        CompletableFuture<SecurityAnalysisReport> future = SecurityAnalysis.runAsync(network, contingencies, runParameters);
-                        computation.set(future);
-                        try {
-                            SecurityAnalysisReport securityAnalysisReport = future.get();
-                            return new SecurityAnalysisResultAndReport(securityAnalysisReport.getResult(), reportNode);
-                        } catch (InterruptedException e) {
-                            future.cancel(true);
-                            Thread.currentThread().interrupt();
-                            throw e;
-                        } catch (ExecutionException e) {
-                            if (e.getCause() instanceof Exception cause) {
-                                throw cause;
-                            }
-                            throw e;
-                        }
+                        return run.compute();
                     }
                 };
             }
@@ -514,7 +426,7 @@ public class MainController extends AbstractDisposableController {
         mainModel.getNotificationsModel().add(runningNotification);
 
         securityAnalysisService.setOnSucceeded(event -> {
-            restoreVariantAccess.run();
+            run.restoreVariantAccess();
             SecurityAnalysisResultAndReport securityAnalysisResultAndReport = (SecurityAnalysisResultAndReport) event.getSource().getValue();
             mainModel.getStudy(network).setSecurityAnalysisResult(securityAnalysisResultAndReport.securityAnalysisResult());
             mainModel.setUpdate();
@@ -524,7 +436,7 @@ public class MainController extends AbstractDisposableController {
         });
 
         securityAnalysisService.setOnFailed(event -> {
-            restoreVariantAccess.run();
+            run.restoreVariantAccess();
             Throwable exception = event.getSource().getException();
             LOGGER.error(exception.toString(), exception);
 
@@ -536,12 +448,8 @@ public class MainController extends AbstractDisposableController {
         });
         securityAnalysisService.setOnCancelled(_ -> {
             // a cancelled computation may still be running, until OpenLoadFlow notices
-            CompletableFuture<SecurityAnalysisReport> future = computation.get();
-            if (future == null) {
-                restoreVariantAccess.run();
-            } else {
-                future.whenComplete((_, _) -> Platform.runLater(restoreVariantAccess));
-            }
+            run.computation().ifPresentOrElse(future -> future.whenComplete((_, _) -> Platform.runLater(run::restoreVariantAccess)),
+                    run::restoreVariantAccess);
             mainModel.getNotificationsModel().replace(runningNotification,
                     Notification.createCancelled(runningNotification.startTimestamp(), "main.securityAnalysis.cancelled"));
         });

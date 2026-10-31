@@ -42,20 +42,20 @@ are pinned to `powsybl-core.version` (7.3.0) because they are outside the BOM. R
   The Security Analysis Results view shows the security analysis' own violations the same way, converted by
   `FlowViolation.of`/`VoltageViolation.of` (permanent limit and bus-view bus resolved against the network). Its
   post-contingency rows also show the pre-contingency values: the security analysis runs with a pre-contingency only
-  `StateMonitor` of all equipment (`SecurityAnalysisResultsController.preContingencyMonitor`), whose bus results are
+  `StateMonitor` of all equipment (`SecurityAnalysisRun.preContingencyMonitor`), whose bus results are
   mapped to bus-view buses whatever their id kind (bus breaker view bus, busbar section, bus view bus).
 
 ## Computations
 
-- Load flow: `LoadFlow.runAsync(network, LoadFlowRunParameters...)` with Open Load Flow parameters
+- Load flow: `…/loadflow/LoadFlowRun.java` (`LoadFlow.runAsync(network, LoadFlowRunParameters...)`) with Open Load Flow parameters
   (`OpenLoadFlowParameters` extension edited by `LoadFlowParametersController`). Outcome classified by
   `…/loadflow/LoadFlowConvergence.java` (converged / partially / not converged) — completing without exception does
   not mean converged.
-- Security analysis: `SecurityAnalysis.runAsync` with the enabled contingency lists of the study, aggregated in a
+- Security analysis: `…/security/SecurityAnalysisRun.java` (`SecurityAnalysis.runAsync`) with the enabled contingency lists of the study, aggregated in a
   `ListOfContingencyLists` and de-duplicated by `ContingencyNames.deduplicate`. A non-converged pre-contingency result
   is reported as an error. OpenLoadFlow's multi-threaded analysis switches the network to thread-local variants while
-  running; `MainController.onSecurityAnalysis` makes that switch itself beforehand, setting the FX thread's and the
-  task's working variant, and undoes it once the computation is over, so that the FX thread can still read the network
+  running; `SecurityAnalysisRun.prepare` makes that switch itself beforehand on the FX thread, setting the FX thread's
+  and the task's working variant, and `restoreVariantAccess` undoes it once the computation is over, so that the FX thread can still read the network
   meanwhile. The desktop code otherwise never uses variants.
 - Both produce a `ReportNode` stored with `mainModel.addReport`. New report message keys go into
   `reports.properties` and `reports_fr.properties`.

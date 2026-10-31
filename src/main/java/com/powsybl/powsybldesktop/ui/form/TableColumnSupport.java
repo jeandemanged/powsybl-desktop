@@ -8,8 +8,6 @@
 package com.powsybl.powsybldesktop.ui.form;
 
 import com.powsybl.commons.PowsyblException;
-import com.powsybl.contingency.violations.LimitViolation;
-import com.powsybl.contingency.violations.LimitViolationType;
 import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.Component;
 import com.powsybl.iidm.network.Container;
@@ -19,8 +17,8 @@ import com.powsybl.iidm.network.Terminal;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.ui.controls.CopyButtons;
 import com.powsybl.powsybldesktop.utils.Messages;
-import com.powsybl.powsybldesktop.violations.FlowViolation;
 import com.powsybl.powsybldesktop.violations.Loading;
+import com.powsybl.powsybldesktop.violations.ViolationTexts;
 import com.powsybl.powsybldesktop.violations.VoltageRange;
 import javafx.animation.PauseTransition;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -46,8 +44,6 @@ import javafx.util.StringConverter;
 import org.controlsfx.control.Notifications;
 import org.kordamp.ikonli.javafx.FontIcon;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -343,7 +339,7 @@ public final class TableColumnSupport {
             } else {
                 bar.setLoading(loading.percent(), loading.isViolated());
                 label.setText(loadingText(loading, guiParameters.get()));
-                setTooltip(loading.isViolated() ? new Tooltip(flowViolationText(loading.violation())) : null);
+                setTooltip(loading.isViolated() ? new Tooltip(ViolationTexts.flowViolationText(loading.violation())) : null);
                 setGraphic(box);
             }
         }
@@ -353,27 +349,7 @@ public final class TableColumnSupport {
     static String loadingText(Loading loading, GuiParameters guiParameters) {
         String text = guiParameters.format(GuiParameters.Quantity.PERCENTAGE, loading.percent()) + " %";
         int acceptableDuration = loading.isViolated() ? loading.violation().violation().getAcceptableDuration() : Integer.MAX_VALUE;
-        return acceptableDuration == Integer.MAX_VALUE ? text : text + " " + minutesText(acceptableDuration);
-    }
-
-    static String minutesText(int seconds) {
-        return BigDecimal.valueOf(seconds).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString() + "'";
-    }
-
-    static String flowViolationText(FlowViolation violation) {
-        LimitViolation limitViolation = violation.violation();
-        return Messages.get("violations.flowTooltip", limitViolationTypeText(limitViolation.getLimitType()),
-                Objects.requireNonNullElse(limitViolation.getLimitName(), "-"),
-                limitViolation.getSide() == null ? "-" : limitViolation.getSide().getNum(), acceptableDurationText(limitViolation.getAcceptableDuration()));
-    }
-
-    // as a string: MessageFormat would group the digits, e.g. "2,400 s"
-    public static String acceptableDurationText(int acceptableDuration) {
-        return acceptableDuration == Integer.MAX_VALUE ? Messages.get("limits.permanent") : Messages.get("limits.duration", String.valueOf(acceptableDuration));
-    }
-
-    public static String limitViolationTypeText(LimitViolationType type) {
-        return Messages.get("desktop.common.limitViolationType." + type.name());
+        return acceptableDuration == Integer.MAX_VALUE ? text : text + " " + ViolationTexts.minutesText(acceptableDuration);
     }
 
     /**
