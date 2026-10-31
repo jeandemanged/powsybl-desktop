@@ -219,7 +219,7 @@ shared `equipment-detail-view.fxml` (no `fx:controller`: `EquipmentDetails.load`
 - Reuse, never duplicate, the shared pieces: `DetailForm` (label/editor/unit rows; commits on Enter or focus loss,
   Escape reverts; same error/flash feedback as tables), `EquipmentSymbol` (every connectable, tie line and HVDC line drawn
   with the SLD parameters' component library and its CSS, transformed and anchored as SLD does, colored by
-  `diagram/BaseVoltages`, disconnected grey; each end's solved P, Q, I, bus V and angle and its connected checkbox (none for a busbar section):
+  `diagram/BaseVoltages`, disconnected grey; each end's solved P, Q, I as SLD feeders show them (unnamed, P and Q unsigned, the library's `ARROW_ACTIVE`/`ARROW_REACTIVE` on the wire giving the direction: towards the equipment when positive), bus V and angle and its connected checkbox (none for a busbar section):
   the only place these are shown, not in the form; sides left to right, a three-winding transformer's side 1 on top),
   `DetailSections` (terminal connection: node, editable, in node/breaker topology, else the bus/breaker view bus,
   editable, then the bus/branch view bus, both labelled with their view - a switch's nodes or buses are read-only, IIDM

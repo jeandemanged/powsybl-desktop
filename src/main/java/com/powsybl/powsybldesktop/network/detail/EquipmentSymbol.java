@@ -33,6 +33,7 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
@@ -75,10 +76,13 @@ import java.util.regex.Pattern;
  * An equipment drawn as in a single line diagram, above its detail view's tabs: with the diagrams' component library
  * (SLD parameters) and its styles, colored by nominal voltage with the diagrams' base voltage colors (as the map), a
  * disconnected end grey. Each end shows its bus's solved voltage and angle and its connection, editable, and its wire
- * the solved P, Q and I. Two-sided equipment is laid out left to right (side 1, or a boundary line's network side, on
- * the left), a three-winding transformer's side 1 on top, sides 2 and 3 below, left and right; an injection or a
- * busbar section hangs below its bus. Redrawn when the component library or the equipment's component changes (e.g.
- * a phase tap changer added), otherwise only re-read.
+ * the solved P, Q and I, P and Q unsigned, as single line diagrams show a feeder's: the library's arrows on the wire
+ * tell their direction, from the bus to the equipment when positive (the terminal convention, also a boundary line's
+ * boundary side's). Two-sided equipment is
+ * laid out left to right (side 1, or a boundary line's network side, on the left), a three-winding transformer's side
+ * 1 on top, sides 2 and 3 below, left and right; an injection or a busbar section hangs below its bus. Redrawn when
+ * the component library or the equipment's component changes (e.g. a phase tap changer added), otherwise only
+ * re-read.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -91,7 +95,8 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
     private static final double TEXT_STROKE_WIDTH = 0.2;
     private static final double WIRE_WIDTH = 2;
     private static final double BUS_WIDTH = 5;
-    private static final double WIRE = 150;
+    // room for P and Q side by side above it
+    private static final double WIRE = 240;
     private static final double VERTICAL_WIRE = 70;
     private static final double LINE = 160;
     private static final double DC_LINE = 80;
@@ -99,9 +104,18 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
     private static final double BOX_WIDTH = 150;
     private static final double BOX_HEIGHT = 64;
     private static final double FLOWS_WIDTH = 140;
-    private static final double FLOWS_HEIGHT = 56;
+    // of a flow value, P, Q and I stacked along a vertical wire
+    private static final double FLOW_ROW = 18;
+    // the library's arrows are 10 units wide, as its feeder labels' font size
+    private static final double ARROW_SCALE = 1.2;
+    private static final double ARROW_HALF_WIDTH = ARROW_SCALE * 5;
     private static final double GAP = 8;
     private static final double LEG_OFFSET = 110;
+    // of a flow arrow, towards the right unrotated
+    private static final double RIGHT = 0;
+    private static final double DOWN = 90;
+    private static final double LEFT = 180;
+    private static final double UP = 270;
     private static final String DEFAULT_COLOR = "#000000";
     // the single line diagrams' topological style's
     private static final Color DISCONNECTED = Color.web("#808080");
@@ -110,7 +124,11 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
     private static final Map<String, Map<String, Style>> STYLES = new HashMap<>();
     private static final Pattern RULE = Pattern.compile("([^{}]+)\\{([^}]*)}");
     private static final Pattern COMMENT = Pattern.compile("/\\*.*?\\*/", Pattern.DOTALL);
-    private static final Pattern SINGLE_CLASS = Pattern.compile("\\.[\\w-]+");
+    private static final Pattern CLASSES = Pattern.compile("(\\.[\\w-]+)+");
+    // a feeder's flow arrow's style class qualifier, e.g. its color
+    private static final String FEEDER_INFO = "sld-feeder-info";
+    // the arrow subcomponent pointing away from the bus, the other one being unused
+    private static final String ARROW_UP = "UP";
     // SVG's
     private static final Style DEFAULT_STYLE = new Style("black", null, null, null);
 
@@ -166,7 +184,7 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
             double x = GAP + BOX_WIDTH / 2;
             double busY = GAP + BOX_HEIGHT + GAP;
             topBus(end, x, busY);
-            verticalWire(end, x, busY, busY + VERTICAL_WIRE, true);
+            verticalWire(end, x, busY, busY + VERTICAL_WIRE, true, true);
             Point2D top = anchors(type.get(), Orientation.DOWN).stream().min(Comparator.comparingDouble(Point2D::getY)).orElse(Point2D.ZERO);
             component(type.get(), Orientation.DOWN, x - top.getX(), busY + VERTICAL_WIRE - top.getY(), _ -> end.color());
         });
@@ -238,12 +256,12 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
         Point2D top = anchors.stream().min(Comparator.comparingDouble(Point2D::getY)).orElseThrow();
         Point2D left = anchors.stream().min(Comparator.comparingDouble(Point2D::getX)).orElseThrow();
         Point2D right = anchors.stream().max(Comparator.comparingDouble(Point2D::getX)).orElseThrow();
-        double x2 = GAP + Math.max(FLOWS_WIDTH + GAP, Math.max(BOX_WIDTH, BUS) / 2);
+        double x2 = GAP + Math.max(FLOWS_WIDTH + ARROW_HALF_WIDTH + GAP, Math.max(BOX_WIDTH, BUS) / 2);
         double centerX = x2 + LEG_OFFSET - left.getX();
         double busY = GAP + BOX_HEIGHT + GAP;
         double centerY = busY + VERTICAL_WIRE - top.getY();
         topBus(end1, centerX + top.getX(), busY);
-        verticalWire(end1, centerX + top.getX(), busY, busY + VERTICAL_WIRE, true);
+        verticalWire(end1, centerX + top.getX(), busY, busY + VERTICAL_WIRE, true, true);
         Map<String, Supplier<Color>> windingColors = new HashMap<>();
         Map<String, Point2D> windings = component(type, Orientation.DOWN, centerX, centerY,
                 subComponent -> () -> windingColors.getOrDefault(subComponent, end1.color()).get());
@@ -276,10 +294,10 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
         double leftBus = GAP + BOX_WIDTH + GAP;
         wire(leftBus, y - BUS / 4, leftBus, y + BUS / 4, left.color(), BUS_WIDTH);
         place(left.bus(), leftBus - GAP - BOX_WIDTH, y - BOX_HEIGHT / 2, BOX_WIDTH, BOX_HEIGHT, Pos.CENTER_RIGHT);
-        horizontalWire(left, leftBus, leftBus + WIRE, y);
+        horizontalWire(left, leftBus, leftBus + WIRE, y, true);
         double middleEnd = middle.applyAsDouble(leftBus + WIRE);
         double rightBus = middleEnd + WIRE;
-        horizontalWire(right, middleEnd, rightBus, y);
+        horizontalWire(right, middleEnd, rightBus, y, false);
         if (rightBoundary) {
             Circle point = new Circle(rightBus, y, BUS_WIDTH);
             shapes.getChildren().add(point);
@@ -291,7 +309,7 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
     }
 
     private static double rowY() {
-        return GAP + FLOWS_HEIGHT + GAP;
+        return GAP + Math.max(BOX_HEIGHT / 2, FLOW_ROW + GAP);
     }
 
     /**
@@ -317,7 +335,7 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
 
     private void leg(End end, double anchorX, double anchorY, double x, boolean flowsRight) {
         wire(anchorX, anchorY, x, anchorY, end.color(), WIRE_WIDTH);
-        verticalWire(end, x, anchorY, anchorY + VERTICAL_WIRE, flowsRight);
+        verticalWire(end, x, anchorY, anchorY + VERTICAL_WIRE, false, flowsRight);
         double busY = anchorY + VERTICAL_WIRE;
         wire(x - BUS / 2, busY, x + BUS / 2, busY, end.color(), BUS_WIDTH);
         place(end.bus(), x - BOX_WIDTH / 2, busY + GAP, BOX_WIDTH, BOX_HEIGHT, Pos.TOP_CENTER);
@@ -328,19 +346,63 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
         place(end.bus(), x - BOX_WIDTH / 2, busY - GAP - BOX_HEIGHT, BOX_WIDTH, BOX_HEIGHT, Pos.BOTTOM_CENTER);
     }
 
-    private void verticalWire(End end, double x, double y1, double y2, boolean flowsRight) {
+    private void verticalWire(End end, double x, double y1, double y2, boolean busOnTop, boolean flowsRight) {
         wire(x, y1, x, y2, end.color(), WIRE_WIDTH);
-        double y = (y1 + y2 - FLOWS_HEIGHT) / 2;
-        if (flowsRight) {
-            place(end.flows(), x + GAP, y, FLOWS_WIDTH, FLOWS_HEIGHT, Pos.CENTER_LEFT);
-        } else {
-            place(end.flows(), x - GAP - FLOWS_WIDTH, y, FLOWS_WIDTH, FLOWS_HEIGHT, Pos.CENTER_RIGHT);
+        if (end.p == null) {
+            return;
+        }
+        end.towardsEquipment = busOnTop ? DOWN : UP;
+        double top = (y1 + y2) / 2 - 1.5 * FLOW_ROW;
+        List<Label> labels = List.of(end.p, end.q, end.i);
+        double labelX = flowsRight ? x + GAP + ARROW_HALF_WIDTH : x - GAP - ARROW_HALF_WIDTH - FLOWS_WIDTH;
+        for (int row = 0; row < labels.size(); row++) {
+            double y = top + row * FLOW_ROW;
+            if (row < 2) {
+                arrow(end, row == 0, x, y + FLOW_ROW / 2);
+            }
+            place(labels.get(row), labelX, y, FLOWS_WIDTH, FLOW_ROW, flowsRight ? Pos.CENTER_LEFT : Pos.CENTER_RIGHT);
         }
     }
 
-    private void horizontalWire(End end, double x1, double x2, double y) {
+    private void horizontalWire(End end, double x1, double x2, double y, boolean busOnLeft) {
         wire(x1, y, x2, y, end.color(), WIRE_WIDTH);
-        place(end.flows(), x1, y - GAP / 2 - FLOWS_HEIGHT, x2 - x1, FLOWS_HEIGHT, Pos.BOTTOM_CENTER);
+        if (end.p == null) {
+            return;
+        }
+        end.towardsEquipment = busOnLeft ? RIGHT : LEFT;
+        double quarter = (x2 - x1) / 4;
+        arrow(end, true, x1 + quarter, y);
+        arrow(end, false, x2 - quarter, y);
+        place(end.p, x1, y - GAP / 2 - FLOW_ROW, 2 * quarter, FLOW_ROW, Pos.BOTTOM_CENTER);
+        place(end.q, x1 + 2 * quarter, y - GAP / 2 - FLOW_ROW, 2 * quarter, FLOW_ROW, Pos.BOTTOM_CENTER);
+        place(end.i, x1, y + GAP / 2, x2 - x1, FLOW_ROW, Pos.TOP_CENTER);
+    }
+
+    /**
+     * The library's P ({@code active}) or Q arrow of {@code end}, centered on ({@code x}, {@code y}): its "UP"
+     * subcomponent, rotated on every refresh after the flow's sign, hidden while there is none.
+     */
+    private void arrow(End end, boolean active, double x, double y) {
+        SldComponentLibrary componentLibrary = library.get();
+        String type = active ? SldComponentTypeName.ARROW_ACTIVE : SldComponentTypeName.ARROW_REACTIVE;
+        ComponentSize size = componentLibrary.getSize(type);
+        Map<String, Style> styles = styles(componentLibrary);
+        Style style = DEFAULT_STYLE.with(componentLibrary.getComponentStyleClass(type)
+                .map(styleClass -> styles.get(FEEDER_INFO + "." + styleClass)).orElse(null));
+        Style upStyle = style.with(componentLibrary.getSubComponentStyleClass(type, ARROW_UP).map(styles::get).orElse(null));
+        Group shape = new Group();
+        shape.getTransforms().addAll(new Scale(ARROW_SCALE, ARROW_SCALE), new Translate(-size.width() / 2, -size.height() / 2));
+        componentLibrary.getSvgElements(type).get(ARROW_UP).forEach(element -> addShapes(shape, element, upStyle, end.color()));
+        Group arrow = new Group(shape);
+        arrow.getStyleClass().add(active ? "symbol-p-arrow" : "symbol-q-arrow");
+        arrow.setLayoutX(x);
+        arrow.setLayoutY(y);
+        shapes.getChildren().add(arrow);
+        if (active) {
+            end.pArrow = arrow;
+        } else {
+            end.qArrow = arrow;
+        }
     }
 
     private void wire(double x1, double y1, double x2, double y2, Supplier<Color> color, double width) {
@@ -350,11 +412,16 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
         painted.add(new Painted(line, null, "var", color));
     }
 
-    private static void place(VBox box, double x, double y, double width, double height, Pos alignment) {
+    // a bus's values box or a flow value
+    private static void place(Region box, double x, double y, double width, double height, Pos alignment) {
         box.setMinSize(width, height);
         box.setPrefSize(width, height);
         box.setMaxSize(width, height);
-        box.setAlignment(alignment);
+        if (box instanceof VBox vBox) {
+            vBox.setAlignment(alignment);
+        } else if (box instanceof Label label) {
+            label.setAlignment(alignment);
+        }
         box.relocate(x, y);
     }
 
@@ -449,7 +516,8 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
     }
 
     /**
-     * The fill, stroke, stroke width and font size of each single class selector of the library's style sheets.
+     * The fill, stroke, stroke width and font size of each class selector of the library's style sheets, keyed by its
+     * classes, e.g. "sld-feeder-info.sld-active-power".
      */
     private static Map<String, Style> styles(SldComponentLibrary componentLibrary) {
         return STYLES.computeIfAbsent(componentLibrary.getName(), _ -> {
@@ -459,7 +527,7 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
                 while (rule.find()) {
                     Style style = Style.parse(rule.group(2));
                     for (String selector : rule.group(1).split(",")) {
-                        if (SINGLE_CLASS.matcher(selector.trim()).matches()) {
+                        if (CLASSES.matcher(selector.trim()).matches()) {
                             styles.merge(selector.trim().substring(1), style, Style::with);
                         }
                     }
@@ -494,15 +562,37 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
         if (connection != null) {
             bus.getChildren().add(connectedCheckBox(connection));
         }
-        VBox flows = new VBox(2);
+        End end = new End(color, bus);
+        getChildren().add(bus);
         if (p != null) {
-            flows.getChildren().addAll(
-                    value("desktop.common.column.p", null, DetailForm.MW, GuiParameters.Quantity.POWER, p),
-                    value("desktop.common.column.q", null, DetailForm.MVAR, GuiParameters.Quantity.POWER, q),
-                    value("desktop.common.column.i", null, DetailForm.A, GuiParameters.Quantity.CURRENT, i));
+            end.p = flow(DetailForm.MW, GuiParameters.Quantity.POWER, () -> Math.abs(p.getAsDouble()));
+            end.q = flow(DetailForm.MVAR, GuiParameters.Quantity.POWER, () -> Math.abs(q.getAsDouble()));
+            end.i = flow(DetailForm.A, GuiParameters.Quantity.CURRENT, i);
+            getChildren().addAll(end.p, end.q, end.i);
+            // the arrows are drawn with the wire, before the refreshers run
+            refreshers.add(() -> {
+                orient(end.pArrow, p.getAsDouble(), end.towardsEquipment);
+                orient(end.qArrow, q.getAsDouble(), end.towardsEquipment);
+            });
         }
-        getChildren().addAll(bus, flows);
-        return new End(color, bus, flows);
+        return end;
+    }
+
+    // the library's arrow points up unrotated
+    private static void orient(Group arrow, double flow, double towardsEquipment) {
+        arrow.setVisible(!Double.isNaN(flow) && flow != 0);
+        arrow.setRotate(((flow < 0 ? towardsEquipment + 180 : towardsEquipment) + 90) % 360);
+    }
+
+    // unnamed, told by its unit
+    private Label flow(String unit, GuiParameters.Quantity quantity, DoubleSupplier getter) {
+        Label label = new Label();
+        label.getStyleClass().add("symbol-value");
+        refreshers.add(() -> {
+            double value = getter.getAsDouble();
+            label.setText(Double.isNaN(value) ? "-" : guiParameters.get().format(quantity, value) + " " + unit);
+        });
+        return label;
     }
 
     private Label value(String nameKey, String tooltipKey, String unit, GuiParameters.Quantity quantity, DoubleSupplier getter) {
@@ -544,9 +634,32 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
 
     /**
      * What is drawn of a terminal (or a boundary line's boundary side): its color, its bus's values box and its
-     * wire's flows box.
+     * wire's flow values and arrows.
      */
-    private record End(Supplier<Color> color, VBox bus, VBox flows) {
+    private static final class End {
+        private final Supplier<Color> color;
+        private final VBox bus;
+        // null for an end without flows
+        private Label p;
+        private Label q;
+        private Label i;
+        // drawn with the wire, as is the direction of a positive flow: the angle from the right, clockwise
+        private Group pArrow;
+        private Group qArrow;
+        private double towardsEquipment;
+
+        private End(Supplier<Color> color, VBox bus) {
+            this.color = color;
+            this.bus = bus;
+        }
+
+        private Supplier<Color> color() {
+            return color;
+        }
+
+        private VBox bus() {
+            return bus;
+        }
     }
 
     /**

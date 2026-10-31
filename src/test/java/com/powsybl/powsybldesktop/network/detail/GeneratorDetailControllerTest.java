@@ -18,6 +18,7 @@ import com.powsybl.iidm.network.extensions.ActivePowerControl;
 import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.window.SeparateWindows;
@@ -165,11 +166,33 @@ class GeneratorDetailControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals("Generator 1", clipboardString());
     }
 
+    // the generator hangs below its bus: producing, its P flows up into the bus
+    @Test
+    void symbolShowsUnsignedFlowsWithTheirDirection() {
+        interact(() -> {
+            generator.getTerminal().setP(-100).setQ(20);
+            mainModel.setUpdate();
+        });
+        Node symbol = controller.titleLabel.getScene().getRoot().lookup(".equipment-symbol");
+        assertTrue(symbol.lookupAll(".symbol-value").stream().anyMatch(label -> ((Label) label).getText()
+                .equals(mainModel.getParametersModel().getGuiParameters().format(GuiParameters.Quantity.POWER, 100) + " " + DetailForm.MW)));
+        Node p = symbol.lookup(".symbol-p-arrow");
+        Node q = symbol.lookup(".symbol-q-arrow");
+        // the library's arrows point up unrotated
+        assertEquals(0, p.getRotate());
+        assertEquals(180, q.getRotate());
+
+        interact(() -> {
+            generator.getTerminal().setP(0);
+            mainModel.setUpdate();
+        });
+        assertFalse(p.isVisible());
+    }
+
     @Test
     void connectsFromSymbol() {
         Node symbol = controller.titleLabel.getScene().getRoot().lookup(".equipment-symbol");
-        assertTrue(symbol.lookupAll(".symbol-value").stream()
-                .anyMatch(label -> ((Label) label).getText().startsWith(Messages.get("desktop.common.column.p") + " = ")));
+        assertNotNull(symbol.lookup(".symbol-p-arrow"));
         CheckBox connected = (CheckBox) symbol.lookup(".check-box");
         interact(connected::fire);
         assertFalse(generator.getTerminal().isConnected());
