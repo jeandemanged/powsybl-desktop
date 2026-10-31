@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.network.tables.AreasController">
+   <children>
+      <TableView fx:id="areasTableView" editable="true" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">
+         <columns>
+            <TableColumn fx:id="nameColumn" text="%desktop.common.column.name" editable="false"/>
+            <TableColumn fx:id="areaTypeColumn" text="%edit.area.type" editable="false"/>
+            <TableColumn fx:id="interchangeTargetColumn" styleClass="right-aligned-column" text="%edit.area.interchangeTarget"/>
+            <TableColumn fx:id="acInterchangeColumn" styleClass="right-aligned-column" text="%areas.column.acInterchange" editable="false"/>
+            <TableColumn fx:id="dcInterchangeColumn" styleClass="right-aligned-column" text="%areas.column.dcInterchange" editable="false"/>
+            <TableColumn fx:id="interchangeColumn" styleClass="right-aligned-column" text="%areas.column.interchange" editable="false"/>
+            <TableColumn fx:id="voltageLevelCountColumn" styleClass="right-aligned-column" text="%desktop.common.equipment.voltageLevel.plural" editable="false"/>
+            <TableColumn fx:id="boundaryCountColumn" styleClass="right-aligned-column" text="%areas.column.boundaries" editable="false"/>
+         </columns>
+      </TableView>
+   </children>
+</VBox>

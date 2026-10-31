@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.network.tables.SecurityAnalysisResultsController">
+   <children>
+      <TabPane tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+         <tabs>
+            <Tab fx:id="contingenciesTab">
+               <content>
+                  <TableView fx:id="contingenciesTableView" tableMenuButtonVisible="true"/>
+               </content>
+            </Tab>
+            <Tab fx:id="flowByContingencyTab">
+               <content>
+                  <TableView fx:id="flowByContingencyTableView" tableMenuButtonVisible="true"/>
+               </content>
+            </Tab>
+            <Tab fx:id="flowByEquipmentTab">
+               <content>
+                  <TableView fx:id="flowByEquipmentTableView" tableMenuButtonVisible="true"/>
+               </content>
+            </Tab>
+            <Tab fx:id="voltageTab">
+               <content>
+                  <TableView fx:id="voltageTableView" tableMenuButtonVisible="true"/>
+               </content>
+            </Tab>
+         </tabs>
+      </TabPane>
+   </children>
+</VBox>
