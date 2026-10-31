@@ -107,7 +107,8 @@ table uses it too).
   `…/network/tables/CellFields.java`: `textColumn`/`choiceColumn` commit through the column's `onEditCommit`, and
   `sidedColumn`/`editorColumn` stack one editor per side (`CellTextField`, `CellChoiceBox`, `IntStepper`). A text
   field commits on Enter or focus loss, Escape reverts what is being typed, Up/Down commit then move to the field
-  above/below in the same column; focusing a field selects its cell.
+  above/below in the same column; focusing a field selects its cell. A click into an unfocused field selects its whole
+  value (typing overwrites it), a further click places the caret.
 - Country choices (PowSyBl `Country`) are searchable and shown by `Labels.countryFormat()` (code and name): a single
   choice is a ControlsFX `SearchableComboBox` (`CellFields.searchableChoiceColumn`, `DetailForm.searchableChoiceField`,
   `CreationForm.searchableChoice`), a multiple one a `…/utils/SearchableCheckComboBox.java` (ControlsFX's

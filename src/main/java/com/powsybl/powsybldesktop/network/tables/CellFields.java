@@ -28,6 +28,8 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.skin.VirtualFlow;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -353,6 +355,13 @@ public final class CellFields {
                     }
                 }
                 event.consume();
+            });
+            // a click into the field selects its whole value, to be overwritten by typing; a further click places the caret
+            addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
+                if (!isFocused() && event.getButton() == MouseButton.PRIMARY) {
+                    focus();
+                    event.consume();
+                }
             });
         }
 

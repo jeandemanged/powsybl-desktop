@@ -8,6 +8,9 @@
 package com.powsybl.powsybldesktop.testutil;
 
 import javafx.scene.input.Clipboard;
+import javafx.stage.Stage;
+import org.junit.jupiter.api.BeforeEach;
+import org.testfx.api.FxToolkit;
 import org.testfx.framework.junit5.ApplicationTest;
 
 /**
@@ -26,6 +29,19 @@ public abstract class AbstractHeadlessApplicationTest extends ApplicationTest {
         System.setProperty("prism.order", "sw");
         System.setProperty("java.awt.headless", "true");
         System.setProperty("glass.platform", "Headless");
+    }
+
+    // The headless platform never positions a stage, and the primary stage is shared by every test class of a JVM: left
+    // at NaN unless an earlier test placed it, it would make every robot click miss, depending on test order.
+    @BeforeEach
+    void positionPrimaryStage() {
+        Stage stage = FxToolkit.toolkitContext().getRegisteredStage();
+        interact(() -> {
+            if (Double.isNaN(stage.getX()) || Double.isNaN(stage.getY())) {
+                stage.setX(0);
+                stage.setY(0);
+            }
+        });
     }
 
     /**

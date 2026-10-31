@@ -151,6 +151,14 @@ class CellFieldsTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
+    void clickSelectsTheWholeValue() {
+        TextField field = field(rows.get(5));
+        clickOn(field);
+        assertSame(field, focusedField());
+        assertEquals("5.0", field.getSelectedText());
+    }
+
+    @Test
     void focusLossCommits() {
         Row row = rows.get(2);
         TextField field = field(row);
