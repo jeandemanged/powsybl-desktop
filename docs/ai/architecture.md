@@ -145,9 +145,8 @@ menu, blank and taken names rejected):
   is already open, the drag moves it as its tab's would. A plain mouse drag (scene filters), not platform drag and
   drop, whose "forbidden" cursor outside accepting targets would be misleading; tests call `dropToOpen` directly,
   since the headless platform doesn't deliver a drag leaving its window;
-- views of one kind gather as tabs of their group's window instead of a window each (`open(Group, key, ...)`,
-  `SeparateWindows.Group`): detail views in "Details", diagrams opened from the map in "Diagrams"; the window is
-  created, named after its group, on the first one, and reused while open (even renamed);
+- detail views, and diagrams opened from the map, open as a tab of the latest window created (`openInLatestWindow`,
+  the last of `getOpenWindows()`, even the one they're opened from), or in a new window if none is open;
 - the window's view gets a `SceneModel.separate` scene: its navigation drives the main window and brings it to front -
   except a single line diagram leading to another voltage level (feeder click, "go to"), which stays in its own
   scene: in a separate window, the diagram shows that voltage level itself, its tab re-keyed and retitled

@@ -99,9 +99,9 @@ import java.util.stream.Collectors;
  * Shows substations and lines on a basemap, using the coordinates carried by the IIDM
  * {@link SubstationPosition}/{@link LinePosition} network extensions - a substation without position isn't drawn, a
  * line without route is drawn thin and translucent straight between its substations if both have one. A line
- * disconnected on at least one side is dashed. Clicking a substation marker opens its single line diagram as a tab of
- * the diagrams window, clicking a line, tie line or boundary line opens its detail view as a tab of the details
- * window (see {@link SeparateWindows.Group}).
+ * disconnected on at least one side is dashed. Clicking a substation marker opens its single line diagram, clicking a
+ * line, tie line or boundary line opens its detail view, as a tab of the latest separate window created (see
+ * {@link SeparateWindows#openInLatestWindow}).
  * <p>
  * Built the same way as the single line diagram ({@code SubstationsController}/{@code sld.js}): the
  * stylesheet and scripts are injected into a {@link WebView} shell, with a {@code window.controller}
@@ -627,7 +627,7 @@ public class MapController extends AbstractDisposableController implements Scene
         Identifiable<?> identifiable = network.getIdentifiable(hit.id());
         if (identifiable instanceof Substation substation) {
             sceneModel.getDetailWindows().ifPresent(windows ->
-                    ContainerDiagram.open(windows, SeparateWindows.Group.DIAGRAMS, ContainerDiagram.Kind.SINGLE_LINE, substation));
+                    ContainerDiagram.open(windows, true, ContainerDiagram.Kind.SINGLE_LINE, substation));
         } else {
             EquipmentDetails.open(sceneModel, identifiable);
         }
@@ -677,7 +677,7 @@ public class MapController extends AbstractDisposableController implements Scene
         MenuItem item = new MenuItem(Messages.get("map.contextMenu.singleLineDiagram", text));
         item.setMnemonicParsing(false);
         item.setOnAction(_ -> sceneModel.getDetailWindows().ifPresent(windows ->
-                ContainerDiagram.open(windows, SeparateWindows.Group.DIAGRAMS, ContainerDiagram.Kind.SINGLE_LINE, container)));
+                ContainerDiagram.open(windows, true, ContainerDiagram.Kind.SINGLE_LINE, container)));
         return item;
     }
 

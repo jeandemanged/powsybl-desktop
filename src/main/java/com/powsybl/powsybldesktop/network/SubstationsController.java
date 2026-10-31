@@ -247,7 +247,7 @@ public class SubstationsController extends AbstractDisposableController implemen
         if (container == null) {
             return;
         }
-        ContainerDiagram.open(separateWindows, null, kind, container);
+        ContainerDiagram.open(separateWindows, false, kind, container);
     }
 
     private void openEquipmentTab(SeparateWindows separateWindows, EquipmentTab equipmentTab) {

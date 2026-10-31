@@ -190,10 +190,10 @@ public final class ContainerDiagram extends AbstractDisposableController {
     }
 
     /**
-     * Opens {@code container}'s diagram in a separate window: as a tab of {@code group}'s window, or in a new window if
-     * {@code group} is null.
+     * Opens {@code container}'s diagram in a separate window: as a tab of the latest window created if
+     * {@code inLatestWindow}, else in a new window.
      */
-    public static void open(SeparateWindows separateWindows, SeparateWindows.Group group, Kind kind, Container<?> container) {
+    public static void open(SeparateWindows separateWindows, boolean inLatestWindow, Kind kind, Container<?> container) {
         String titleKey = kind == Kind.SINGLE_LINE ? "desktop.common.singleLineDiagram" : "desktop.common.networkAreaDiagram";
         // the diagram navigates within its window (see showEquipment): its title, and its rebuild on a language
         // change, follow what it shows
@@ -214,10 +214,10 @@ public final class ContainerDiagram extends AbstractDisposableController {
             }
         };
         String key = kind + "/" + container.getId();
-        if (group == null) {
-            separateWindows.open(key, title, viewFactory);
+        if (inLatestWindow) {
+            separateWindows.openInLatestWindow(key, title, viewFactory);
         } else {
-            separateWindows.open(group, key, title, viewFactory);
+            separateWindows.open(key, title, viewFactory);
         }
     }
 

@@ -286,7 +286,7 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
     void separateSingleLineDiagramNavigatesWithinItsTab() throws TimeoutException {
         VoltageLevel vl1 = network.getVoltageLevel("VL1");
         String title = Messages.get("desktop.common.singleLineDiagram") + " - ";
-        interact(() -> ContainerDiagram.open(separateWindows, null, ContainerDiagram.Kind.SINGLE_LINE, vl1));
+        interact(() -> ContainerDiagram.open(separateWindows, false, ContainerDiagram.Kind.SINGLE_LINE, vl1));
         WebView webView = (WebView) windows(title + vl1.getNameOrId()).getFirst().getScene().getRoot().lookup(".web-view");
         WaitForAsyncUtils.waitFor(60, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() -> webView.getEngine().executeScript(
                 "document.querySelector('[id^=\"idL\"].sld-top-feeder, [id^=\"idL\"].sld-bottom-feeder') != null")).get().equals(Boolean.TRUE));
@@ -303,25 +303,24 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
-    void groupViewsGatherInTheirGroupWindowRecreatedOnceClosed() {
+    void openInLatestWindowAddsATabToTheLatestWindowCreatedOrANewOne() {
         AtomicInteger disposed = new AtomicInteger();
         Function<SceneModel, SeparateWindows.View> factory = _ -> new SeparateWindows.View(new StackPane(), disposed::incrementAndGet);
-        String details = Messages.get("separateWindows.group.details");
+        interact(() -> separateWindows.openInLatestWindow("detail:a", () -> "a", factory));
+        assertEquals(List.of(List.of("a")), separateWindows.getOpenWindows().stream().map(SeparateWindows.DetachedWindow::getTabTitles).toList());
+
         interact(() -> {
-            separateWindows.open(SeparateWindows.Group.DETAILS, "detail:a", () -> "a", factory);
             openPlain("other", true, disposed);
-            separateWindows.open(SeparateWindows.Group.DETAILS, "detail:b", () -> "b", factory);
+            separateWindows.openInLatestWindow("detail:b", () -> "b", factory);
         });
-
-        assertEquals(List.of(details, defaultName(1)), names());
-        assertEquals(List.of("a", "b"), separateWindows.getOpenWindows().getFirst().getTabTitles());
+        assertEquals(List.of(List.of("a"), List.of("other", "b")),
+                separateWindows.getOpenWindows().stream().map(SeparateWindows.DetachedWindow::getTabTitles).toList());
 
         interact(() -> {
-            separateWindows.close("detail:a");
-            separateWindows.close("detail:b");
-            separateWindows.open(SeparateWindows.Group.DETAILS, "detail:c", () -> "c", factory);
+            List.of("detail:a", "other", "detail:b").forEach(separateWindows::close);
+            separateWindows.openInLatestWindow("detail:c", () -> "c", factory);
         });
-        assertEquals(List.of(defaultName(1), details), names());
+        assertEquals(List.of(defaultName(1)), names());
     }
 
     @Test

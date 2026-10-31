@@ -13,6 +13,8 @@ import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.utils.Labels;
+import javafx.scene.control.Hyperlink;
+import javafx.scene.layout.VBox;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,10 +50,24 @@ public class SubstationDetailController extends AbstractEquipmentDetailControlle
         form.searchableChoiceField("desktop.common.column.country", countries, Labels.countryFormat(), equipment::getNullableCountry, equipment::setCountry)
                 .textField("substations.column.tso", equipment::getTso, equipment::setTso)
                 .text("substations.column.geographicalTags", () -> String.join(", ", equipment.getGeographicalTags()));
-        form.section("desktop.common.equipment.voltageLevel.plural");
-        for (VoltageLevel voltageLevel : voltageLevels()) {
-            DetailSections.equipmentLink(form, "desktop.common.equipment.voltageLevel", sceneModel, () -> voltageLevel);
-        }
+        // voltage levels are created and removed from elsewhere too
+        VBox links = new VBox();
+        List<VoltageLevel> shown = new ArrayList<>();
+        form.node("desktop.common.equipment.voltageLevel.plural", links, null, () -> {
+            List<VoltageLevel> voltageLevels = voltageLevels();
+            if (!voltageLevels.equals(shown)) {
+                shown.clear();
+                shown.addAll(voltageLevels);
+                links.getChildren().setAll(voltageLevels.stream().map(this::link).toList());
+            }
+        });
+    }
+
+    private Hyperlink link(VoltageLevel voltageLevel) {
+        Hyperlink link = new Hyperlink(voltageLevel.getNameOrId());
+        link.getStyleClass().add("container-link");
+        link.setOnAction(_ -> EquipmentDetails.open(sceneModel, voltageLevel));
+        return link;
     }
 
     @Override

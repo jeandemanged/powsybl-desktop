@@ -19,9 +19,11 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.OperationalLimitsGroup;
 import com.powsybl.iidm.network.OverloadManagementSystem;
 import com.powsybl.iidm.network.ShuntCompensator;
+import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.Switch;
 import com.powsybl.iidm.network.TapChanger;
 import com.powsybl.iidm.network.ThreeSides;
+import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.TwoSides;
 import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.test.BatteryNetworkFactory;
@@ -41,6 +43,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBase;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Labeled;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.ScrollPane;
@@ -193,6 +196,27 @@ class EquipmentDetailViewsTest extends AbstractHeadlessApplicationTest {
                 formField(controller, "detail.switch.node1", Labeled.class).getText());
         assertEquals(String.valueOf(sw.getVoltageLevel().getNodeBreakerView().getNode2(sw.getId())),
                 formField(controller, "detail.switch.node2", Labeled.class).getText());
+    }
+
+    @Test
+    void substationListsVoltageLevelsCreatedAndRemovedElsewhere() {
+        Network network = FourSubstationsNodeBreakerFactory.create();
+        Substation substation = network.getSubstation("S1");
+        VBox links = formField(open(network, substation), "desktop.common.equipment.voltageLevel.plural", VBox.class);
+        int shown = links.getChildren().size();
+
+        interact(() -> {
+            substation.newVoltageLevel().setId("NEW_VL").setNominalV(20).setTopologyKind(TopologyKind.BUS_BREAKER).add();
+            mainModel.setUpdate();
+        });
+        assertEquals(shown + 1, links.getChildren().size());
+        assertEquals("NEW_VL", ((Hyperlink) links.getChildren().getLast()).getText());
+
+        interact(() -> {
+            network.getVoltageLevel("NEW_VL").remove();
+            mainModel.setUpdate();
+        });
+        assertEquals(shown, links.getChildren().size());
     }
 
     /**

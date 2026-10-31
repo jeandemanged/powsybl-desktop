@@ -197,7 +197,7 @@ shared `equipment-detail-view.fxml` (no `fx:controller`: `EquipmentDetails.load`
 `GeneratorDetailController` (injection), `TwoWindingsTransformerDetailController` (branch).
 
 - Opened by `EquipmentDetails.open(sceneModel, equipment)` (a no-op for an unsupported type) as a tab of the
-  "Details" window (`SeparateWindows.Group.DETAILS`) keyed by equipment id; works from separate windows too, through `SceneModel.getDetailWindows()`. Add a type with a
+  latest separate window created (`SeparateWindows.openInLatestWindow`) keyed by equipment id; works from separate windows too, through `SceneModel.getDetailWindows()`. Add a type with a
   subclass and a `Kind` entry in `EquipmentDetails`. Entry points: every equipment table's name column info button
   (`TableColumnSupport.configureDetailNameColumn`, or `withDetailAndCopyButtons` around a container link for the substations and
   voltage levels tables); the SLD/NAD toolbar info button for the shown substation or voltage level

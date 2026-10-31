@@ -42,9 +42,10 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
- * Opens an equipment's detail view, non-modal, as a tab of the details window (see {@link SeparateWindows.Group}): one per
- * equipment, brought to front if already open, closed with the other views bound to the network. Every equipment type
- * has its {@link AbstractEquipmentDetailController} subclass, all on {@code equipment-detail-view.fxml}.
+ * Opens an equipment's detail view, non-modal, as a tab of the latest separate window created (see
+ * {@link SeparateWindows#openInLatestWindow}): one per equipment, brought to front if already open, closed with the
+ * other views bound to the network. Every equipment type has its {@link AbstractEquipmentDetailController} subclass,
+ * all on {@code equipment-detail-view.fxml}.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -93,7 +94,7 @@ public final class EquipmentDetails {
         if (kind.isEmpty()) {
             return;
         }
-        sceneModel.getDetailWindows().ifPresent(windows -> windows.open(SeparateWindows.Group.DETAILS, key(equipment),
+        sceneModel.getDetailWindows().ifPresent(windows -> windows.openInLatestWindow(key(equipment),
                 () -> Messages.get("detail.title", Messages.get(kind.get().typeKey()), equipment.getNameOrId()),
                 scene -> {
                     SeparateWindows.View view = load(equipment, scene);
