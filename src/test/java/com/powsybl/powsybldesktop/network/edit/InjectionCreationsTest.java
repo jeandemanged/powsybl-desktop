@@ -13,6 +13,7 @@ import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Load;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.ShuntCompensator;
+import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.SwitchKind;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
@@ -25,11 +26,15 @@ import com.powsybl.powsybldesktop.SceneModel;
 import javafx.application.Platform;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.DialogPane;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.TextField;
 import org.junit.jupiter.api.Test;
 import org.testfx.util.WaitForAsyncUtils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -89,6 +94,88 @@ class InjectionCreationsTest extends AbstractCreationDialogTest {
         assertTrue(generator.isWithMode(RegulationMode.VOLTAGE));
         assertTrue(generator.getVoltageRegulation().isRegulating());
         assertEquals(voltageLevel.getNominalV(), generator.getRegulatingTargetV());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void voltageLevelIsChosenAmongItsSubstations() {
+        Network network = Network.create("test", ContainerCreations.SOURCE_FORMAT);
+        for (String substationId : new String[] {"NORTH", "SOUTH"}) {
+            network.newSubstation().setId(substationId).add()
+                    .newVoltageLevel().setId(substationId + "_VL").setName("VL 225").setNominalV(225).setTopologyKind(TopologyKind.BUS_BREAKER).add()
+                    .getBusBreakerView().newBus().setId(substationId + "_B").add();
+        }
+        network.newVoltageLevel().setId("ALONE").setNominalV(63).setTopologyKind(TopologyKind.BUS_BREAKER).add()
+                .getBusBreakerView().newBus().setId("ALONE_B").add();
+        MainModel mainModel = new MainModel();
+        mainModel.addNetwork(network);
+        AtomicReference<Optional<Identifiable<?>>> created = new AtomicReference<>();
+        Platform.runLater(() -> created.set(InjectionCreations.create(SceneModel.main(mainModel), stage,
+                InjectionCreations.Kind.LOAD, network.getVoltageLevel("NORTH_VL"), null)));
+        WaitForAsyncUtils.waitForFxEvents();
+        DialogPane dialogPane = lookup(".dialog-pane").queryAs(DialogPane.class);
+        ComboBox<Object> substations = from(dialogPane).lookup((ComboBox<?> box) -> box.getItems().contains(network.getSubstation("NORTH"))).query();
+        ComboBox<VoltageLevel> voltageLevels = from(dialogPane).lookup((ComboBox<?> box) -> box.getItems().contains(network.getVoltageLevel("NORTH_VL"))).query();
+
+        assertEquals(network.getSubstation("NORTH"), substations.getValue());
+        assertEquals(List.of(network.getVoltageLevel("NORTH_VL")), voltageLevels.getItems());
+        // without substation first
+        assertEquals(3, substations.getItems().size());
+        interact(() -> substations.setValue(substations.getItems().getFirst()));
+        assertEquals(network.getVoltageLevel("ALONE"), voltageLevels.getValue());
+
+        // as its popup hides, the searchable box has no value for a moment: the voltage level stays
+        interact(() -> substations.setValue(null));
+        assertEquals(network.getVoltageLevel("ALONE"), voltageLevels.getValue());
+        interact(() -> substations.setValue(network.getSubstation("SOUTH")));
+        assertEquals(List.of(network.getVoltageLevel("SOUTH_VL")), voltageLevels.getItems());
+        assertEquals(network.getVoltageLevel("SOUTH_VL"), voltageLevels.getValue());
+
+        interact(() -> ((Button) dialogPane.lookupButton(ButtonType.OK)).fire());
+        WaitForAsyncUtils.waitForFxEvents();
+        Load load = (Load) created.get().orElseThrow();
+        assertEquals("SOUTH_VL", load.getTerminal().getVoltageLevel().getId());
+    }
+
+    // through the popup, as the user does: its skin then resets its search filter, re-selecting on the way
+    @Test
+    @SuppressWarnings("unchecked")
+    void substationIsPickedFromThePopup() {
+        Network network = Network.create("test", ContainerCreations.SOURCE_FORMAT);
+        for (String substationId : new String[] {"NORTH", "SOUTH"}) {
+            Substation substation = network.newSubstation().setId(substationId).add();
+            for (int nominalV : new int[] {63, 225, 400}) {
+                substation.newVoltageLevel().setId(substationId + nominalV).setNominalV(nominalV).setTopologyKind(TopologyKind.BUS_BREAKER).add()
+                        .getBusBreakerView().newBus().setId(substationId + nominalV + "_B").add();
+            }
+        }
+        MainModel mainModel = new MainModel();
+        mainModel.addNetwork(network);
+        Platform.runLater(() -> InjectionCreations.create(SceneModel.main(mainModel), stage,
+                InjectionCreations.Kind.LOAD, network.getVoltageLevel("NORTH400"), null));
+        WaitForAsyncUtils.waitForFxEvents();
+        DialogPane dialogPane = lookup(".dialog-pane").queryAs(DialogPane.class);
+        ComboBox<Object> substations = from(dialogPane).lookup((ComboBox<?> box) -> box.getItems().contains(network.getSubstation("NORTH"))).query();
+        ComboBox<VoltageLevel> voltageLevels = from(dialogPane).lookup((ComboBox<?> box) -> box.getItems().contains(network.getVoltageLevel("NORTH400"))).query();
+        List<Throwable> errors = new ArrayList<>();
+        Thread.UncaughtExceptionHandler handler = Thread.currentThread().getUncaughtExceptionHandler();
+        interact(() -> Thread.currentThread().setUncaughtExceptionHandler((_, e) -> errors.add(e)));
+        try {
+            // its cells now exist, to update when its items change
+            clickOn(voltageLevels);
+            clickOn(lookup(".list-cell").match((ListCell<?> cell) -> "NORTH225".equals(cell.getText()) && cell.getScene() != dialogPane.getScene())
+                    .queryAs(ListCell.class));
+            clickOn(substations);
+            clickOn(lookup(".list-cell").match((ListCell<?> cell) -> "SOUTH".equals(cell.getText()) && cell.getScene() != dialogPane.getScene())
+                    .queryAs(ListCell.class));
+            WaitForAsyncUtils.waitForFxEvents();
+        } finally {
+            interact(() -> Thread.currentThread().setUncaughtExceptionHandler(handler));
+        }
+
+        assertEquals(List.of(), errors);
+        assertEquals(network.getSubstation("SOUTH"), substations.getValue());
+        assertEquals(network.getVoltageLevel("SOUTH225").getSubstation().orElseThrow(), voltageLevels.getValue().getSubstation().orElseThrow());
     }
 
     @Test

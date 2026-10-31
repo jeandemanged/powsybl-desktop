@@ -30,6 +30,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Hyperlink;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TablePosition;
@@ -101,6 +102,16 @@ class GeneratorsControllerTest extends AbstractHeadlessApplicationTest {
     private static <S, T> void fireEditCommit(TableView<S> tableView, TableColumn<S, T> column, int row, T newValue) {
         TablePosition<S, T> position = new TablePosition<>(tableView, row, column);
         column.getOnEditCommit().handle(new TableColumn.CellEditEvent<>(tableView, position, TableColumn.editCommitEvent(), newValue));
+    }
+
+    @Test
+    void rowContextMenuNamesTheTablesCreationsAsNew() {
+        rightClickOn(lookup(".table-row-cell").nth(0).queryAs(Node.class));
+
+        List<MenuItem> items = controller.generatorsTableView.getContextMenu().getItems();
+        String generatorItem = Messages.get("edit.menu.newKind", Messages.get("desktop.common.equipment.generator") + "…");
+        assertTrue(items.stream().anyMatch(item -> generatorItem.equals(item.getText())));
+        interact(() -> controller.generatorsTableView.getContextMenu().hide());
     }
 
     @Test

@@ -23,6 +23,7 @@ import javafx.scene.control.TextField;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -97,6 +98,23 @@ class TopologyEditsTest extends AbstractCreationDialogTest {
     }
 
     @Test
+    void busbarSectionGoesToTheChosenVoltageLevel() {
+        Network network = network();
+
+        BusbarSection busbarSection = openAndConfirm(sceneModel -> TopologyEdits.newBusbarSection(sceneModel, stage, network.getVoltageLevel("VL400"), true),
+                network, dialogPane -> {
+                    // node breaker voltage levels only
+                    ComboBox<VoltageLevel> voltageLevels = from(dialogPane)
+                            .lookup((ComboBox<?> box) -> box.getItems().contains(network.getVoltageLevel("VL225"))).query();
+                    assertFalse(voltageLevels.getItems().contains(network.getVoltageLevel("VL63")));
+                    voltageLevels.setValue(network.getVoltageLevel("VL225"));
+                });
+
+        assertEquals("VL225", busbarSection.getTerminal().getVoltageLevel().getId());
+        assertTrue(busbarSection.getId().startsWith("VL225_BBS"));
+    }
+
+    @Test
     void feederMovesToAnotherVoltageLevel() {
         Network network = network();
         NetworkEdits.apply(network, new CreateFeederBayBuilder()
@@ -105,8 +123,8 @@ class TopologyEditsTest extends AbstractCreationDialogTest {
         Load load = network.getLoad("LD");
 
         openAndConfirm(sceneModel -> TopologyEdits.moveFeeder(sceneModel, stage, load), network, dialogPane -> {
-            @SuppressWarnings("unchecked")
-            ComboBox<VoltageLevel> voltageLevels = (ComboBox<VoltageLevel>) from(dialogPane).lookup(".combo-box").nth(1).queryAs(ComboBox.class);
+            ComboBox<VoltageLevel> voltageLevels = from(dialogPane)
+                    .lookup((ComboBox<?> box) -> box.getItems().contains(network.getVoltageLevel("VL63"))).query();
             voltageLevels.setValue(network.getVoltageLevel("VL63"));
         });
 

@@ -165,27 +165,38 @@ public final class EditMenus {
     }
 
     /**
-     * A busbar section of {@code voltageLevel}, which must be node breaker.
+     * A busbar section, in a node breaker voltage level chosen in the dialog: {@code voltageLevel} first if node breaker,
+     * else the network's first.
      */
-    public static MenuItem busbarSectionItem(SceneModel sceneModel, Supplier<Window> owner, VoltageLevel voltageLevel) {
-        return disabledIf(voltageLevel == null || voltageLevel.getTopologyKind() != TopologyKind.NODE_BREAKER,
-                kindItem("desktop.common.equipment.busbarSection", () -> TopologyEdits.newBusbarSection(sceneModel, owner.get(), voltageLevel)));
+    public static MenuItem busbarSectionItem(SceneModel sceneModel, Supplier<Window> owner, Network network, VoltageLevel voltageLevel) {
+        VoltageLevel initial = ofTopology(network, voltageLevel, TopologyKind.NODE_BREAKER);
+        return disabledIf(initial == null,
+                kindItem("desktop.common.equipment.busbarSection", () -> TopologyEdits.newBusbarSection(sceneModel, owner.get(), initial, true)));
     }
 
     /**
-     * A switch of {@code voltageLevel}, which must be node breaker.
+     * A switch, in a node breaker voltage level chosen as {@link #busbarSectionItem}'s.
      */
-    public static MenuItem switchItem(SceneModel sceneModel, Supplier<Window> owner, VoltageLevel voltageLevel) {
-        return disabledIf(voltageLevel == null || voltageLevel.getTopologyKind() != TopologyKind.NODE_BREAKER,
-                kindItem("desktop.common.equipment.switch", () -> TopologyEdits.newSwitch(sceneModel, owner.get(), voltageLevel, null)));
+    public static MenuItem switchItem(SceneModel sceneModel, Supplier<Window> owner, Network network, VoltageLevel voltageLevel) {
+        VoltageLevel initial = ofTopology(network, voltageLevel, TopologyKind.NODE_BREAKER);
+        return disabledIf(initial == null,
+                kindItem("desktop.common.equipment.switch", () -> TopologyEdits.newSwitch(sceneModel, owner.get(), initial, null, true)));
     }
 
     /**
-     * A bus of {@code voltageLevel}, which must be bus breaker.
+     * A bus, in a bus breaker voltage level chosen as {@link #busbarSectionItem}'s.
      */
-    public static MenuItem busItem(SceneModel sceneModel, Supplier<Window> owner, VoltageLevel voltageLevel) {
-        return disabledIf(voltageLevel == null || voltageLevel.getTopologyKind() != TopologyKind.BUS_BREAKER,
-                kindItem("desktop.common.equipment.bus", () -> TopologyEdits.newBus(sceneModel, owner.get(), voltageLevel)));
+    public static MenuItem busItem(SceneModel sceneModel, Supplier<Window> owner, Network network, VoltageLevel voltageLevel) {
+        VoltageLevel initial = ofTopology(network, voltageLevel, TopologyKind.BUS_BREAKER);
+        return disabledIf(initial == null,
+                kindItem("desktop.common.equipment.bus", () -> TopologyEdits.newBus(sceneModel, owner.get(), initial, true)));
+    }
+
+    private static VoltageLevel ofTopology(Network network, VoltageLevel voltageLevel, TopologyKind topologyKind) {
+        if (voltageLevel != null && voltageLevel.getTopologyKind() == topologyKind) {
+            return voltageLevel;
+        }
+        return network == null ? null : network.getVoltageLevelStream().filter(other -> other.getTopologyKind() == topologyKind).findFirst().orElse(null);
     }
 
     private static MenuItem disabledIf(boolean disabled, MenuItem item) {

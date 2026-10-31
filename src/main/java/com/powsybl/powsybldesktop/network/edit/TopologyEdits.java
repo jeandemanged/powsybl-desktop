@@ -27,6 +27,7 @@ import com.powsybl.iidm.network.extensions.ConnectablePosition;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.network.detail.DetailSections;
 import com.powsybl.powsybldesktop.utils.Messages;
+import javafx.scene.control.TextField;
 import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.stage.Window;
 import javafx.util.StringConverter;
@@ -86,16 +87,32 @@ public final class TopologyEdits {
      * Adds a busbar section at a node of {@code voltageLevel}, optionally positioned in its grid of busbars and sections.
      */
     public static Optional<BusbarSection> newBusbarSection(SceneModel sceneModel, Window owner, VoltageLevel voltageLevel) {
+        return newBusbarSection(sceneModel, owner, voltageLevel, false);
+    }
+
+    /**
+     * @param chooseVoltageLevel whether the voltage level is chosen in the dialog, {@code voltageLevel} first
+     */
+    public static Optional<BusbarSection> newBusbarSection(SceneModel sceneModel, Window owner, VoltageLevel voltageLevel, boolean chooseVoltageLevel) {
         Network network = voltageLevel.getParentNetwork();
-        VoltageLevel.NodeBreakerView topology = voltageLevel.getNodeBreakerView();
         CreationForm form = new CreationForm();
+        VoltageLevelChoice choice = chooseVoltageLevel ? sameTopologyChoice(form, voltageLevel) : null;
         CreationForm.Field<String> id = form.id(network, NetworkEdits.uniqueId(network, voltageLevel.getId() + "_BBS"));
         CreationForm.Field<String> name = form.text("desktop.common.column.name", null, false);
-        CreationForm.Field<Integer> node = form.integer("edit.topology.node", topology.getMaximumNodeIndex() + 1);
+        CreationForm.Field<Integer> node = form.integer("edit.topology.node", voltageLevel.getNodeBreakerView().getMaximumNodeIndex() + 1);
         CreationForm.Field<Integer> busbarIndex = form.integer("edit.topology.busbarIndex", null, false);
         CreationForm.Field<Integer> sectionIndex = form.integer("edit.topology.sectionIndex", null, false);
+        if (choice != null) {
+            choice.valueProperty().addListener((_, _, chosen) -> {
+                if (chosen != null) {
+                    ((TextField) id.getEditor()).setText(NetworkEdits.uniqueId(network, chosen.getId() + "_BBS"));
+                    ((TextField) node.getEditor()).setText(String.valueOf(chosen.getNodeBreakerView().getMaximumNodeIndex() + 1));
+                }
+            });
+        }
         return CreateDialog.showThenDetails(sceneModel, owner, Messages.get("edit.create.title", Messages.get("desktop.common.equipment.busbarSection")),
                 form, () -> {
+                    VoltageLevel.NodeBreakerView topology = (choice == null ? voltageLevel : choice.get()).getNodeBreakerView();
                     String busbarSectionId = id.get();
                     Integer busbar = busbarIndex.get();
                     Integer section = sectionIndex.get();
@@ -154,10 +171,18 @@ public final class TopologyEdits {
      * Adds a switch between two nodes of {@code voltageLevel}, the first one being {@code node1} if not null.
      */
     public static Optional<Switch> newSwitch(SceneModel sceneModel, Window owner, VoltageLevel voltageLevel, Integer node1) {
+        return newSwitch(sceneModel, owner, voltageLevel, node1, false);
+    }
+
+    /**
+     * @param chooseVoltageLevel whether the voltage level is chosen in the dialog, {@code voltageLevel} first; only
+     *                           without {@code node1}
+     */
+    public static Optional<Switch> newSwitch(SceneModel sceneModel, Window owner, VoltageLevel voltageLevel, Integer node1, boolean chooseVoltageLevel) {
         Network network = voltageLevel.getParentNetwork();
-        VoltageLevel.NodeBreakerView topology = voltageLevel.getNodeBreakerView();
-        int nextNode = topology.getMaximumNodeIndex() + 1;
+        int nextNode = voltageLevel.getNodeBreakerView().getMaximumNodeIndex() + 1;
         CreationForm form = new CreationForm();
+        VoltageLevelChoice choice = chooseVoltageLevel && node1 == null ? sameTopologyChoice(form, voltageLevel) : null;
         CreationForm.Field<String> id = form.id(network, NetworkEdits.uniqueId(network, voltageLevel.getId() + "_SW"));
         CreationForm.Field<String> name = form.text("desktop.common.column.name", null, false);
         CreationForm.Field<SwitchKind> kind = form.choice("switches.column.kind", DetailSections.values(SwitchKind.class),
@@ -166,8 +191,19 @@ public final class TopologyEdits {
         CreationForm.Field<Integer> to = form.integer("edit.topology.node2", node1 != null ? nextNode : nextNode + 1);
         CreationForm.Field<Boolean> open = form.check("switches.column.open", false);
         CreationForm.Field<Boolean> retained = form.check("switches.column.retained", false);
+        if (choice != null) {
+            choice.valueProperty().addListener((_, _, chosen) -> {
+                if (chosen != null) {
+                    int chosenNextNode = chosen.getNodeBreakerView().getMaximumNodeIndex() + 1;
+                    ((TextField) id.getEditor()).setText(NetworkEdits.uniqueId(network, chosen.getId() + "_SW"));
+                    ((TextField) from.getEditor()).setText(String.valueOf(chosenNextNode));
+                    ((TextField) to.getEditor()).setText(String.valueOf(chosenNextNode + 1));
+                }
+            });
+        }
         return CreateDialog.showThenDetails(sceneModel, owner, Messages.get("edit.create.title", Messages.get("desktop.common.equipment.switch")),
                 form, () -> {
+                    VoltageLevel.NodeBreakerView topology = (choice == null ? voltageLevel : choice.get()).getNodeBreakerView();
                     String switchId = id.get();
                     NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> topology.newSwitch().setId(switchId).setName(name.get())
                             .setKind(kind.get()).setNode1(from.get()).setNode2(to.get()).setOpen(open.get()).setRetained(retained.get()).add());
@@ -192,15 +228,37 @@ public final class TopologyEdits {
      * Adds a bus to a bus breaker {@code voltageLevel}.
      */
     public static Optional<Bus> newBus(SceneModel sceneModel, Window owner, VoltageLevel voltageLevel) {
+        return newBus(sceneModel, owner, voltageLevel, false);
+    }
+
+    /**
+     * @param chooseVoltageLevel whether the voltage level is chosen in the dialog, {@code voltageLevel} first
+     */
+    public static Optional<Bus> newBus(SceneModel sceneModel, Window owner, VoltageLevel voltageLevel, boolean chooseVoltageLevel) {
         Network network = voltageLevel.getParentNetwork();
         CreationForm form = new CreationForm();
+        VoltageLevelChoice choice = chooseVoltageLevel ? sameTopologyChoice(form, voltageLevel) : null;
         CreationForm.Field<String> id = form.id(network, NetworkEdits.uniqueId(network, voltageLevel.getId() + "_BUS"));
         CreationForm.Field<String> name = form.text("desktop.common.column.name", null, false);
+        if (choice != null) {
+            choice.valueProperty().addListener((_, _, chosen) -> {
+                if (chosen != null) {
+                    ((TextField) id.getEditor()).setText(NetworkEdits.uniqueId(network, chosen.getId() + "_BUS"));
+                }
+            });
+        }
         return CreateDialog.show(owner, Messages.get("edit.create.title", Messages.get("desktop.common.equipment.bus")), form, () -> {
+            VoltageLevel.BusBreakerView topology = (choice == null ? voltageLevel : choice.get()).getBusBreakerView();
             String busId = id.get();
-            NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> voltageLevel.getBusBreakerView().newBus().setId(busId).setName(name.get()).add());
-            return voltageLevel.getBusBreakerView().getBus(busId);
+            NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> topology.newBus().setId(busId).setName(name.get()).add());
+            return topology.getBus(busId);
         });
+    }
+
+    // among the voltage levels of voltageLevel's network and topology kind, the only ones a busbar section, switch or bus can be added to
+    private static VoltageLevelChoice sameTopologyChoice(CreationForm form, VoltageLevel voltageLevel) {
+        return new VoltageLevelChoice(form, voltageLevel.getParentNetwork().getVoltageLevelStream()
+                .filter(other -> other.getTopologyKind() == voltageLevel.getTopologyKind()).toList(), voltageLevel);
     }
 
     /**

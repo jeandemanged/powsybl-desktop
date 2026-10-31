@@ -27,13 +27,14 @@ import java.util.List;
 /**
  * Where a new connectable (or one side of it) is connected, as {@code CreateFeederBay} and
  * {@code CreateBranchFeederBays} take it: a voltage level, then a busbar section with the feeder's position order and
- * direction in a node breaker voltage level (its bay of switches is created), or a bus in a bus breaker one.
+ * direction in a node breaker voltage level (its bay of switches is created), or a bus in a bus breaker one. The voltage
+ * level is a {@link VoltageLevelChoice}.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 final class ConnectionSection {
 
-    private final CreationForm.Field<VoltageLevel> voltageLevel;
+    private final VoltageLevelChoice voltageLevel;
     private final CreationForm.Field<Identifiable<?>> busOrBusbarSection;
     private final CreationForm.Field<Integer> positionOrder;
     private final CreationForm.Field<ConnectablePosition.Direction> direction;
@@ -45,10 +46,7 @@ final class ConnectionSection {
     ConnectionSection(CreationForm form, String title, List<VoltageLevel> voltageLevels, VoltageLevel initialVoltageLevel,
                       Identifiable<?> initial, ConnectablePosition.Direction defaultDirection) {
         form.title(title);
-        List<VoltageLevel> sorted = voltageLevels.stream().sorted(Comparator.comparing(VoltageLevel::getNameOrId)).toList();
-        voltageLevel = form.choice("desktop.common.equipment.voltageLevel", sorted, CreationForm.identifiableFormat(),
-                initialVoltageLevel, true);
-        ComboBox<VoltageLevel> voltageLevelBox = comboBox(voltageLevel);
+        voltageLevel = new VoltageLevelChoice(form, voltageLevels, initialVoltageLevel);
         busOrBusbarSection = form.choice("edit.create.connection.busOrBusbarSection", List.of(), CreationForm.identifiableFormat(), null, true);
         ComboBox<Identifiable<?>> busBox = comboBox(busOrBusbarSection);
         positionOrder = form.integer("edit.create.connection.positionOrder", 0)
@@ -63,7 +61,7 @@ final class ConnectionSection {
                 orderField.setText(String.valueOf(suggestedPositionOrder(busbarSection)));
             }
         });
-        voltageLevelBox.valueProperty().addListener((_, _, newValue) -> showBusesOf(busBox, newValue, null));
+        voltageLevel.valueProperty().addListener((_, _, newValue) -> showBusesOf(busBox, newValue, null));
         showBusesOf(busBox, initialVoltageLevel, initial);
     }
 

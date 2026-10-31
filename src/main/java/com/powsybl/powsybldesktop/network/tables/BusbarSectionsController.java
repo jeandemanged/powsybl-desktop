@@ -147,6 +147,6 @@ public class BusbarSectionsController extends AbstractEquipmentTableController<B
 
     @Override
     protected List<MenuItem> creationItems(Container<?> context) {
-        return List.of(EditMenus.busbarSectionItem(sceneModel, () -> tableView().getScene().getWindow(), context instanceof VoltageLevel voltageLevel ? voltageLevel : null));
+        return List.of(EditMenus.busbarSectionItem(sceneModel, () -> tableView().getScene().getWindow(), sceneModel.getNetwork(), context instanceof VoltageLevel voltageLevel ? voltageLevel : null));
     }
 }

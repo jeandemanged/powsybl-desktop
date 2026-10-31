@@ -101,6 +101,8 @@ public final class TableEditActions {
             items.add(details);
         }
         List<MenuItem> created = disabledIfBusy(sceneModel, creations.get());
+        // named by kind, as in a "New" submenu: loose here, they say what they do
+        created.forEach(item -> item.setText(Messages.get("edit.menu.newKind", item.getText())));
         if (!created.isEmpty()) {
             if (!items.isEmpty()) {
                 items.add(new SeparatorMenuItem());

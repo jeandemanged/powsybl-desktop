@@ -169,6 +169,12 @@ Two established forms:
   order, suggested at the end of the section, and direction) or bus (bus breaker). Orders are never refused:
   `FeederOrders` brings one out of the section's range back to its nearest end and, when it is taken, moves every
   following feeder of the voltage level up (moved back if the creation fails).
+- A voltage level is chosen with a `VoltageLevelChoice` (connection sections; busbar section, switch and bus dialogs
+  opened from tables): a searchable choice, narrowed by a searchable substation choice above it ("no substation"
+  first) when the offered voltage levels span several substations - many voltage levels are named alike. A
+  `SearchableComboBox` driving another: its value is briefly null as its popup hides (ignore it), and the driven one's
+  items are replaced with `setItems(new list)`, never `getItems().setAll`, which fails in its cells once its popup has
+  been shown. Test such chains by clicking through the popups: `setValue` alone doesn't reproduce either.
 - Dates with time are a `…/utils/DateTimePicker.java` (JavaFX has no date-time picker: a `DatePicker`, hour and
   minute spinners, a time zone choice), reporting user edits only through `setOnEdit` - `setValue` shows a value
   without reporting it (the networks view's case date, the new network dialog).
@@ -182,7 +188,9 @@ Two established forms:
 - A context menu whose items depend on the selection is installed with `EditMenus.installContextMenu(control, items)`,
   which builds them on the right-click: a `ContextMenu` doesn't show while empty, so filling it in its `onShowing`
   leaves it never shown. Tables get add and remove buttons with
-  `TableEditActions.install` (`AbstractEquipmentTableController.creationItems` for the base's tables). Detail views have
+  `TableEditActions.install` (`AbstractEquipmentTableController.creationItems` for the base's tables); in a row's
+  context menu, the table's creations are loose items, labeled "New …" (`edit.menu.newKind`). A table's busbar section,
+  switch and bus creations let the voltage level be chosen (any of the right topology kind). Detail views have
   a remove button. Removals (`Removals.remove`) confirm, listing what goes with the object.
 - Tables of objects outside voltage levels (areas, overload management systems, voltage angle limits) extend
   `AbstractNetworkObjectTableController`: no search box, no embedding.
