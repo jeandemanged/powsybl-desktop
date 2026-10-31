@@ -1,2 +1,0 @@
-network.detail depends on network.edit, which depends back on it, directly or not
-network.edit depends on network.detail, which depends back on it, directly or not

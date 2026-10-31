@@ -33,14 +33,14 @@ public class PropertyCriterionRow {
     public PropertyCriterionRow() {
     }
 
-    PropertyCriterionRow(PropertyCriterion criterion) {
+    public PropertyCriterionRow(PropertyCriterion criterion) {
         key.set(criterion.getPropertyKey());
         values.set(String.join(",", criterion.getPropertyValues()));
         equipmentToCheck.set(criterion.getEquipmentToCheck());
         sideToCheck.set(criterion.getSideToCheck());
     }
 
-    PropertyCriterion toCriterion() {
+    public PropertyCriterion toCriterion() {
         List<String> parsedValues = Arrays.stream(values.get().split(","))
                 .map(String::trim)
                 .filter(v -> !v.isEmpty())

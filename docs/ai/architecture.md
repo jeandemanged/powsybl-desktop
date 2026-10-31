@@ -17,31 +17,46 @@ Not a textbook MVC/MVVM. The actual structure is:
 
 ## Package map
 
+Toolkit-free code lives in feature-named packages; everything using JavaFX UI (`javafx.scene`, `stage`, `fxml`,
+`web`) lives under `ui`, in packages named after the same features, with its FXML and scripts in the mirrored resource
+directory. Code outside `ui` (and the shell) is therefore unit-testable without a JavaFX toolkit.
+
 | Package | Responsibility |
 |---|---|
 | root (`…/`) | The shell: `Launcher`, `MainApplication`, `SplashScreen`, `MainController` |
 | `core` | The shared state: `MainModel`, `NetworkStudy`, `AbstractNetworkTask`, `NetworkStructureChange` |
-| `window` | A view's per-window context: `SceneModel`, `SceneView`, and `SeparateWindows` (the separate windows and their tabs) |
 | `navigation` | `NavigationType`, `NavigationEvent` (record), `NavigationState` + one subclass per restorable selection, `NavigationHistory` |
-| `network` | `NetworksController` (load/import/export/merge/detach networks), `SubstationsController` (tree + SLD/NAD tabs + embedded tables), diagram renderers, `DropImportDialog` |
-| `network/tables` | One controller per equipment table, `AbstractEquipmentTableController`, `EmbeddableEquipmentTable`, `ViolationColumns` (columns of the Violations and Security Analysis Results views), `ColumnVisibilityToolbarController`, `TableEditActions` (a table's context menu: details, creations, removal), `NetworkTieLines`, edit dialogs |
-| `network/form` | Editing building blocks shared by tables, detail views, creation dialogs and the contingency editor: `TableColumnSupport` (cell factories), `CellFields` (in-cell editors), `VoltageRange`, `VoltageRegulations`, `DetailForm` + `DetailPart` + `DetailTables` + `DetailSections` (form grids and their common sections), `CreationForm`, `TerminalPickerDialog`. Depends on no other `network` package but `network/search` |
-| `network/detail` | Equipment detail views, one `AbstractEquipmentDetailController` subclass per equipment type, opened by `EquipmentDetails.open` as separate-window tabs (`EquipmentDetails.equipmentLink` links one to another), and their reusable parts: `EquipmentSymbol`, `ReactiveLimitsPane` + `CapabilityChart`, `TapChangerPane`, `ExtensionsPane` + `ExtensionEditors`, `KeyValueTablePane` (properties, aliases), `CoordinatesPane` |
-| `network/edit` | Creating and removing network objects: `NetworkEdits` (the single mutation funnel), creation dialogs (`CreateDialog` + `network/form/CreationForm`, `ConnectionSection`) per family (`ContainerCreations`, `InjectionCreations`, `BranchCreations`, `NetworkObjectEdits`), `TopologyEdits` and `LineEdits` (powsybl-iidm-modification topology modifications), `Removals`, and the menus offering them everywhere (`EditMenus`) |
-| `network/limits` | `OperationalLimitsPane`: an equipment's operational limits groups, read-only with violations highlighted (`FlowViolationsDialog`) or editable (detail views) |
-| `network/search` | `SearchBoxController` (reusable search box) |
-| `search` | `NetworkSearch` (kinds, container resolution), `NetworkSearchIndex` (Lucene); no JavaFX UI |
-| `diagram` | `DiagramPaneController`: reusable WebView viewport (zoom, fit, PNG/SVG export); `BaseVoltages`: base voltage ranges and colors as single line diagrams use them, for whatever colors equipment outside diagrams (map, `EquipmentSymbol`); `MapBaseVoltages` (per base voltage filter checkboxes, in the map and the GUI parameters) |
-| `map` | Map view: `MapController`, `MapNetworkData` snapshot, `MapTileRenderer`, `map.js` + Leaflet |
-| `contingency` | Contingency lists editor and JSON I/O |
+| `network` | `NetworkTieLines`, `VoltageRegulations` (IIDM voltage regulation helpers), `NetworkAndReport`, sample networks (`MapTestNetworkFactory`) |
+| `network/edit` | Changing the network structure: `NetworkEdits` (the single mutation funnel), `Removals` (what a removal takes along, and the removal itself), `PositionEdits`, `FeederOrders`, `Kinds` |
+| `search` | `NetworkSearch` (kinds, container resolution), `NetworkSearchIndex` (Lucene) |
+| `diagram` | `BaseVoltages` (base voltage ranges and colors as single line diagrams use them, for whatever colors equipment outside diagrams), `SubstationDiagramRenderer`, `NetworkAreaDiagramRenderer` |
+| `map` | `MapNetworkData` snapshot, `MapTileRenderer` |
+| `contingency` | `ContingencyListsIO` (JSON I/O), `ContingencyNames`, `ContingencyListKind`, the editor's row models |
 | `loadflow`, `security` | Result/report records and helpers (`LoadFlowConvergence`) |
-| `violations` | `NetworkViolations` (flow and voltage limit violations of the network's state), `FlowViolation`, `VoltageViolation` (also built from a security analysis' violations) |
-| `parameters` | Parameters window (tabs), `ParametersModel`, `ApplicationParameters` record (`GuiParameters`, with the map's `Basemap`, ...), `ApplicationParametersJson`, `ParametersConfigFile` |
-| `notification` | `Notification` record, `NotificationsModel`, overlay popup and history panel |
-| `report`, `reports` | Report viewer; `PowsyblDesktopReportResourceBundle` registering `reports(_fr).properties` |
-| `logs` | `LogsModel` (Logback appender → observable list), `LogsViewController` |
-| `memory`, `about` | Small secondary windows |
-| `utils` | `AbstractDisposableController`, `ListenerManager`, `Messages`, preferences helpers, `Labels`, `TreeItems`, `TableAutoFitLimiter` |
+| `violations` | `NetworkViolations` (flow and voltage limit violations of the network's state), `FlowViolation`, `VoltageViolation` (also built from a security analysis' violations), `Loading`, `VoltageRange` |
+| `parameters` | `ParametersModel`, `ApplicationParameters` record (`GuiParameters`, with the map's `Basemap`, ...), `ApplicationParametersJson`, `ParametersConfigFile` |
+| `notification` | `Notification` record, `NotificationAction`, `NotificationStatus`, `NotificationsModel` |
+| `logs` | `LogsModel` (Logback appender → observable list) |
+| `memory` | `MaxHeapConfig` (the launcher `.cfg`'s `-Xmx` line) |
+| `reports` | `PowsyblDesktopReportResourceBundle` registering `reports(_fr).properties` |
+| `utils` | `Messages`, `Labels`, `ListenerManager`, `LanguagePreferences` |
+| `ui` | `AbstractDisposableController`, `DisposableController` |
+| `ui/window` | A view's per-window context: `SceneModel`, `SceneView`, and `SeparateWindows` (the separate windows and their tabs) |
+| `ui/controls` | Reusable controls and helpers: `CopyButtons`, `DateTimePicker`, `SearchableCheckComboBox`, `TableAutoFitLimiter`, `TreeItems`, `FileChooserPreferences` |
+| `ui/form` | Editing building blocks shared by tables, detail views, creation dialogs and the contingency editor: `TableColumnSupport` (cell factories), `CellFields` (in-cell editors), `DetailForm` + `DetailPart` + `DetailTables` + `DetailSections` (form grids and their common sections), `CreationForm`, `TerminalPickerDialog`, `RemovalDialog` |
+| `ui/network` | `NetworksController` (load/import/export/merge/detach networks), `SubstationsController` (tree + SLD/NAD tabs + embedded tables), `ContainerDiagram`, `DropImportDialog` |
+| `ui/network/tables` | One controller per equipment table, `AbstractEquipmentTableController`, `EmbeddableEquipmentTable`, `ViolationColumns` (columns of the Violations and Security Analysis Results views), `ColumnVisibilityToolbarController`, `TableEditActions` (a table's context menu: details, creations, removal), edit dialogs |
+| `ui/network/detail` | Equipment detail views, one `AbstractEquipmentDetailController` subclass per equipment type, opened by `EquipmentDetails.open` as separate-window tabs (`EquipmentDetails.equipmentLink` links one to another), and their reusable parts: `EquipmentSymbol`, `ReactiveLimitsPane` + `CapabilityChart`, `TapChangerPane`, `ExtensionsPane` + `ExtensionEditors`, `KeyValueTablePane` (properties, aliases), `CoordinatesPane` |
+| `ui/network/edit` | Creation dialogs (`CreateDialog` + `ui/form/CreationForm`, `ConnectionSection`) per family (`ContainerCreations`, `InjectionCreations`, `BranchCreations`, `NetworkObjectEdits`), `TopologyEdits` and `LineEdits` (powsybl-iidm-modification topology modifications), and the menus offering them everywhere (`EditMenus`) |
+| `ui/network/limits` | `OperationalLimitsPane`: an equipment's operational limits groups, read-only with violations highlighted (`FlowViolationsDialog`) or editable (detail views) |
+| `ui/network/search` | `SearchBoxController` (reusable search box) |
+| `ui/diagram` | `DiagramPaneController`: reusable WebView viewport (zoom, fit, PNG/SVG export); `MapBaseVoltages` (per base voltage filter checkboxes, in the map and the GUI parameters) |
+| `ui/map` | Map view: `MapController`, `map.js` + Leaflet |
+| `ui/contingency` | Contingency lists editor |
+| `ui/parameters` | Parameters window and its tabs |
+| `ui/notification` | Overlay popup and history panel |
+| `ui/report` | Report viewer |
+| `ui/logs`, `ui/memory`, `ui/about` | Logs view, small secondary windows |
 
 `src/main/java-templates/…/util/PowsyblDesktopVersion.java` is filled in at build time by the
 `templating-maven-plugin` (inherited from `powsybl-parent`).
@@ -70,8 +85,7 @@ Existing violations are frozen in `src/test/archunit_store` (path set in `src/te
 new violation fails the build, and a fixed one is removed from the store by the next run (commit the updated store). Cycles
 are recorded per package edge, so a new class dependency along an already cyclic edge passes, but a new cyclic edge
 fails. Never refreeze (`-Darchunit.freeze.refreeze=true`) to accept a new violation; that is only for re-recording the
-store after a rule's own text changes. Frozen today: the `network.detail` ↔ `network.edit` cycle (detail views offer
-removal through `Removals`; `CreateDialog`'s "open details" option calls `EquipmentDetails.open`).
+store after a rule's own text changes. Nothing is frozen today.
 
 ## Entry point and lifecycle
 
@@ -101,7 +115,7 @@ flags, running computation and index-build services, search indexes, Map views, 
 resolves a subnetwork to its root and throws if the network is not loaded. Studies are created by
 `addNetwork`/`detachSubnetworks` and disposed (services cancelled, indexes closed) by `removeNetwork`.
 
-`…/window/SceneModel.java` is what a view controller receives (`SceneView.setSceneModel`): the shared `MainModel` plus what
+`…/ui/window/SceneModel.java` is what a view controller receives (`SceneView.setSceneModel`): the shared `MainModel` plus what
 depends on the window showing the view - the network (the main window's follows the selection; a separate window's is
 fixed to the network selected when it was opened, and closed before the selection changes to another root network, so
 the root network's `MainModel` state - busy - applies to it too, while its search boxes search its own network's index),
@@ -161,7 +175,7 @@ has restorable selection; add a branch in `MainController.onNavigationEvent`; ad
 
 ## Separate windows
 
-`…/window/SeparateWindows.java` (owned by `MainController`, reached by views through
+`…/ui/window/SeparateWindows.java` (owned by `MainController`, reached by views through
 `SceneModel.getSeparateWindows()`) shows views in a fixed context, with no menu, toolbar nor history, as tabs of named
 windows ("Window N", the lowest free N; renamed by double-clicking the name left of the tab strip or from the Windows
 menu, blank and taken names rejected):
@@ -199,7 +213,7 @@ menu, blank and taken names rejected):
 
 ## Controller lifecycle
 
-- Swappable controllers extend `…/utils/AbstractDisposableController.java` (implements `DisposableController`) and
+- Swappable controllers extend `…/ui/AbstractDisposableController.java` (implements `DisposableController`) and
   get a `ListenerManager`. Register model listeners with `listenerManager.listen(observable, listener)` so that
   `dispose()` detaches them when `MainController` swaps the view. Override `dispose()` to also stop services,
   dispose included sub-controllers (e.g. `searchBox().dispose()`), and call `super.dispose()`.
@@ -210,7 +224,7 @@ menu, blank and taken names rejected):
 - `@FXML private void initialize()` configures controls that don't need the model; work depending on the model
   happens in the model setter.
 - `ListenerManager` cannot detach a single listener; when a controller needs to switch the list it observes, it
-  refreshes explicitly instead (see the class javadoc of `contingency/ContingenciesController.java`).
+  refreshes explicitly instead (see the class javadoc of `ui/contingency/ContingenciesController.java`).
 
 ## Notifications
 

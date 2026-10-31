@@ -29,9 +29,6 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.utils.Messages;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonType;
-import javafx.stage.Window;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,19 +37,18 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
- * Removes a network object, after a confirmation listing what goes with it: a substation's voltage levels, a voltage
- * level's equipment and the branches connected to it (removed with their bays at their other ends), the HVDC lines of
- * converter stations, the tie lines of boundary lines (their other boundary line staying, unpaired).
+ * Removes a network object with what goes with it ({@link #dependents}, which the views ask the user to confirm first):
+ * a substation's voltage levels, a voltage level's equipment and the branches connected to it (removed with their bays
+ * at their other ends), the HVDC lines of converter stations, the tie lines of boundary lines (their other boundary line
+ * staying, unpaired).
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 public final class Removals {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Removals.class);
-    private static final int MAX_LISTED = 15;
 
     private Removals() {
     }
@@ -71,41 +67,22 @@ public final class Removals {
     }
 
     /**
-     * Asks for confirmation, then removes {@code identifiable}; a failure is reported as an error notification.
+     * Removes {@code identifiable}; a failure is reported as an error notification.
      */
-    public static void remove(MainModel mainModel, Window owner, Identifiable<?> identifiable) {
-        String description = Kinds.describe(identifiable);
-        if (!confirm(owner, description, dependents(identifiable))) {
-            return;
-        }
+    public static void remove(MainModel mainModel, Identifiable<?> identifiable) {
         try {
             NetworkEdits.apply(mainModel, identifiable.getParentNetwork(), network -> remove(network, identifiable));
         } catch (PowsyblException | IllegalArgumentException | IllegalStateException e) {
             LOGGER.error("Failed to remove {}", identifiable.getId(), e);
             mainModel.getNotificationsModel().add(Notification.createError(Instant.now(), "edit.remove.failed")
-                    .withMessageArgs(description, e.getMessage()));
+                    .withMessageArgs(Kinds.describe(identifiable), e.getMessage()));
         }
-    }
-
-    private static boolean confirm(Window owner, String description, List<String> dependents) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.initOwner(owner);
-        alert.setTitle(Messages.get("desktop.common.action.remove"));
-        alert.setHeaderText(Messages.get("edit.remove.confirm", description));
-        if (!dependents.isEmpty()) {
-            List<String> listed = dependents.stream().limit(MAX_LISTED).map(dependent -> "- " + dependent).collect(Collectors.toCollection(ArrayList::new));
-            if (dependents.size() > MAX_LISTED) {
-                listed.add(Messages.get("edit.remove.more", dependents.size() - MAX_LISTED));
-            }
-            alert.setContentText(Messages.get("edit.remove.alsoRemoved") + "\n" + String.join("\n", listed));
-        }
-        return alert.showAndWait().filter(ButtonType.OK::equals).isPresent();
     }
 
     /**
      * What removing {@code identifiable} also removes or changes, described for the confirmation.
      */
-    static List<String> dependents(Identifiable<?> identifiable) {
+    public static List<String> dependents(Identifiable<?> identifiable) {
         Set<String> dependents = new LinkedHashSet<>();
         switch (identifiable) {
             case Substation substation -> substation.getVoltageLevelStream().forEach(voltageLevel -> {

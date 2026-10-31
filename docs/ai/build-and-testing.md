@@ -74,7 +74,7 @@ holds `archunit.properties`: test networks come from PowSyBl factories (`IeeeCdf
   single JavaFX toolkit and TestFX shares one primary stage, so concurrent UI tests would overwrite each other's
   scene. Tests must not share state outside the JVM: write files under `@TempDir`.
 
-Canonical controller test: `network/tables/LoadsControllerTest.java`:
+Canonical controller test: `ui/network/tables/LoadsControllerTest.java`:
 
 ```text
 start(Stage): FXMLLoader(resource, Messages.bundle()) → load → getController()

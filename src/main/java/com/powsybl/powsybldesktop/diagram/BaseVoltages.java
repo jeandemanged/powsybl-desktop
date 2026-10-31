@@ -31,6 +31,8 @@ import java.util.regex.Pattern;
  */
 public final class BaseVoltages {
 
+    // for substations outside every base voltage range, on the map
+    public static final String DEFAULT_SUBSTATION_COLOR = "#000000";
     private static final Pattern BASE_VOLTAGE_COLOR = Pattern.compile("\\.sld-(\\w+)\\s*\\{\\s*--sld-vl-color:\\s*(#\\w+)\\s*}");
 
     private final BaseVoltagesConfig baseVoltagesConfig = BaseVoltagesConfig.fromPlatformConfig();

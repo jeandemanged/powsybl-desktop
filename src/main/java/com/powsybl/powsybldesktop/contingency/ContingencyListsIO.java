@@ -24,7 +24,7 @@ import java.nio.file.Path;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-final class ContingencyListsIO {
+public final class ContingencyListsIO {
 
     private ContingencyListsIO() {
     }
@@ -35,11 +35,11 @@ final class ContingencyListsIO {
         return mapper;
     }
 
-    static ContingencyList read(Path path) throws IOException {
+    public static ContingencyList read(Path path) throws IOException {
         return mapper().readValue(path.toFile(), ContingencyList.class);
     }
 
-    static void write(ListOfContingencyLists list, Path path) throws IOException {
+    public static void write(ListOfContingencyLists list, Path path) throws IOException {
         mapper().writerWithDefaultPrettyPrinter().writeValue(path.toFile(), list);
     }
 }

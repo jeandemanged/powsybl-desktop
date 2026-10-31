@@ -252,7 +252,7 @@
                 <includes>
                     <include>THIRD-PARTY.txt</include>
                 </includes>
-                <targetPath>com/powsybl/powsybldesktop/about</targetPath>
+                <targetPath>com/powsybl/powsybldesktop/ui/about</targetPath>
             </resource>
         </resources>
         <plugins>
@@ -400,7 +400,7 @@
                                     <artifactId>leaflet</artifactId>
                                     <version>${leaflet.version}</version>
                                     <includes>META-INF/resources/webjars/leaflet/${leaflet.version}/leaflet.js,META-INF/resources/webjars/leaflet/${leaflet.version}/leaflet.css</includes>
-                                    <outputDirectory>${project.build.outputDirectory}/com/powsybl/powsybldesktop/map</outputDirectory>
+                                    <outputDirectory>${project.build.outputDirectory}/com/powsybl/powsybldesktop/ui/map</outputDirectory>
                                     <fileMappers>
                                         <org.codehaus.plexus.components.io.filemappers.FlattenFileMapper/>
                                     </fileMappers>

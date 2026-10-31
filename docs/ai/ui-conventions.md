@@ -6,7 +6,7 @@ resources package.
 ## Screens: FXML + controller
 
 - One FXML file per view, named `kebab-case-view.fxml`, in the resources package matching the controller's Java
-  package (`network/tables/LoadsController.java` ↔ `network/tables/loads-view.fxml`).
+  package (`ui/network/tables/LoadsController.java` ↔ `ui/network/tables/loads-view.fxml`).
 - The root element declares `fx:controller="fully.qualified.Controller"`. Every `fx:id` has a matching `@FXML`
   field of the same name and compatible type; every `onAction="#name"` has a matching method. Renaming one side
   without the other breaks loading at runtime (and the controller's tests).
@@ -15,14 +15,14 @@ resources package.
 - Reusable sub-views are embedded with `<fx:include fx:id="searchBox" source="..."/>`; the nested controller is
   injected as a field named `<fx:id>Controller` (e.g. `searchBoxController`, `columnVisibilityToolbarController`,
   `sldPaneController`). Existing reusable pieces:
-  - `network/search/search-box.fxml` → `SearchBoxController` (bind with `searchBox().bind(mainModel, kinds, onMatch)`).
-  - `network/tables/column-visibility-toolbar.fxml` → `ColumnVisibilityToolbarController.configure(List<ColumnGroup>)`.
-  - `diagram/diagram-pane.fxml` → `DiagramPaneController` (WebView diagram viewport).
-  - Equipment table views themselves, included in `network/substations-view.fxml` as `*Embedded` tabs.
+  - `ui/network/search/search-box.fxml` → `SearchBoxController` (bind with `searchBox().bind(mainModel, kinds, onMatch)`).
+  - `ui/network/tables/column-visibility-toolbar.fxml` → `ColumnVisibilityToolbarController.configure(List<ColumnGroup>)`.
+  - `ui/diagram/diagram-pane.fxml` → `DiagramPaneController` (WebView diagram viewport).
+  - Equipment table views themselves, included in `ui/network/substations-view.fxml` as `*Embedded` tabs.
 - Load views with `new FXMLLoader(url, Messages.bundle())`. For center views, `MainController.loadView/ensureController`
   already does it.
-- Canonical simple screen: `…/network/tables/LoadsController.java` + `loads-view.fxml`. Canonical complex screens:
-  `…/network/SubstationsController.java`, `…/network/NetworksController.java`.
+- Canonical simple screen: `…/ui/network/tables/LoadsController.java` + `loads-view.fxml`. Canonical complex screens:
+  `…/ui/network/SubstationsController.java`, `…/ui/network/NetworksController.java`.
 
 ## Internationalization
 
@@ -71,7 +71,7 @@ resources package.
 
 Pattern for "one row per equipment of a kind" tables (Loads, Generators, Lines, Transformers, ...):
 
-1. Controller extends `…/network/tables/AbstractEquipmentTableController.java` (`<T extends Identifiable<?>>`).
+1. Controller extends `…/ui/network/tables/AbstractEquipmentTableController.java` (`<T extends Identifiable<?>>`).
    It provides sorted data loading, refresh on `networkProperty()`/`updateProperty()`, search integration,
    embedded-in-substations filtering (`setContainer`), container link cells and row selection.
 2. `@FXML private void initialize()` calls `initializeTable()` first, then configures each column with
@@ -104,16 +104,16 @@ table uses it too).
   There is no form object/DTO layer.
 - Editable cells are always-visible fields, edited like the parameters and detail views' fields - never a
   double-click-to-edit cell (no `TextFieldTableCell`/`ChoiceBoxTableCell`). The fields live in
-  `…/network/form/CellFields.java`: `textColumn`/`choiceColumn` commit through the column's `onEditCommit`, and
+  `…/ui/form/CellFields.java`: `textColumn`/`choiceColumn` commit through the column's `onEditCommit`, and
   `sidedColumn`/`editorColumn` stack one editor per side (`CellTextField`, `CellChoiceBox`, `IntStepper`). A text
   field commits on Enter or focus loss, Escape reverts what is being typed, Up/Down commit then move to the field
   above/below in the same column; focusing a field selects its cell. A click into an unfocused field selects its whole
   value (typing overwrites it), a further click places the caret.
 - Country choices (PowSyBl `Country`) are searchable and shown by `Labels.countryFormat()` (code and name): a single
   choice is a ControlsFX `SearchableComboBox` (`CellFields.searchableChoiceColumn`, `DetailForm.searchableChoiceField`,
-  `CreationForm.searchableChoice`), a multiple one a `…/utils/SearchableCheckComboBox.java` (ControlsFX's
+  `CreationForm.searchableChoice`), a multiple one a `…/ui/controls/SearchableCheckComboBox.java` (ControlsFX's
   `CheckComboBox` has no search).
-- Use the factories in `…/network/form/TableColumnSupport.java` (`configureDoubleColumn`,
+- Use the factories in `…/ui/form/TableColumnSupport.java` (`configureDoubleColumn`,
   `configureEditableBooleanColumn`, `configureChoiceColumn`, `configureSingleSlotChoiceColumn`, `configureNullableEditable*`, `configureMultiSided*`,
   `configureDetailNameColumn`, `configureSpinnerIntColumn`, ...) and, in detail views, `DetailTables.editableColumn`.
   They handle:
@@ -139,14 +139,14 @@ Two established forms:
 - **Code-built modal dialogs**: a package-private `final` class with a private constructor and a
   `static show(Window owner, ...)` method building a `javafx.scene.control.Dialog` in code (no FXML):
   `initOwner(owner)`, `initModality(Modality.WINDOW_MODAL)`, title from `Messages`, content set on the `DialogPane`,
-  `ButtonType.CLOSE` (or a result converter), `showAndWait()`. Examples: `…/network/tables/GeographicalTagsDialog.java`
-  (simplest), `…/network/DropImportDialog.java`
+  `ButtonType.CLOSE` (or a result converter), `showAndWait()`. Examples: `…/ui/network/tables/GeographicalTagsDialog.java`
+  (simplest), `…/ui/network/DropImportDialog.java`
   (returns a result via `setResultConverter`). Edits inside these dialogs write to the IIDM object directly and use the
   same error/flash helpers as tables.
 - **FXML secondary windows** opened by `MainController`: memory (`onMemory`); about (`onAbout`) is an FXML content
   inside a `Dialog`. Parameters are a center view that can also be opened in a `SeparateWindows` window (see below). Memory window pattern: load with `Messages.bundle()`, add `styles.css` to the root, `initOwner(main window)`, set the
   app icon (`logo.png`), dispose the controller in `setOnHidden`, and close it in `MainController.dispose()`.
-- **Separate view windows** (`…/window/SeparateWindows.java`, see architecture): a view controller opened there gets a
+- **Separate view windows** (`…/ui/window/SeparateWindows.java`, see architecture): a view controller opened there gets a
   `SceneModel.separate` scene; it must navigate through `sceneModel.navigate`/`record` and read its network from the
   scene, never `mainModel.getNetwork()`. A new view shown in the center gets its "open in new window" button for free
   if it is a `SceneView` loaded through `MainController.ensureSceneView` and has a top `ToolBar` (BorderPane top or VBox
@@ -176,7 +176,7 @@ Two established forms:
   `SearchableComboBox` driving another: its value is briefly null as its popup hides (ignore it), and the driven one's
   items are replaced with `setItems(new list)`, never `getItems().setAll`, which fails in its cells once its popup has
   been shown. Test such chains by clicking through the popups: `setValue` alone doesn't reproduce either.
-- Dates with time are a `…/utils/DateTimePicker.java` (JavaFX has no date-time picker: a `DatePicker`, hour and
+- Dates with time are a `…/ui/controls/DateTimePicker.java` (JavaFX has no date-time picker: a `DatePicker`, hour and
   minute spinners, a time zone choice; dates shown as `31 Oct 2026` whatever the locale), reporting user edits only through `setOnEdit` - `setValue` shows a value
   without reporting it (the networks view's case date, the new network dialog).
 - New lines default their second side to `BranchCreations.otherEnd`: another substation's voltage level of the
@@ -250,7 +250,7 @@ shared `equipment-detail-view.fxml` (no `fx:controller`: `EquipmentDetails.load`
   injected by `DiagramPaneController` into an HTML shell in a `WebView`.
 - JS → Java callbacks go through `window.controller` (`JSObject.setMember("controller", this)` once the page has
   loaded); callback methods are public and annotated `@SuppressWarnings("unused") // used by JS`
-  (`SubstationsController.onSwitchClick`, `onFeederTopBottomClick`). Keep JS (`network/sld.js`, `map/map.js`) and
+  (`SubstationsController.onSwitchClick`, `onFeederTopBottomClick`). Keep JS (`ui/network/sld.js`, `ui/map/map.js`) and
   these method names in sync.
 - In `sld.js`, `clickAction` is the single answer to what a click on an element does: the click runs it, and the
   pointer cursor shows exactly where it isn't null (feeders, switches, then `ContainerDiagram.isClickableEquipment`

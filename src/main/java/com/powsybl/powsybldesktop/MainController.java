@@ -19,7 +19,6 @@ import com.powsybl.loadflow.LoadFlow;
 import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.loadflow.LoadFlowRunParameters;
-import com.powsybl.powsybldesktop.contingency.ContingenciesController;
 import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.core.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.core.MainModel;
@@ -27,56 +26,57 @@ import com.powsybl.powsybldesktop.core.NetworkStructureChange;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
 import com.powsybl.powsybldesktop.loadflow.LoadFlowConvergence;
 import com.powsybl.powsybldesktop.loadflow.LoadFlowResultAndReport;
-import com.powsybl.powsybldesktop.logs.LogsViewController;
-import com.powsybl.powsybldesktop.map.MapController;
-import com.powsybl.powsybldesktop.memory.MemoryController;
 import com.powsybl.powsybldesktop.navigation.*;
 import com.powsybl.powsybldesktop.navigation.AreaNavigationState;
 import com.powsybl.powsybldesktop.navigation.GroundNavigationState;
 import com.powsybl.powsybldesktop.navigation.NetworkNavigationState;
 import com.powsybl.powsybldesktop.navigation.OverloadManagementSystemNavigationState;
-import com.powsybl.powsybldesktop.network.NetworksController;
-import com.powsybl.powsybldesktop.network.SubstationsController;
-import com.powsybl.powsybldesktop.network.tables.AreasController;
-import com.powsybl.powsybldesktop.network.tables.BatteriesController;
-import com.powsybl.powsybldesktop.network.tables.BoundaryLinesController;
-import com.powsybl.powsybldesktop.network.tables.BusbarSectionsController;
-import com.powsybl.powsybldesktop.network.tables.BusesBusBreakerViewController;
-import com.powsybl.powsybldesktop.network.tables.BusesBusViewController;
-import com.powsybl.powsybldesktop.network.tables.ComponentsController;
-import com.powsybl.powsybldesktop.network.tables.GeneratorsController;
-import com.powsybl.powsybldesktop.network.tables.GroundsController;
-import com.powsybl.powsybldesktop.network.tables.HvdcLinesController;
-import com.powsybl.powsybldesktop.network.tables.LccConverterStationsController;
-import com.powsybl.powsybldesktop.network.tables.LinesController;
-import com.powsybl.powsybldesktop.network.tables.LoadsController;
-import com.powsybl.powsybldesktop.network.tables.OverloadManagementSystemsController;
-import com.powsybl.powsybldesktop.network.tables.SecurityAnalysisResultsController;
-import com.powsybl.powsybldesktop.network.tables.ShuntCompensatorsController;
-import com.powsybl.powsybldesktop.network.tables.StaticVarCompensatorsController;
-import com.powsybl.powsybldesktop.network.tables.SubstationsTableController;
-import com.powsybl.powsybldesktop.network.tables.TieLinesController;
-import com.powsybl.powsybldesktop.network.tables.TransformersController;
-import com.powsybl.powsybldesktop.network.tables.ViolationsController;
-import com.powsybl.powsybldesktop.network.tables.VoltageAngleLimitsController;
-import com.powsybl.powsybldesktop.network.tables.VoltageLevelsController;
-import com.powsybl.powsybldesktop.network.tables.VscConverterStationsController;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
-import com.powsybl.powsybldesktop.notification.NotificationOverlay;
-import com.powsybl.powsybldesktop.notification.NotificationsController;
-import com.powsybl.powsybldesktop.parameters.ParametersController;
-import com.powsybl.powsybldesktop.report.ReportsController;
 import com.powsybl.powsybldesktop.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.security.SecurityAnalysisResultAndReport;
-import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
-import com.powsybl.powsybldesktop.utils.DisposableController;
+import com.powsybl.powsybldesktop.ui.AbstractDisposableController;
+import com.powsybl.powsybldesktop.ui.DisposableController;
+import com.powsybl.powsybldesktop.ui.contingency.ContingenciesController;
+import com.powsybl.powsybldesktop.ui.logs.LogsViewController;
+import com.powsybl.powsybldesktop.ui.map.MapController;
+import com.powsybl.powsybldesktop.ui.memory.MemoryController;
+import com.powsybl.powsybldesktop.ui.network.NetworksController;
+import com.powsybl.powsybldesktop.ui.network.SubstationsController;
+import com.powsybl.powsybldesktop.ui.network.tables.AreasController;
+import com.powsybl.powsybldesktop.ui.network.tables.BatteriesController;
+import com.powsybl.powsybldesktop.ui.network.tables.BoundaryLinesController;
+import com.powsybl.powsybldesktop.ui.network.tables.BusbarSectionsController;
+import com.powsybl.powsybldesktop.ui.network.tables.BusesBusBreakerViewController;
+import com.powsybl.powsybldesktop.ui.network.tables.BusesBusViewController;
+import com.powsybl.powsybldesktop.ui.network.tables.ComponentsController;
+import com.powsybl.powsybldesktop.ui.network.tables.GeneratorsController;
+import com.powsybl.powsybldesktop.ui.network.tables.GroundsController;
+import com.powsybl.powsybldesktop.ui.network.tables.HvdcLinesController;
+import com.powsybl.powsybldesktop.ui.network.tables.LccConverterStationsController;
+import com.powsybl.powsybldesktop.ui.network.tables.LinesController;
+import com.powsybl.powsybldesktop.ui.network.tables.LoadsController;
+import com.powsybl.powsybldesktop.ui.network.tables.OverloadManagementSystemsController;
+import com.powsybl.powsybldesktop.ui.network.tables.SecurityAnalysisResultsController;
+import com.powsybl.powsybldesktop.ui.network.tables.ShuntCompensatorsController;
+import com.powsybl.powsybldesktop.ui.network.tables.StaticVarCompensatorsController;
+import com.powsybl.powsybldesktop.ui.network.tables.SubstationsTableController;
+import com.powsybl.powsybldesktop.ui.network.tables.TieLinesController;
+import com.powsybl.powsybldesktop.ui.network.tables.TransformersController;
+import com.powsybl.powsybldesktop.ui.network.tables.ViolationsController;
+import com.powsybl.powsybldesktop.ui.network.tables.VoltageAngleLimitsController;
+import com.powsybl.powsybldesktop.ui.network.tables.VoltageLevelsController;
+import com.powsybl.powsybldesktop.ui.network.tables.VscConverterStationsController;
+import com.powsybl.powsybldesktop.ui.notification.NotificationOverlay;
+import com.powsybl.powsybldesktop.ui.notification.NotificationsController;
+import com.powsybl.powsybldesktop.ui.parameters.ParametersController;
+import com.powsybl.powsybldesktop.ui.report.ReportsController;
+import com.powsybl.powsybldesktop.ui.window.SceneModel;
+import com.powsybl.powsybldesktop.ui.window.SceneView;
+import com.powsybl.powsybldesktop.ui.window.SeparateWindows;
 import com.powsybl.powsybldesktop.utils.LanguagePreferences;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.violations.NetworkViolations;
-import com.powsybl.powsybldesktop.window.SceneModel;
-import com.powsybl.powsybldesktop.window.SceneView;
-import com.powsybl.powsybldesktop.window.SeparateWindows;
 import com.powsybl.security.SecurityAnalysis;
 import com.powsybl.security.SecurityAnalysisParameters;
 import com.powsybl.security.SecurityAnalysisReport;
@@ -169,8 +169,8 @@ public class MainController extends AbstractDisposableController {
     private static final String LOGS_WINDOW = "logs";
     private static final String REPORTS_WINDOW = "reports";
     private static final String PARAMETERS_WINDOW = "parameters";
-    private static final String MAP_FXML = "map/map-view.fxml";
-    private static final String CONTINGENCIES_FXML = "contingency/contingencies-view.fxml";
+    private static final String MAP_FXML = "ui/map/map-view.fxml";
+    private static final String CONTINGENCIES_FXML = "ui/contingency/contingencies-view.fxml";
 
     private final MainModel mainModel;
     private final SeparateWindows separateWindows;
@@ -215,7 +215,7 @@ public class MainController extends AbstractDisposableController {
             return;
         }
 
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("memory/memory-view.fxml"), Messages.bundle());
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("ui/memory/memory-view.fxml"), Messages.bundle());
         Parent root;
         try {
             root = loader.load();
@@ -242,7 +242,7 @@ public class MainController extends AbstractDisposableController {
 
     @FXML
     protected void onAbout() {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("about/about-view.fxml"), Messages.bundle());
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("ui/about/about-view.fxml"), Messages.bundle());
         Parent root;
         try {
             root = loader.load();
@@ -768,7 +768,7 @@ public class MainController extends AbstractDisposableController {
         separateWindows.addDragToOpen(logsButton, LOGS_WINDOW, this::detachLogs);
         separateWindows.addDragToOpen(reportsButton, REPORTS_WINDOW, this::detachReports);
 
-        FXMLLoader notificationsLoader = new FXMLLoader(getClass().getResource("notification/notifications-view.fxml"), Messages.bundle());
+        FXMLLoader notificationsLoader = new FXMLLoader(getClass().getResource("ui/notification/notifications-view.fxml"), Messages.bundle());
         try {
             notificationsView = notificationsLoader.load();
         } catch (IOException e) {
@@ -924,17 +924,17 @@ public class MainController extends AbstractDisposableController {
             implicitlySelectedRoot = implicitRoot ? target : null;
         }
         if (newValue.navigationType() == NavigationType.LOGS) {
-            ensureController(LogsViewController.class, "logs/logs-view.fxml", c -> c.setModels(mainModel.getLogsModel(), mainModel.getParametersModel()),
+            ensureController(LogsViewController.class, "ui/logs/logs-view.fxml", c -> c.setModels(mainModel.getLogsModel(), mainModel.getParametersModel()),
                     root -> separateWindows.addOpenButton(root, this::detachLogs));
         } else if (newValue.navigationType() == NavigationType.NETWORKS) {
-            NetworksController controller = ensureController(NetworksController.class, "network/networks-view.fxml", c -> c.setSceneModel(sceneModel));
+            NetworksController controller = ensureController(NetworksController.class, "ui/network/networks-view.fxml", c -> c.setSceneModel(sceneModel));
             if (newValue.state() instanceof NetworkNavigationState state) {
                 controller.navigateTo(state.getSelectedNetwork());
             } else if (newValue.state() == null) {
                 controller.navigateTo(null);
             }
         } else if (newValue.navigationType() == NavigationType.SUBSTATIONS) {
-            SubstationsController controller = ensureController(SubstationsController.class, "network/substations-view.fxml", c -> c.setSceneModel(sceneModel));
+            SubstationsController controller = ensureController(SubstationsController.class, "ui/network/substations-view.fxml", c -> c.setSceneModel(sceneModel));
             if (newValue.state() instanceof ContainerNavigationState state) {
                 controller.navigateTo(state.getContainer(), state.getTab(), state.getEquipment());
             } else if (newValue.state() == null) {
@@ -946,7 +946,7 @@ public class MainController extends AbstractDisposableController {
             ensureSceneView(ContingenciesController.class, CONTINGENCIES_FXML, NavigationType.CONTINGENCIES);
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SUBSTATIONS) {
             SubstationsTableController controller = ensureSceneView(SubstationsTableController.class,
-                    "network/tables/substations-view.fxml", NavigationType.NETWORK_TABLE_SUBSTATIONS);
+                    "ui/network/tables/substations-view.fxml", NavigationType.NETWORK_TABLE_SUBSTATIONS);
             if (newValue.state() instanceof SubstationNavigationState state) {
                 controller.goToSubstation(state.getSubstation());
             } else if (newValue.state() == null) {
@@ -954,7 +954,7 @@ public class MainController extends AbstractDisposableController {
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_VOLTAGE_LEVELS) {
             VoltageLevelsController controller = ensureSceneView(VoltageLevelsController.class,
-                    "network/tables/voltage-levels-view.fxml", NavigationType.NETWORK_TABLE_VOLTAGE_LEVELS);
+                    "ui/network/tables/voltage-levels-view.fxml", NavigationType.NETWORK_TABLE_VOLTAGE_LEVELS);
             if (newValue.state() instanceof VoltageLevelNavigationState state) {
                 controller.goToVoltageLevel(state.getVoltageLevel());
             } else if (newValue.state() == null) {
@@ -962,7 +962,7 @@ public class MainController extends AbstractDisposableController {
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_BUSBAR_SECTIONS) {
             BusbarSectionsController controller = ensureSceneView(BusbarSectionsController.class,
-                    "network/tables/busbar-sections-view.fxml", NavigationType.NETWORK_TABLE_BUSBAR_SECTIONS);
+                    "ui/network/tables/busbar-sections-view.fxml", NavigationType.NETWORK_TABLE_BUSBAR_SECTIONS);
             if (newValue.state() instanceof BusbarSectionNavigationState state) {
                 controller.goToBusbarSection(state.getBusbarSection());
             } else if (newValue.state() == null) {
@@ -970,7 +970,7 @@ public class MainController extends AbstractDisposableController {
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_BUSES_BUS_VIEW) {
             BusesBusViewController controller = ensureSceneView(BusesBusViewController.class,
-                    "network/tables/buses-bus-view.fxml", NavigationType.NETWORK_TABLE_BUSES_BUS_VIEW);
+                    "ui/network/tables/buses-bus-view.fxml", NavigationType.NETWORK_TABLE_BUSES_BUS_VIEW);
             if (newValue.state() instanceof BusNavigationState state) {
                 controller.goToBus(state.getBus());
             } else if (newValue.state() == null) {
@@ -978,7 +978,7 @@ public class MainController extends AbstractDisposableController {
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_BUSES_BUS_BREAKER_VIEW) {
             BusesBusBreakerViewController controller = ensureSceneView(BusesBusBreakerViewController.class,
-                    "network/tables/buses-bus-breaker-view.fxml", NavigationType.NETWORK_TABLE_BUSES_BUS_BREAKER_VIEW);
+                    "ui/network/tables/buses-bus-breaker-view.fxml", NavigationType.NETWORK_TABLE_BUSES_BUS_BREAKER_VIEW);
             if (newValue.state() instanceof BusNavigationState state) {
                 controller.goToBus(state.getBus());
             } else if (newValue.state() == null) {
@@ -986,7 +986,7 @@ public class MainController extends AbstractDisposableController {
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_GENERATORS) {
             GeneratorsController controller = ensureSceneView(GeneratorsController.class,
-                    "network/tables/generators-view.fxml", NavigationType.NETWORK_TABLE_GENERATORS);
+                    "ui/network/tables/generators-view.fxml", NavigationType.NETWORK_TABLE_GENERATORS);
             if (newValue.state() instanceof GeneratorNavigationState state) {
                 controller.goToGenerator(state.getGenerator());
             } else if (newValue.state() == null) {
@@ -994,7 +994,7 @@ public class MainController extends AbstractDisposableController {
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_BATTERIES) {
             BatteriesController controller = ensureSceneView(BatteriesController.class,
-                    "network/tables/batteries-view.fxml", NavigationType.NETWORK_TABLE_BATTERIES);
+                    "ui/network/tables/batteries-view.fxml", NavigationType.NETWORK_TABLE_BATTERIES);
             if (newValue.state() instanceof BatteryNavigationState state) {
                 controller.goToBattery(state.getBattery());
             } else if (newValue.state() == null) {
@@ -1002,7 +1002,7 @@ public class MainController extends AbstractDisposableController {
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SHUNT_COMPENSATORS) {
             ShuntCompensatorsController controller = ensureSceneView(ShuntCompensatorsController.class,
-                    "network/tables/shunt-compensators-view.fxml", NavigationType.NETWORK_TABLE_SHUNT_COMPENSATORS);
+                    "ui/network/tables/shunt-compensators-view.fxml", NavigationType.NETWORK_TABLE_SHUNT_COMPENSATORS);
             if (newValue.state() instanceof ShuntCompensatorNavigationState state) {
                 controller.goToShuntCompensator(state.getShuntCompensator());
             } else if (newValue.state() == null) {
@@ -1010,7 +1010,7 @@ public class MainController extends AbstractDisposableController {
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_STATIC_VAR_COMPENSATORS) {
             StaticVarCompensatorsController controller = ensureSceneView(StaticVarCompensatorsController.class,
-                    "network/tables/static-var-compensators-view.fxml", NavigationType.NETWORK_TABLE_STATIC_VAR_COMPENSATORS);
+                    "ui/network/tables/static-var-compensators-view.fxml", NavigationType.NETWORK_TABLE_STATIC_VAR_COMPENSATORS);
             if (newValue.state() instanceof StaticVarCompensatorNavigationState state) {
                 controller.goToStaticVarCompensator(state.getStaticVarCompensator());
             } else if (newValue.state() == null) {
@@ -1018,7 +1018,7 @@ public class MainController extends AbstractDisposableController {
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_VSC_CONVERTER_STATIONS) {
             VscConverterStationsController controller = ensureSceneView(VscConverterStationsController.class,
-                    "network/tables/vsc-converter-stations-view.fxml", NavigationType.NETWORK_TABLE_VSC_CONVERTER_STATIONS);
+                    "ui/network/tables/vsc-converter-stations-view.fxml", NavigationType.NETWORK_TABLE_VSC_CONVERTER_STATIONS);
             if (newValue.state() instanceof VscConverterStationNavigationState state) {
                 controller.goToVscConverterStation(state.getVscConverterStation());
             } else if (newValue.state() == null) {
@@ -1026,21 +1026,21 @@ public class MainController extends AbstractDisposableController {
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_LCC_CONVERTER_STATIONS) {
             LccConverterStationsController controller = ensureSceneView(LccConverterStationsController.class,
-                    "network/tables/lcc-converter-stations-view.fxml", NavigationType.NETWORK_TABLE_LCC_CONVERTER_STATIONS);
+                    "ui/network/tables/lcc-converter-stations-view.fxml", NavigationType.NETWORK_TABLE_LCC_CONVERTER_STATIONS);
             if (newValue.state() instanceof LccConverterStationNavigationState state) {
                 controller.goToLccConverterStation(state.getLccConverterStation());
             } else if (newValue.state() == null) {
                 controller.goToLccConverterStation(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_LOADS) {
-            LoadsController controller = ensureSceneView(LoadsController.class, "network/tables/loads-view.fxml", NavigationType.NETWORK_TABLE_LOADS);
+            LoadsController controller = ensureSceneView(LoadsController.class, "ui/network/tables/loads-view.fxml", NavigationType.NETWORK_TABLE_LOADS);
             if (newValue.state() instanceof LoadNavigationState state) {
                 controller.goToLoad(state.getLoad());
             } else if (newValue.state() == null) {
                 controller.goToLoad(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_LINES) {
-            LinesController controller = ensureSceneView(LinesController.class, "network/tables/lines-view.fxml", NavigationType.NETWORK_TABLE_LINES);
+            LinesController controller = ensureSceneView(LinesController.class, "ui/network/tables/lines-view.fxml", NavigationType.NETWORK_TABLE_LINES);
             if (newValue.state() instanceof LineNavigationState state) {
                 controller.goToLine(state.getLine());
             } else if (newValue.state() == null) {
@@ -1048,14 +1048,14 @@ public class MainController extends AbstractDisposableController {
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_TRANSFORMERS) {
             TransformersController controller = ensureSceneView(TransformersController.class,
-                    "network/tables/transformers-view.fxml", NavigationType.NETWORK_TABLE_TRANSFORMERS);
+                    "ui/network/tables/transformers-view.fxml", NavigationType.NETWORK_TABLE_TRANSFORMERS);
             if (newValue.state() instanceof TransformerNavigationState state) {
                 controller.goToTransformer(state.getTransformer());
             } else if (newValue.state() == null) {
                 controller.goToTransformer(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_TIE_LINES) {
-            TieLinesController controller = ensureSceneView(TieLinesController.class, "network/tables/tie-lines-view.fxml", NavigationType.NETWORK_TABLE_TIE_LINES);
+            TieLinesController controller = ensureSceneView(TieLinesController.class, "ui/network/tables/tie-lines-view.fxml", NavigationType.NETWORK_TABLE_TIE_LINES);
             if (newValue.state() instanceof TieLineNavigationState state) {
                 controller.goToTieLine(state.getTieLine());
             } else if (newValue.state() == null) {
@@ -1063,14 +1063,14 @@ public class MainController extends AbstractDisposableController {
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_BOUNDARY_LINES) {
             BoundaryLinesController controller = ensureSceneView(BoundaryLinesController.class,
-                    "network/tables/boundary-lines-view.fxml", NavigationType.NETWORK_TABLE_BOUNDARY_LINES);
+                    "ui/network/tables/boundary-lines-view.fxml", NavigationType.NETWORK_TABLE_BOUNDARY_LINES);
             if (newValue.state() instanceof BoundaryLineNavigationState state) {
                 controller.goToBoundaryLine(state.getBoundaryLine());
             } else if (newValue.state() == null) {
                 controller.goToBoundaryLine(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_HVDC_LINES) {
-            HvdcLinesController controller = ensureSceneView(HvdcLinesController.class, "network/tables/hvdc-lines-view.fxml", NavigationType.NETWORK_TABLE_HVDC_LINES);
+            HvdcLinesController controller = ensureSceneView(HvdcLinesController.class, "ui/network/tables/hvdc-lines-view.fxml", NavigationType.NETWORK_TABLE_HVDC_LINES);
             if (newValue.state() instanceof HvdcLineNavigationState state) {
                 controller.goToHvdcLine(state.getHvdcLine());
             } else if (newValue.state() == null) {
@@ -1079,18 +1079,18 @@ public class MainController extends AbstractDisposableController {
         } else if (NETWORK_OBJECT_TABLES.contains(newValue.navigationType())) {
             onNetworkObjectTableEvent(newValue);
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_COMPONENTS) {
-            ensureSceneView(ComponentsController.class, "network/tables/components-view.fxml", NavigationType.NETWORK_TABLE_COMPONENTS);
+            ensureSceneView(ComponentsController.class, "ui/network/tables/components-view.fxml", NavigationType.NETWORK_TABLE_COMPONENTS);
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS) {
             ensureSceneView(SecurityAnalysisResultsController.class,
-                    "network/tables/security-analysis-results-view.fxml", NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS);
+                    "ui/network/tables/security-analysis-results-view.fxml", NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS);
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_VIOLATIONS) {
             ensureSceneView(ViolationsController.class,
-                    "network/tables/violations-view.fxml", NavigationType.NETWORK_TABLE_VIOLATIONS);
+                    "ui/network/tables/violations-view.fxml", NavigationType.NETWORK_TABLE_VIOLATIONS);
         } else if (newValue.navigationType() == NavigationType.PARAMETERS) {
-            ensureController(ParametersController.class, "parameters/parameters-view.fxml", c -> c.setMainModel(mainModel),
+            ensureController(ParametersController.class, "ui/parameters/parameters-view.fxml", c -> c.setMainModel(mainModel),
                     root -> separateWindows.addOpenButton(root, this::detachParameters));
         } else if (newValue.navigationType() == NavigationType.REPORTS) {
-            ReportsController controller = ensureController(ReportsController.class, "report/reports-view.fxml", c -> c.setSceneModel(sceneModel),
+            ReportsController controller = ensureController(ReportsController.class, "ui/report/reports-view.fxml", c -> c.setSceneModel(sceneModel),
                     root -> separateWindows.addOpenButton(root, this::detachReports));
             if (newValue.state() instanceof ReportNavigationState state) {
                 controller.selectReport(state.getReportNode());
@@ -1152,20 +1152,20 @@ public class MainController extends AbstractDisposableController {
 
     private void detachParameters() {
         separateWindows.openSingleInstance(PARAMETERS_WINDOW, () -> Messages.get("desktop.common.parameters"), _ -> {
-            SeparateWindows.View view = SeparateWindows.<ParametersController>load("parameters/parameters-view.fxml", c -> c.setMainModel(mainModel));
+            SeparateWindows.View view = SeparateWindows.<ParametersController>load("ui/parameters/parameters-view.fxml", c -> c.setMainModel(mainModel));
             return new SeparateWindows.View(view.root(), view.controller(), 1000, 700);
         });
     }
 
     private void detachLogs() {
         separateWindows.openSingleInstance(LOGS_WINDOW, () -> NavigationEvent.create(NavigationType.LOGS).describe(),
-                _ -> SeparateWindows.<LogsViewController>load("logs/logs-view.fxml",
+                _ -> SeparateWindows.<LogsViewController>load("ui/logs/logs-view.fxml",
                         c -> c.setModels(mainModel.getLogsModel(), mainModel.getParametersModel())));
     }
 
     private void detachReports() {
         separateWindows.openSingleInstance(REPORTS_WINDOW, () -> NavigationEvent.create(NavigationType.REPORTS).describe(),
-                scene -> SeparateWindows.<ReportsController>load("report/reports-view.fxml", c -> c.setSceneModel(scene)));
+                scene -> SeparateWindows.<ReportsController>load("ui/report/reports-view.fxml", c -> c.setSceneModel(scene)));
     }
 
     public void onLogs() {
@@ -1248,25 +1248,25 @@ public class MainController extends AbstractDisposableController {
     // kept out of onNavigationEvent, whose length checkstyle limits
     private void onNetworkObjectTableEvent(NavigationEvent newValue) {
         if (newValue.navigationType() == NavigationType.NETWORK_TABLE_GROUNDS) {
-            GroundsController controller = ensureSceneView(GroundsController.class, "network/tables/grounds-view.fxml", NavigationType.NETWORK_TABLE_GROUNDS);
+            GroundsController controller = ensureSceneView(GroundsController.class, "ui/network/tables/grounds-view.fxml", NavigationType.NETWORK_TABLE_GROUNDS);
             if (newValue.state() instanceof GroundNavigationState state) {
                 controller.goToGround(state.getGround());
             } else if (newValue.state() == null) {
                 controller.goToGround(null);
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_AREAS) {
-            AreasController controller = ensureSceneView(AreasController.class, "network/tables/areas-view.fxml", NavigationType.NETWORK_TABLE_AREAS);
+            AreasController controller = ensureSceneView(AreasController.class, "ui/network/tables/areas-view.fxml", NavigationType.NETWORK_TABLE_AREAS);
             if (newValue.state() instanceof AreaNavigationState state) {
                 controller.goToArea(state.getArea());
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_OVERLOAD_MANAGEMENT_SYSTEMS) {
             OverloadManagementSystemsController controller = ensureSceneView(OverloadManagementSystemsController.class,
-                    "network/tables/overload-management-systems-view.fxml", NavigationType.NETWORK_TABLE_OVERLOAD_MANAGEMENT_SYSTEMS);
+                    "ui/network/tables/overload-management-systems-view.fxml", NavigationType.NETWORK_TABLE_OVERLOAD_MANAGEMENT_SYSTEMS);
             if (newValue.state() instanceof OverloadManagementSystemNavigationState state) {
                 controller.goToOverloadManagementSystem(state.getOverloadManagementSystem());
             }
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_VOLTAGE_ANGLE_LIMITS) {
-            ensureSceneView(VoltageAngleLimitsController.class, "network/tables/voltage-angle-limits-view.fxml",
+            ensureSceneView(VoltageAngleLimitsController.class, "ui/network/tables/voltage-angle-limits-view.fxml",
                     NavigationType.NETWORK_TABLE_VOLTAGE_ANGLE_LIMITS);
         }
     }

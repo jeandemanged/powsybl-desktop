@@ -178,7 +178,7 @@ class ArchitectureTest {
     // recording its own state
     @Test
     void onlyTheShellAndSceneModelUseTheNavigationHistoryDirectly() {
-        ArchRule rule = noClasses().that(DescribedPredicate.not(classes("the shell or SceneModel", "MainController", "window.SceneModel")))
+        ArchRule rule = noClasses().that(DescribedPredicate.not(classes("the shell or SceneModel", "MainController", "ui.window.SceneModel")))
                 .should().callMethod(MainModel.class, "getNavigationHistory");
         freeze(rule).check(CLASSES);
     }
@@ -186,7 +186,7 @@ class ArchitectureTest {
     // every window showing a view goes through SeparateWindows, which owns their lifecycle
     @Test
     void onlySeparateWindowsAndTheShellCreateStages() {
-        noClasses().that(DescribedPredicate.not(SHELL.or(classes("", "window.SeparateWindows")).as("the shell or SeparateWindows")))
+        noClasses().that(DescribedPredicate.not(SHELL.or(classes("", "ui.window.SeparateWindows")).as("the shell or SeparateWindows")))
                 .should().callConstructorWhere(target(owner(assignableTo(Stage.class))))
                 .check(CLASSES);
     }

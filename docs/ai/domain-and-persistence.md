@@ -115,7 +115,7 @@ There is no database. Persistent state is:
 |---|---|---|
 | Parameters | `config.json` in `%APPDATA%\powsybl-desktop`, `~/Library/Application Support/powsybl-desktop`, or `~/.powsybl-desktop` | `…/parameters/ParametersConfigFile.java` (load at startup in `MainApplication.start`; an unreadable file is moved to `config.json.<timestamp>.bak`, replaced by defaults and reported as an error notification); saved from `ParametersController` |
 | UI language | Java Preferences API | `…/utils/LanguagePreferences.java` |
-| Last file-chooser directory | Java Preferences API | `…/utils/FileChooserPreferences.java` |
+| Last file-chooser directory | Java Preferences API | `…/ui/controls/FileChooserPreferences.java` |
 | Networks | User files, imported/exported through PowSyBl `Importer`/`Exporter` | `NetworksController` (import: plain `Task`; export: `AbstractNetworkTask`) |
 | Contingency lists, parameters, reports | User-chosen JSON/text files | `ContingencyListsIO`, `ApplicationParametersJson`, `ReportsController` |
 

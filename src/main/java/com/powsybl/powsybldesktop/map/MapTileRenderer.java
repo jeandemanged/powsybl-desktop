@@ -42,7 +42,7 @@ import java.util.Set;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-final class MapTileRenderer {
+public final class MapTileRenderer {
 
     static final int TILE_SIZE = 256;
 
@@ -84,7 +84,7 @@ final class MapTileRenderer {
      * @param ratio device pixels per CSS pixel: the tile is drawn {@code 256 * ratio} pixels wide
      * @return the tile as PNG, or null when it would be fully transparent
      */
-    static byte[] render(MapNetworkData data, boolean showCountries, Set<String> hiddenBaseVoltages,
+    public static byte[] render(MapNetworkData data, boolean showCountries, Set<String> hiddenBaseVoltages,
                          int zoom, int tileX, int tileY, double ratio) throws IOException {
         int pixels = (int) Math.ceil(TILE_SIZE * ratio);
         double scale = Math.pow(2, zoom);
@@ -120,7 +120,7 @@ final class MapTileRenderer {
      * unrecognized territory. Its borders are coarse (about 1 km), so near one the answer is only a guess. The first
      * call loads the basemap if no tile has yet.
      */
-    static Country countryAt(double latitude, double longitude) {
+    public static Country countryAt(double latitude, double longitude) {
         Countries countries = CountriesHolder.COUNTRIES;
         double x = MapNetworkData.projectX(longitude);
         double y = MapNetworkData.projectY(latitude);

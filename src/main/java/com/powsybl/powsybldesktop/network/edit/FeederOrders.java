@@ -28,13 +28,13 @@ import java.util.stream.IntStream;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-final class FeederOrders {
+public final class FeederOrders {
 
     /**
      * Consecutive orders reserved for feeders not created yet, moving up with the others when a later reservation
      * makes room before them.
      */
-    static final class Slot {
+    public static final class Slot {
         private final VoltageLevel voltageLevel;
         private final int count;
         private int order;
@@ -45,7 +45,7 @@ final class FeederOrders {
             this.count = count;
         }
 
-        int order() {
+        public int order() {
             return order;
         }
     }
@@ -63,7 +63,7 @@ final class FeederOrders {
      * Runs {@code change}, which reserves the orders of the feeders it creates, moving back the feeders moved for
      * them if it fails.
      */
-    static void reserving(Consumer<FeederOrders> change) {
+    public static void reserving(Consumer<FeederOrders> change) {
         FeederOrders orders = new FeederOrders();
         boolean done = false;
         try {
@@ -80,7 +80,7 @@ final class FeederOrders {
      * Reserves {@code count} consecutive orders for feeders on {@code busbarSection}, from {@code requested} fitted
      * into the section's range, moving up the feeders already there.
      */
-    Slot reserve(BusbarSection busbarSection, int requested, int count) {
+    public Slot reserve(BusbarSection busbarSection, int requested, int count) {
         VoltageLevel voltageLevel = busbarSection.getTerminal().getVoltageLevel();
         Set<Integer> taken = taken(voltageLevel);
         int order = requested;
@@ -102,7 +102,7 @@ final class FeederOrders {
      * The order right after {@code busbarSection}'s feeders: the first free one, or else the first of the next
      * section's feeders, which would move up.
      */
-    static int endOf(BusbarSection busbarSection) {
+    public static int endOf(BusbarSection busbarSection) {
         return endOf(busbarSection, TopologyModificationUtils.getFeederPositions(busbarSection.getTerminal().getVoltageLevel()));
     }
 

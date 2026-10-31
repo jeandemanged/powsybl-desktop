@@ -14,7 +14,7 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.iidm.network.extensions.LinePosition;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
-import com.powsybl.powsybldesktop.diagram.MapBaseVoltages;
+import com.powsybl.powsybldesktop.diagram.BaseVoltages;
 import com.powsybl.powsybldesktop.network.edit.PositionEdits;
 
 import java.awt.Color;
@@ -47,7 +47,7 @@ import java.util.function.DoubleFunction;
  * @param unroutedCount how many lines and tie lines {@link PositionEdits#createStraightRoutes} would give a route to
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-record MapNetworkData(List<Color> colors,
+public record MapNetworkData(List<Color> colors,
                       String[] substationIds, String[] substationTexts, String[] substationBaseVoltages,
                       double[] substationX, double[] substationY, int[] substationColor,
                       String[] lineIds, String[] lineTexts, String[] lineBaseVoltages, int[] lineColor,
@@ -118,10 +118,10 @@ record MapNetworkData(List<Color> colors,
      *
      * @param key identifies the element, to tell whether the hovered element changed
      */
-    record Hit(String key, boolean substation, String id, String text, double lat, double lng, boolean implied) {
+    public record Hit(String key, boolean substation, String id, String text, double lat, double lng, boolean implied) {
     }
 
-    record UnplacedSubstation(String id, String text) {
+    public record UnplacedSubstation(String id, String text) {
         @Override
         public String toString() {
             return text;
@@ -149,7 +149,7 @@ record MapNetworkData(List<Color> colors,
      *
      * @param color the color of a base voltage, or the given default color for a null one
      */
-    static MapNetworkData build(Network network, DoubleFunction<String> baseVoltageName, BinaryOperator<String> color) {
+    public static MapNetworkData build(Network network, DoubleFunction<String> baseVoltageName, BinaryOperator<String> color) {
         List<MarkerData> substations = new ArrayList<>();
         List<LineData> lines = new ArrayList<>();
         List<UnplacedSubstation> unplaced = new ArrayList<>();
@@ -164,7 +164,7 @@ record MapNetworkData(List<Color> colors,
                             .mapToDouble(VoltageLevel::getNominalV).max().orElse(Double.NaN));
                     substations.add(new MarkerData(substation.getId(),
                             projectX(position.getCoordinate().getLongitude()), projectY(position.getCoordinate().getLatitude()),
-                            substation.getNameOrId(), baseVoltage, color.apply(baseVoltage, MapBaseVoltages.DEFAULT_SUBSTATION_COLOR)));
+                            substation.getNameOrId(), baseVoltage, color.apply(baseVoltage, BaseVoltages.DEFAULT_SUBSTATION_COLOR)));
                 }
             });
             network.getLineStream().forEach(line -> {
@@ -475,7 +475,7 @@ record MapNetworkData(List<Color> colors,
     /**
      * South, west, north and east of everything drawn, null when there is nothing to draw.
      */
-    double[] latLngBounds() {
+    public double[] latLngBounds() {
         return grid == null ? null : latLngBounds(grid.minX(), grid.minY(), grid.maxX(), grid.maxY());
     }
 
@@ -484,7 +484,7 @@ record MapNetworkData(List<Color> colors,
      * {@value #NEIGHBOURHOOD_SIZE} nearest neighbours, so they're shown around it; a single point when it has none,
      * null when it isn't drawn.
      */
-    double[] substationNeighbourhoodLatLngBounds(String id) {
+    public double[] substationNeighbourhoodLatLngBounds(String id) {
         int index = Arrays.asList(substationIds).indexOf(id);
         if (index < 0) {
             return null;
@@ -522,7 +522,7 @@ record MapNetworkData(List<Color> colors,
      * South, west, north and east of line, tie line or boundary line {@code id}, both halves of a tie line drawn
      * from its boundary lines included, null when it isn't drawn.
      */
-    double[] lineLatLngBounds(String id) {
+    public double[] lineLatLngBounds(String id) {
         double minX = Double.POSITIVE_INFINITY;
         double minY = Double.POSITIVE_INFINITY;
         double maxX = Double.NEGATIVE_INFINITY;
@@ -541,7 +541,7 @@ record MapNetworkData(List<Color> colors,
     /**
      * South, west, north and east of those of substations {@code ids} that are drawn, null for none.
      */
-    double[] substationsLatLngBounds(Set<String> ids) {
+    public double[] substationsLatLngBounds(Set<String> ids) {
         double minX = Double.POSITIVE_INFINITY;
         double minY = Double.POSITIVE_INFINITY;
         double maxX = Double.NEGATIVE_INFINITY;
@@ -560,7 +560,7 @@ record MapNetworkData(List<Color> colors,
     /**
      * Latitude and longitude of substation {@code id}, null when it isn't drawn.
      */
-    double[] substationLatLng(String id) {
+    public double[] substationLatLng(String id) {
         int index = Arrays.asList(substationIds).indexOf(id);
         return index < 0 ? null : new double[] {unprojectLatitude(substationY[index]), unprojectLongitude(substationX[index])};
     }
@@ -569,7 +569,7 @@ record MapNetworkData(List<Color> colors,
      * Latitude and longitude halfway along line, tie line or boundary line {@code id}, both halves of a tie line
      * drawn from its boundary lines included, null when it isn't drawn.
      */
-    double[] lineMiddleLatLng(String id) {
+    public double[] lineMiddleLatLng(String id) {
         List<Integer> lines = new ArrayList<>();
         for (int i = 0; i < lineIds.length; i++) {
             if (lineIds[i].equals(id)) {
@@ -595,7 +595,7 @@ record MapNetworkData(List<Color> colors,
      * At a fractional {@code zoom}, Leaflet shows the tiles of the rounded zoom level scaled, markers and lines
      * included, so the hit distances are those of that level, scaled the same.
      */
-    Hit hitTest(double latitude, double longitude, double zoom, Set<String> hiddenBaseVoltages) {
+    public Hit hitTest(double latitude, double longitude, double zoom, Set<String> hiddenBaseVoltages) {
         if (grid == null) {
             return null;
         }
