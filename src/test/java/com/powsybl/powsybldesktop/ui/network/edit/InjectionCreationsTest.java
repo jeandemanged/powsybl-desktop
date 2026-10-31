@@ -22,6 +22,8 @@ import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.iidm.network.test.EurostagTutorialExample1Factory;
 import com.powsybl.iidm.network.test.FourSubstationsNodeBreakerFactory;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.network.edit.Containers;
+import com.powsybl.powsybldesktop.network.edit.Injections;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import javafx.application.Platform;
 import javafx.scene.control.Button;
@@ -48,19 +50,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class InjectionCreationsTest extends AbstractCreationDialogTest {
 
-    private Optional<Identifiable<?>> createAndConfirm(Network network, InjectionCreations.Kind kind, VoltageLevel voltageLevel,
+    private Optional<Identifiable<?>> createAndConfirm(Network network, Injections.Kind kind, VoltageLevel voltageLevel,
                                                       Identifiable<?> busOrBusbarSection) {
         return Optional.ofNullable(openAndConfirm(sceneModel -> InjectionCreations.create(sceneModel, stage, kind, voltageLevel, busOrBusbarSection), network));
     }
 
     @Test
     void loadIsCreatedWithItsBayAndPosition() {
-        Network network = Network.create("test", ContainerCreations.SOURCE_FORMAT);
+        Network network = Network.create("test", Containers.SOURCE_FORMAT);
         VoltageLevel voltageLevel = network.newVoltageLevel().setId("VL").setNominalV(225).setTopologyKind(TopologyKind.NODE_BREAKER).add();
-        ContainerCreations.createTopology(network, "VL", TopologyKind.NODE_BREAKER, 2, 1, SwitchKind.BREAKER, true);
+        Containers.createTopology(network, "VL", TopologyKind.NODE_BREAKER, 2, 1, SwitchKind.BREAKER, true);
         int switchCount = voltageLevel.getNodeBreakerView().getSwitchCount();
 
-        Load load = (Load) createAndConfirm(network, InjectionCreations.Kind.LOAD, voltageLevel, network.getBusbarSection("VL_1_1")).orElseThrow();
+        Load load = (Load) createAndConfirm(network, Injections.Kind.LOAD, voltageLevel, network.getBusbarSection("VL_1_1")).orElseThrow();
 
         assertEquals("VL_LD1", load.getId());
         assertTrue(load.getTerminal().isConnected());
@@ -77,7 +79,7 @@ class InjectionCreationsTest extends AbstractCreationDialogTest {
         Network network = FourSubstationsNodeBreakerFactory.create();
         VoltageLevel voltageLevel = network.getVoltageLevel("S1VL2");
 
-        Load load = (Load) createAndConfirm(network, InjectionCreations.Kind.LOAD, voltageLevel, network.getBusbarSection("S1VL2_BBS1")).orElseThrow();
+        Load load = (Load) createAndConfirm(network, Injections.Kind.LOAD, voltageLevel, network.getBusbarSection("S1VL2_BBS1")).orElseThrow();
 
         assertTrue(load.getTerminal().isConnected());
         assertNull(load.getExtension(ConnectablePosition.class));
@@ -88,7 +90,7 @@ class InjectionCreationsTest extends AbstractCreationDialogTest {
         Network network = EurostagTutorialExample1Factory.create();
         VoltageLevel voltageLevel = network.getVoltageLevel("VLGEN");
 
-        Generator generator = (Generator) createAndConfirm(network, InjectionCreations.Kind.GENERATOR, voltageLevel, null).orElseThrow();
+        Generator generator = (Generator) createAndConfirm(network, Injections.Kind.GENERATOR, voltageLevel, null).orElseThrow();
 
         assertEquals("NGEN", generator.getTerminal().getBusBreakerView().getBus().getId());
         assertTrue(generator.isWithMode(RegulationMode.VOLTAGE));
@@ -99,7 +101,7 @@ class InjectionCreationsTest extends AbstractCreationDialogTest {
     @Test
     @SuppressWarnings("unchecked")
     void voltageLevelIsChosenAmongItsSubstations() {
-        Network network = Network.create("test", ContainerCreations.SOURCE_FORMAT);
+        Network network = Network.create("test", Containers.SOURCE_FORMAT);
         for (String substationId : new String[] {"NORTH", "SOUTH"}) {
             network.newSubstation().setId(substationId).add()
                     .newVoltageLevel().setId(substationId + "_VL").setName("VL 225").setNominalV(225).setTopologyKind(TopologyKind.BUS_BREAKER).add()
@@ -111,7 +113,7 @@ class InjectionCreationsTest extends AbstractCreationDialogTest {
         mainModel.addNetwork(network);
         AtomicReference<Optional<Identifiable<?>>> created = new AtomicReference<>();
         Platform.runLater(() -> created.set(InjectionCreations.create(SceneModel.main(mainModel), stage,
-                InjectionCreations.Kind.LOAD, network.getVoltageLevel("NORTH_VL"), null)));
+                Injections.Kind.LOAD, network.getVoltageLevel("NORTH_VL"), null)));
         WaitForAsyncUtils.waitForFxEvents();
         DialogPane dialogPane = lookup(".dialog-pane").queryAs(DialogPane.class);
         ComboBox<Object> substations = from(dialogPane).lookup((ComboBox<?> box) -> box.getItems().contains(network.getSubstation("NORTH"))).query();
@@ -141,7 +143,7 @@ class InjectionCreationsTest extends AbstractCreationDialogTest {
     @Test
     @SuppressWarnings("unchecked")
     void substationIsPickedFromThePopup() {
-        Network network = Network.create("test", ContainerCreations.SOURCE_FORMAT);
+        Network network = Network.create("test", Containers.SOURCE_FORMAT);
         for (String substationId : new String[] {"NORTH", "SOUTH"}) {
             Substation substation = network.newSubstation().setId(substationId).add();
             for (int nominalV : new int[] {63, 225, 400}) {
@@ -152,7 +154,7 @@ class InjectionCreationsTest extends AbstractCreationDialogTest {
         MainModel mainModel = new MainModel();
         mainModel.addNetwork(network);
         Platform.runLater(() -> InjectionCreations.create(SceneModel.main(mainModel), stage,
-                InjectionCreations.Kind.LOAD, network.getVoltageLevel("NORTH400"), null));
+                Injections.Kind.LOAD, network.getVoltageLevel("NORTH400"), null));
         WaitForAsyncUtils.waitForFxEvents();
         DialogPane dialogPane = lookup(".dialog-pane").queryAs(DialogPane.class);
         ComboBox<Object> substations = from(dialogPane).lookup((ComboBox<?> box) -> box.getItems().contains(network.getSubstation("NORTH"))).query();
@@ -186,7 +188,7 @@ class InjectionCreationsTest extends AbstractCreationDialogTest {
         mainModel.addNetwork(network);
         AtomicReference<Optional<Identifiable<?>>> created = new AtomicReference<>();
         Platform.runLater(() -> created.set(InjectionCreations.create(SceneModel.main(mainModel), stage,
-                InjectionCreations.Kind.SHUNT_COMPENSATOR, voltageLevel, null)));
+                Injections.Kind.SHUNT_COMPENSATOR, voltageLevel, null)));
         WaitForAsyncUtils.waitForFxEvents();
         DialogPane dialogPane = lookup(".dialog-pane").queryAs(DialogPane.class);
         // the linear model's B per section is required by IIDM

@@ -18,12 +18,12 @@ import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.StaticVarCompensatorNavigationState;
 import com.powsybl.powsybldesktop.network.VoltageRegulations;
+import com.powsybl.powsybldesktop.network.edit.Injections;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.search.NetworkSearch;
 import com.powsybl.powsybldesktop.ui.form.TableColumnSupport;
 import com.powsybl.powsybldesktop.ui.network.detail.EquipmentDetails;
 import com.powsybl.powsybldesktop.ui.network.edit.EditMenus;
-import com.powsybl.powsybldesktop.ui.network.edit.InjectionCreations;
 import com.powsybl.powsybldesktop.ui.network.search.SearchBoxController;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
@@ -183,6 +183,6 @@ public class StaticVarCompensatorsController extends AbstractEquipmentTableContr
     @Override
     protected List<MenuItem> creationItems(Container<?> context) {
         return EditMenus.injectionItems(sceneModel, () -> tableView().getScene().getWindow(), sceneModel.getNetwork(), context,
-                InjectionCreations.Kind.STATIC_VAR_COMPENSATOR);
+                Injections.Kind.STATIC_VAR_COMPENSATOR);
     }
 }

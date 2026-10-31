@@ -12,6 +12,7 @@ import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.SwitchKind;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.network.edit.Containers;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import javafx.application.Platform;
@@ -70,14 +71,14 @@ abstract class AbstractCreationDialogTest extends AbstractHeadlessApplicationTes
 
     // two node breaker voltage levels of 2 parallel busbars in one substation, and a third, bus breaker one
     protected static Network network() {
-        Network network = Network.create("test", ContainerCreations.SOURCE_FORMAT);
+        Network network = Network.create("test", Containers.SOURCE_FORMAT);
         Substation substation = network.newSubstation().setId("S").add();
         for (String id : new String[] {"VL400", "VL225"}) {
             substation.newVoltageLevel().setId(id).setNominalV("VL400".equals(id) ? 400 : 225).setTopologyKind(TopologyKind.NODE_BREAKER).add();
-            ContainerCreations.createTopology(network, id, TopologyKind.NODE_BREAKER, 2, 1, SwitchKind.BREAKER, true);
+            Containers.createTopology(network, id, TopologyKind.NODE_BREAKER, 2, 1, SwitchKind.BREAKER, true);
         }
         substation.newVoltageLevel().setId("VL63").setNominalV(63).setTopologyKind(TopologyKind.BUS_BREAKER).add();
-        ContainerCreations.createTopology(network, "VL63", TopologyKind.BUS_BREAKER, 1, 1, SwitchKind.BREAKER, false);
+        Containers.createTopology(network, "VL63", TopologyKind.BUS_BREAKER, 1, 1, SwitchKind.BREAKER, false);
         return network;
     }
 

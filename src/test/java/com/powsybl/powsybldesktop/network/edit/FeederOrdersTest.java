@@ -13,7 +13,6 @@ import com.powsybl.iidm.network.SwitchKind;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.ConnectablePosition;
-import com.powsybl.powsybldesktop.ui.network.edit.ContainerCreations;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -35,9 +34,9 @@ class FeederOrdersTest {
 
     @BeforeEach
     void setUp() {
-        network = Network.create("test", ContainerCreations.SOURCE_FORMAT);
+        network = Network.create("test", Containers.SOURCE_FORMAT);
         network.newVoltageLevel().setId("VL").setNominalV(225).setTopologyKind(TopologyKind.NODE_BREAKER).add();
-        ContainerCreations.createTopology(network, "VL", TopologyKind.NODE_BREAKER, 1, 2, SwitchKind.BREAKER, false);
+        Containers.createTopology(network, "VL", TopologyKind.NODE_BREAKER, 1, 2, SwitchKind.BREAKER, false);
         for (int order = 0; order < 5; order++) {
             addLoad("L" + order, order < 3 ? "VL_1_1" : "VL_1_2", order);
         }

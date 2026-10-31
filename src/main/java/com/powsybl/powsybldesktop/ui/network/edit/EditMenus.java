@@ -20,6 +20,7 @@ import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.BusbarSectionPosition;
+import com.powsybl.powsybldesktop.network.edit.Injections;
 import com.powsybl.powsybldesktop.network.edit.Kinds;
 import com.powsybl.powsybldesktop.network.edit.Removals;
 import com.powsybl.powsybldesktop.ui.form.RemovalDialog;
@@ -210,7 +211,7 @@ public final class EditMenus {
     // on a busbar section or bus: what can be connected to it
     private static void addVoltageLevelCreations(SceneModel sceneModel, Supplier<Window> owner, VoltageLevel voltageLevel,
                                                  Identifiable<?> busOrBusbarSection, Menu create) {
-        for (InjectionCreations.Kind kind : InjectionCreations.Kind.values()) {
+        for (Injections.Kind kind : Injections.Kind.values()) {
             create.getItems().add(kindItem(kind.key(),
                     () -> InjectionCreations.create(sceneModel, owner.get(), kind, voltageLevel, busOrBusbarSection)));
         }
@@ -336,10 +337,10 @@ public final class EditMenus {
      * first of a substation, of the network if null - disabled where there is none yet.
      */
     public static List<MenuItem> injectionItems(SceneModel sceneModel, Supplier<Window> owner, Network network, Container<?> context,
-                                                InjectionCreations.Kind... kinds) {
+                                                Injections.Kind... kinds) {
         VoltageLevel voltageLevel = network == null ? null : voltageLevelOf(network, context);
         List<MenuItem> items = new ArrayList<>();
-        for (InjectionCreations.Kind kind : kinds) {
+        for (Injections.Kind kind : kinds) {
             MenuItem item = kindItem(kind.key(), () -> InjectionCreations.create(sceneModel, owner.get(), kind, voltageLevel, null));
             item.setDisable(voltageLevel == null);
             items.add(item);

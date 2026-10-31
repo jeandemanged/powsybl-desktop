@@ -7,21 +7,15 @@
  */
 package com.powsybl.powsybldesktop.ui.network.edit;
 
-import com.powsybl.iidm.modification.topology.CreateCouplingDeviceBuilder;
-import com.powsybl.iidm.modification.topology.CreateVoltageLevelTopologyBuilder;
-import com.powsybl.iidm.modification.topology.DefaultNamingStrategy;
-import com.powsybl.iidm.modification.topology.NamingStrategy;
 import com.powsybl.iidm.network.Country;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
-import com.powsybl.iidm.network.SubstationAdder;
 import com.powsybl.iidm.network.SwitchKind;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
-import com.powsybl.iidm.network.VoltageLevelAdder;
 import com.powsybl.iidm.network.extensions.Coordinate;
-import com.powsybl.iidm.network.extensions.SubstationPositionAdder;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.network.edit.Containers;
 import com.powsybl.powsybldesktop.network.edit.NetworkEdits;
 import com.powsybl.powsybldesktop.ui.form.CreationForm;
 import com.powsybl.powsybldesktop.ui.form.DetailForm;
@@ -34,7 +28,6 @@ import javafx.stage.Window;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -47,8 +40,6 @@ import java.util.Optional;
 public final class ContainerCreations {
 
     // the source format of networks created from scratch
-    public static final String SOURCE_FORMAT = "IIDM";
-
     private ContainerCreations() {
     }
 
@@ -57,28 +48,14 @@ public final class ContainerCreations {
      */
     public static Optional<Network> newNetwork(Window owner, MainModel mainModel) {
         CreationForm form = new CreationForm();
-        CreationForm.Field<String> id = form.text("desktop.common.column.id", uniqueNetworkId(mainModel), true);
+        CreationForm.Field<String> id = form.text("desktop.common.column.id", Containers.uniqueNetworkId(mainModel.getNetworks()), true);
         CreationForm.Field<String> name = form.text("desktop.common.column.name", null, false);
         CreationForm.Field<ZonedDateTime> caseDate = form.dateTime("edit.create.caseDate", ZonedDateTime.now().withSecond(0).withNano(0));
         return CreateDialog.show(owner, Messages.get("edit.create.title", Messages.get("desktop.common.equipment.network")), form, () -> {
-            Network network = Network.create(id.get(), SOURCE_FORMAT);
-            network.setName(name.get());
-            network.setCaseDate(caseDate.get());
+            Network network = Containers.newNetwork(id.get(), name.get(), caseDate.get());
             mainModel.addNetwork(network);
             return network;
         });
-    }
-
-    private static String uniqueNetworkId(MainModel mainModel) {
-        int n = 1;
-        while (hasNetwork(mainModel, "network" + n)) {
-            n++;
-        }
-        return "network" + n;
-    }
-
-    private static boolean hasNetwork(MainModel mainModel, String id) {
-        return mainModel.getNetworks().stream().anyMatch(network -> network.getId().equals(id));
     }
 
     /**
@@ -95,7 +72,7 @@ public final class ContainerCreations {
         countries.add(null);
         countries.addAll(DetailSections.values(Country.class));
         CreationForm.Field<Country> countryField = form.searchableChoice("desktop.common.column.country", countries, Labels.countryFormat(),
-                country != null ? country : defaultCountry(network), false);
+                country != null ? country : Containers.defaultCountry(network), false);
         CreationForm.Field<String> tso = form.text("substations.column.tso", null, false);
         form.section("edit.create.position");
         CreationForm.Field<Double> latitude = form.number("detail.extension.substationPosition.latitude", DetailForm.DEGREE,
@@ -110,16 +87,9 @@ public final class ContainerCreations {
                 throw new CreationForm.FieldException((Double.isNaN(lat) ? latitude : longitude).getEditor(),
                         Messages.get("edit.create.positionIncomplete"));
             }
-            NetworkEdits.apply(sceneModel.getMainModel(), network, n -> {
-                SubstationAdder adder = n.newSubstation().setId(substationId).setName(name.get()).setTso(tso.get());
-                if (countryField.get() != null) {
-                    adder.setCountry(countryField.get());
-                }
-                Substation substation = adder.add();
-                if (!Double.isNaN(lat)) {
-                    substation.newExtension(SubstationPositionAdder.class).withCoordinate(new Coordinate(lat, lon)).add();
-                }
-            });
+            Containers.SubstationSpec spec = new Containers.SubstationSpec(substationId, name.get(), countryField.get(), tso.get(),
+                    Double.isNaN(lat) ? null : new Coordinate(lat, lon));
+            NetworkEdits.apply(sceneModel.getMainModel(), network, n -> Containers.addSubstation(n, spec));
             return network.getSubstation(substationId);
         });
     }
@@ -181,50 +151,10 @@ public final class ContainerCreations {
             if (sections < 1) {
                 throw new CreationForm.FieldException(sectionCount.getEditor(), Messages.get("edit.create.atLeastOne"));
             }
-            Substation chosen = substation.get();
-            VoltageLevelAdder adder = (chosen != null ? chosen.newVoltageLevel() : network.newVoltageLevel())
-                    .setId(voltageLevelId)
-                    .setName(name.get())
-                    .setNominalV(nominalV.get())
-                    .setLowVoltageLimit(lowVoltageLimit.get())
-                    .setHighVoltageLimit(highVoltageLimit.get())
-                    .setTopologyKind(topologyKind.get());
-            SwitchKind switchKind = sectionSwitchKind.get();
-            boolean coupled = couplings.get();
-            NetworkEdits.apply(sceneModel.getMainModel(), network, n -> {
-                VoltageLevel voltageLevel = adder.add();
-                if (bars > 0) {
-                    createTopology(n, voltageLevelId, voltageLevel.getTopologyKind(), bars, sections, switchKind, coupled);
-                }
-            });
+            Containers.VoltageLevelSpec spec = new Containers.VoltageLevelSpec(voltageLevelId, name.get(), substation.get(), nominalV.get(),
+                    lowVoltageLimit.get(), highVoltageLimit.get(), topologyKind.get(), bars, sections, sectionSwitchKind.get(), couplings.get());
+            NetworkEdits.apply(sceneModel.getMainModel(), network, n -> Containers.addVoltageLevel(n, spec));
             return network.getVoltageLevel(voltageLevelId);
         }
-    }
-
-    public static void createTopology(Network network, String voltageLevelId, TopologyKind kind, int bars, int sections, SwitchKind sectionSwitchKind,
-                               boolean couplings) {
-        NetworkEdits.apply(network, new CreateVoltageLevelTopologyBuilder()
-                .withVoltageLevelId(voltageLevelId)
-                .withAlignedBusesOrBusbarCount(bars)
-                .withSectionCount(sections)
-                .withSwitchKinds(Collections.nCopies(sections - 1, kind == TopologyKind.NODE_BREAKER ? sectionSwitchKind : SwitchKind.BREAKER))
-                .build());
-        if (couplings) {
-            // the ids CreateVoltageLevelTopology gives, with the voltage level's id as prefix
-            NamingStrategy naming = new DefaultNamingStrategy();
-            for (int section = 1; section <= sections; section++) {
-                for (int bar = 1; bar < bars; bar++) {
-                    NetworkEdits.apply(network, new CreateCouplingDeviceBuilder()
-                            .withBusOrBusbarSectionId1(naming.getBusbarId(voltageLevelId, bar, section))
-                            .withBusOrBusbarSectionId2(naming.getBusbarId(voltageLevelId, bar + 1, section))
-                            .build());
-                }
-            }
-        }
-    }
-
-    // the network's only country, if it has one: most networks are national
-    private static Country defaultCountry(Network network) {
-        return network.getCountries().size() == 1 ? network.getCountries().iterator().next() : null;
     }
 }

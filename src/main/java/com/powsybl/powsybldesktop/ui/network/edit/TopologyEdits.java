@@ -7,10 +7,6 @@
  */
 package com.powsybl.powsybldesktop.ui.network.edit;
 
-import com.powsybl.iidm.modification.topology.ConnectFeedersToBusbarSectionsBuilder;
-import com.powsybl.iidm.modification.topology.CreateCouplingDeviceBuilder;
-import com.powsybl.iidm.modification.topology.CreateVoltageLevelSectionsBuilder;
-import com.powsybl.iidm.modification.topology.MoveFeederBayBuilder;
 import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.BusbarSection;
 import com.powsybl.iidm.network.Connectable;
@@ -19,13 +15,12 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Switch;
 import com.powsybl.iidm.network.SwitchKind;
 import com.powsybl.iidm.network.Terminal;
-import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.BusbarSectionPosition;
-import com.powsybl.iidm.network.extensions.BusbarSectionPositionAdder;
 import com.powsybl.iidm.network.extensions.ConnectablePosition;
 import com.powsybl.powsybldesktop.network.edit.Kinds;
 import com.powsybl.powsybldesktop.network.edit.NetworkEdits;
+import com.powsybl.powsybldesktop.network.edit.Topologies;
 import com.powsybl.powsybldesktop.ui.form.CreationForm;
 import com.powsybl.powsybldesktop.ui.form.DetailSections;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
@@ -72,18 +67,11 @@ public final class TopologyEdits {
         String voltageLevelId = reference.getTerminal().getVoltageLevel().getId();
         CreationForm.Field<String> busbarSectionPrefix = form.text("edit.topology.busbarSectionPrefix", voltageLevelId, true);
         CreationForm.Field<String> switchPrefix = form.text("edit.topology.switchPrefix", voltageLevelId, true);
-        return CreateDialog.show(owner, title("edit.topology.newBusbarSections"), form, () -> NetworkEdits.apply(sceneModel.getMainModel(),
-                reference.getParentNetwork(), network -> NetworkEdits.apply(network, new CreateVoltageLevelSectionsBuilder()
-                        .withReferenceBusbarSectionId(reference.getId())
-                        .withCreateTheBusbarSectionsAfterTheReferenceBusbarSection(after.get())
-                        .withAllBusbars(allBusbars.get())
-                        .withLeftSwitchKind(leftKind.get())
-                        .withLeftSwitchOpen(leftOpen.get())
-                        .withRightSwitchKind(rightKind.get())
-                        .withRightSwitchOpen(rightOpen.get())
-                        .withBusbarSectionPrefixId(busbarSectionPrefix.get())
-                        .withSwitchPrefixId(switchPrefix.get())
-                        .build())));
+        return CreateDialog.show(owner, title("edit.topology.newBusbarSections"), form, () -> {
+            Topologies.SectionsSpec spec = new Topologies.SectionsSpec(after.get(), allBusbars.get(), leftKind.get(), leftOpen.get(), rightKind.get(),
+                    rightOpen.get(), busbarSectionPrefix.get(), switchPrefix.get());
+            return NetworkEdits.apply(sceneModel.getMainModel(), reference.getParentNetwork(), network -> Topologies.addBusbarSections(network, reference, spec));
+        });
     }
 
     /**
@@ -115,7 +103,7 @@ public final class TopologyEdits {
         }
         return CreateDialog.showThenDetails(sceneModel, owner, Messages.get("edit.create.title", Messages.get("desktop.common.equipment.busbarSection")),
                 form, () -> {
-                    VoltageLevel.NodeBreakerView topology = (choice == null ? voltageLevel : choice.get()).getNodeBreakerView();
+                    VoltageLevel chosen = choice == null ? voltageLevel : choice.get();
                     String busbarSectionId = id.get();
                     Integer busbar = busbarIndex.get();
                     Integer section = sectionIndex.get();
@@ -123,12 +111,10 @@ public final class TopologyEdits {
                         throw new CreationForm.FieldException((busbar == null ? busbarIndex : sectionIndex).getEditor(),
                                 Messages.get("edit.topology.positionIncomplete"));
                     }
-                    NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> {
-                        BusbarSection busbarSection = topology.newBusbarSection().setId(busbarSectionId).setName(name.get()).setNode(node.get()).add();
-                        if (busbar != null) {
-                            busbarSection.newExtension(BusbarSectionPositionAdder.class).withBusbarIndex(busbar).withSectionIndex(section).add();
-                        }
-                    });
+                    String busbarSectionName = name.get();
+                    int busbarSectionNode = node.get();
+                    NetworkEdits.apply(sceneModel.getMainModel(), network,
+                            _ -> Topologies.addBusbarSection(chosen, busbarSectionId, busbarSectionName, busbarSectionNode, busbar, section));
                     return network.getBusbarSection(busbarSectionId);
                 });
     }
@@ -138,7 +124,7 @@ public final class TopologyEdits {
      * disconnectors (node breaker), a switch (bus breaker).
      */
     public static Optional<Boolean> newCouplingDevice(SceneModel sceneModel, Window owner, VoltageLevel voltageLevel, Identifiable<?> first) {
-        List<Identifiable<?>> buses = busesOrBusbarSections(voltageLevel);
+        List<Identifiable<?>> buses = Topologies.busesOrBusbarSections(voltageLevel);
         CreationForm form = new CreationForm();
         Identifiable<?> initial1 = first != null ? first : buses.stream().findFirst().orElse(null);
         CreationForm.Field<Identifiable<?>> bus1 = form.choice("edit.topology.coupling.first", buses, CreationForm.identifiableFormat(), initial1, true);
@@ -149,25 +135,12 @@ public final class TopologyEdits {
             if (bus1.get() == bus2.get()) {
                 throw new CreationForm.FieldException(bus2.getEditor(), Messages.get("edit.topology.coupling.same"));
             }
-            CreateCouplingDeviceBuilder builder = new CreateCouplingDeviceBuilder()
-                    .withBusOrBusbarSectionId1(bus1.get().getId())
-                    .withBusOrBusbarSectionId2(bus2.get().getId());
-            if (prefix.get() != null) {
-                builder.withSwitchPrefixId(prefix.get());
-            }
-            return NetworkEdits.apply(sceneModel.getMainModel(), voltageLevel.getParentNetwork(), network -> NetworkEdits.apply(network, builder.build()));
+            Identifiable<?> first1 = bus1.get();
+            Identifiable<?> second = bus2.get();
+            String switchPrefix = prefix.get();
+            return NetworkEdits.apply(sceneModel.getMainModel(), voltageLevel.getParentNetwork(),
+                    network -> Topologies.addCouplingDevice(network, first1, second, switchPrefix));
         });
-    }
-
-    static List<Identifiable<?>> busesOrBusbarSections(VoltageLevel voltageLevel) {
-        List<Identifiable<?>> buses = new ArrayList<>();
-        if (voltageLevel.getTopologyKind() == TopologyKind.NODE_BREAKER) {
-            voltageLevel.getNodeBreakerView().getBusbarSectionStream().forEach(buses::add);
-        } else {
-            voltageLevel.getBusBreakerView().getBusStream().forEach(buses::add);
-        }
-        buses.sort(Comparator.comparing(Identifiable::getId));
-        return buses;
     }
 
     /**
@@ -206,11 +179,10 @@ public final class TopologyEdits {
         }
         return CreateDialog.showThenDetails(sceneModel, owner, Messages.get("edit.create.title", Messages.get("desktop.common.equipment.switch")),
                 form, () -> {
-                    VoltageLevel.NodeBreakerView topology = (choice == null ? voltageLevel : choice.get()).getNodeBreakerView();
-                    String switchId = id.get();
-                    NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> topology.newSwitch().setId(switchId).setName(name.get())
-                            .setKind(kind.get()).setNode1(from.get()).setNode2(to.get()).setOpen(open.get()).setRetained(retained.get()).add());
-                    return network.getSwitch(switchId);
+                    VoltageLevel chosen = choice == null ? voltageLevel : choice.get();
+                    Topologies.SwitchSpec spec = new Topologies.SwitchSpec(id.get(), name.get(), kind.get(), from.get(), to.get(), open.get(), retained.get());
+                    NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> Topologies.addSwitch(chosen, spec));
+                    return network.getSwitch(spec.id());
                 });
     }
 
@@ -218,13 +190,16 @@ public final class TopologyEdits {
      * Adds an internal connection (a zero impedance link, without switch) between two nodes of {@code voltageLevel}.
      */
     public static Optional<Boolean> newInternalConnection(SceneModel sceneModel, Window owner, VoltageLevel voltageLevel, Integer node1) {
-        VoltageLevel.NodeBreakerView topology = voltageLevel.getNodeBreakerView();
-        int nextNode = topology.getMaximumNodeIndex() + 1;
+        int nextNode = voltageLevel.getNodeBreakerView().getMaximumNodeIndex() + 1;
         CreationForm form = new CreationForm();
         CreationForm.Field<Integer> from = form.integer("edit.topology.node1", node1 != null ? node1 : nextNode);
         CreationForm.Field<Integer> to = form.integer("edit.topology.node2", node1 != null ? nextNode : nextNode + 1);
-        return CreateDialog.show(owner, title("edit.topology.newInternalConnection"), form, () -> NetworkEdits.apply(sceneModel.getMainModel(),
-                voltageLevel.getParentNetwork(), _ -> topology.newInternalConnection().setNode1(from.get()).setNode2(to.get()).add()));
+        return CreateDialog.show(owner, title("edit.topology.newInternalConnection"), form, () -> {
+            int fromNode = from.get();
+            int toNode = to.get();
+            return NetworkEdits.apply(sceneModel.getMainModel(), voltageLevel.getParentNetwork(),
+                    _ -> Topologies.addInternalConnection(voltageLevel, fromNode, toNode));
+        });
     }
 
     /**
@@ -251,10 +226,11 @@ public final class TopologyEdits {
             });
         }
         return CreateDialog.show(owner, Messages.get("edit.create.title", Messages.get("desktop.common.equipment.bus")), form, () -> {
-            VoltageLevel.BusBreakerView topology = (choice == null ? voltageLevel : choice.get()).getBusBreakerView();
+            VoltageLevel chosen = choice == null ? voltageLevel : choice.get();
             String busId = id.get();
-            NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> topology.newBus().setId(busId).setName(name.get()).add());
-            return topology.getBus(busId);
+            String busName = name.get();
+            NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> Topologies.addBus(chosen, busId, busName));
+            return chosen.getBusBreakerView().getBus(busId);
         });
     }
 
@@ -286,12 +262,9 @@ public final class TopologyEdits {
             if (chosenBusbarSections.isEmpty()) {
                 throw new CreationForm.FieldException(busbarSections, Messages.get("edit.topology.noneChecked"));
             }
-            return NetworkEdits.apply(sceneModel.getMainModel(), voltageLevel.getParentNetwork(), network -> NetworkEdits.apply(network,
-                    new ConnectFeedersToBusbarSectionsBuilder()
-                            .withBusbarSectionsToConnect(chosenBusbarSections)
-                            .withConnectablesToConnect(chosenFeeders)
-                            .withConnectCouplingDevices(couplings.get())
-                            .build()));
+            boolean couplingDevices = couplings.get();
+            return NetworkEdits.apply(sceneModel.getMainModel(), voltageLevel.getParentNetwork(),
+                    network -> Topologies.connectFeeders(network, chosenBusbarSections, chosenFeeders, couplingDevices));
         });
     }
 
@@ -325,13 +298,12 @@ public final class TopologyEdits {
         VoltageLevel voltageLevel = terminals.getFirst().getVoltageLevel();
         ConnectionSection target = new ConnectionSection(form, Messages.get("edit.topology.target"), network.getVoltageLevelStream().toList(),
                 voltageLevel, null, ConnectablePosition.Direction.BOTTOM);
-        return CreateDialog.show(owner, Messages.get("edit.topology.moveTitle", Kinds.describe(connectable)), form, () -> NetworkEdits.apply(
-                sceneModel.getMainModel(), network, n -> NetworkEdits.apply(n, new MoveFeederBayBuilder()
-                        .withConnectableId(connectable.getId())
-                        .withTerminal(terminal.get())
-                        .withTargetVoltageLevelId(target.voltageLevel().getId())
-                        .withTargetBusOrBusBarSectionId(target.busOrBusbarSectionId())
-                        .build())));
+        return CreateDialog.show(owner, Messages.get("edit.topology.moveTitle", Kinds.describe(connectable)), form, () -> {
+            Terminal moved = terminal.get();
+            VoltageLevel targetVoltageLevel = target.voltageLevel();
+            String targetId = target.busOrBusbarSectionId();
+            return NetworkEdits.apply(sceneModel.getMainModel(), network, n -> Topologies.moveFeeder(n, connectable, moved, targetVoltageLevel, targetId));
+        });
     }
 
     private static StringConverter<Terminal> terminalFormat() {

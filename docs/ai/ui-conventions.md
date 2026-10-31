@@ -158,7 +158,7 @@ Two established forms:
 
 ## Creation dialogs and edit menus
 
-- A creation dialog is a `network/form/CreationForm` (the `DetailForm` grid, but fields holding values read on OK:
+- A creation dialog is a `ui/form/CreationForm` (the `DetailForm` grid, but fields holding values read on OK:
   `text`, `id` (unique among the network's objects), `number`, `integer`, `check`, `choice`, `dateTime`, `custom`,
   rows shown or hidden with `visibleWhen`) shown by `CreateDialog.show` / `showThenDetails` (which then opens the
   created object's detail view, where everything the form doesn't ask for is set, unless unchecked: the choice is
@@ -166,7 +166,11 @@ Two established forms:
   wider than the value column's 260 px isn't cut. OK applies it and only closes once applied: a
   `CreationForm.FieldException` is shown on its editor, an IIDM error on the form. Forms ask for what IIDM requires,
   with defaults; a form with many fields is a small class with a `create` method (checkstyle limits lambdas to 20 lines).
-- Where a connectable is connected is a `ConnectionSection`: voltage level, busbar section (node breaker: position
+  The dialog only reads its fields into a spec record (checking what must point at an editor, with `FieldException`)
+  and applies the toolkit-free builder of `network/edit` (e.g. `Injections.add(network, id, name, spec, connection)`)
+  inside `NetworkEdits.apply`: what gets created is tested there with plain JUnit, the dialog test only covers the
+  wiring.
+- Where a connectable is connected is a `ConnectionSection` (read as a `network/edit/Connection`): voltage level, busbar section (node breaker: position
   order, suggested at the end of the section, and direction) or bus (bus breaker). Orders are never refused:
   `FeederOrders` brings one out of the section's range back to its nearest end and, when it is taken, moves every
   following feeder of the voltage level up (moved back if the creation fails).
@@ -179,7 +183,7 @@ Two established forms:
 - Dates with time are a `…/ui/controls/DateTimePicker.java` (JavaFX has no date-time picker: a `DatePicker`, hour and
   minute spinners, a time zone choice; dates shown as `31 Oct 2026` whatever the locale), reporting user edits only through `setOnEdit` - `setValue` shows a value
   without reporting it (the networks view's case date, the new network dialog).
-- New lines default their second side to `BranchCreations.otherEnd`: another substation's voltage level of the
+- New lines default their second side to `Branches.otherEnd`: another substation's voltage level of the
   closest nominal voltage, nearest substation first (from their positions).
 - What can be created or removed for an object comes from `EditMenus.items(sceneModel, owner, network, context)` (a
   "New" submenu, a "Topology" submenu, the removal), the same in the substations tree (its "+" button and context
@@ -198,7 +202,7 @@ Two established forms:
 
 ## Equipment detail views
 
-Non-modal, all-fields view of one equipment (`…/network/detail/`), one `AbstractEquipmentDetailController` subclass per
+Non-modal, all-fields view of one equipment (`…/ui/network/detail/`), one `AbstractEquipmentDetailController` subclass per
 equipment type (generators, batteries, loads, shunt and static var compensators, VSC/LCC converter stations, HVDC
 lines, lines, tie lines, boundary lines, two- and three-winding transformers, busbar sections, switches, substations,
 voltage levels, grounds, areas, overload management systems), all on the
@@ -217,7 +221,7 @@ shared `equipment-detail-view.fxml` (no `fx:controller`: `EquipmentDetails.load`
   substation opens its single line diagram in the "Diagrams" window).
 - The base builds the header (title, voltage level links), the main tab's general section (id - editable, IIDM's
   `setId`, the separate window's tab re-keyed (`SeparateWindows.retarget`); nothing else referring to the old id is
-  updated, e.g. contingencies -, name, fictitious; id and name have a copy to clipboard button, `DetailForm.copyButton`; `utils/CopyButtons` are the copy buttons used
+  updated, e.g. contingencies -, name, fictitious; id and name have a copy to clipboard button, `DetailForm.copyButton`; `ui/controls/CopyButtons` are the copy buttons used
   everywhere: equipment tables' name cells (`TableColumnSupport.configureDetailNameColumn`, `configureNameColumn`,
   `withDetailAndCopyButtons`: an icon after the info one copying the id, or offering id or name when there is a name),
   the networks details pane), the extensions and properties/aliases tabs; a subclass adds its main

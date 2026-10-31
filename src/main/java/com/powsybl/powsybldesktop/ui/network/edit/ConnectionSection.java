@@ -7,13 +7,12 @@
  */
 package com.powsybl.powsybldesktop.ui.network.edit;
 
-import com.powsybl.iidm.modification.topology.TopologyModificationUtils;
 import com.powsybl.iidm.network.BusbarSection;
-import com.powsybl.iidm.network.Connectable;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.ConnectablePosition;
+import com.powsybl.powsybldesktop.network.edit.Connection;
 import com.powsybl.powsybldesktop.network.edit.FeederOrders;
 import com.powsybl.powsybldesktop.ui.form.CreationForm;
 import com.powsybl.powsybldesktop.ui.form.DetailSections;
@@ -104,24 +103,14 @@ final class ConnectionSection {
     }
 
     /**
-     * Reserves the position orders of {@code count} feeders at the given position order, fitted as
-     * {@link FeederOrders#reserve} does; only for a node breaker voltage level.
+     * The chosen connection, its position order checked in a node breaker voltage level.
      */
-    FeederOrders.Slot reserve(FeederOrders orders, int count) {
+    Connection connection() {
         int order = positionOrder.get();
-        if (order < 0) {
+        if (isNodeBreaker() && order < 0) {
             throw new CreationForm.FieldException(positionOrder.getEditor(), Messages.get("edit.create.notNegative"));
         }
-        return orders.reserve((BusbarSection) busOrBusbarSection.get(), order, count);
-    }
-
-    /**
-     * Whether a feeder position is given to {@code connectable} in {@code voltageLevel}, as {@code CreateFeederBay}
-     * decides: not where the other connectables have none (e.g. imported without).
-     */
-    static boolean usesPositions(VoltageLevel voltageLevel, Connectable<?> connectable) {
-        return !TopologyModificationUtils.getFeederPositions(voltageLevel).isEmpty()
-                || voltageLevel.getConnectableStream().allMatch(other -> other instanceof BusbarSection || other == connectable);
+        return new Connection(voltageLevel(), busOrBusbarSection.get(), order, direction());
     }
 
     ConnectablePosition.Direction direction() {

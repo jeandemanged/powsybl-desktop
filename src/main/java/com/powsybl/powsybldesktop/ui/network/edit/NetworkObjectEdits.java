@@ -9,23 +9,20 @@ package com.powsybl.powsybldesktop.ui.network.edit;
 
 import com.powsybl.commons.PowsyblException;
 import com.powsybl.iidm.network.Area;
-import com.powsybl.iidm.network.AreaAdder;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.OverloadManagementSystem;
-import com.powsybl.iidm.network.OverloadManagementSystemAdder;
 import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.Switch;
 import com.powsybl.iidm.network.Terminal;
 import com.powsybl.iidm.network.ThreeSides;
 import com.powsybl.iidm.network.ThreeWindingsTransformer;
-import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.TwoSides;
 import com.powsybl.iidm.network.VoltageAngleLimit;
-import com.powsybl.iidm.network.VoltageAngleLimitAdder;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.network.edit.NetworkEdits;
+import com.powsybl.powsybldesktop.network.edit.NetworkObjects;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.ui.form.CreationForm;
 import com.powsybl.powsybldesktop.ui.form.DetailForm;
@@ -51,7 +48,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 /**
  * Creation dialogs of the network objects outside of voltage levels: areas, overload management systems (in a
@@ -87,19 +83,19 @@ public final class NetworkObjectEdits {
                 .sorted(Comparator.comparing(VoltageLevel::getNameOrId)).toList());
         form.custom("desktop.common.equipment.voltageLevel.plural", voltageLevels, null, () -> null);
         return CreateDialog.showThenDetails(sceneModel, owner, Messages.get("edit.create.title", Messages.get("desktop.common.equipment.area")), form, () -> {
-            String areaId = id.get();
-            AreaAdder adder = network.newArea().setId(areaId).setName(name.get()).setAreaType(areaType.get());
-            if (!Double.isNaN(interchangeTarget.get())) {
-                adder.setInterchangeTarget(interchangeTarget.get());
-            }
-            voltageLevels.getCheckModel().getCheckedItems().forEach(adder::addVoltageLevel);
-            NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> adder.add());
-            return network.getArea(areaId);
+            NetworkObjects.AreaSpec spec = new NetworkObjects.AreaSpec(id.get(), name.get(), areaType.get(), interchangeTarget.get(),
+                    List.copyOf(voltageLevels.getCheckModel().getCheckedItems()));
+            NetworkEdits.apply(sceneModel.getMainModel(), network, n -> NetworkObjects.addArea(n, spec));
+            return network.getArea(spec.id());
         });
     }
 
     private record TrippingRow(OverloadManagementSystem.Tripping.Type type, Identifiable<?> element, Object side, String key,
                                double currentLimit, boolean open) {
+        private NetworkObjects.Tripping tripping() {
+            return new NetworkObjects.Tripping(type, element, side, key, currentLimit, open);
+        }
+
         @Override
         public String toString() {
             return key + ": " + (open ? "open " : "close ") + element.getNameOrId() + (side == null ? "" : " (" + side + ")") + " > " + currentLimit + " A";
@@ -112,7 +108,7 @@ public final class NetworkObjectEdits {
      */
     public static Optional<OverloadManagementSystem> newOverloadManagementSystem(SceneModel sceneModel, Window owner, Substation substation) {
         Network network = substation.getParentNetwork();
-        List<Identifiable<?>> branches = branchesOf(substation);
+        List<Identifiable<?>> branches = NetworkObjects.branchesOf(substation);
         CreationForm form = new CreationForm();
         CreationForm.Field<String> id = form.id(network, NetworkEdits.uniqueId(network, substation.getId() + "_OMS"));
         CreationForm.Field<String> name = form.text("desktop.common.column.name", null, false);
@@ -132,40 +128,19 @@ public final class NetworkObjectEdits {
                     if (trippings.getItems().isEmpty()) {
                         throw new CreationForm.FieldException(trippings, Messages.get("edit.oms.noTripping"));
                     }
-                    OverloadManagementSystemAdder adder = substation.newOverloadManagementSystem().setId(systemId).setName(name.get())
-                            .setEnabled(enabled.get()).setMonitoredElementId(monitored.get().getId()).setMonitoredElementSide(monitoredSide.get());
-                    trippings.getItems().forEach(row -> addTripping(adder, row));
-                    NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> adder.add());
+                    NetworkObjects.OverloadManagementSystemSpec spec = new NetworkObjects.OverloadManagementSystemSpec(systemId, name.get(),
+                            enabled.get(), monitored.get(), monitoredSide.get(), trippings.getItems().stream().map(TrippingRow::tripping).toList());
+                    NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> NetworkObjects.addOverloadManagementSystem(substation, spec));
                     return network.getOverloadManagementSystem(systemId);
                 });
-    }
-
-    private static List<Identifiable<?>> branchesOf(Substation substation) {
-        return Stream.concat(substation.getVoltageLevelStream().flatMap(VoltageLevel::getLineStream).distinct().map(line -> (Identifiable<?>) line),
-                        Stream.concat(substation.getTwoWindingsTransformerStream(), substation.getThreeWindingsTransformerStream()))
-                .sorted(Comparator.comparing(Identifiable::getNameOrId))
-                .toList();
-    }
-
-    private static void addTripping(OverloadManagementSystemAdder adder, TrippingRow row) {
-        switch (row.type()) {
-            case SWITCH_TRIPPING -> adder.newSwitchTripping().setKey(row.key()).setCurrentLimit(row.currentLimit()).setOpenAction(row.open())
-                    .setSwitchToOperateId(row.element().getId()).add();
-            case BRANCH_TRIPPING -> adder.newBranchTripping().setKey(row.key()).setCurrentLimit(row.currentLimit()).setOpenAction(row.open())
-                    .setBranchToOperateId(row.element().getId()).setSideToOperate((TwoSides) row.side()).add();
-            case THREE_WINDINGS_TRANSFORMER_TRIPPING -> adder.newThreeWindingsTransformerTripping().setKey(row.key()).setCurrentLimit(row.currentLimit())
-                    .setOpenAction(row.open()).setThreeWindingsTransformerToOperateId(row.element().getId()).setSideToOperate((ThreeSides) row.side()).add();
-        }
     }
 
     /**
      * The fields of a tripping to add to the list, with its add and remove buttons.
      */
     private static void addTrippingEditor(CreationForm form, Substation substation, ListView<TrippingRow> trippings) {
-        List<Switch> switches = substation.getVoltageLevelStream().flatMap(voltageLevel -> voltageLevel.getTopologyKind() == TopologyKind.NODE_BREAKER
-                        ? voltageLevel.getNodeBreakerView().getSwitchStream() : voltageLevel.getBusBreakerView().getSwitchStream())
-                .sorted(Comparator.comparing(Switch::getNameOrId)).toList();
-        List<Identifiable<?>> branches = branchesOf(substation);
+        List<Switch> switches = NetworkObjects.switchesOf(substation);
+        List<Identifiable<?>> branches = NetworkObjects.branchesOf(substation);
         CreationForm.Field<OverloadManagementSystem.Tripping.Type> type = form.choice("edit.oms.trippingType",
                 DetailSections.values(OverloadManagementSystem.Tripping.Type.class), DetailSections.enumFormat(),
                 OverloadManagementSystem.Tripping.Type.SWITCH_TRIPPING, true);
@@ -215,7 +190,7 @@ public final class NetworkObjectEdits {
      */
     public static Optional<Boolean> newVoltageAngleLimit(SceneModel sceneModel, Window owner, Network network) {
         CreationForm form = new CreationForm();
-        CreationForm.Field<String> id = form.text("desktop.common.column.id", uniqueVoltageAngleLimitId(network), true);
+        CreationForm.Field<String> id = form.text("desktop.common.column.id", NetworkObjects.uniqueVoltageAngleLimitId(network), true);
         CreationForm.Field<Terminal> from = terminalField(form, "edit.angleLimit.from", sceneModel);
         CreationForm.Field<Terminal> to = terminalField(form, "edit.angleLimit.to", sceneModel);
         CreationForm.Field<Double> low = form.number("edit.angleLimit.low", DetailForm.DEGREE, Double.NaN, false);
@@ -225,23 +200,9 @@ public final class NetworkObjectEdits {
             if (network.getVoltageAngleLimit(limitId) != null) {
                 throw new CreationForm.FieldException(id.getEditor(), Messages.get("edit.create.idTaken", limitId));
             }
-            VoltageAngleLimitAdder adder = network.newVoltageAngleLimit().setId(limitId).from(from.get()).to(to.get());
-            if (!Double.isNaN(low.get())) {
-                adder.setLowLimit(low.get());
-            }
-            if (!Double.isNaN(high.get())) {
-                adder.setHighLimit(high.get());
-            }
-            return NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> adder.add());
+            NetworkObjects.VoltageAngleLimitSpec spec = new NetworkObjects.VoltageAngleLimitSpec(limitId, from.get(), to.get(), low.get(), high.get());
+            return NetworkEdits.apply(sceneModel.getMainModel(), network, n -> NetworkObjects.addVoltageAngleLimit(n, spec));
         });
-    }
-
-    private static String uniqueVoltageAngleLimitId(Network network) {
-        int n = 1;
-        while (network.getVoltageAngleLimit("VAL" + n) != null) {
-            n++;
-        }
-        return "VAL" + n;
     }
 
     // the chosen terminal, picked with a TerminalPickerDialog

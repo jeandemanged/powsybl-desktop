@@ -17,6 +17,8 @@ import com.powsybl.iidm.serde.NetworkSerDe;
 import com.powsybl.loadflow.LoadFlow;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.powsybldesktop.diagram.SubstationDiagramRenderer;
+import com.powsybl.powsybldesktop.network.edit.Containers;
+import com.powsybl.powsybldesktop.network.edit.Injections;
 import com.powsybl.sld.SldParameters;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.TextField;
@@ -44,17 +46,17 @@ class NetworkFromScratchTest extends AbstractCreationDialogTest {
 
     @Test
     void builtNetworkIsSolvedDrawnAndExported() throws Exception {
-        Network network = Network.create("scratch", ContainerCreations.SOURCE_FORMAT);
+        Network network = Network.create("scratch", Containers.SOURCE_FORMAT);
 
         Substation s1 = openAndConfirm(sceneModel -> ContainerCreations.newSubstation(sceneModel, stage, network, null, null), network);
         Substation s2 = openAndConfirm(sceneModel -> ContainerCreations.newSubstation(sceneModel, stage, network, null, null), network);
         VoltageLevel vl1 = openAndConfirm(sceneModel -> ContainerCreations.newVoltageLevel(sceneModel, stage, network, s1), network);
         VoltageLevel vl2 = openAndConfirm(sceneModel -> ContainerCreations.newVoltageLevel(sceneModel, stage, network, s2), network);
         // id, name, min P, max P, target P
-        Generator generator = (Generator) openAndConfirm(sceneModel -> InjectionCreations.create(sceneModel, stage, InjectionCreations.Kind.GENERATOR,
+        Generator generator = (Generator) openAndConfirm(sceneModel -> InjectionCreations.create(sceneModel, stage, Injections.Kind.GENERATOR,
                 vl1, null), network, dialogPane -> setText(dialogPane, 4, "60"));
         // id, name, P0
-        Load load = (Load) openAndConfirm(sceneModel -> InjectionCreations.create(sceneModel, stage, InjectionCreations.Kind.LOAD,
+        Load load = (Load) openAndConfirm(sceneModel -> InjectionCreations.create(sceneModel, stage, Injections.Kind.LOAD,
                 vl2, null), network, dialogPane -> setText(dialogPane, 2, "50"));
         Line line = openAndConfirm(sceneModel -> BranchCreations.newLine(sceneModel, stage, network, vl1, null), network);
 
