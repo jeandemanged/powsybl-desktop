@@ -177,7 +177,7 @@ Two established forms:
   items are replaced with `setItems(new list)`, never `getItems().setAll`, which fails in its cells once its popup has
   been shown. Test such chains by clicking through the popups: `setValue` alone doesn't reproduce either.
 - Dates with time are a `…/utils/DateTimePicker.java` (JavaFX has no date-time picker: a `DatePicker`, hour and
-  minute spinners, a time zone choice), reporting user edits only through `setOnEdit` - `setValue` shows a value
+  minute spinners, a time zone choice; dates shown as `31 Oct 2026` whatever the locale), reporting user edits only through `setOnEdit` - `setValue` shows a value
   without reporting it (the networks view's case date, the new network dialog).
 - New lines default their second side to `BranchCreations.otherEnd`: another substation's voltage level of the
   closest nominal voltage, nearest substation first (from their positions).
@@ -240,7 +240,7 @@ shared `equipment-detail-view.fxml` (no `fx:controller`: `EquipmentDetails.load`
   pane), `ExtensionsPane` with editors from `ExtensionEditors` (per-type lists composed of shared generic ones), and
   `KeyValueTablePane.properties/aliases`.
 - The selected network's details are not a separate view but the networks view's details pane (`NetworksController`):
-  its fields, then tabs reusing `ExtensionsPane` and `KeyValueTablePane` after the statistics.
+  its fields (id and name editable, the id through IIDM's `setId`, for subnetworks too), then tabs reusing `ExtensionsPane` and `KeyValueTablePane` after the statistics.
 - Show IIDM attributes as IIDM holds them, not the tables' simplified columns, and only the values IIDM accepts for the
   type (e.g. regulation modes per `VoltageRegulationUtils`).
 

@@ -22,6 +22,9 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -37,6 +40,10 @@ public final class DateTimePicker extends HBox {
 
     private static final int MIN_OFFSET_HOURS = -12;
     private static final int MAX_OFFSET_HOURS = 14;
+    private static final DateTimeFormatter DATE_FORMATTER = new DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .appendPattern("dd MMM uuuu")
+            .toFormatter(Locale.ENGLISH);
 
     private final DatePicker datePicker = new DatePicker();
     private final Spinner<Integer> hourSpinner = timeSpinner(23);
@@ -56,6 +63,22 @@ public final class DateTimePicker extends HBox {
         super(4);
         setAlignment(Pos.CENTER_LEFT);
         datePicker.setPrefWidth(130);
+        // the locale's short format is ambiguous across locales (10/31 vs 31/10)
+        datePicker.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(LocalDate date) {
+                return date == null ? "" : DATE_FORMATTER.format(date);
+            }
+
+            @Override
+            public LocalDate fromString(String string) {
+                try {
+                    return LocalDate.parse(string.trim(), DATE_FORMATTER);
+                } catch (DateTimeParseException _) {
+                    return datePicker.getValue();
+                }
+            }
+        });
         zoneComboBox.setConverter(new StringConverter<>() {
             @Override
             public String toString(ZoneId zone) {
