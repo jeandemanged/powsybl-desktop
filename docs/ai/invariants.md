@@ -50,6 +50,10 @@ Build
     `copy-dependencies`.
 17. New table views are added to `EditLockTest`; new views get a controller test (and an `*EmptyStateTest` for
     table/detail views).
+18. `README.md` stays in sync with the features: a user-visible feature added, removed or changed updates "What it
+    can do" (and drops the matching item from "What it cannot do yet"); new logic of the app's own rather than
+    PowSyBl's is added to the intro's list of exceptions; a new import/export format is listed only if its converter
+    is on the classpath (`mvn -o dependency:list`).
 
 ## Review checklist
 
@@ -61,6 +65,7 @@ Build
 - New strings in both bundles, keys sorted? FXML ids/handlers matching? Styling through `styles.css` classes, no inline style?
 - New SLD/NAD/GUI parameter field added to `ApplicationParametersJson`'s `Binder`? Form calls its `onChange` hook?
 - New navigation type handled in `NavigationEvent.describe()` and `MainController.onNavigationEvent`?
+- User-visible feature change reflected in `README.md`?
 - Tests added/updated and `mvn clean install` (or affected tests + `mvn checkstyle:check@default`) run?
 
 ## Known inconsistencies (documented, not to be "fixed" silently)
