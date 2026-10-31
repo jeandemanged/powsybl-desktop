@@ -56,7 +56,7 @@ public class TieLineDetailController extends AbstractEquipmentDetailController<T
 
     @Override
     protected EquipmentSymbol symbol() {
-        return newSymbol().branch(null, equipment::getTerminal1, equipment::getTerminal2);
+        return newSymbol().tieLine(equipment);
     }
 
     @Override

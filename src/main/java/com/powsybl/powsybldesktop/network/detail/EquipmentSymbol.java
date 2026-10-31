@@ -15,6 +15,7 @@ import com.powsybl.iidm.network.HvdcConverterStation;
 import com.powsybl.iidm.network.HvdcLine;
 import com.powsybl.iidm.network.Terminal;
 import com.powsybl.iidm.network.ThreeWindingsTransformer;
+import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.TwoSides;
 import com.powsybl.powsybldesktop.diagram.BaseVoltages;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
@@ -79,7 +80,8 @@ import java.util.regex.Pattern;
  * the solved P, Q and I, P and Q unsigned, as single line diagrams show a feeder's: the library's arrows on the wire
  * tell their direction, from the bus to the equipment when positive (the terminal convention, also a boundary line's
  * boundary side's). Two-sided equipment is
- * laid out left to right (side 1, or a boundary line's network side, on the left), a three-winding transformer's side
+ * laid out left to right (side 1, or a boundary line's network side, on the left; a tie line's boundary point in the
+ * middle, with its values below), a three-winding transformer's side
  * 1 on top, sides 2 and 3 below, left and right; an injection or a busbar section hangs below its bus. Redrawn when
  * the component library or the equipment's component changes (e.g. a phase tap changer added), otherwise only
  * re-read.
@@ -95,13 +97,16 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
     private static final double TEXT_STROKE_WIDTH = 0.2;
     private static final double WIRE_WIDTH = 2;
     private static final double BUS_WIDTH = 5;
+    private static final double GAP = 8;
+    // between a horizontal wire's P and Q arrows, as wide as a 5 digit value
+    private static final double FLOW_SPACING = 80;
     // room for P and Q side by side above it
-    private static final double WIRE = 240;
+    private static final double WIRE = 2 * FLOW_SPACING + 2 * GAP;
     private static final double VERTICAL_WIRE = 70;
-    private static final double LINE = 160;
+    private static final double LINE = 120;
     private static final double DC_LINE = 80;
     private static final double BUS = 120;
-    private static final double BOX_WIDTH = 150;
+    private static final double BOX_WIDTH = 120;
     private static final double BOX_HEIGHT = 64;
     private static final double FLOWS_WIDTH = 140;
     // of a flow value, P, Q and I stacked along a vertical wire
@@ -109,7 +114,6 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
     // the library's arrows are 10 units wide, as its feeder labels' font size
     private static final double ARROW_SCALE = 1.2;
     private static final double ARROW_HALF_WIDTH = ARROW_SCALE * 5;
-    private static final double GAP = 8;
     private static final double LEG_OFFSET = 110;
     // of a flow arrow, towards the right unrotated
     private static final double RIGHT = 0;
@@ -224,6 +228,29 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
     }
 
     /**
+     * A tie line between its sides' buses, its boundary point in the middle: boundary line 1's boundary side's values,
+     * boundary line 2's being their opposite.
+     */
+    public EquipmentSymbol tieLine(TieLine tieLine) {
+        End end1 = terminalEnd(tieLine::getTerminal1);
+        End end2 = terminalEnd(tieLine::getTerminal2);
+        End boundary = end(end1.color(), () -> tieLine.getBoundaryLine1().getBoundary().getP(), () -> tieLine.getBoundaryLine1().getBoundary().getQ(),
+                () -> tieLine.getBoundaryLine1().getBoundary().getI(), () -> tieLine.getBoundaryLine1().getBoundary().getV(),
+                () -> tieLine.getBoundaryLine1().getBoundary().getAngle(), null);
+        return drawn(List::of, () -> row(end1, end2, false, x -> {
+            double y = rowY();
+            wire(x, y, x + LINE / 2, y, end1.color(), WIRE_WIDTH);
+            double point = x + LINE / 2 + WIRE;
+            horizontalWire(boundary, x + LINE / 2, point, y, false);
+            boundaryPoint(boundary, point, y);
+            // below the boundary wire's I
+            place(boundary.bus(), point - BOX_WIDTH / 2, y + GAP / 2 + FLOW_ROW, BOX_WIDTH, BOX_HEIGHT, Pos.TOP_CENTER);
+            wire(point, y, point + LINE / 2, y, end2.color(), WIRE_WIDTH);
+            return point + LINE / 2;
+        }));
+    }
+
+    /**
      * An HVDC line's converter stations between their buses, linked by the DC line.
      */
     public EquipmentSymbol hvdcLine(HvdcLine hvdcLine) {
@@ -299,13 +326,17 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
         double rightBus = middleEnd + WIRE;
         horizontalWire(right, middleEnd, rightBus, y, false);
         if (rightBoundary) {
-            Circle point = new Circle(rightBus, y, BUS_WIDTH);
-            shapes.getChildren().add(point);
-            painted.add(new Painted(point, "var", null, right.color()));
+            boundaryPoint(right, rightBus, y);
         } else {
             wire(rightBus, y - BUS / 4, rightBus, y + BUS / 4, right.color(), BUS_WIDTH);
         }
         place(right.bus(), rightBus + GAP, y - BOX_HEIGHT / 2, BOX_WIDTH, BOX_HEIGHT, Pos.CENTER_LEFT);
+    }
+
+    private void boundaryPoint(End end, double x, double y) {
+        Circle point = new Circle(x, y, BUS_WIDTH);
+        shapes.getChildren().add(point);
+        painted.add(new Painted(point, "var", null, end.color()));
     }
 
     private static double rowY() {
@@ -370,11 +401,11 @@ public final class EquipmentSymbol extends Pane implements DetailPart {
             return;
         }
         end.towardsEquipment = busOnLeft ? RIGHT : LEFT;
-        double quarter = (x2 - x1) / 4;
-        arrow(end, true, x1 + quarter, y);
-        arrow(end, false, x2 - quarter, y);
-        place(end.p, x1, y - GAP / 2 - FLOW_ROW, 2 * quarter, FLOW_ROW, Pos.BOTTOM_CENTER);
-        place(end.q, x1 + 2 * quarter, y - GAP / 2 - FLOW_ROW, 2 * quarter, FLOW_ROW, Pos.BOTTOM_CENTER);
+        double middle = (x1 + x2) / 2;
+        arrow(end, true, middle - FLOW_SPACING / 2, y);
+        arrow(end, false, middle + FLOW_SPACING / 2, y);
+        place(end.p, middle - FLOW_SPACING, y - GAP / 2 - FLOW_ROW, FLOW_SPACING, FLOW_ROW, Pos.BOTTOM_CENTER);
+        place(end.q, middle, y - GAP / 2 - FLOW_ROW, FLOW_SPACING, FLOW_ROW, Pos.BOTTOM_CENTER);
         place(end.i, x1, y + GAP / 2, x2 - x1, FLOW_ROW, Pos.TOP_CENTER);
     }
 
