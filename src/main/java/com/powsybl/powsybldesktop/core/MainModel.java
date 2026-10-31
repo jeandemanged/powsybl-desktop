@@ -5,7 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop;
+package com.powsybl.powsybldesktop.core;
 
 import com.powsybl.commons.report.ReportNode;
 import com.powsybl.iidm.network.Network;
@@ -40,8 +40,7 @@ import java.util.function.Predicate;
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 public class MainModel {
-    // here rather than in MainApplication, so that views use it (and MainModel.class as their resource anchor)
-    // without depending on the application shell
+    // here rather than in MainApplication, so that views use it without depending on the application shell
     public static final String APP_TITLE = "PowSyBl Desktop";
 
     private final ObservableList<Network> networks = FXCollections.observableArrayList();

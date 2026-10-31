@@ -24,7 +24,6 @@ import com.powsybl.nad.svg.EdgeInfoParameters;
 import com.powsybl.nad.svg.LabelProviderParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
-import com.powsybl.powsybldesktop.map.Basemap;
 import com.powsybl.security.SecurityAnalysisParameters;
 import com.powsybl.security.json.JsonSecurityAnalysisParameters;
 import com.powsybl.sld.layout.LayoutParameters;

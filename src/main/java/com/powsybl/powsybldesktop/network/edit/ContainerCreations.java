@@ -21,13 +21,13 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.VoltageLevelAdder;
 import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.iidm.network.extensions.SubstationPositionAdder;
-import com.powsybl.powsybldesktop.MainModel;
-import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.network.form.CreationForm;
 import com.powsybl.powsybldesktop.network.form.DetailForm;
 import com.powsybl.powsybldesktop.network.form.DetailSections;
 import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.powsybldesktop.window.SceneModel;
 import javafx.scene.control.ComboBox;
 import javafx.stage.Window;
 

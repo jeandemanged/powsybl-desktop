@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop;
 
+import com.powsybl.powsybldesktop.core.MainModel;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -59,15 +60,14 @@ class ArchitectureTest {
     private static final DescribedPredicate<JavaClass> SHELL = classes("the application shell",
             "Launcher", "MainApplication", "MainController", "SplashScreen");
 
-    // the shared state, wherever it lives: the root package's models and the sub-models MainModel aggregates
-    private static final DescribedPredicate<JavaClass> STATE = packages("", "navigation")
-            .or(classes("", "MainModel", "NetworkStudy", "SceneModel", "SceneView", "AbstractNetworkTask", "NetworkStructureChange",
-                    "logs.LogsModel",
+    // the shared state, wherever it lives: core and the sub-models MainModel aggregates
+    private static final DescribedPredicate<JavaClass> STATE = packages("", "core", "navigation")
+            .or(classes("", "logs.LogsModel",
                     "notification.Notification", "notification.NotificationAction", "notification.NotificationStatus",
                     "notification.NotificationsModel",
                     "parameters.ParametersModel", "parameters.ApplicationParameters", "parameters.GuiParameters",
                     "parameters.DesktopNadParameters", "parameters.DesktopSldParameters", "parameters.ApplicationParametersJson",
-                    "parameters.ParametersConfigFile", "map.Basemap"))
+                    "parameters.ParametersConfigFile", "parameters.Basemap"))
             .as("the shared state");
 
     // computations and their results, no UI
@@ -178,7 +178,7 @@ class ArchitectureTest {
     // recording its own state
     @Test
     void onlyTheShellAndSceneModelUseTheNavigationHistoryDirectly() {
-        ArchRule rule = noClasses().that(DescribedPredicate.not(classes("the shell or SceneModel", "MainController", "SceneModel")))
+        ArchRule rule = noClasses().that(DescribedPredicate.not(classes("the shell or SceneModel", "MainController", "window.SceneModel")))
                 .should().callMethod(MainModel.class, "getNavigationHistory");
         freeze(rule).check(CLASSES);
     }

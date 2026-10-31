@@ -19,7 +19,9 @@ Not a textbook MVC/MVVM. The actual structure is:
 
 | Package | Responsibility |
 |---|---|
-| root (`…/`) | `Launcher`, `MainApplication`, `SplashScreen`, `MainController` (shell), `MainModel`, `NetworkStudy`, `AbstractNetworkTask` |
+| root (`…/`) | The shell: `Launcher`, `MainApplication`, `SplashScreen`, `MainController` |
+| `core` | The shared state: `MainModel`, `NetworkStudy`, `AbstractNetworkTask`, `NetworkStructureChange` |
+| `window` | A view's per-window context: `SceneModel`, `SceneView`, and `SeparateWindows` (the separate windows and their tabs) |
 | `navigation` | `NavigationType`, `NavigationEvent` (record), `NavigationState` + one subclass per restorable selection, `NavigationHistory` |
 | `network` | `NetworksController` (load/import/export/merge/detach networks), `SubstationsController` (tree + SLD/NAD tabs + embedded tables), diagram renderers, `DropImportDialog` |
 | `network/tables` | One controller per equipment table, `AbstractEquipmentTableController`, `EmbeddableEquipmentTable`, `ViolationColumns` (columns of the Violations and Security Analysis Results views), `ColumnVisibilityToolbarController`, `TableEditActions` (a table's context menu: details, creations, removal), `NetworkTieLines`, edit dialogs |
@@ -30,11 +32,11 @@ Not a textbook MVC/MVVM. The actual structure is:
 | `network/search` | `SearchBoxController` (reusable search box) |
 | `search` | `NetworkSearch` (kinds, container resolution), `NetworkSearchIndex` (Lucene); no JavaFX UI |
 | `diagram` | `DiagramPaneController`: reusable WebView viewport (zoom, fit, PNG/SVG export); `BaseVoltages`: base voltage ranges and colors as single line diagrams use them, for whatever colors equipment outside diagrams (map, `EquipmentSymbol`); `MapBaseVoltages` (per base voltage filter checkboxes, in the map and the GUI parameters) |
-| `map` | Map view: `MapController`, `MapNetworkData` snapshot, `MapTileRenderer`, `map.js` + Leaflet, `Basemap` |
+| `map` | Map view: `MapController`, `MapNetworkData` snapshot, `MapTileRenderer`, `map.js` + Leaflet |
 | `contingency` | Contingency lists editor and JSON I/O |
 | `loadflow`, `security` | Result/report records and helpers (`LoadFlowConvergence`) |
 | `violations` | `NetworkViolations` (flow and voltage limit violations of the network's state), `FlowViolation`, `VoltageViolation` (also built from a security analysis' violations) |
-| `parameters` | Parameters window (tabs), `ParametersModel`, `ApplicationParameters` record, `ApplicationParametersJson`, `ParametersConfigFile` |
+| `parameters` | Parameters window (tabs), `ParametersModel`, `ApplicationParameters` record (`GuiParameters`, with the map's `Basemap`, ...), `ApplicationParametersJson`, `ParametersConfigFile` |
 | `notification` | `Notification` record, `NotificationsModel`, overlay popup and history panel |
 | `report`, `reports` | Report viewer; `PowsyblDesktopReportResourceBundle` registering `reports(_fr).properties` |
 | `logs` | `LogsModel` (Logback appender → observable list), `LogsViewController` |
@@ -53,7 +55,7 @@ each one using only the layers below it (from top to bottom):
 |---|---|
 | Shell | `Launcher`, `MainApplication`, `MainController`, `SplashScreen` |
 | Views | everything not listed in the other layers |
-| State | the root package's other classes (`MainModel`, `NetworkStudy`, `SceneModel`, `SceneView`, `AbstractNetworkTask`, `NetworkStructureChange`), `navigation`, and the sub-models with their values: `LogsModel`, `Notification*` (not the views), `ParametersModel`, `ApplicationParameters` and its parts, `ApplicationParametersJson`, `ParametersConfigFile`, `map/Basemap` |
+| State | `core`, `navigation`, and the sub-models with their values: `LogsModel`, `Notification*` (not the views), `ParametersModel`, `ApplicationParameters` and its parts (`Basemap` included), `ApplicationParametersJson`, `ParametersConfigFile` |
 | Domain | `violations`, `loadflow`, `security`, `search` (no `javafx.scene`/`javafx.stage`) |
 | Base | `utils`, `util`, `reports` |
 
@@ -68,9 +70,8 @@ Existing violations are frozen in `src/test/archunit_store` (path set in `src/te
 new violation fails the build, and a fixed one is removed from the store by the next run (commit the updated store). Cycles
 are recorded per package edge, so a new class dependency along an already cyclic edge passes, but a new cyclic edge
 fails. Never refreeze (`-Darchunit.freeze.refreeze=true`) to accept a new violation; that is only for re-recording the
-store after a rule's own text changes. Frozen today, both accepted by design: `SceneModel` → `SeparateWindows` (the
-window manager is part of a view's per-window context), and the `network.detail` ↔ `network.edit` cycle (detail views
-offer removal through `Removals`; `CreateDialog`'s "open details" option calls `EquipmentDetails.open`).
+store after a rule's own text changes. Frozen today: the `network.detail` ↔ `network.edit` cycle (detail views offer
+removal through `Removals`; `CreateDialog`'s "open details" option calls `EquipmentDetails.open`).
 
 ## Entry point and lifecycle
 
@@ -89,18 +90,18 @@ offer removal through `Removals`; `CreateDialog`'s "open details" option calls `
 
 ## Shared state: `MainModel` and `NetworkStudy`
 
-`…/MainModel.java` holds: loaded root networks (`getNetworks()`), the selected network (`networkProperty()`, may be
+`…/core/MainModel.java` holds: loaded root networks (`getNetworks()`), the selected network (`networkProperty()`, may be
 a subnetwork), an `updateProperty()` timestamp fired after any network mutation (`setUpdate()` /
 `setUpdate(VoltageLevel)`), `networkBusyProperty()`, search index state, reports, the main window's diagram display
 settings, the network change guard, and the sub-models `NavigationHistory`, `ParametersModel`, `NotificationsModel`,
 `LogsModel`.
 
-`…/NetworkStudy.java` holds everything per loaded root network: LF/SA results, cached limit violations, contingency lists and their enabled
+`…/core/NetworkStudy.java` holds everything per loaded root network: LF/SA results, cached limit violations, contingency lists and their enabled
 flags, running computation and index-build services, search indexes, Map views, busy count. `MainModel.getStudy(n)`
 resolves a subnetwork to its root and throws if the network is not loaded. Studies are created by
 `addNetwork`/`detachSubnetworks` and disposed (services cancelled, indexes closed) by `removeNetwork`.
 
-`…/SceneModel.java` is what a view controller receives (`SceneView.setSceneModel`): the shared `MainModel` plus what
+`…/window/SceneModel.java` is what a view controller receives (`SceneView.setSceneModel`): the shared `MainModel` plus what
 depends on the window showing the view - the network (the main window's follows the selection; a separate window's is
 fixed to the network selected when it was opened, and closed before the selection changes to another root network, so
 the root network's `MainModel` state - busy - applies to it too, while its search boxes search its own network's index),

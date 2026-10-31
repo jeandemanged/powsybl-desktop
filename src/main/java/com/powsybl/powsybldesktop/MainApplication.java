@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop;
 
+import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.parameters.ParametersConfigFile;
 import com.powsybl.powsybldesktop.utils.LanguagePreferences;

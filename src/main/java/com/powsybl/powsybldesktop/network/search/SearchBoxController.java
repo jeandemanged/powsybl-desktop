@@ -9,12 +9,12 @@ package com.powsybl.powsybldesktop.network.search;
 
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
-import com.powsybl.powsybldesktop.MainModel;
-import com.powsybl.powsybldesktop.NetworkStudy;
-import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.core.NetworkStudy;
 import com.powsybl.powsybldesktop.search.NetworkSearch;
 import com.powsybl.powsybldesktop.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.powsybldesktop.window.SceneModel;
 import javafx.animation.PauseTransition;
 import javafx.beans.value.ChangeListener;
 import javafx.concurrent.Service;

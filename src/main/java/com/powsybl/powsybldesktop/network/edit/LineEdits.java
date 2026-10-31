@@ -17,10 +17,10 @@ import com.powsybl.iidm.network.LineAdder;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.ConnectablePosition;
-import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.network.form.CreationForm;
 import com.powsybl.powsybldesktop.network.form.DetailForm;
 import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.powsybldesktop.window.SceneModel;
 import javafx.stage.Window;
 
 import java.util.ArrayList;

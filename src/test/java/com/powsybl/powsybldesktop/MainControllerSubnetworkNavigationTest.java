@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop;
 
 import com.powsybl.iidm.network.BusbarSection;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.navigation.BusbarSectionNavigationState;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;

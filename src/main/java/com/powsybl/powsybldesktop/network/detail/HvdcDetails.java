@@ -10,9 +10,9 @@ package com.powsybl.powsybldesktop.network.detail;
 import com.powsybl.iidm.network.HvdcConverterStation;
 import com.powsybl.iidm.network.HvdcLine;
 import com.powsybl.iidm.network.TwoSides;
-import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.network.form.DetailForm;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.powsybldesktop.window.SceneModel;
 
 /**
  * What VSC and LCC converter stations' detail views share.

@@ -9,8 +9,7 @@ package com.powsybl.powsybldesktop.window;
 
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
-import com.powsybl.powsybldesktop.MainModel;
-import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.utils.DisposableController;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.binding.Bindings;
@@ -212,9 +211,9 @@ public final class SeparateWindows {
             name.addListener((_, _, _) -> updateTitle());
             tabPane.getSelectionModel().selectedItemProperty().addListener((_, _, _) -> updateTitle());
             updateTitle();
-            stage.getIcons().add(new Image(Objects.requireNonNull(MainModel.class.getResourceAsStream("logo.png"))));
+            stage.getIcons().add(new Image(Objects.requireNonNull(SeparateWindows.class.getResourceAsStream("/com/powsybl/powsybldesktop/logo.png"))));
             Scene scene = new Scene(root, width, height);
-            scene.getStylesheets().add(Objects.requireNonNull(MainModel.class.getResource("styles.css")).toExternalForm());
+            scene.getStylesheets().add(Objects.requireNonNull(SeparateWindows.class.getResource("/com/powsybl/powsybldesktop/styles.css")).toExternalForm());
             stage.setScene(scene);
             // the name sits over the left of the tab strip, whose tabs are shifted right of it
             root.applyCss();
@@ -370,7 +369,7 @@ public final class SeparateWindows {
      * Loads {@code fxml} (relative to the application package), its controller set up by {@code setup}.
      */
     public static <T extends DisposableController> View load(String fxml, Consumer<T> setup) {
-        FXMLLoader loader = new FXMLLoader(MainModel.class.getResource(fxml), Messages.bundle());
+        FXMLLoader loader = new FXMLLoader(SeparateWindows.class.getResource("/com/powsybl/powsybldesktop/" + fxml), Messages.bundle());
         try {
             Parent root = loader.load();
             T controller = loader.getController();
@@ -688,7 +687,7 @@ public final class SeparateWindows {
             this.open = open;
             hint.getStyleClass().add("drag-to-open-hint");
             // a Popup doesn't inherit its owner's stylesheets
-            hint.getStylesheets().add(Objects.requireNonNull(MainModel.class.getResource("styles.css")).toExternalForm());
+            hint.getStylesheets().add(Objects.requireNonNull(SeparateWindows.class.getResource("/com/powsybl/powsybldesktop/styles.css")).toExternalForm());
             popup.getContent().add(hint);
             button.addEventHandler(MouseEvent.MOUSE_PRESSED, event -> {
                 if (event.getButton() == MouseButton.PRIMARY && button.getScene() != null) {

@@ -9,7 +9,7 @@ package com.powsybl.powsybldesktop.network.tables;
 
 import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Identifiable;
-import com.powsybl.powsybldesktop.SceneView;
+import com.powsybl.powsybldesktop.window.SceneView;
 
 /**
  * What {@link com.powsybl.powsybldesktop.network.SubstationsController} needs from an equipment table

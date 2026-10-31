@@ -8,13 +8,13 @@
 package com.powsybl.powsybldesktop.network.tables;
 
 import com.powsybl.iidm.network.Network;
-import com.powsybl.powsybldesktop.MainModel;
-import com.powsybl.powsybldesktop.SceneModel;
-import com.powsybl.powsybldesktop.SceneView;
+import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.network.form.TableColumnSupport;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.TableAutoFitLimiter;
+import com.powsybl.powsybldesktop.window.SceneModel;
+import com.powsybl.powsybldesktop.window.SceneView;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.SortedList;

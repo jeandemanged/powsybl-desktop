@@ -26,7 +26,7 @@ import com.powsybl.iidm.network.Switch;
 import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
-import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.scene.control.Alert;

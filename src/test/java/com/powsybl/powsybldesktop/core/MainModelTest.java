@@ -5,7 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop;
+package com.powsybl.powsybldesktop.core;
 
 import com.powsybl.commons.report.ReportNode;
 import com.powsybl.contingency.list.ContingencyList;

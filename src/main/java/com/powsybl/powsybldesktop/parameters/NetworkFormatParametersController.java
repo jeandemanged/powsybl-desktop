@@ -10,7 +10,7 @@ package com.powsybl.powsybldesktop.parameters;
 import com.powsybl.commons.parameters.Parameter;
 import com.powsybl.iidm.network.Exporter;
 import com.powsybl.iidm.network.Importer;
-import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXML;

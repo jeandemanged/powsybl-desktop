@@ -9,6 +9,8 @@ package com.powsybl.powsybldesktop;
 
 import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.powsybldesktop.core.AbstractNetworkTask;
+import com.powsybl.powsybldesktop.core.MainModel;
 import javafx.application.Platform;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

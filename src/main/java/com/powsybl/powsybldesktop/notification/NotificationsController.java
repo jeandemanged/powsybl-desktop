@@ -7,7 +7,7 @@
  */
 package com.powsybl.powsybldesktop.notification;
 
-import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;

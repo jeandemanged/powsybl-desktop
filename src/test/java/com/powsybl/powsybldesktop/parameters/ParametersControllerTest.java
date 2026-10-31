@@ -7,7 +7,7 @@
  */
 package com.powsybl.powsybldesktop.parameters;
 
-import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.event.ActionEvent;

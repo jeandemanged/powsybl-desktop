@@ -5,11 +5,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop;
+package com.powsybl.powsybldesktop.window;
 
 import com.powsybl.iidm.network.Network;
+import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
-import com.powsybl.powsybldesktop.window.SeparateWindows;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;

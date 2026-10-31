@@ -8,9 +8,7 @@
 package com.powsybl.powsybldesktop.network;
 
 import com.powsybl.iidm.network.*;
-import com.powsybl.powsybldesktop.MainModel;
-import com.powsybl.powsybldesktop.SceneModel;
-import com.powsybl.powsybldesktop.SceneView;
+import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.diagram.DiagramPaneController;
 import com.powsybl.powsybldesktop.navigation.*;
 import com.powsybl.powsybldesktop.network.edit.EditMenus;
@@ -39,6 +37,8 @@ import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.utils.TreeItems;
+import com.powsybl.powsybldesktop.window.SceneModel;
+import com.powsybl.powsybldesktop.window.SceneView;
 import com.powsybl.powsybldesktop.window.SeparateWindows;
 import javafx.fxml.FXML;
 import javafx.scene.Parent;

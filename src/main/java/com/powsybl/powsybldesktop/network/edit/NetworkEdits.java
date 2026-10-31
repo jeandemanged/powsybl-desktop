@@ -12,8 +12,8 @@ import com.powsybl.iidm.modification.NetworkModification;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.NetworkListener;
-import com.powsybl.powsybldesktop.MainModel;
-import com.powsybl.powsybldesktop.NetworkStructureChange;
+import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.core.NetworkStructureChange;
 import com.powsybl.powsybldesktop.notification.Notification;
 
 import java.time.Instant;

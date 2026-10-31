@@ -21,11 +21,9 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.iidm.network.extensions.LinePosition;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
-import com.powsybl.powsybldesktop.AbstractNetworkTask;
-import com.powsybl.powsybldesktop.MainModel;
-import com.powsybl.powsybldesktop.NetworkStudy;
-import com.powsybl.powsybldesktop.SceneModel;
-import com.powsybl.powsybldesktop.SceneView;
+import com.powsybl.powsybldesktop.core.AbstractNetworkTask;
+import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.core.NetworkStudy;
 import com.powsybl.powsybldesktop.diagram.BaseVoltages;
 import com.powsybl.powsybldesktop.diagram.MapBaseVoltages;
 import com.powsybl.powsybldesktop.network.ContainerDiagram;
@@ -35,10 +33,13 @@ import com.powsybl.powsybldesktop.network.edit.EditMenus;
 import com.powsybl.powsybldesktop.network.edit.NetworkEdits;
 import com.powsybl.powsybldesktop.network.edit.PositionEdits;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
+import com.powsybl.powsybldesktop.parameters.Basemap;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.search.NetworkSearch;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.powsybldesktop.window.SceneModel;
+import com.powsybl.powsybldesktop.window.SceneView;
 import com.powsybl.powsybldesktop.window.SeparateWindows;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -360,7 +361,7 @@ public class MapController extends AbstractDisposableController implements Scene
     private void applyBasemap() {
         basemapUnreachableLabel.setVisible(false);
         if (engineLoaded) {
-            webView.getEngine().executeScript("setBasemap('" + basemapComboBox.getValue().jsName + "')");
+            webView.getEngine().executeScript("setBasemap('" + basemapComboBox.getValue().getJsName() + "')");
         }
     }
 

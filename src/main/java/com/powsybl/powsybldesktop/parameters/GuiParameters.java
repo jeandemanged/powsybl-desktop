@@ -7,8 +7,6 @@
  */
 package com.powsybl.powsybldesktop.parameters;
 
-import com.powsybl.powsybldesktop.map.Basemap;
-
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;

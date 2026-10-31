@@ -28,10 +28,9 @@ import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.VscConverterStation;
-import com.powsybl.powsybldesktop.MainModel;
-import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.network.form.DetailForm;
 import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.powsybldesktop.window.SceneModel;
 import com.powsybl.powsybldesktop.window.SeparateWindows;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -135,7 +134,7 @@ public final class EquipmentDetails {
     @SuppressWarnings("unchecked")
     private static <T extends Identifiable<T>> SeparateWindows.View load(Kind<T> kind, Identifiable<?> equipment, SceneModel sceneModel) {
         AbstractEquipmentDetailController<T> controller = kind.controller().get();
-        FXMLLoader loader = new FXMLLoader(MainModel.class.getResource("network/detail/equipment-detail-view.fxml"), Messages.bundle());
+        FXMLLoader loader = new FXMLLoader(EquipmentDetails.class.getResource("equipment-detail-view.fxml"), Messages.bundle());
         loader.setController(controller);
         try {
             Parent root = loader.load();

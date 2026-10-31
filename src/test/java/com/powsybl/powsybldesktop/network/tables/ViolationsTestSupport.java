@@ -9,7 +9,7 @@ package com.powsybl.powsybldesktop.network.tables;
 
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.limitmodification.LimitsComputer;
-import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.network.form.TableColumnSupport;
 import com.powsybl.powsybldesktop.violations.NetworkViolations;
 import javafx.scene.Node;

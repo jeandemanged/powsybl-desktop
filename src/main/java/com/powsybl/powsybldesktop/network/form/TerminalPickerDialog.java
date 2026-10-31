@@ -10,11 +10,10 @@ package com.powsybl.powsybldesktop.network.form;
 import com.powsybl.iidm.network.Connectable;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Terminal;
-import com.powsybl.powsybldesktop.MainModel;
-import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.search.NetworkSearch;
 import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.powsybldesktop.window.SceneModel;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
@@ -54,7 +53,7 @@ public final class TerminalPickerDialog {
      * @param sceneModel the network of its view, searched for the equipment
      */
     public static Optional<Terminal> show(Window owner, SceneModel sceneModel) {
-        FXMLLoader loader = new FXMLLoader(MainModel.class.getResource("network/search/search-box.fxml"), Messages.bundle());
+        FXMLLoader loader = new FXMLLoader(SearchBoxController.class.getResource("search-box.fxml"), Messages.bundle());
         Parent searchBox;
         try {
             searchBox = loader.load();

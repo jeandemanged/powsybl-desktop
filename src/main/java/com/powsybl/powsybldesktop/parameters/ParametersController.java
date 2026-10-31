@@ -8,7 +8,7 @@
 package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.commons.PowsyblException;
-import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.FileChooserPreferences;
