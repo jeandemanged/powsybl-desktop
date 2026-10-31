@@ -5,7 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.network;
+package com.powsybl.powsybldesktop.network.tables;
 
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.TieLine;

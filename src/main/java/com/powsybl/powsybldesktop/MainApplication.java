@@ -34,7 +34,6 @@ import java.util.Optional;
 public class MainApplication extends Application {
     private static final Logger LOGGER = LoggerFactory.getLogger(MainApplication.class);
     private static final Duration MIN_SPLASH_DURATION = Duration.seconds(1);
-    public static final String APP_TITLE = "PowSyBl Desktop";
 
     static {
         // Default JDK JAXP entity-size limits can reject legitimately large CGMES/IIDM network files; 0 disables them.
@@ -76,7 +75,7 @@ public class MainApplication extends Application {
     private static void showMainView(Stage stage, Parent mainView, SplashScreen splash) {
         Scene scene = new Scene(mainView, 900, 600);
         scene.getStylesheets().add(MainApplication.class.getResource("styles.css").toExternalForm());
-        stage.setTitle(APP_TITLE);
+        stage.setTitle(MainModel.APP_TITLE);
         stage.getIcons().add(new Image(Objects.requireNonNull(MainApplication.class.getResourceAsStream("logo.png"))));
         stage.setScene(scene);
         // separate windows are independent stages, which would otherwise keep the application running

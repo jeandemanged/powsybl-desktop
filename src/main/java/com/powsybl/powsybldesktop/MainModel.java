@@ -40,6 +40,10 @@ import java.util.function.Predicate;
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 public class MainModel {
+    // here rather than in MainApplication, so that views use it (and MainModel.class as their resource anchor)
+    // without depending on the application shell
+    public static final String APP_TITLE = "PowSyBl Desktop";
+
     private final ObservableList<Network> networks = FXCollections.observableArrayList();
     // keyed by root network, like networks
     private final Map<Network, NetworkStudy> studies = new HashMap<>();

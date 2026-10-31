@@ -1,0 +1,15 @@
+contingency depends on network.tables, which depends back on it, directly or not
+map depends on network, which depends back on it, directly or not
+network depends on parameters, which depends back on it, directly or not
+network.detail depends on network.edit, which depends back on it, directly or not
+network.detail depends on network.limits, which depends back on it, directly or not
+network.detail depends on network.tables, which depends back on it, directly or not
+network.edit depends on network.detail, which depends back on it, directly or not
+network.edit depends on network.tables, which depends back on it, directly or not
+network.limits depends on network.detail, which depends back on it, directly or not
+network.limits depends on network.tables, which depends back on it, directly or not
+network.tables depends on contingency, which depends back on it, directly or not
+network.tables depends on network.detail, which depends back on it, directly or not
+network.tables depends on network.edit, which depends back on it, directly or not
+network.tables depends on network.limits, which depends back on it, directly or not
+parameters depends on map, which depends back on it, directly or not

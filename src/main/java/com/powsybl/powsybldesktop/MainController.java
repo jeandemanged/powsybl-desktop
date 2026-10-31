@@ -1106,7 +1106,7 @@ public class MainController extends AbstractDisposableController {
         }
         Stage stage = (Stage) scene.getWindow();
         if (stage != null) {
-            stage.setTitle(MainApplication.APP_TITLE + " - " + event.describe());
+            stage.setTitle(MainModel.APP_TITLE + " - " + event.describe());
         }
     }
 

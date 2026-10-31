@@ -19,7 +19,6 @@ import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.TieLineNavigationState;
-import com.powsybl.powsybldesktop.network.NetworkTieLines;
 import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
 import com.powsybl.powsybldesktop.network.edit.EditMenus;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
@@ -43,7 +42,7 @@ import java.util.stream.Stream;
  * stacking each side's value in a single cell, like Connected/CC/SC/P/Q (substation is optional: a voltage level
  * need not belong to one). On a
  * subnetwork, this also includes a tie line straddling two subnetworks as soon as one of its boundary lines
- * belongs to the selected subnetwork (see {@link com.powsybl.powsybldesktop.network.NetworkTieLines}).
+ * belongs to the selected subnetwork (see {@link NetworkTieLines}).
  * Pairing key is a single value shared by the tie line; the boundary line column is per-side and stacks a
  * link to each side's boundary line (in the boundary lines view) in a single cell, like Connected/CC/SC/P/Q.
  * The "at boundary" P/Q/V magnitude/V angle columns are the values at the shared fictitious X-node bus, read

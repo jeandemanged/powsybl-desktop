@@ -48,9 +48,11 @@ Build
 15. Checkstyle must pass (sorted property keys, headers, formatting) — it fails the build.
 16. Do not add dependencies, re-add Monocle, set `testfx.headless`, or remove the `org.openjfx` exclusion from
     `copy-dependencies`.
-17. New table views are added to `EditLockTest`; new views get a controller test (and an `*EmptyStateTest` for
+17. `ArchitectureTest` passes without adding to its frozen store (`src/test/archunit_store`): fix the dependency
+    instead, and commit the store when a fix shrinks it (see architecture, Enforced layering).
+18. New table views are added to `EditLockTest`; new views get a controller test (and an `*EmptyStateTest` for
     table/detail views).
-18. `README.md` stays in sync with the features: a user-visible feature added, removed or changed updates "What it
+19. `README.md` stays in sync with the features: a user-visible feature added, removed or changed updates "What it
     can do" (and drops the matching item from "What it cannot do yet"); new logic of the app's own rather than
     PowSyBl's is added to the intro's list of exceptions; a new import/export format is listed only if its converter
     is on the classpath (`mvn -o dependency:list`).
@@ -66,6 +68,7 @@ Build
 - New SLD/NAD/GUI parameter field added to `ApplicationParametersJson`'s `Binder`? Form calls its `onChange` hook?
 - New navigation type handled in `NavigationEvent.describe()` and `MainController.onNavigationEvent`?
 - User-visible feature change reflected in `README.md`?
+- New model or domain class in a package shared with views added to its layer in `ArchitectureTest`?
 - Tests added/updated and `mvn clean install` (or affected tests + `mvn checkstyle:check@default`) run?
 
 ## Known inconsistencies (documented, not to be "fixed" silently)

@@ -12,9 +12,6 @@ import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.ShuntCompensator;
-import com.powsybl.iidm.network.ShuntCompensatorLinearModel;
-import com.powsybl.iidm.network.ShuntCompensatorModelType;
-import com.powsybl.iidm.network.ShuntCompensatorNonLinearModel;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
@@ -26,7 +23,7 @@ import com.powsybl.powsybldesktop.network.edit.InjectionCreations;
 import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
-import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.powsybldesktop.utils.Labels;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
@@ -108,9 +105,9 @@ public class ShuntCompensatorsController extends AbstractEquipmentTableControlle
         TableColumnSupport.configureComponentColumn(synchronousComponentColumn,
                 shuntCompensator -> shuntCompensator.getTerminal().getBusView().getBus(), Bus::getSynchronousComponent);
 
-        typeColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(typeLabel(cellData.getValue())));
+        typeColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(Labels.shuntCompensatorTypeLabel(cellData.getValue())));
 
-        modelTypeColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(modelTypeLabel(cellData.getValue().getModelType())));
+        modelTypeColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(Labels.shuntCompensatorModelTypeLabel(cellData.getValue().getModelType())));
 
         TableColumnSupport.configureSpinnerIntColumn(sectionColumn, ShuntCompensator::getSectionCount,
                 ShuntCompensator::getMaximumSectionCount, ShuntCompensator::setSectionCount);
@@ -146,29 +143,6 @@ public class ShuntCompensatorsController extends AbstractEquipmentTableControlle
         columnVisibilityToolbarController.configure(List.of(
                 ColumnVisibilityToolbarController.ColumnGroup.of("desktop.common.columnGroup.solvedValues", true,
                         pColumn, qColumn, iColumn, regulatedBusVoltageColumn)));
-    }
-
-    // reused by the shunt compensator detail view
-    public static String modelTypeLabel(ShuntCompensatorModelType modelType) {
-        return Messages.get(modelType == ShuntCompensatorModelType.LINEAR
-                ? "shuntCompensators.modelType.linear" : "shuntCompensators.modelType.nonLinear");
-    }
-
-    // A linear shunt has a single bPerSection for every section, so its sign alone decides reactor vs. capacitor.
-    // A non-linear shunt stores each section's B independently, so all of them must agree on the sign.
-    public static String typeLabel(ShuntCompensator shuntCompensator) {
-        if (shuntCompensator.getModelType() == ShuntCompensatorModelType.LINEAR) {
-            double bPerSection = shuntCompensator.getModel(ShuntCompensatorLinearModel.class).getBPerSection();
-            return Messages.get(bPerSection < 0 ? "shuntCompensators.type.reactor" : "shuntCompensators.type.capacitor");
-        }
-        List<ShuntCompensatorNonLinearModel.Section> sections = shuntCompensator.getModel(ShuntCompensatorNonLinearModel.class).getAllSections();
-        if (sections.stream().allMatch(section -> section.getB() < 0)) {
-            return Messages.get("shuntCompensators.type.reactor");
-        }
-        if (sections.stream().allMatch(section -> section.getB() > 0)) {
-            return Messages.get("shuntCompensators.type.capacitor");
-        }
-        return Messages.get("shuntCompensators.type.unknown");
     }
 
     @Override

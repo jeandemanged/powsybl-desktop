@@ -24,7 +24,7 @@ import com.powsybl.nad.svg.EdgeInfoParameters;
 import com.powsybl.nad.svg.LabelProviderParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
-import com.powsybl.powsybldesktop.map.MapController;
+import com.powsybl.powsybldesktop.map.Basemap;
 import com.powsybl.security.SecurityAnalysisParameters;
 import com.powsybl.security.json.JsonSecurityAnalysisParameters;
 import com.powsybl.sld.layout.LayoutParameters;
@@ -424,7 +424,7 @@ public final class ApplicationParametersJson {
 
     private static void gui(Binder b, GuiParameters p) {
         Binder map = b.child("map");
-        map.enumeration("basemap", MapController.Basemap.class, p::getMapBasemap, p::setMapBasemap);
+        map.enumeration("basemap", Basemap.class, p::getMapBasemap, p::setMapBasemap);
         map.stringSet("hiddenBaseVoltages", p::getMapHiddenBaseVoltages, p::setMapHiddenBaseVoltages);
         Binder logs = b.child("logs");
         logs.enumeration("minLevel", GuiParameters.LogLevel.class, p::getLogsMinLevel, p::setLogsMinLevel);

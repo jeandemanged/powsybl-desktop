@@ -15,9 +15,9 @@ import com.powsybl.iidm.network.ShuntCompensatorNonLinearModel;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
-import com.powsybl.powsybldesktop.network.tables.ShuntCompensatorsController;
 import com.powsybl.powsybldesktop.network.tables.TableColumnSupport;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.sld.library.SldComponentTypeName;
 import javafx.geometry.Insets;
 import javafx.scene.control.Tab;
@@ -55,8 +55,8 @@ public class ShuntCompensatorDetailController extends AbstractEquipmentDetailCon
     protected void buildMain(DetailForm form) {
         DetailSections.connection(form, "detail.section.connection", equipment::getTerminal);
         form.section("detail.section.sections")
-                .text("desktop.common.column.type", () -> ShuntCompensatorsController.typeLabel(equipment))
-                .text("shuntCompensators.column.modelType", () -> ShuntCompensatorsController.modelTypeLabel(equipment.getModelType()))
+                .text("desktop.common.column.type", () -> Labels.shuntCompensatorTypeLabel(equipment))
+                .text("shuntCompensators.column.modelType", () -> Labels.shuntCompensatorModelTypeLabel(equipment.getModelType()))
                 .intField("detail.shunt.sectionCount", () -> equipment.findSectionCount().isPresent() ? equipment.getSectionCount() : null,
                         count -> equipment.setSectionCount(DetailForm.mandatory(count)));
         if (equipment.getModelType() == ShuntCompensatorModelType.LINEAR) {

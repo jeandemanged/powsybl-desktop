@@ -7,7 +7,7 @@
  */
 package com.powsybl.powsybldesktop.parameters;
 
-import com.powsybl.powsybldesktop.map.MapController;
+import com.powsybl.powsybldesktop.map.Basemap;
 
 import java.util.EnumMap;
 import java.util.List;
@@ -64,7 +64,7 @@ public class GuiParameters {
     // PowSyBl report severities, lowest first
     public static final List<String> REPORT_SEVERITIES = List.of("TRACE", "DEBUG", "INFO", "DETAIL", "WARN", "ERROR");
 
-    private MapController.Basemap mapBasemap = MapController.Basemap.OFFLINE;
+    private Basemap mapBasemap = Basemap.OFFLINE;
     // names of the base voltages (see BaseVoltagesConfig) whose substations and lines the map view hides
     private Set<String> mapHiddenBaseVoltages = Set.of();
     private LogLevel logsMinLevel = LogLevel.INFO;
@@ -79,11 +79,11 @@ public class GuiParameters {
         }
     }
 
-    public MapController.Basemap getMapBasemap() {
+    public Basemap getMapBasemap() {
         return mapBasemap;
     }
 
-    public void setMapBasemap(MapController.Basemap mapBasemap) {
+    public void setMapBasemap(Basemap mapBasemap) {
         this.mapBasemap = requireNonNull(mapBasemap, "mapBasemap");
     }
 

@@ -55,10 +55,10 @@ Every source, FXML and XML file starts with the MPL-2.0 Artelys copyright header
 
 ## Test stack
 
-JUnit 5 (+ params), TestFX (`testfx-core`, `testfx-junit5`). Tests mirror the main package layout under
-`src/test/java/com/powsybl/powsybldesktop/`. There is no `src/test/resources`: test networks come from PowSyBl factories
-(`IeeeCdfNetworkFactory.create14()`, `EurostagTutorialExample1Factory`, `CgmesConformity1Catalog...`) or are built in
-code.
+JUnit 5 (+ params), TestFX (`testfx-core`, `testfx-junit5`), ArchUnit (`archunit`, driven from plain JUnit tests).
+Tests mirror the main package layout under `src/test/java/com/powsybl/powsybldesktop/`. `src/test/resources` only
+holds `archunit.properties`: test networks come from PowSyBl factories (`IeeeCdfNetworkFactory.create14()`,
+`EurostagTutorialExample1Factory`, `CgmesConformity1Catalog...`) or are built in code.
 
 ### Headless UI tests
 
@@ -97,6 +97,8 @@ Testing the shell: `MainControllerMapButtonTest` loads `main-view.fxml` with a c
   `ApplicationParametersJsonTest`, `NetworkSearchTest`, `LoadFlowConvergenceTest`, `CategoryTitlesTest`. Prefer factoring
   logic into such a class when it is non-trivial.
 - Tests needing the toolkit without a stage call `Platform.startup` in `@BeforeAll` (`NetworkTaskTest`).
+- `ArchitectureTest` enforces the package layering, with frozen existing violations in `src/test/archunit_store`; see
+  [architecture.md](architecture.md#enforced-layering) before touching either.
 - Test names are sentences in camelCase describing behavior (`togglingConnectedCheckBoxDisconnectsAndReconnectsLoad`).
 
 ## CI

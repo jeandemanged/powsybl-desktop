@@ -9,9 +9,14 @@ package com.powsybl.powsybldesktop.utils;
 
 import com.powsybl.iidm.network.Country;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.ShuntCompensator;
+import com.powsybl.iidm.network.ShuntCompensatorLinearModel;
+import com.powsybl.iidm.network.ShuntCompensatorModelType;
+import com.powsybl.iidm.network.ShuntCompensatorNonLinearModel;
 import javafx.util.StringConverter;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -58,6 +63,28 @@ public final class Labels {
     public static String networkLabel(Network network) {
         String countries = formatCountries(network.getCountries());
         return truncateForTree(network.getNameOrId()) + (countries.isEmpty() ? "" : " (" + countries + ")");
+    }
+
+    public static String shuntCompensatorModelTypeLabel(ShuntCompensatorModelType modelType) {
+        return Messages.get(modelType == ShuntCompensatorModelType.LINEAR
+                ? "shuntCompensators.modelType.linear" : "shuntCompensators.modelType.nonLinear");
+    }
+
+    // A linear shunt has a single bPerSection for every section, so its sign alone decides reactor vs. capacitor.
+    // A non-linear shunt stores each section's B independently, so all of them must agree on the sign.
+    public static String shuntCompensatorTypeLabel(ShuntCompensator shuntCompensator) {
+        if (shuntCompensator.getModelType() == ShuntCompensatorModelType.LINEAR) {
+            double bPerSection = shuntCompensator.getModel(ShuntCompensatorLinearModel.class).getBPerSection();
+            return Messages.get(bPerSection < 0 ? "shuntCompensators.type.reactor" : "shuntCompensators.type.capacitor");
+        }
+        List<ShuntCompensatorNonLinearModel.Section> sections = shuntCompensator.getModel(ShuntCompensatorNonLinearModel.class).getAllSections();
+        if (sections.stream().allMatch(section -> section.getB() < 0)) {
+            return Messages.get("shuntCompensators.type.reactor");
+        }
+        if (sections.stream().allMatch(section -> section.getB() > 0)) {
+            return Messages.get("shuntCompensators.type.capacitor");
+        }
+        return Messages.get("shuntCompensators.type.unknown");
     }
 
     private static String formatCountries(Collection<Country> countries) {

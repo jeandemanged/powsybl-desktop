@@ -16,7 +16,7 @@ import com.powsybl.nad.svg.EdgeInfoParameters;
 import com.powsybl.nad.svg.SvgParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
-import com.powsybl.powsybldesktop.map.MapController;
+import com.powsybl.powsybldesktop.map.Basemap;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -66,7 +66,7 @@ class ApplicationParametersJsonTest {
         parameters.securityAnalysis().getIncreasedViolationsParameters().setFlowProportionalThreshold(0.3);
         parameters.securityAnalysis().getExtension(OpenSecurityAnalysisParameters.class).setThreadCount(3);
 
-        parameters.gui().setMapBasemap(MapController.Basemap.OPEN_STREET_MAP);
+        parameters.gui().setMapBasemap(Basemap.OPEN_STREET_MAP);
         parameters.gui().setMapHiddenBaseVoltages(Set.of("vl300to500", "vl0to30"));
         parameters.gui().setLogsMinLevel(GuiParameters.LogLevel.WARN);
         parameters.gui().setLogsNewestOnTop(false);
@@ -104,7 +104,7 @@ class ApplicationParametersJsonTest {
         assertEquals(33, OpenLoadFlowParameters.get(read.loadFlow()).getMaxNewtonRaphsonIterations());
         assertEquals(0.3, read.securityAnalysis().getIncreasedViolationsParameters().getFlowProportionalThreshold());
         assertEquals(3, read.securityAnalysis().getExtension(OpenSecurityAnalysisParameters.class).getThreadCount());
-        assertEquals(MapController.Basemap.OPEN_STREET_MAP, read.gui().getMapBasemap());
+        assertEquals(Basemap.OPEN_STREET_MAP, read.gui().getMapBasemap());
         assertEquals(Set.of("vl300to500", "vl0to30"), read.gui().getMapHiddenBaseVoltages());
         assertEquals(GuiParameters.LogLevel.WARN, read.gui().getLogsMinLevel());
         assertFalse(read.gui().isLogsNewestOnTop());

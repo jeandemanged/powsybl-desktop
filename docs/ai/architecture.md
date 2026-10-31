@@ -42,6 +42,34 @@ Not a textbook MVC/MVVM. The actual structure is:
 `src/main/java-templates/…/util/PowsyblDesktopVersion.java` is filled in at build time by the
 `templating-maven-plugin` (inherited from `powsybl-parent`).
 
+## Enforced layering
+
+`src/test/java/com/powsybl/powsybldesktop/ArchitectureTest.java` (ArchUnit) checks the dependencies between these layers,
+each one using only the layers below it (from top to bottom):
+
+| Layer | Classes |
+|---|---|
+| Shell | `Launcher`, `MainApplication`, `MainController`, `SplashScreen` |
+| Views | everything not listed in the other layers |
+| State | the root package's other classes (`MainModel`, `NetworkStudy`, `SceneModel`, `SceneView`, `AbstractNetworkTask`, `NetworkStructureChange`), `navigation`, and the sub-models with their values: `LogsModel`, `Notification*` (not the views), `ParametersModel`, `ApplicationParameters` and its parts, `ApplicationParametersJson`, `ParametersConfigFile`, `map/Basemap` |
+| Domain | `violations`, `loadflow`, `security`, `NetworkSearch` and `NetworkSearchIndex` (no `javafx.scene`/`javafx.stage`) |
+| Base | `utils`, `util`, `reports` |
+
+The State and Domain layers are listed class by class because their classes share packages with views. So when you add
+a model or domain class to such a package, add it to the matching list in the test, or the test treats it as a view.
+Views therefore never reference `MainApplication`: resources are loaded relative to `MainModel.class`, and the window
+title is `MainModel.APP_TITLE`. `ArchitectureTest` also checks that the view packages are free of cycles, that only
+`MainController` and `SceneModel` call `MainModel.getNavigationHistory()`, and that only the shell and `SeparateWindows`
+create a `Stage`.
+
+Existing violations are frozen in `src/test/archunit_store` (path set in `src/test/resources/archunit.properties`). A
+new violation fails the build, and a fixed one is removed from the store by the next run (commit the updated store). Cycles
+are recorded per package edge, so a new class dependency along an already cyclic edge passes, but a new cyclic edge
+fails. Never refreeze (`-Darchunit.freeze.refreeze=true`) to accept a new violation; that is only for re-recording the
+store after a rule's own text changes. Frozen today: `SceneModel` → `SeparateWindows`, `NetworksController` calling
+`getNavigationHistory()`, and the cycles among `network.tables`/`detail`/`edit`/`limits`, `contingency` ↔
+`network.tables`, and `map` → `network` → `parameters` → `map` (`GuiParametersController` uses `MapBaseVoltages`).
+
 ## Entry point and lifecycle
 
 - `…/Launcher.java` → `Application.launch(MainApplication.class)` (separate launcher class so the jar runs on the

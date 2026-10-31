@@ -8,8 +8,8 @@
 package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.powsybldesktop.diagram.BaseVoltages;
+import com.powsybl.powsybldesktop.map.Basemap;
 import com.powsybl.powsybldesktop.map.MapBaseVoltages;
-import com.powsybl.powsybldesktop.map.MapController;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -67,7 +67,7 @@ public class GuiParametersController extends AbstractDiagramParametersController
             addIntField(CAT_DECIMALS, Messages.get(key + ".label"), Messages.get(key + ".tooltip"),
                     p -> p.getDecimals(quantity), (p, v) -> p.setDecimals(quantity, v));
         }
-        addChoiceField(CAT_MAP, label("basemap"), List.of(MapController.Basemap.values()), MapController.Basemap::getLabel,
+        addChoiceField(CAT_MAP, label("basemap"), List.of(Basemap.values()), Basemap::getLabel,
                 GuiParameters::getMapBasemap, GuiParameters::setMapBasemap);
         addBaseVoltagesField();
         addChoiceField(CAT_LOGS, label("logsMinLevel"), List.of(GuiParameters.LogLevel.values()),

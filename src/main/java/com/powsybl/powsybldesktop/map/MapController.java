@@ -177,23 +177,6 @@ public class MapController extends AbstractDisposableController implements Scene
     /** One core is left to the FX thread. */
     private static final int TILE_THREADS = Math.max(1, Runtime.getRuntime().availableProcessors() - 1);
 
-    public enum Basemap {
-        OFFLINE("offline", "map.basemap.offline"),
-        OPEN_STREET_MAP("osm", "map.basemap.openStreetMap");
-
-        private final String jsName;
-        private final String labelKey;
-
-        Basemap(String jsName, String labelKey) {
-            this.jsName = jsName;
-            this.labelKey = labelKey;
-        }
-
-        public String getLabel() {
-            return Messages.get(labelKey);
-        }
-    }
-
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final BaseVoltages baseVoltages = new BaseVoltages();
     private final MapBaseVoltages mapBaseVoltages = new MapBaseVoltages(baseVoltages);

@@ -29,6 +29,7 @@
         <junit.version>5.14.4</junit.version>
         <autoservice.version>1.1.1</autoservice.version>
         <testfx.version>4.0.18</testfx.version>
+        <archunit.version>1.5.1</archunit.version>
         <lucene.version>10.5.1</lucene.version>
         <powsybl-starter.version>2026.2.0</powsybl-starter.version>
         <powsybl-core.version>7.4.2</powsybl-core.version>
@@ -190,6 +191,12 @@
             <groupId>org.testfx</groupId>
             <artifactId>testfx-junit5</artifactId>
             <version>${testfx.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit</artifactId>
+            <version>${archunit.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
