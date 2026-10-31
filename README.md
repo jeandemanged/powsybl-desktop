@@ -3,10 +3,23 @@
 PowSyBl Desktop is a desktop application for [PowSyBl](https://www.powsybl.org/), the open-source power system
 blocks framework, to explore, edit and simulate power networks.
 
-It has two goals:
+PowSyBl is a set of Java libraries, also available in Python through [PyPowSyBl](https://github.com/powsybl/pypowsybl):
+using it usually means writing code, or first building your own tooling around it. PowSyBl Desktop removes three
+barriers to adoption:
+
+1. **Technical**: no Java, Python or PowSyBl programming skills are needed.
+2. **Usability**: a graphical desktop environment instead of APIs or scripts.
+3. **Adoption**: organizations can use PowSyBl without first building their own desktop tooling.
+
+What PowSyBl Desktop brings is productivity, not access to the underlying Java or Python APIs.
+
+It has three goals:
 
 - **Make PowSyBl easy to try.** It is distributed as a self-contained application that bundles its own Java runtime:
   download, unzip and run. No Python, Docker, Java or any other third-party installation is needed.
+- **Make PowSyBl's capabilities tangible.** Loading a network and clicking through its diagrams, tables and
+  simulations shows what PowSyBl can do faster than reading its documentation and API references: understanding
+  comes hands-on, from the first minutes.
 - **Be a thin UI layer over PowSyBl.** The application has no business logic of its own: networks are PowSyBl IIDM
   networks, imports and exports are PowSyBl's, every value shown or edited is read from or written to the network
   through PowSyBl's API and validated by it, and computations, diagrams and limit violations come from PowSyBl
@@ -15,6 +28,15 @@ It has two goals:
   - the **map**, drawn by the application itself from the network's geographical positions;
   - the **load flow convergence verdict** (converged / partially converged / not converged), derived by the
     application from PowSyBl's per-component statuses.
+
+## Who is it for
+
+| Audience                                                                                          | Use                                                                                                                |
+|---------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| Transmission and Distribution System Operators (TSOs, DSOs), Regional Coordination Centres (RCCs) | Network modelling and analysis, operational studies                                                                |
+| Energy consultants and engineering companies                                                      | Faster engineering studies                                                                                         |
+| Universities, research laboratories, electrical engineering departments                           | An accessible power-system simulation environment: network visualization and simulation without custom development |
+| Developers building PowSyBl-based applications                                                    | An example of a desktop client over the PowSyBl APIs                                                               |
 
 ## Installation
 
@@ -58,7 +80,9 @@ the toolbar, and browse the results in the equipment tables, diagrams and violat
 
 ## What it cannot do yet
 
-PowSyBl offers much more than what the application exposes. Not available yet, among others:
+PowSyBl offers much more than what the PowSyBl Desktop application currently exposes.
+
+The following PowSyBl features are not supported yet in PowSyBl Desktop and are candidates for future work:
 
 - **Other simulations**: [sensitivity analysis](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/simulation/sensitivity/index.html),
   [short-circuit analysis](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/simulation/shortcircuit/index.html),
