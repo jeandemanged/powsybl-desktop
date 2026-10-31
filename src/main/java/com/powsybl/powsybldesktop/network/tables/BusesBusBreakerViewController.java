@@ -18,7 +18,7 @@ import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.network.edit.EditMenus;
-import com.powsybl.powsybldesktop.network.search.NetworkSearch;
+import com.powsybl.powsybldesktop.search.NetworkSearch;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.fxml.FXML;
 import javafx.scene.Node;

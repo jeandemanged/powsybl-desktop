@@ -18,6 +18,7 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.test.EurostagTutorialExample1Factory;
 import com.powsybl.iidm.network.test.FourSubstationsNodeBreakerFactory;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.network.NetworksController.ImportChoice;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationStatus;
@@ -90,7 +91,7 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
         mainModel = new MainModel();
         mainModel.addNetwork(ieee14);
         mainModel.addNetwork(ieee118);
-        controller.setMainModel(mainModel);
+        controller.setSceneModel(SceneModel.main(mainModel));
 
         stage.setScene(new Scene(root));
         stage.show();

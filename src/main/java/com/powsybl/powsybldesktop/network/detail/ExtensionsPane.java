@@ -9,6 +9,8 @@ package com.powsybl.powsybldesktop.network.detail;
 
 import com.powsybl.commons.extensions.Extendable;
 import com.powsybl.commons.extensions.Extension;
+import com.powsybl.powsybldesktop.network.form.DetailForm;
+import com.powsybl.powsybldesktop.network.form.DetailPart;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.property.BooleanProperty;

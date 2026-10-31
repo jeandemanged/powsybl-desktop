@@ -15,7 +15,7 @@ import com.powsybl.contingency.ContingencyElementType;
 import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.contingency.list.DefaultContingencyList;
 import com.powsybl.iidm.network.Network;
-import com.powsybl.powsybldesktop.network.tables.CellFields;
+import com.powsybl.powsybldesktop.network.form.CellFields;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;

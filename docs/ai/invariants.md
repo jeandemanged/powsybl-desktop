@@ -68,7 +68,7 @@ Build
 - New SLD/NAD/GUI parameter field added to `ApplicationParametersJson`'s `Binder`? Form calls its `onChange` hook?
 - New navigation type handled in `NavigationEvent.describe()` and `MainController.onNavigationEvent`?
 - User-visible feature change reflected in `README.md`?
-- New model or domain class in a package shared with views added to its layer in `ArchitectureTest`?
+- New model class in a package shared with views added to the State layer in `ArchitectureTest`?
 - Tests added/updated and `mvn clean install` (or affected tests + `mvn checkstyle:check@default`) run?
 
 ## Known inconsistencies (documented, not to be "fixed" silently)
@@ -81,7 +81,8 @@ Build
   `ViolationsController` and `SwitchesController` extend `AbstractDisposableController` directly and re-implement parts (e.g. the busy-lock
   binding). Prefer the abstract base for a new flat equipment table.
 - **Model injection**: views that can be shown in a separate window implement `SceneView.setSceneModel(SceneModel)`;
-  main-window-only controllers (networks, notifications, parameters) use `setMainModel(MainModel)`; `LogsViewController`
+  main-window-only controllers (notifications, parameters) use `setMainModel(MainModel)`, `NetworksController` the main
+  window's `setSceneModel(SceneModel)` without being a `SceneView`; `LogsViewController`
   uses `setModels(LogsModel, ParametersModel)`; `MainController` uses constructor injection through a controller factory.
 - **Dialogs**: modal dialogs are built in code (static `show` helpers), secondary windows are FXML; there is no
   single dialog abstraction. Follow the form matching your need (see ui-conventions).

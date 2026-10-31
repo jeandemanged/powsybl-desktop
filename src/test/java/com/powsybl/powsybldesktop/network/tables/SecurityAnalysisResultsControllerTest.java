@@ -20,6 +20,7 @@ import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.contingency.ContingencyNames;
+import com.powsybl.powsybldesktop.network.form.VoltageRange;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.violations.FlowViolation;

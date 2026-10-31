@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.network.detail;
 
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
+import com.powsybl.powsybldesktop.network.form.DetailForm;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 
 import java.util.List;
@@ -32,7 +33,7 @@ public class VoltageLevelDetailController extends AbstractEquipmentDetailControl
 
     @Override
     protected void buildMain(DetailForm form) {
-        DetailSections.equipmentLink(form, "desktop.common.equipment.substation", sceneModel, equipment::getNullableSubstation);
+        EquipmentDetails.equipmentLink(form, "desktop.common.equipment.substation", sceneModel, equipment::getNullableSubstation);
         form.text("voltageLevels.column.topologyKind", () -> equipment.getTopologyKind().name())
                 .doubleField("desktop.common.column.nominalVoltage", DetailForm.KV, GuiParameters.Quantity.VOLTAGE,
                         equipment::getNominalV, equipment::setNominalV)

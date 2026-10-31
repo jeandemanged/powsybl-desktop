@@ -5,7 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.network.tables;
+package com.powsybl.powsybldesktop.network.form;
 
 import com.powsybl.commons.PowsyblException;
 import com.powsybl.contingency.violations.LimitViolation;
@@ -122,7 +122,7 @@ public final class TableColumnSupport {
     private TableColumnSupport() {
     }
 
-    static <S> void configureContainerColumn(TableColumn<S, S> column,
+    public static <S> void configureContainerColumn(TableColumn<S, S> column,
                                               Function<S, Optional<? extends Container<?>>> containerGetter,
                                               BiFunction<Container<?>, S, Node> linkFactory) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
@@ -136,7 +136,7 @@ public final class TableColumnSupport {
         });
     }
 
-    static <S> void configureTwoSidedContainerColumn(TableColumn<S, S> column,
+    public static <S> void configureTwoSidedContainerColumn(TableColumn<S, S> column,
                                                        Function<S, Optional<? extends Container<?>>> container1Getter,
                                                        Function<S, Optional<? extends Container<?>>> container2Getter,
                                                        BiFunction<Container<?>, S, Node> linkFactory) {
@@ -157,16 +157,16 @@ public final class TableColumnSupport {
         return container.<Node>map(c -> linkFactory.apply(c, item)).orElseGet(Label::new);
     }
 
-    static <S> void configureConnectedColumn(TableColumn<S, S> column, Function<S, Terminal> terminalGetter, Consumer<Terminal> onToggle) {
+    public static <S> void configureConnectedColumn(TableColumn<S, S> column, Function<S, Terminal> terminalGetter, Consumer<Terminal> onToggle) {
         connectedColumn(column, item -> List.of(terminalGetter.apply(item)), onToggle, checkBoxes -> checkBoxes.getFirst());
     }
 
-    static <S> void configureTwoSidedConnectedColumn(TableColumn<S, S> column, Function<S, Terminal> terminal1Getter,
+    public static <S> void configureTwoSidedConnectedColumn(TableColumn<S, S> column, Function<S, Terminal> terminal1Getter,
                                                        Function<S, Terminal> terminal2Getter, Consumer<Terminal> onToggle) {
         configureMultiSidedConnectedColumn(column, item -> List.of(terminal1Getter.apply(item), terminal2Getter.apply(item)), onToggle);
     }
 
-    static <S> void configureMultiSidedConnectedColumn(TableColumn<S, S> column, Function<S, List<Terminal>> terminalsGetter, Consumer<Terminal> onToggle) {
+    public static <S> void configureMultiSidedConnectedColumn(TableColumn<S, S> column, Function<S, List<Terminal>> terminalsGetter, Consumer<Terminal> onToggle) {
         column.setSortable(false);
         connectedColumn(column, terminalsGetter, onToggle, checkBoxes -> sidedBox(checkBoxes, Pos.CENTER));
     }
@@ -190,7 +190,7 @@ public final class TableColumnSupport {
         disableUnlessTableEditable(column);
     }
 
-    static <S> void configureComponentColumn(TableColumn<S, Integer> column, Function<S, Bus> busGetter,
+    public static <S> void configureComponentColumn(TableColumn<S, Integer> column, Function<S, Bus> busGetter,
                                               Function<Bus, Component> componentGetter) {
         column.setCellValueFactory(cellData -> {
             Bus bus = busGetter.apply(cellData.getValue());
@@ -207,7 +207,7 @@ public final class TableColumnSupport {
         column.setComparator(missingLast(column, Objects::isNull));
     }
 
-    static <S> void configureTwoSidedComponentColumn(TableColumn<S, S> column, Function<S, Bus> bus1Getter,
+    public static <S> void configureTwoSidedComponentColumn(TableColumn<S, S> column, Function<S, Bus> bus1Getter,
                                                        Function<S, Bus> bus2Getter, Function<Bus, Component> componentGetter) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
@@ -228,7 +228,7 @@ public final class TableColumnSupport {
     }
 
     // also used for read-only values, in columns made non-editable
-    static <S> void configureDoubleColumn(TableColumn<S, Double> column, StringConverter<Double> format) {
+    public static <S> void configureDoubleColumn(TableColumn<S, Double> column, StringConverter<Double> format) {
         if (column.isEditable()) {
             CellFields.textColumn(column, format, _ -> true, CellFields.RowKey.ITEM);
         } else {
@@ -244,7 +244,7 @@ public final class TableColumnSupport {
 
     // An editing cell is disabled (greyed, inert) while its table isn't editable, which a table is made while its
     // network is busy with a background job (see AbstractEquipmentTableController.setSceneModel).
-    static <S, T> void disableUnlessTableEditable(TableColumn<S, T> column) {
+    public static <S, T> void disableUnlessTableEditable(TableColumn<S, T> column) {
         Callback<TableColumn<S, T>, TableCell<S, T>> factory = column.getCellFactory();
         column.setCellFactory(col -> {
             TableCell<S, T> cell = factory.call(col);
@@ -258,13 +258,13 @@ public final class TableColumnSupport {
 
     // Nullable like doubleFormat's "-": unlike configureNullableEditableDoubleColumn, every row can be edited here
     // (the field just may hold no value), so clearing the text field back to "-"/blank is how a value gets unset.
-    static <S> void configureEditableTextColumn(TableColumn<S, String> column) {
+    public static <S> void configureEditableTextColumn(TableColumn<S, String> column) {
         CellFields.textColumn(column, STRING_FORMAT, _ -> true, CellFields.RowKey.ITEM);
     }
 
     // For a field that only exists on some rows (e.g. a boundary line's optional generation part): shows "-" where the
     // getter returns null, editable like configureDoubleColumn otherwise.
-    static <S> void configureNullableEditableDoubleColumn(TableColumn<S, Double> column, Function<S, Double> getter,
+    public static <S> void configureNullableEditableDoubleColumn(TableColumn<S, Double> column, Function<S, Double> getter,
                                                             BiConsumer<S, Double> setter, StringConverter<Double> format) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
         CellFields.textColumn(column, format, row -> getter.apply(row) != null, CellFields.RowKey.ITEM);
@@ -273,7 +273,7 @@ public final class TableColumnSupport {
     }
 
     // Same "-" when absent as configureNullableEditableDoubleColumn, for a field that only exists on some rows.
-    static <S> void configureNullableEditableBooleanColumn(TableColumn<S, Boolean> column, Function<S, Boolean> getter,
+    public static <S> void configureNullableEditableBooleanColumn(TableColumn<S, Boolean> column, Function<S, Boolean> getter,
                                                              BiConsumer<S, Boolean> setter) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
         column.setCellFactory(_ -> new TableCell<S, Boolean>() {
@@ -300,7 +300,7 @@ public final class TableColumnSupport {
     // FlowViolationsDialog: the loading (percentage of the permanent limit) as a LoadingBar, orange/red when violated,
     // green otherwise, with the violation's acceptable duration in minutes, plus an info button opening onInfoClick if
     // not null. Sorts most severe first.
-    static <S> void configureLoadingColumn(TableColumn<S, Loading> column, Function<S, Loading> loadingGetter,
+    public static <S> void configureLoadingColumn(TableColumn<S, Loading> column, Function<S, Loading> loadingGetter,
                                            Supplier<GuiParameters> guiParameters, BiConsumer<Window, S> onInfoClick) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(loadingGetter.apply(cellData.getValue())));
         column.setCellFactory(_ -> new LoadingTableCell<>(guiParameters, onInfoClick));
@@ -367,11 +367,11 @@ public final class TableColumnSupport {
     }
 
     // as a string: MessageFormat would group the digits, e.g. "2,400 s"
-    static String acceptableDurationText(int acceptableDuration) {
+    public static String acceptableDurationText(int acceptableDuration) {
         return acceptableDuration == Integer.MAX_VALUE ? Messages.get("limits.permanent") : Messages.get("limits.duration", String.valueOf(acceptableDuration));
     }
 
-    static String limitViolationTypeText(LimitViolationType type) {
+    public static String limitViolationTypeText(LimitViolationType type) {
         return Messages.get("desktop.common.limitViolationType." + type.name());
     }
 
@@ -380,7 +380,7 @@ public final class TableColumnSupport {
      * beyond it in the alert color; all green when not violated. Fixed width, so that the 100 % markers of a column
      * stay aligned whatever the width of the text next to them.
      */
-    static final class LoadingBar extends Pane {
+    public static final class LoadingBar extends Pane {
         private static final double WIDTH = 80;
         private static final double HEIGHT = 10;
         private static final double MAX_PERCENT = 200;
@@ -391,7 +391,7 @@ public final class TableColumnSupport {
         private final Polygon overflow = overflowArrow(true);
         private double percent;
 
-        LoadingBar() {
+        public LoadingBar() {
             getStyleClass().add("violation-bar");
             fill.getStyleClass().add("violation-bar-fill");
             excess.getStyleClass().add("violation-bar-excess");
@@ -412,15 +412,15 @@ public final class TableColumnSupport {
             requestLayout();
         }
 
-        double getPercent() {
+        public double getPercent() {
             return percent;
         }
 
-        boolean isViolated() {
+        public boolean isViolated() {
             return !getStyleClass().contains("violation-bar-ok");
         }
 
-        boolean isTruncated() {
+        public boolean isTruncated() {
             return overflow.isVisible();
         }
 
@@ -453,7 +453,7 @@ public final class TableColumnSupport {
 
     // Shared by AbstractBusesController and BusbarSectionsController's "Voltage Range" column, and the Violations
     // view: a VoltageBar and the percentage of the nominal voltage. Sorts most severe first.
-    static <S> void configureVoltageRangeColumn(TableColumn<S, VoltageRange> column, Function<S, VoltageRange> rangeGetter,
+    public static <S> void configureVoltageRangeColumn(TableColumn<S, VoltageRange> column, Function<S, VoltageRange> rangeGetter,
                                                 Supplier<GuiParameters> guiParameters) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(rangeGetter.apply(cellData.getValue())));
         column.setCellFactory(_ -> new VoltageRangeTableCell<>(guiParameters));
@@ -498,7 +498,7 @@ public final class TableColumnSupport {
      * the low and high limits (up to the scale's end on a side without limit). Fixed width, so that the nominal markers
      * of a column stay aligned.
      */
-    static final class VoltageBar extends Pane {
+    public static final class VoltageBar extends Pane {
         private static final double WIDTH = 100;
         private static final double HEIGHT = 10;
         private static final double HALF_SCALE = 0.2;
@@ -514,7 +514,7 @@ public final class TableColumnSupport {
         private final Polygon highOverflow = overflowArrow(true);
         private VoltageRange range;
 
-        VoltageBar() {
+        public VoltageBar() {
             getStyleClass().add("voltage-bar");
             band.getStyleClass().add("voltage-bar-band");
             fill.getStyleClass().add("voltage-bar-fill");
@@ -537,7 +537,7 @@ public final class TableColumnSupport {
             requestLayout();
         }
 
-        VoltageRange getRange() {
+        public VoltageRange getRange() {
             return range;
         }
 
@@ -556,7 +556,7 @@ public final class TableColumnSupport {
             region.resizeRelocate(from, 2, Math.max(0, to - from), HEIGHT - 4);
         }
 
-        boolean isTruncated() {
+        public boolean isTruncated() {
             return lowOverflow.isVisible() || highOverflow.isVisible();
         }
 
@@ -591,7 +591,7 @@ public final class TableColumnSupport {
 
     // Generic read-only counterpart of configureNullableIntColumn, for a field whose type has no dedicated
     // formatting of its own (e.g. an Optional-backed enum) - "-" when absent, T::toString otherwise.
-    static <S, T extends Comparable<T>> void configureNullableColumn(TableColumn<S, T> column, Function<S, T> valueGetter) {
+    public static <S, T extends Comparable<T>> void configureNullableColumn(TableColumn<S, T> column, Function<S, T> valueGetter) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(valueGetter.apply(cellData.getValue())));
         column.setCellFactory(_ -> new TableCell<S, T>() {
             @Override
@@ -603,7 +603,7 @@ public final class TableColumnSupport {
         column.setComparator(missingLast(column, Objects::isNull));
     }
 
-    static <S> void configureNullableIntColumn(TableColumn<S, Integer> column, Function<S, Integer> valueGetter) {
+    public static <S> void configureNullableIntColumn(TableColumn<S, Integer> column, Function<S, Integer> valueGetter) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(valueGetter.apply(cellData.getValue())));
         column.setCellFactory(_ -> new TableCell<S, Integer>() {
             @Override
@@ -615,13 +615,13 @@ public final class TableColumnSupport {
         column.setComparator(missingLast(column, Objects::isNull));
     }
 
-    static <S> void configureNullableDoubleColumn(TableColumn<S, Double> column, Function<S, Double> valueGetter,
+    public static <S> void configureNullableDoubleColumn(TableColumn<S, Double> column, Function<S, Double> valueGetter,
                                                    StringConverter<Double> format) {
         configureNullableDoubleColumn(column, valueGetter, _ -> format);
     }
 
     // For a column whose unit depends on the row, e.g. a limit violation's value
-    static <S> void configureNullableDoubleColumn(TableColumn<S, Double> column, Function<S, Double> valueGetter,
+    public static <S> void configureNullableDoubleColumn(TableColumn<S, Double> column, Function<S, Double> valueGetter,
                                                    Function<S, StringConverter<Double>> formatGetter) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(valueGetter.apply(cellData.getValue())));
         column.setCellFactory(_ -> new TableCell<S, Double>() {
@@ -639,7 +639,7 @@ public final class TableColumnSupport {
         return value == null || value.isNaN();
     }
 
-    static <S> void configureTwoSidedDoubleColumn(TableColumn<S, S> column, Function<S, Double> value1Getter,
+    public static <S> void configureTwoSidedDoubleColumn(TableColumn<S, S> column, Function<S, Double> value1Getter,
                                                    Function<S, Double> value2Getter, StringConverter<Double> format) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
@@ -667,7 +667,7 @@ public final class TableColumnSupport {
         });
     }
 
-    static <S, T> void configureTwoSidedLinkColumn(TableColumn<S, S> column, Function<S, T> value1Getter,
+    public static <S, T> void configureTwoSidedLinkColumn(TableColumn<S, S> column, Function<S, T> value1Getter,
                                                     Function<S, T> value2Getter, BiFunction<T, S, Hyperlink> linkFactory) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
@@ -700,7 +700,7 @@ public final class TableColumnSupport {
         return sidedBox(List.of(first, second), alignment);
     }
 
-    static <S> void configureMultiSidedContainerColumn(TableColumn<S, S> column,
+    public static <S> void configureMultiSidedContainerColumn(TableColumn<S, S> column,
                                                          Function<S, List<? extends Container<?>>> containersGetter,
                                                          BiFunction<Container<?>, S, Node> linkFactory) {
         column.setSortable(false);
@@ -715,7 +715,7 @@ public final class TableColumnSupport {
         });
     }
 
-    static <S> void configureMultiSidedComponentColumn(TableColumn<S, S> column, Function<S, List<Bus>> busesGetter,
+    public static <S> void configureMultiSidedComponentColumn(TableColumn<S, S> column, Function<S, List<Bus>> busesGetter,
                                                          Function<Bus, Component> componentGetter) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
@@ -729,7 +729,7 @@ public final class TableColumnSupport {
         });
     }
 
-    static <S> void configureMultiSidedDoubleColumn(TableColumn<S, S> column, Function<S, List<Double>> valuesGetter,
+    public static <S> void configureMultiSidedDoubleColumn(TableColumn<S, S> column, Function<S, List<Double>> valuesGetter,
                                                      StringConverter<Double> format) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
@@ -755,12 +755,12 @@ public final class TableColumnSupport {
     // ratedU2, or a ThreeWindingsTransformer leg's ratedU) - unlike BiConsumer, there's no built-in 2-arg-plus-index
     // functional interface for this.
     @FunctionalInterface
-    interface IndexedDoubleSetter<S> {
+    public interface IndexedDoubleSetter<S> {
         void set(S item, int index, double value);
     }
 
     // Editable counterpart of configureMultiSidedDoubleColumn, a field per side.
-    static <S> void configureMultiSidedEditableDoubleColumn(TableColumn<S, S> column, Function<S, List<Double>> valuesGetter,
+    public static <S> void configureMultiSidedEditableDoubleColumn(TableColumn<S, S> column, Function<S, List<Double>> valuesGetter,
                                                               IndexedDoubleSetter<S> setter, StringConverter<Double> format) {
         CellFields.sidedColumn(column, row -> valuesGetter.apply(row).size(), CellFields.CellTextField::new, (field, key, row, side) -> {
             field.bind(key, () -> format.toString(valuesGetter.apply(row).get(side)), text -> setter.set(row, side, format.fromString(text)));
@@ -793,7 +793,7 @@ public final class TableColumnSupport {
     // Editable counterpart of a multi-sided column for a value that may not exist on every side (e.g. a transformer leg
     // without a ratio/phase tap changer): a blank slot where tapChangersGetter's list holds Optional.empty(), a stepper
     // bounded to [low, high] tap position otherwise, writing straight through to the mutable TapChanger.
-    static <S> void configureMultiSidedTapChangerColumn(TableColumn<S, S> column,
+    public static <S> void configureMultiSidedTapChangerColumn(TableColumn<S, S> column,
                                                           Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter) {
         CellFields.sidedColumn(column, row -> tapChangersGetter.apply(row).size(), CellFields.IntStepper::new, (stepper, key, row, side) -> {
             Optional<? extends TapChanger<?, ?, ?, ?>> tapChanger = tapChangersGetter.apply(row).get(side);
@@ -810,7 +810,7 @@ public final class TableColumnSupport {
         return tapChangerOpt.filter(TapChanger::hasLoadTapChangingCapabilities).isPresent();
     }
 
-    static <S> void configureMultiSidedTapChangerBooleanColumn(TableColumn<S, S> column,
+    public static <S> void configureMultiSidedTapChangerBooleanColumn(TableColumn<S, S> column,
                                                                  Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter,
                                                                  Function<TapChanger<?, ?, ?, ?>, Boolean> getter,
                                                                  BiConsumer<TapChanger<?, ?, ?, ?>, Boolean> setter) {
@@ -835,7 +835,7 @@ public final class TableColumnSupport {
         disableUnlessTableEditable(column);
     }
 
-    static <S> void configureMultiSidedTapChangerDoubleColumn(TableColumn<S, S> column,
+    public static <S> void configureMultiSidedTapChangerDoubleColumn(TableColumn<S, S> column,
                                                                 Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter,
                                                                 Function<TapChanger<?, ?, ?, ?>, Double> getter,
                                                                 BiConsumer<TapChanger<?, ?, ?, ?>, Double> setter,
@@ -851,7 +851,7 @@ public final class TableColumnSupport {
         });
     }
 
-    static <S> void configureMultiSidedTapChangerNullableIntColumn(TableColumn<S, S> column,
+    public static <S> void configureMultiSidedTapChangerNullableIntColumn(TableColumn<S, S> column,
                                                                      Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter,
                                                                      Function<TapChanger<?, ?, ?, ?>, Integer> getter) {
         column.setSortable(false);
@@ -872,7 +872,7 @@ public final class TableColumnSupport {
         return value == null ? "-" : String.valueOf(value);
     }
 
-    static <S, T> void configureMultiSidedTapChangerChoiceColumn(TableColumn<S, S> column,
+    public static <S, T> void configureMultiSidedTapChangerChoiceColumn(TableColumn<S, S> column,
                                                                    Function<S, List<Optional<? extends TapChanger<?, ?, ?, ?>>>> tapChangersGetter,
                                                                    Function<TapChanger<?, ?, ?, ?>, T> getter,
                                                                    BiConsumer<TapChanger<?, ?, ?, ?>, T> setter,
@@ -890,7 +890,7 @@ public final class TableColumnSupport {
     }
 
     // A single value of a table with multi-sided rows, as a one-slot multi-sided column like its editable doubles.
-    static <S, T> void configureSingleSlotChoiceColumn(TableColumn<S, S> column, Function<S, T> getter, BiConsumer<S, T> setter,
+    public static <S, T> void configureSingleSlotChoiceColumn(TableColumn<S, S> column, Function<S, T> getter, BiConsumer<S, T> setter,
                                                         List<T> choices, StringConverter<T> converter) {
         CellFields.sidedColumn(column, row -> 1, (cell, flash) -> new CellFields.CellChoiceBox<>(cell, flash, choices, converter),
             (choiceBox, key, row, _) -> {
@@ -902,24 +902,24 @@ public final class TableColumnSupport {
     // The name of an equipment with a detail view, after an info button opening it and a button copying its id (its
     // name from the button's menu). Unlike editing controls, the buttons stay enabled while the network is busy: the
     // (non-modal) detail view has its own busy lock.
-    static <S extends Identifiable<?>> void configureDetailNameColumn(TableColumn<S, String> column, Consumer<S> onDetail) {
+    public static <S extends Identifiable<?>> void configureDetailNameColumn(TableColumn<S, String> column, Consumer<S> onDetail) {
         column.setCellFactory(_ -> new NameTableCell<>(onDetail));
     }
 
     // The name of an object without detail view (e.g. a bus), after a button copying its id (its name from the button's
     // menu).
-    static <S extends Identifiable<?>> void configureNameColumn(TableColumn<S, String> column) {
+    public static <S extends Identifiable<?>> void configureNameColumn(TableColumn<S, String> column) {
         column.setCellFactory(_ -> new NameTableCell<>(null));
     }
 
     // A text, e.g. an id, after a button copying it.
-    static <S> void configureCopyableColumn(TableColumn<S, String> column) {
+    public static <S> void configureCopyableColumn(TableColumn<S, String> column) {
         column.setCellFactory(_ -> new CopyableTableCell<>());
     }
 
     // The info button opening a detail view and the button copying the id (the name from its menu), before content
     // (e.g. a container link), for name columns whose cells aren't plain text (see configureDetailNameColumn).
-    static HBox withDetailAndCopyButtons(Node content, Identifiable<?> item, Runnable onDetail) {
+    public static HBox withDetailAndCopyButtons(Node content, Identifiable<?> item, Runnable onDetail) {
         return buttonsBox(content, () -> item, onDetail);
     }
 
@@ -990,7 +990,7 @@ public final class TableColumnSupport {
     }
 
     // The section field's [min, max] range is per-row (clamped to each shunt compensator's own maximum section count).
-    static <S> void configureSpinnerIntColumn(TableColumn<S, S> column, Function<S, Integer> valueGetter,
+    public static <S> void configureSpinnerIntColumn(TableColumn<S, S> column, Function<S, Integer> valueGetter,
                                                Function<S, Integer> maxGetter, BiConsumer<S, Integer> setter) {
         CellFields.sidedColumn(column, row -> 1, CellFields.IntStepper::new, (stepper, key, row, _) -> {
             stepper.bind(key, 0, maxGetter.apply(row), () -> valueGetter.apply(row), value -> setter.accept(row, value));
@@ -1000,7 +1000,7 @@ public final class TableColumnSupport {
 
     // editable == null means "always editable" (no per-row disabling) - every checkbox column whose value
     // is meaningful on every row.
-    static <S> void configureEditableBooleanColumn(TableColumn<S, Boolean> column, Function<S, Boolean> getter,
+    public static <S> void configureEditableBooleanColumn(TableColumn<S, Boolean> column, Function<S, Boolean> getter,
                                                     BiConsumer<S, Boolean> setter) {
         configureEditableBooleanColumn(column, getter, setter, null);
     }
@@ -1012,7 +1012,7 @@ public final class TableColumnSupport {
     // The flash is keyed by row (see CellFields.KeyedFlash): setter can trigger a mainModel.setUpdate() (e.g. a
     // switch's open/retained status affecting the diagram), which refreshes this very table and can rebind this
     // cell to another row before the flash fades.
-    static <S> void configureEditableBooleanColumn(TableColumn<S, Boolean> column, Function<S, Boolean> getter,
+    public static <S> void configureEditableBooleanColumn(TableColumn<S, Boolean> column, Function<S, Boolean> getter,
                                                     BiConsumer<S, Boolean> setter, Predicate<S> editable) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
         CellFields.KeyedFlash flash = new CellFields.KeyedFlash();
@@ -1057,7 +1057,7 @@ public final class TableColumnSupport {
         }
     }
 
-    static <S, T> void configureChoiceColumn(TableColumn<S, T> column, Function<S, T> getter, BiConsumer<S, T> setter,
+    public static <S, T> void configureChoiceColumn(TableColumn<S, T> column, Function<S, T> getter, BiConsumer<S, T> setter,
                                               List<T> choices, StringConverter<T> converter) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
         CellFields.choiceColumn(column, choices, converter);
@@ -1065,7 +1065,7 @@ public final class TableColumnSupport {
     }
 
     // Like configureChoiceColumn, with a search field filtering long lists of choices (e.g. countries).
-    static <S, T> void configureSearchableChoiceColumn(TableColumn<S, T> column, Function<S, T> getter, BiConsumer<S, T> setter,
+    public static <S, T> void configureSearchableChoiceColumn(TableColumn<S, T> column, Function<S, T> getter, BiConsumer<S, T> setter,
                                                         List<T> choices, StringConverter<T> converter) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
         CellFields.searchableChoiceColumn(column, choices, converter);

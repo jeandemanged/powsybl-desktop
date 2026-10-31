@@ -5,11 +5,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.network.detail;
+package com.powsybl.powsybldesktop.network.form;
 
 import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.Component;
-import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Terminal;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.regulation.RegulationMode;
@@ -19,7 +18,6 @@ import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
-import com.powsybl.powsybldesktop.network.tables.VoltageRegulations;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.geometry.Pos;
@@ -155,20 +153,6 @@ public final class DetailSections {
         }
     }
 
-    /**
-     * A link opening another equipment's detail view, e.g. a converter station's HVDC line.
-     */
-    public static void equipmentLink(DetailForm form, String labelKey, SceneModel sceneModel, Supplier<? extends Identifiable<?>> target) {
-        Hyperlink link = new Hyperlink();
-        link.getStyleClass().add("container-link");
-        link.setOnAction(_ -> EquipmentDetails.open(sceneModel, target.get()));
-        form.node(labelKey, link, null, () -> {
-            Identifiable<?> identifiable = target.get();
-            link.setText(identifiable == null ? "-" : identifiable.getNameOrId());
-            link.setDisable(identifiable == null);
-        });
-    }
-
     private static void regulationDefinedRow(DetailForm form, VoltageRegulationHolder<?> holder) {
         Label label = new Label();
         Button removeButton = iconButton("mdi2d-delete-outline", "detail.voltageRegulation.remove");
@@ -186,7 +170,7 @@ public final class DetailSections {
      * A null terminal regulates locally: in the default (voltage) mode, at the local target V, as IIDM requires. A
      * remote one regulates at the current target value, the local target V if regulating locally until now.
      */
-    static void setRegulatingTerminal(VoltageRegulationHolder<?> holder, RegulationMode defaultMode, Terminal terminal) {
+    public static void setRegulatingTerminal(VoltageRegulationHolder<?> holder, RegulationMode defaultMode, Terminal terminal) {
         VoltageRegulation regulation = holder.getVoltageRegulation();
         if (regulation != null && terminal == null) {
             regulation.setMode(defaultMode);

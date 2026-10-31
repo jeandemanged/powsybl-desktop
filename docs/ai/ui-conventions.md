@@ -104,7 +104,7 @@ table uses it too).
   There is no form object/DTO layer.
 - Editable cells are always-visible fields, edited like the parameters and detail views' fields - never a
   double-click-to-edit cell (no `TextFieldTableCell`/`ChoiceBoxTableCell`). The fields live in
-  `…/network/tables/CellFields.java`: `textColumn`/`choiceColumn` commit through the column's `onEditCommit`, and
+  `…/network/form/CellFields.java`: `textColumn`/`choiceColumn` commit through the column's `onEditCommit`, and
   `sidedColumn`/`editorColumn` stack one editor per side (`CellTextField`, `CellChoiceBox`, `IntStepper`). A text
   field commits on Enter or focus loss, Escape reverts what is being typed, Up/Down commit then move to the field
   above/below in the same column; focusing a field selects its cell. A click into an unfocused field selects its whole
@@ -113,7 +113,7 @@ table uses it too).
   choice is a ControlsFX `SearchableComboBox` (`CellFields.searchableChoiceColumn`, `DetailForm.searchableChoiceField`,
   `CreationForm.searchableChoice`), a multiple one a `…/utils/SearchableCheckComboBox.java` (ControlsFX's
   `CheckComboBox` has no search).
-- Use the factories in `…/network/tables/TableColumnSupport.java` (`configureDoubleColumn`,
+- Use the factories in `…/network/form/TableColumnSupport.java` (`configureDoubleColumn`,
   `configureEditableBooleanColumn`, `configureChoiceColumn`, `configureSingleSlotChoiceColumn`, `configureNullableEditable*`, `configureMultiSided*`,
   `configureDetailNameColumn`, `configureSpinnerIntColumn`, ...) and, in detail views, `DetailTables.editableColumn`.
   They handle:
@@ -158,7 +158,7 @@ Two established forms:
 
 ## Creation dialogs and edit menus
 
-- A creation dialog is a `network/edit/CreationForm` (the `DetailForm` grid, but fields holding values read on OK:
+- A creation dialog is a `network/form/CreationForm` (the `DetailForm` grid, but fields holding values read on OK:
   `text`, `id` (unique among the network's objects), `number`, `integer`, `check`, `choice`, `dateTime`, `custom`,
   rows shown or hidden with `visibleWhen`) shown by `CreateDialog.show` / `showThenDetails` (which then opens the
   created object's detail view, where everything the form doesn't ask for is set, unless unchecked: the choice is

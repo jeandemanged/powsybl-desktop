@@ -30,10 +30,12 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.VscConverterStation;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.network.form.DetailForm;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.window.SeparateWindows;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
+import javafx.scene.control.Hyperlink;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -107,6 +109,20 @@ public final class EquipmentDetails {
      */
     static String key(Identifiable<?> equipment) {
         return "detail:" + equipment.getId();
+    }
+
+    /**
+     * A link opening another equipment's detail view, e.g. a converter station's HVDC line.
+     */
+    public static void equipmentLink(DetailForm form, String labelKey, SceneModel sceneModel, Supplier<? extends Identifiable<?>> target) {
+        Hyperlink link = new Hyperlink();
+        link.getStyleClass().add("container-link");
+        link.setOnAction(_ -> EquipmentDetails.open(sceneModel, target.get()));
+        form.node(labelKey, link, null, () -> {
+            Identifiable<?> identifiable = target.get();
+            link.setText(identifiable == null ? "-" : identifiable.getNameOrId());
+            link.setDisable(identifiable == null);
+        });
     }
 
     /**

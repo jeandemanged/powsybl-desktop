@@ -5,15 +5,15 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.network.detail;
+package com.powsybl.powsybldesktop.network.form;
 
 import com.powsybl.iidm.network.Connectable;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Terminal;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.SceneModel;
-import com.powsybl.powsybldesktop.network.search.NetworkSearch;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
+import com.powsybl.powsybldesktop.search.NetworkSearch;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
@@ -103,7 +103,7 @@ public final class TerminalPickerDialog {
     /**
      * The terminal's equipment, its side if it has several, and its voltage level.
      */
-    static String terminalLabel(Terminal terminal) {
+    public static String terminalLabel(Terminal terminal) {
         Identifiable<?> connectable = terminal.getConnectable();
         String side = Terminal.getConnectableSide(terminal)
                 .filter(_ -> connectable instanceof Connectable<?> c && c.getTerminals().size() > 1)

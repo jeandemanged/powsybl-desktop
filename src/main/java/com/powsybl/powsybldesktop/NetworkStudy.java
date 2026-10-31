@@ -10,7 +10,7 @@ package com.powsybl.powsybldesktop;
 import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.loadflow.LoadFlowResult;
-import com.powsybl.powsybldesktop.network.search.NetworkSearchIndex;
+import com.powsybl.powsybldesktop.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.violations.NetworkViolations;
 import com.powsybl.security.SecurityAnalysisResult;
 import javafx.beans.property.BooleanProperty;

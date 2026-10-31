@@ -22,13 +22,15 @@ Not a textbook MVC/MVVM. The actual structure is:
 | root (`…/`) | `Launcher`, `MainApplication`, `SplashScreen`, `MainController` (shell), `MainModel`, `NetworkStudy`, `AbstractNetworkTask` |
 | `navigation` | `NavigationType`, `NavigationEvent` (record), `NavigationState` + one subclass per restorable selection, `NavigationHistory` |
 | `network` | `NetworksController` (load/import/export/merge/detach networks), `SubstationsController` (tree + SLD/NAD tabs + embedded tables), diagram renderers, `DropImportDialog` |
-| `network/tables` | One controller per equipment table, `AbstractEquipmentTableController`, `EmbeddableEquipmentTable`, `TableColumnSupport` (cell factories), `ViolationColumns` (columns of the Violations and Security Analysis Results views), `ColumnVisibilityToolbarController`, edit dialogs |
-| `network/detail` | Equipment detail views, one `AbstractEquipmentDetailController` subclass per equipment type, opened by `EquipmentDetails.open` as separate-window tabs, and their reusable parts: `DetailForm`, `DetailSections`, `EquipmentSymbol`, `DetailTables`, `ReactiveLimitsPane` + `CapabilityChart`, `TapChangerPane`, `ExtensionsPane` + `ExtensionEditors`, `KeyValueTablePane` (properties, aliases), `TerminalPickerDialog` |
-| `network/edit` | Creating and removing network objects: `NetworkEdits` (the single mutation funnel), creation dialogs (`CreateDialog` + `CreationForm`, `ConnectionSection`) per family (`ContainerCreations`, `InjectionCreations`, `BranchCreations`, `NetworkObjectEdits`), `TopologyEdits` and `LineEdits` (powsybl-iidm-modification topology modifications), `Removals`, and the menus offering them everywhere (`EditMenus`, `TableEditActions`) |
+| `network/tables` | One controller per equipment table, `AbstractEquipmentTableController`, `EmbeddableEquipmentTable`, `ViolationColumns` (columns of the Violations and Security Analysis Results views), `ColumnVisibilityToolbarController`, `TableEditActions` (a table's context menu: details, creations, removal), `NetworkTieLines`, edit dialogs |
+| `network/form` | Editing building blocks shared by tables, detail views, creation dialogs and the contingency editor: `TableColumnSupport` (cell factories), `CellFields` (in-cell editors), `VoltageRange`, `VoltageRegulations`, `DetailForm` + `DetailPart` + `DetailTables` + `DetailSections` (form grids and their common sections), `CreationForm`, `TerminalPickerDialog`. Depends on no other `network` package but `network/search` |
+| `network/detail` | Equipment detail views, one `AbstractEquipmentDetailController` subclass per equipment type, opened by `EquipmentDetails.open` as separate-window tabs (`EquipmentDetails.equipmentLink` links one to another), and their reusable parts: `EquipmentSymbol`, `ReactiveLimitsPane` + `CapabilityChart`, `TapChangerPane`, `ExtensionsPane` + `ExtensionEditors`, `KeyValueTablePane` (properties, aliases), `CoordinatesPane` |
+| `network/edit` | Creating and removing network objects: `NetworkEdits` (the single mutation funnel), creation dialogs (`CreateDialog` + `network/form/CreationForm`, `ConnectionSection`) per family (`ContainerCreations`, `InjectionCreations`, `BranchCreations`, `NetworkObjectEdits`), `TopologyEdits` and `LineEdits` (powsybl-iidm-modification topology modifications), `Removals`, and the menus offering them everywhere (`EditMenus`) |
 | `network/limits` | `OperationalLimitsPane`: an equipment's operational limits groups, read-only with violations highlighted (`FlowViolationsDialog`) or editable (detail views) |
-| `network/search` | `NetworkSearch` (kinds, container resolution), `NetworkSearchIndex` (Lucene), `SearchBoxController` (reusable search box) |
-| `diagram` | `DiagramPaneController`: reusable WebView viewport (zoom, fit, PNG/SVG export); `BaseVoltages`: base voltage ranges and colors as single line diagrams use them, for whatever colors equipment outside diagrams (map, `EquipmentSymbol`) |
-| `map` | Map view: `MapController`, `MapNetworkData` snapshot, `MapTileRenderer`, `map.js` + Leaflet, `MapBaseVoltages` (per base voltage filter checkboxes) |
+| `network/search` | `SearchBoxController` (reusable search box) |
+| `search` | `NetworkSearch` (kinds, container resolution), `NetworkSearchIndex` (Lucene); no JavaFX UI |
+| `diagram` | `DiagramPaneController`: reusable WebView viewport (zoom, fit, PNG/SVG export); `BaseVoltages`: base voltage ranges and colors as single line diagrams use them, for whatever colors equipment outside diagrams (map, `EquipmentSymbol`); `MapBaseVoltages` (per base voltage filter checkboxes, in the map and the GUI parameters) |
+| `map` | Map view: `MapController`, `MapNetworkData` snapshot, `MapTileRenderer`, `map.js` + Leaflet, `Basemap` |
 | `contingency` | Contingency lists editor and JSON I/O |
 | `loadflow`, `security` | Result/report records and helpers (`LoadFlowConvergence`) |
 | `violations` | `NetworkViolations` (flow and voltage limit violations of the network's state), `FlowViolation`, `VoltageViolation` (also built from a security analysis' violations) |
@@ -52,11 +54,11 @@ each one using only the layers below it (from top to bottom):
 | Shell | `Launcher`, `MainApplication`, `MainController`, `SplashScreen` |
 | Views | everything not listed in the other layers |
 | State | the root package's other classes (`MainModel`, `NetworkStudy`, `SceneModel`, `SceneView`, `AbstractNetworkTask`, `NetworkStructureChange`), `navigation`, and the sub-models with their values: `LogsModel`, `Notification*` (not the views), `ParametersModel`, `ApplicationParameters` and its parts, `ApplicationParametersJson`, `ParametersConfigFile`, `map/Basemap` |
-| Domain | `violations`, `loadflow`, `security`, `NetworkSearch` and `NetworkSearchIndex` (no `javafx.scene`/`javafx.stage`) |
+| Domain | `violations`, `loadflow`, `security`, `search` (no `javafx.scene`/`javafx.stage`) |
 | Base | `utils`, `util`, `reports` |
 
-The State and Domain layers are listed class by class because their classes share packages with views. So when you add
-a model or domain class to such a package, add it to the matching list in the test, or the test treats it as a view.
+The sub-models in the State layer are listed class by class because they share packages with views. So when you add a
+model class to such a package, add it to the State list in the test, or the test treats it as a view.
 Views therefore never reference `MainApplication`: resources are loaded relative to `MainModel.class`, and the window
 title is `MainModel.APP_TITLE`. `ArchitectureTest` also checks that the view packages are free of cycles, that only
 `MainController` and `SceneModel` call `MainModel.getNavigationHistory()`, and that only the shell and `SeparateWindows`
@@ -66,9 +68,9 @@ Existing violations are frozen in `src/test/archunit_store` (path set in `src/te
 new violation fails the build, and a fixed one is removed from the store by the next run (commit the updated store). Cycles
 are recorded per package edge, so a new class dependency along an already cyclic edge passes, but a new cyclic edge
 fails. Never refreeze (`-Darchunit.freeze.refreeze=true`) to accept a new violation; that is only for re-recording the
-store after a rule's own text changes. Frozen today: `SceneModel` → `SeparateWindows`, `NetworksController` calling
-`getNavigationHistory()`, and the cycles among `network.tables`/`detail`/`edit`/`limits`, `contingency` ↔
-`network.tables`, and `map` → `network` → `parameters` → `map` (`GuiParametersController` uses `MapBaseVoltages`).
+store after a rule's own text changes. Frozen today, both accepted by design: `SceneModel` → `SeparateWindows` (the
+window manager is part of a view's per-window context), and the `network.detail` ↔ `network.edit` cycle (detail views
+offer removal through `Removals`; `CreateDialog`'s "open details" option calls `EquipmentDetails.open`).
 
 ## Entry point and lifecycle
 
@@ -201,8 +203,8 @@ menu, blank and taken names rejected):
   `dispose()` detaches them when `MainController` swaps the view. Override `dispose()` to also stop services,
   dispose included sub-controllers (e.g. `searchBox().dispose()`), and call `super.dispose()`.
 - Model injection is a setter called right after FXML load: `setSceneModel(SceneModel)` for views
-  (`SceneView`), `setMainModel(MainModel)` for main-window-only controllers (`LogsViewController` takes
-  `setModels(LogsModel, ParametersModel)` instead). `MainController` itself gets `MainModel` through its constructor
+  (`SceneView`), `setMainModel(MainModel)` for main-window-only controllers (`NetworksController` takes the main window's
+  `setSceneModel(SceneModel)`, to navigate through it, and `LogsViewController` takes `setModels(LogsModel, ParametersModel)`). `MainController` itself gets `MainModel` through its constructor
   via a controller factory.
 - `@FXML private void initialize()` configures controls that don't need the model; work depending on the model
   happens in the model setter.

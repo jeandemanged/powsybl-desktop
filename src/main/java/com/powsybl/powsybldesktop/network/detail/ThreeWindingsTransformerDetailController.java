@@ -10,6 +10,8 @@ package com.powsybl.powsybldesktop.network.detail;
 import com.powsybl.iidm.network.ThreeWindingsTransformer;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
+import com.powsybl.powsybldesktop.network.form.DetailForm;
+import com.powsybl.powsybldesktop.network.form.DetailSections;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.scene.control.Label;

@@ -13,6 +13,8 @@ import com.powsybl.iidm.network.IdentifiableType;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.network.form.TableColumnSupport;
+import com.powsybl.powsybldesktop.network.form.VoltageRange;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.violations.FlowViolation;

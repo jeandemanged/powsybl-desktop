@@ -70,10 +70,10 @@ are pinned to `powsybl-core.version` (7.3.0) because they are outside the BOM. R
 
 ## Search
 
-- `…/network/search/NetworkSearchIndex.java`: in-memory Lucene index per (sub)network, built in the background by
+- `…/search/NetworkSearchIndex.java`: in-memory Lucene index per (sub)network, built in the background by
   `MainController.ensureSearchIndex` on network selection and cached in the `NetworkStudy`. Only bus-view buses are
   re-indexed after topology changes (`refreshBuses`, triggered from `updateProperty()`).
-- `…/network/search/NetworkSearch.java`: `Kind` enum, `kindOf`, `containerOf`, `hasMatchingEquipment`. Add a new
+- `…/search/NetworkSearch.java`: `Kind` enum, `kindOf`, `containerOf`, `hasMatchingEquipment`. Add a new
   searchable equipment kind here and in `NetworkSearchIndex`, not per view.
 - Views use `SearchBoxController` with their own set of `Kind`s.
 

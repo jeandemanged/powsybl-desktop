@@ -11,6 +11,7 @@ import com.powsybl.iidm.network.Switch;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
+import com.powsybl.powsybldesktop.network.form.DetailForm;
 
 import java.util.List;
 

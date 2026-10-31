@@ -5,10 +5,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.network.detail;
+package com.powsybl.powsybldesktop.network.form;
 
 import com.powsybl.commons.PowsyblException;
-import com.powsybl.powsybldesktop.network.tables.TableColumnSupport;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.CopyButtons;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -352,7 +351,7 @@ public final class DetailForm implements DetailPart {
         return value;
     }
 
-    static double parseDouble(String text) {
+    public static double parseDouble(String text) {
         if (isMissing(text)) {
             return Double.NaN;
         }

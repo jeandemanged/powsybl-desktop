@@ -33,7 +33,6 @@ import com.powsybl.powsybldesktop.navigation.NetworkNavigationState;
 import com.powsybl.powsybldesktop.navigation.OverloadManagementSystemNavigationState;
 import com.powsybl.powsybldesktop.network.NetworksController;
 import com.powsybl.powsybldesktop.network.SubstationsController;
-import com.powsybl.powsybldesktop.network.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.network.tables.AreasController;
 import com.powsybl.powsybldesktop.network.tables.BatteriesController;
 import com.powsybl.powsybldesktop.network.tables.BoundaryLinesController;
@@ -64,6 +63,7 @@ import com.powsybl.powsybldesktop.notification.NotificationOverlay;
 import com.powsybl.powsybldesktop.notification.NotificationsController;
 import com.powsybl.powsybldesktop.parameters.ParametersController;
 import com.powsybl.powsybldesktop.report.ReportsController;
+import com.powsybl.powsybldesktop.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.security.SecurityAnalysisResultAndReport;
 import com.powsybl.powsybldesktop.utils.AbstractDisposableController;
 import com.powsybl.powsybldesktop.utils.DisposableController;
@@ -921,7 +921,7 @@ public class MainController extends AbstractDisposableController {
             ensureController(LogsViewController.class, "logs/logs-view.fxml", c -> c.setModels(mainModel.getLogsModel(), mainModel.getParametersModel()),
                     root -> separateWindows.addOpenButton(root, this::detachLogs));
         } else if (newValue.navigationType() == NavigationType.NETWORKS) {
-            NetworksController controller = ensureController(NetworksController.class, "network/networks-view.fxml", c -> c.setMainModel(mainModel));
+            NetworksController controller = ensureController(NetworksController.class, "network/networks-view.fxml", c -> c.setSceneModel(sceneModel));
             if (newValue.state() instanceof NetworkNavigationState state) {
                 controller.navigateTo(state.getSelectedNetwork());
             } else if (newValue.state() == null) {

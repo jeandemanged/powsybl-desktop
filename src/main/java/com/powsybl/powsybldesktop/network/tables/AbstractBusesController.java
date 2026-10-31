@@ -9,9 +9,11 @@ package com.powsybl.powsybldesktop.network.tables;
 
 import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.VoltageLevel;
-import com.powsybl.powsybldesktop.network.search.NetworkSearch;
+import com.powsybl.powsybldesktop.network.form.TableColumnSupport;
+import com.powsybl.powsybldesktop.network.form.VoltageRange;
 import com.powsybl.powsybldesktop.network.search.SearchBoxController;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.powsybldesktop.search.NetworkSearch;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;

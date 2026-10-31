@@ -11,6 +11,8 @@ import com.powsybl.iidm.network.HvdcLine;
 import com.powsybl.iidm.network.TwoSides;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
+import com.powsybl.powsybldesktop.network.form.DetailForm;
+import com.powsybl.powsybldesktop.network.form.DetailSections;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 
 import java.util.Arrays;
@@ -51,7 +53,7 @@ public class HvdcLineDetailController extends AbstractEquipmentDetailController<
                         equipment::getConvertersMode, equipment::setConvertersMode);
         for (TwoSides side : TwoSides.values()) {
             form.section("limits.side", side.getNum());
-            DetailSections.equipmentLink(form, "hvdcLines.column.converterStation", sceneModel, () -> equipment.getConverterStation(side));
+            EquipmentDetails.equipmentLink(form, "hvdcLines.column.converterStation", sceneModel, () -> equipment.getConverterStation(side));
             DetailSections.connection(form, null, () -> equipment.getConverterStation(side).getTerminal());
         }
     }

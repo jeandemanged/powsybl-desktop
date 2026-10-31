@@ -29,8 +29,9 @@ import com.powsybl.iidm.network.extensions.ConnectablePositionAdder;
 import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
 import com.powsybl.powsybldesktop.SceneModel;
-import com.powsybl.powsybldesktop.network.detail.DetailForm;
-import com.powsybl.powsybldesktop.network.detail.DetailSections;
+import com.powsybl.powsybldesktop.network.form.CreationForm;
+import com.powsybl.powsybldesktop.network.form.DetailForm;
+import com.powsybl.powsybldesktop.network.form.DetailSections;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.stage.Window;
 

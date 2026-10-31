@@ -10,6 +10,8 @@ package com.powsybl.powsybldesktop.network.detail;
 import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
+import com.powsybl.powsybldesktop.network.form.DetailForm;
+import com.powsybl.powsybldesktop.network.form.DetailSections;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import javafx.scene.control.Tab;
 
@@ -37,8 +39,8 @@ public class TieLineDetailController extends AbstractEquipmentDetailController<T
     @Override
     protected void buildMain(DetailForm form) {
         form.text("desktop.common.column.pairingKey", equipment::getPairingKey);
-        DetailSections.equipmentLink(form, "detail.tieLine.boundaryLine1", sceneModel, equipment::getBoundaryLine1);
-        DetailSections.equipmentLink(form, "detail.tieLine.boundaryLine2", sceneModel, equipment::getBoundaryLine2);
+        EquipmentDetails.equipmentLink(form, "detail.tieLine.boundaryLine1", sceneModel, equipment::getBoundaryLine1);
+        EquipmentDetails.equipmentLink(form, "detail.tieLine.boundaryLine2", sceneModel, equipment::getBoundaryLine2);
         form.section("detail.section.characteristics")
                 .value("desktop.common.column.r", DetailForm.OHM, GuiParameters.Quantity.IMPEDANCE, equipment::getR)
                 .value("desktop.common.column.x", DetailForm.OHM, GuiParameters.Quantity.IMPEDANCE, equipment::getX)

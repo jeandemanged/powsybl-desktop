@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.network.tables;
 
 import com.powsybl.contingency.violations.LimitViolationType;
 import com.powsybl.iidm.network.Identifiable;
+import com.powsybl.powsybldesktop.network.form.TableColumnSupport;
 import com.powsybl.powsybldesktop.network.limits.OperationalLimitsPane;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.utils.Messages;

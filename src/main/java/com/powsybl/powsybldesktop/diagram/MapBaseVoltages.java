@@ -5,10 +5,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.map;
+package com.powsybl.powsybldesktop.diagram;
 
 import com.powsybl.commons.config.BaseVoltageConfig;
-import com.powsybl.powsybldesktop.diagram.BaseVoltages;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.scene.control.CheckBox;
 import javafx.scene.paint.Color;
@@ -26,6 +25,9 @@ import java.util.stream.Collectors;
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 public final class MapBaseVoltages {
+
+    // for substations outside every base voltage range
+    public static final String DEFAULT_SUBSTATION_COLOR = "#000000";
 
     private final BaseVoltages baseVoltages;
 
@@ -55,7 +57,7 @@ public final class MapBaseVoltages {
             CheckBox checkBox = new CheckBox(baseVoltages.isHighest(baseVoltage)
                     ? Messages.get("map.baseVoltages.rangeAbove", baseVoltage.getMinValue())
                     : Messages.get("map.baseVoltages.range", baseVoltage.getMinValue(), baseVoltage.getMaxValue()));
-            checkBox.setGraphic(new Rectangle(10, 10, Color.web(baseVoltages.color(baseVoltage.getName(), MapNetworkData.DEFAULT_SUBSTATION_COLOR))));
+            checkBox.setGraphic(new Rectangle(10, 10, Color.web(baseVoltages.color(baseVoltage.getName(), DEFAULT_SUBSTATION_COLOR))));
             checkBox.setUserData(baseVoltage.getName());
             checkBox.setSelected(true);
             checkBox.selectedProperty().addListener((_, _, _) -> {

@@ -11,6 +11,7 @@ import com.powsybl.iidm.network.HvdcConverterStation;
 import com.powsybl.iidm.network.HvdcLine;
 import com.powsybl.iidm.network.TwoSides;
 import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.network.form.DetailForm;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 
 /**
@@ -30,8 +31,8 @@ final class HvdcDetails {
         form.doubleField("detail.hvdc.lossFactor", DetailForm.PERCENT, GuiParameters.Quantity.PERCENTAGE,
                         station::getLossFactor, lossFactor -> station.setLossFactor((float) lossFactor))
                 .text("detail.hvdc.type", () -> station.getHvdcType().name());
-        DetailSections.equipmentLink(form, "desktop.common.equipment.hvdcLine", sceneModel, station::getHvdcLine);
-        DetailSections.equipmentLink(form, "detail.hvdc.otherStation", sceneModel, () -> station.getOtherConverterStation().orElse(null));
+        EquipmentDetails.equipmentLink(form, "desktop.common.equipment.hvdcLine", sceneModel, station::getHvdcLine);
+        EquipmentDetails.equipmentLink(form, "detail.hvdc.otherStation", sceneModel, () -> station.getOtherConverterStation().orElse(null));
     }
 
     /**

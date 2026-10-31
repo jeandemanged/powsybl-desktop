@@ -47,16 +47,17 @@ import com.powsybl.iidm.network.test.TwoVoltageLevelNetworkFactory;
 import com.powsybl.iidm.serde.test.MetrixTutorialSixBusesFactory;
 import com.powsybl.powsybldesktop.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.MainModel;
+import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.NetworkNavigationState;
 import com.powsybl.powsybldesktop.navigation.ReportNavigationState;
-import com.powsybl.powsybldesktop.network.detail.DetailForm;
-import com.powsybl.powsybldesktop.network.detail.DetailPart;
 import com.powsybl.powsybldesktop.network.detail.ExtensionEditors;
 import com.powsybl.powsybldesktop.network.detail.ExtensionsPane;
 import com.powsybl.powsybldesktop.network.detail.KeyValueTablePane;
 import com.powsybl.powsybldesktop.network.edit.ContainerCreations;
+import com.powsybl.powsybldesktop.network.form.DetailForm;
+import com.powsybl.powsybldesktop.network.form.DetailPart;
 import com.powsybl.powsybldesktop.network.tables.NetworkTieLines;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
@@ -211,13 +212,16 @@ public class NetworksController extends AbstractDisposableController {
     @FXML
     private TableColumn<Pair<String, String>, String> valueColumn;
 
+    private SceneModel sceneModel;
     private MainModel mainModel;
     private Network selectedNetwork;
     // the selected network's extensions, properties and aliases, rebuilt for each selected network
     private final List<DetailPart> networkParts = new ArrayList<>();
 
-    public void setMainModel(MainModel mainModel) {
-        this.mainModel = Objects.requireNonNull(mainModel);
+    // the main window's scene: this view isn't shown in separate windows
+    public void setSceneModel(SceneModel sceneModel) {
+        this.sceneModel = Objects.requireNonNull(sceneModel);
+        mainModel = sceneModel.getMainModel();
         updateNetworkList();
         updateNetworkInfo(mainModel.getNetwork());
         updateSelectionState();
@@ -225,7 +229,7 @@ public class NetworksController extends AbstractDisposableController {
         listenerManager.listen(mainModel.networkProperty(), (_, _, newNetwork) -> updateNetworkInfo(newNetwork));
         listenerManager.listen(networksTreeView.getSelectionModel().getSelectedItems(), _ -> updateSelectionState());
         listenerManager.listen(mainModel.networkBusyProperty(), (_, _, _) -> updateMergeDetachButtons(getSelectedNetworks()));
-        // the selected network's id and name, like its tables (see AbstractEquipmentTableController.setMainModel)
+        // the selected network's id and name, like its tables (see AbstractEquipmentTableController.setSceneModel)
         idField.disableProperty().bind(mainModel.networkBusyProperty());
         nameField.disableProperty().bind(mainModel.networkBusyProperty());
         caseDatePicker.disableProperty().bind(mainModel.networkBusyProperty());
@@ -270,7 +274,7 @@ public class NetworksController extends AbstractDisposableController {
                     return;
                 }
                 mainModel.setNetwork(network);
-                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORKS, NetworkNavigationState.create(network)), false);
+                sceneModel.record(NavigationEvent.create(NavigationType.NETWORKS, NetworkNavigationState.create(network)));
             }
             updateNetworkInfo(network);
         }
@@ -1034,7 +1038,7 @@ public class NetworksController extends AbstractDisposableController {
             mainModel.addReport(networkAndReport.reportNode());
 
             NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", _ ->
-                    mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.REPORTS,
+                    sceneModel.navigate(NavigationEvent.create(NavigationType.REPORTS,
                             ReportNavigationState.create(networkAndReport.reportNode()))));
 
             mainModel.getNotificationsModel().replace(runningNotification,
@@ -1045,7 +1049,7 @@ public class NetworksController extends AbstractDisposableController {
             LOGGER.error(exception.toString(), exception);
 
             NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", _ ->
-                    mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS)));
+                    sceneModel.navigate(NavigationEvent.create(NavigationType.LOGS)));
 
             mainModel.getNotificationsModel().replace(runningNotification,
                     Notification.createError(runningNotification.startTimestamp(), "main.networkImport.failed", viewLogsAction));
@@ -1128,7 +1132,7 @@ public class NetworksController extends AbstractDisposableController {
 
     private Notification importsOutcome(Instant startTimestamp, int total, int succeeded, int failed) {
         NotificationAction viewReportsAction = new NotificationAction("main.report.viewReports", _ ->
-                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.REPORTS)));
+                sceneModel.navigate(NavigationEvent.create(NavigationType.REPORTS)));
         if (failed == 0) {
             return Notification.createSuccess(startTimestamp, "main.networkImports.completed", viewReportsAction)
                     .withMessageArgs(succeeded, total);
@@ -1137,7 +1141,7 @@ public class NetworksController extends AbstractDisposableController {
         if (succeeded > 0) {
             actions.add(viewReportsAction);
         }
-        actions.add(new NotificationAction("main.viewLogs", _ -> mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS))));
+        actions.add(new NotificationAction("main.viewLogs", _ -> sceneModel.navigate(NavigationEvent.create(NavigationType.LOGS))));
         return Notification.createError(startTimestamp, "main.networkImports.failed", actions.toArray(NotificationAction[]::new))
                 .withMessageArgs(succeeded, total, failed);
     }
@@ -1167,7 +1171,7 @@ public class NetworksController extends AbstractDisposableController {
             LOGGER.error(exception.toString(), exception);
 
             NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", _ ->
-                    mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS)));
+                    sceneModel.navigate(NavigationEvent.create(NavigationType.LOGS)));
 
             mainModel.getNotificationsModel().replace(runningNotification,
                     Notification.createError(runningNotification.startTimestamp(), "main.sampleNetwork.failed", viewLogsAction));
@@ -1272,7 +1276,7 @@ public class NetworksController extends AbstractDisposableController {
             mainModel.addReport(reportNode);
 
             NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", _ ->
-                    mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.REPORTS,
+                    sceneModel.navigate(NavigationEvent.create(NavigationType.REPORTS,
                             ReportNavigationState.create(reportNode))));
 
             mainModel.getNotificationsModel().replace(runningNotification,
@@ -1283,7 +1287,7 @@ public class NetworksController extends AbstractDisposableController {
             LOGGER.error(exception.toString(), exception);
 
             NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", _ ->
-                    mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS)));
+                    sceneModel.navigate(NavigationEvent.create(NavigationType.LOGS)));
 
             mainModel.getNotificationsModel().replace(runningNotification,
                     Notification.createError(runningNotification.startTimestamp(), "main.networkExport.failed", viewLogsAction));

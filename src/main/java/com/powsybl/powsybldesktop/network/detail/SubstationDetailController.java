@@ -12,6 +12,8 @@ import com.powsybl.iidm.network.Country;
 import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
+import com.powsybl.powsybldesktop.network.form.DetailForm;
+import com.powsybl.powsybldesktop.network.form.DetailSections;
 import com.powsybl.powsybldesktop.utils.Labels;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.layout.VBox;

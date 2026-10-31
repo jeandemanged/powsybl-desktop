@@ -8,8 +8,8 @@
 package com.powsybl.powsybldesktop.parameters;
 
 import com.powsybl.powsybldesktop.diagram.BaseVoltages;
+import com.powsybl.powsybldesktop.diagram.MapBaseVoltages;
 import com.powsybl.powsybldesktop.map.Basemap;
-import com.powsybl.powsybldesktop.map.MapBaseVoltages;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;

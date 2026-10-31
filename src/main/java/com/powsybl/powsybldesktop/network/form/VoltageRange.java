@@ -5,7 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.network.tables;
+package com.powsybl.powsybldesktop.network.form;
 
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.violations.VoltageViolation;
@@ -18,7 +18,7 @@ import java.util.Comparator;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-record VoltageRange(double v, double nominalV, double lowLimit, double highLimit, VoltageViolation violation)
+public record VoltageRange(double v, double nominalV, double lowLimit, double highLimit, VoltageViolation violation)
         implements Comparable<VoltageRange> {
 
     /**
@@ -31,7 +31,7 @@ record VoltageRange(double v, double nominalV, double lowLimit, double highLimit
     /**
      * Null if {@code v} is unknown, e.g. before any load flow run.
      */
-    static VoltageRange of(double v, VoltageLevel voltageLevel, VoltageViolation violation) {
+    public static VoltageRange of(double v, VoltageLevel voltageLevel, VoltageViolation violation) {
         return Double.isNaN(v) ? null
                 : new VoltageRange(v, voltageLevel.getNominalV(), voltageLevel.getLowVoltageLimit(), voltageLevel.getHighVoltageLimit(), violation);
     }

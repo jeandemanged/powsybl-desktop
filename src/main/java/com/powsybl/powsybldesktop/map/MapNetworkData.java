@@ -14,6 +14,7 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.iidm.network.extensions.LinePosition;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
+import com.powsybl.powsybldesktop.diagram.MapBaseVoltages;
 import com.powsybl.powsybldesktop.network.edit.PositionEdits;
 
 import java.awt.Color;
@@ -55,7 +56,6 @@ record MapNetworkData(List<Color> colors,
                       Grid grid, double substationSpacing,
                       List<UnplacedSubstation> unplacedSubstations, int unroutedCount) {
 
-    static final String DEFAULT_SUBSTATION_COLOR = "#000000";
     static final String DEFAULT_LINE_COLOR = "#616161";
     static final double WORLD_SIZE = 256;
     static final double LINE_WEIGHT = 2;
@@ -164,7 +164,7 @@ record MapNetworkData(List<Color> colors,
                             .mapToDouble(VoltageLevel::getNominalV).max().orElse(Double.NaN));
                     substations.add(new MarkerData(substation.getId(),
                             projectX(position.getCoordinate().getLongitude()), projectY(position.getCoordinate().getLatitude()),
-                            substation.getNameOrId(), baseVoltage, color.apply(baseVoltage, DEFAULT_SUBSTATION_COLOR)));
+                            substation.getNameOrId(), baseVoltage, color.apply(baseVoltage, MapBaseVoltages.DEFAULT_SUBSTATION_COLOR)));
                 }
             });
             network.getLineStream().forEach(line -> {

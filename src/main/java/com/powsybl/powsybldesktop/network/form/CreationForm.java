@@ -5,7 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.network.edit;
+package com.powsybl.powsybldesktop.network.form;
 
 import com.powsybl.commons.PowsyblException;
 import com.powsybl.iidm.network.Identifiable;
@@ -79,7 +79,7 @@ public final class CreationForm {
     public static final class FieldException extends PowsyblException {
         private final transient Node editor;
 
-        FieldException(Node editor, String message) {
+        public FieldException(Node editor, String message) {
             super(message);
             this.editor = editor;
         }

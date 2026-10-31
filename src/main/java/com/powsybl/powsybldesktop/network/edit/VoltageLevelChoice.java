@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.network.edit;
 
 import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.powsybldesktop.network.form.CreationForm;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.property.ObjectProperty;
 import javafx.collections.FXCollections;

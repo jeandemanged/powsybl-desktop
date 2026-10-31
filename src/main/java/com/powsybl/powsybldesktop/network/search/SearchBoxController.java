@@ -12,6 +12,8 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.powsybldesktop.MainModel;
 import com.powsybl.powsybldesktop.NetworkStudy;
 import com.powsybl.powsybldesktop.SceneModel;
+import com.powsybl.powsybldesktop.search.NetworkSearch;
+import com.powsybl.powsybldesktop.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.animation.PauseTransition;
 import javafx.beans.value.ChangeListener;

@@ -5,7 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.network.tables;
+package com.powsybl.powsybldesktop.network.form;
 
 import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.iidm.network.regulation.VoltageRegulation;
@@ -50,7 +50,7 @@ public final class VoltageRegulations {
         });
     }
 
-    static RegulationMode mode(VoltageRegulationHolder<?> holder) {
+    public static RegulationMode mode(VoltageRegulationHolder<?> holder) {
         VoltageRegulation regulation = holder.getVoltageRegulation();
         return regulation == null ? null : regulation.getMode();
     }
@@ -73,7 +73,7 @@ public final class VoltageRegulations {
         }
     }
 
-    static double targetValue(VoltageRegulationHolder<?> holder) {
+    public static double targetValue(VoltageRegulationHolder<?> holder) {
         VoltageRegulation regulation = holder.getVoltageRegulation();
         return regulation == null ? Double.NaN : regulation.getTargetValue();
     }
@@ -87,7 +87,7 @@ public final class VoltageRegulations {
         }
     }
 
-    static double targetDeadband(VoltageRegulationHolder<?> holder) {
+    public static double targetDeadband(VoltageRegulationHolder<?> holder) {
         VoltageRegulation regulation = holder.getVoltageRegulation();
         return regulation == null ? Double.NaN : regulation.getTargetDeadband();
     }
@@ -105,7 +105,7 @@ public final class VoltageRegulations {
      * Writes the value {@link VoltageRegulationHolder#getRegulatingTargetV()} reads: the remote target when
      * regulating a remote terminal in a voltage mode, the local target otherwise.
      */
-    static void setRegulatingTargetV(VoltageRegulationHolder<?> holder, double targetV) {
+    public static void setRegulatingTargetV(VoltageRegulationHolder<?> holder, double targetV) {
         if (holder.hasRegulatingTerminal()
                 && (holder.isWithMode(RegulationMode.VOLTAGE) || holder.isWithMode(RegulationMode.VOLTAGE_PER_REACTIVE_POWER))) {
             holder.getVoltageRegulation().setTargetValue(targetV);
@@ -120,11 +120,11 @@ public final class VoltageRegulations {
      * {@link VoltageRegulationHolder#getRegulatingTargetQ()}, a remote target isn't converted to the holder's
      * convention.
      */
-    static double regulatingTargetQ(VoltageRegulationHolder<?> holder) {
+    public static double regulatingTargetQ(VoltageRegulationHolder<?> holder) {
         return remoteReactivePowerRegulation(holder) ? holder.getVoltageRegulation().getTargetValue() : holder.getLocalTargetQ();
     }
 
-    static void setRegulatingTargetQ(VoltageRegulationHolder<?> holder, double targetQ) {
+    public static void setRegulatingTargetQ(VoltageRegulationHolder<?> holder, double targetQ) {
         if (remoteReactivePowerRegulation(holder)) {
             holder.getVoltageRegulation().setTargetValue(targetQ);
         } else {

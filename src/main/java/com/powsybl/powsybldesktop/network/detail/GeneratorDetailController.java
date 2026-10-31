@@ -12,6 +12,8 @@ import com.powsybl.iidm.network.Generator;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
+import com.powsybl.powsybldesktop.network.form.DetailForm;
+import com.powsybl.powsybldesktop.network.form.DetailSections;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.sld.library.SldComponentTypeName;
 import javafx.scene.Node;

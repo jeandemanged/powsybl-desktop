@@ -10,6 +10,8 @@ package com.powsybl.powsybldesktop.network.detail;
 import com.powsybl.iidm.network.BoundaryLine;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
+import com.powsybl.powsybldesktop.network.form.DetailForm;
+import com.powsybl.powsybldesktop.network.form.DetailSections;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import javafx.scene.control.Tab;
 
@@ -37,7 +39,7 @@ public class BoundaryLineDetailController extends AbstractEquipmentDetailControl
     @Override
     protected void buildMain(DetailForm form) {
         form.textField("desktop.common.column.pairingKey", equipment::getPairingKey, equipment::setPairingKey);
-        DetailSections.equipmentLink(form, "desktop.common.equipment.tieLine", sceneModel, () -> equipment.getTieLine().orElse(null));
+        EquipmentDetails.equipmentLink(form, "desktop.common.equipment.tieLine", sceneModel, () -> equipment.getTieLine().orElse(null));
         DetailSections.connection(form, "detail.section.connection", equipment::getTerminal);
         form.section("detail.section.characteristics")
                 .doubleField("desktop.common.column.r", DetailForm.OHM, GuiParameters.Quantity.IMPEDANCE, equipment::getR, equipment::setR)

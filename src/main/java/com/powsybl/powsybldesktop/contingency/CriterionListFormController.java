@@ -29,7 +29,7 @@ import com.powsybl.iidm.criteria.TwoNominalVoltageCriterion;
 import com.powsybl.iidm.criteria.VoltageInterval;
 import com.powsybl.iidm.network.Country;
 import com.powsybl.iidm.network.IdentifiableType;
-import com.powsybl.powsybldesktop.network.tables.CellFields;
+import com.powsybl.powsybldesktop.network.form.CellFields;
 import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.utils.SearchableCheckComboBox;

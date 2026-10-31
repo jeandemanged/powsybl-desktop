@@ -13,7 +13,7 @@ import com.powsybl.iidm.network.OverloadManagementSystem;
 import com.powsybl.powsybldesktop.SceneModel;
 import com.powsybl.powsybldesktop.network.detail.EquipmentDetails;
 import com.powsybl.powsybldesktop.network.edit.EditMenus;
-import com.powsybl.powsybldesktop.network.edit.TableEditActions;
+import com.powsybl.powsybldesktop.network.form.TableColumnSupport;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.fxml.FXML;
