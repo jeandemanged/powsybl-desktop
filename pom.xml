@@ -41,6 +41,9 @@
              single JavaFX toolkit and TestFX shares one primary stage between test classes. A property
              rather than plugin configuration so that -DforkCount=N overrides it -->
         <forkCount>0.5C</forkCount>
+        <!-- the user's guide screenshots generator only runs with the ug-screenshots profile -->
+        <surefire.groups/>
+        <surefire.excludedGroups>user-guide</surefire.excludedGroups>
     </properties>
 
     <dependencyManagement>
@@ -292,6 +295,14 @@
 
     <profiles>
         <profile>
+            <!-- writes the user's guide screenshots to docs/ug/_generated/images: mvn test -Pug-screenshots -->
+            <id>ug-screenshots</id>
+            <properties>
+                <surefire.groups>user-guide</surefire.groups>
+                <surefire.excludedGroups/>
+            </properties>
+        </profile>
+        <profile>
             <id>win</id>
             <activation>
                 <os>
@@ -410,6 +421,8 @@
                          from user.language/user.country at JVM bootstrap, before System.setProperty
                          calls made after startup could take effect -->
                     <argLine>-Duser.language=en -Duser.country=US</argLine>
+                    <groups>${surefire.groups}</groups>
+                    <excludedGroups>${surefire.excludedGroups}</excludedGroups>
                 </configuration>
             </plugin>
             <plugin>

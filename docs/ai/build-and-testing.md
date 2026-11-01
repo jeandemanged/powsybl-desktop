@@ -22,6 +22,7 @@ mvn test -Dtest=LoadsControllerTest
 mvn checkstyle:check@default     # style only, powsybl rules (NOT bare checkstyle:check)
 mvn clean javafx:run              # run the app
 mvn -o dependency:tree            # resolve actual PowSyBl module versions
+mvn test -Pug-screenshots         # user's guide screenshots only, to docs/ug/_generated/images
 ```
 
 ## Checkstyle (fails the build)
@@ -120,6 +121,16 @@ repository, and read the image. Dump the page's state in the same run with
 fixed-size `Scene`: resizing the `Stage` crashes the headless platform (`HeadlessWindow.blit` →
 `IndexOutOfBoundsException`). The tests render with `prism.order=sw`: a hardware-pipeline-only problem won't
 reproduce there. Delete the harness afterwards: network-dependent and slow, not suite material.
+
+### User's guide screenshots
+
+`UserGuideScreenshotsTest` is not a regression test: it drives the main window through the user's guide quick start
+tutorials (robot clicks through the real menus) and writes the PNGs the guide shows to `docs/ug/_generated/images`
+(git-ignored; override with `-Dug.screenshots.dir`). It is tagged `user-guide`, excluded by default through the
+`surefire.excludedGroups` property; the `ug-screenshots` profile runs it alone. Each screenshot composites every
+showing window over the main one, so open menus and notifications appear. Move the robot into menus with
+`Motion.HORIZONTAL_FIRST`: a diagonal move crosses sibling items and closes the submenu being aimed at. A page of
+`docs/ug` referencing a new image needs that image added to the test.
 
 ## CI
 

@@ -41,6 +41,7 @@ mvn clean install                 # build + checkstyle + all tests (checkstyle f
 mvn test -Dtest=ClassName         # one test class
 mvn checkstyle:check@default     # style only, powsybl rules (NOT bare checkstyle:check, see build-and-testing)
 mvn clean javafx:run              # run the app
+mvn test -Pug-screenshots         # user's guide screenshots (docs/ug/_generated/images)
 ```
 
 Requires JDK 25. Tests run headless (no display needed). Report test results faithfully, including failures.

@@ -10,7 +10,11 @@ Navigate to the "docs/ug" directory of the project:
 ~~~bash
 cd docs/ug
 ~~~
-Install the requirements the first time:
+Generate the screenshots, from the repository root (they are not committed and differ between operating systems):
+~~~bash
+mvn test -Pug-screenshots
+~~~
+Install the requirements the first time (Sphinx 9 requires Python 3.12 or later):
 ~~~bash
 pip install -r requirements.txt
 ~~~
