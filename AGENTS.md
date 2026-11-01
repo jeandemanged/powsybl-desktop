@@ -63,3 +63,5 @@ Easy to get wrong:
   `git ls-files --eol` (text files must match their `attr/`: `w/crlf` on Windows, `w/lf` for `eol=lf`).
 - Keep the knowledge base current: a change to documented behavior updates the matching `docs/ai` document in the
   same change.
+- Keep the user's guide current: a user-visible change updates the matching page of `docs/ug` (Sphinx, MyST Markdown;
+  see `docs/ug/README.md`) in the same change, using the UI's exact English labels.

@@ -250,6 +250,7 @@ if present, and fall back to jpackage's default icon otherwise.
 All three scripts are run on GitHub Actions by `.github/workflows/package-release.yml` (manual dispatch, publishes
 from branch `init`): it tags the commit, packages the app-image on Windows, Linux and macOS (Apple Silicon) runners
 with the downloaded JavaFX jmods, archives each one and publishes them as a GitHub release. Each packaging job builds
-its own platform's user's guide first, so that it is shipped in the app-image. Every push is also built and tested on
+its own platform's user's guide first, so that it is shipped in the app-image; the release also gets a
+`…-user-guide.zip` asset with the HTML and PDF of all three platforms, a folder per platform. Every push is also built and tested on
 the same three platforms by `.github/workflows/ci.yml`, which also builds the user's guide on each of them: the HTML
 and PDF are downloadable from the run as a single `user-guide` artifact, with a folder per platform.

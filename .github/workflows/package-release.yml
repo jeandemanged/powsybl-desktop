@@ -124,14 +124,38 @@ jobs:
           path: ${{ env.ARCHIVE_NAME }}
           if-no-files-found: error
 
+      - name: Stage the user's guide
+        shell: bash
+        run: |
+          mkdir -p "user-guide/${{ matrix.platform }}"
+          cp -R docs/ug/_build/html "user-guide/${{ matrix.platform }}/html"
+          cp docs/ug/_build/latex/powsybl-desktop-user-guide.pdf "user-guide/${{ matrix.platform }}/"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: user-guide-${{ matrix.platform }}
+          path: user-guide
+          if-no-files-found: error
+
   release:
     needs: [prep, package]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
+          pattern: powsybl-desktop-*
           path: dist
           merge-multiple: true
+
+      # each artifact holds its platform's folder: merged, they make one user-guide/{windows,linux,macos} tree
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: user-guide-*
+          path: user-guide
+          merge-multiple: true
+
+      - name: Archive the user's guide
+        run: zip -qr "dist/powsybl-desktop-${{ needs.prep.outputs.version }}-${{ needs.prep.outputs.sha }}-user-guide.zip" user-guide
 
       - name: Create pre-release
         env:

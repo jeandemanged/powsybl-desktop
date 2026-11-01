@@ -46,6 +46,7 @@ changes, change it there and in the invariant, nowhere else.
 | Fix a visual / rendering bug | build-and-testing (Debugging rendering), diagrams-and-map for WebView views |
 | Fix a bug | invariants, then the document for the affected area |
 | Change the build, packaging or a dependency | build-and-testing |
+| Write or update the user's guide (`docs/ug`) | `docs/ug/README.md`, build-and-testing (User's guide screenshots, CI) |
 | Refactor | invariants, architecture; keep changes behavior-preserving and minimal |
 | Review code | invariants (checklist), build-and-testing |
 
