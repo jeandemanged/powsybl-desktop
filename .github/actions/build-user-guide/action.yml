@@ -1,0 +1,92 @@
+name: Build the user's guide
+description: >
+  Takes the user's guide screenshots and builds its HTML and PDF to docs/ug/_build, on the runner's OS (screenshots
+  differ between platforms). Java and Maven must already be set up.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: docs/ug/requirements.txt
+
+    # TeX Live from its official installer, the same on every OS (on Windows, it brings the Perl that latexmk needs).
+    # Saved right after installing rather than at the end of the job, so that a failing build doesn't lose it; the key
+    # changes with this file, hence with the package list.
+    - id: texlive-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/texlive
+        key: texlive-${{ runner.os }}-${{ hashFiles('.github/actions/build-user-guide/action.yml') }}
+
+    - name: Install TeX Live
+      if: steps.texlive-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        # mirror.ctan.org redirects to a random mirror, some with broken HTTPS: the first of these answering is used
+        # for the whole installation
+        for mirror in https://ctan.math.illinois.edu https://mirror.las.iastate.edu/tex-archive https://ftp.fau.de/ctan \
+            https://mirror.ctan.org; do
+          repository="$mirror/systems/texlive/tlnet"
+          if curl -fsS --max-time 30 -o /dev/null -r 0-0 "$repository/install-tl-unx.tar.gz"; then break; fi
+        done
+        echo "Using $repository"
+        texdir="$HOME/texlive"
+        if [ "$RUNNER_OS" = Windows ]; then texdir="$(cygpath -m "$texdir")"; fi
+        cd "$RUNNER_TEMP"
+        printf '%s\n' \
+          "selected_scheme scheme-basic" \
+          "TEXDIR $texdir" \
+          "TEXMFLOCAL $texdir/texmf-local" \
+          "TEXMFSYSCONFIG $texdir/texmf-config" \
+          "TEXMFSYSVAR $texdir/texmf-var" \
+          "tlpdbopt_install_docfiles 0" \
+          "tlpdbopt_install_srcfiles 0" \
+          "instopt_adjustpath 0" > texlive.profile
+        if [ "$RUNNER_OS" = Windows ]; then
+          curl -fsSL -o install-tl.zip "$repository/install-tl.zip"
+          unzip -q install-tl.zip
+          cd install-tl-2*
+          cmd //c "install-tl-windows.bat -no-gui -no-interaction -repository $repository -profile ..\\texlive.profile"
+          tlmgr="$texdir/bin/windows/tlmgr.bat"
+        else
+          curl -fsSL "$repository/install-tl-unx.tar.gz" | tar xz
+          cd install-tl-2*
+          perl ./install-tl -no-interaction -repository "$repository" -profile ../texlive.profile
+          tlmgr="$(ls -d "$texdir"/bin/*)/tlmgr"
+        fi
+        "$tlmgr" install latexmk babel-english collection-fontsrecommended collection-latexrecommended collection-latexextra
+
+    - if: steps.texlive-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/texlive
+        key: ${{ steps.texlive-cache.outputs.cache-primary-key }}
+
+    - name: Add TeX Live to the path
+      shell: bash
+      run: |
+        bindir="$(ls -d "$HOME"/texlive/bin/*)"
+        if [ "$RUNNER_OS" = Windows ]; then bindir="$(cygpath -w "$bindir")"; fi
+        echo "$bindir" >> "$GITHUB_PATH"
+
+    - name: Take the screenshots
+      shell: bash
+      run: mvn -B test -Pug-screenshots
+
+    - name: Build the HTML and the PDF
+      shell: bash
+      working-directory: docs/ug
+      run: |
+        pip install -r requirements.txt
+        python -m sphinx -M html . _build -W --keep-going
+        # on Windows, the make.bat Sphinx runs doesn't pass latexmk's failure on: check for the PDF too
+        status=0
+        python -m sphinx -M latexpdf . _build || status=$?
+        if [ "$status" -ne 0 ] || [ ! -f _build/latex/powsybl-desktop-user-guide.pdf ]; then
+          echo "::error::The PDF user's guide wasn't built. LaTeX errors:"
+          grep -n -A8 '^!' _build/latex/powsybl-desktop-user-guide.log || true
+          exit 1
+        fi
