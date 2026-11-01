@@ -1,4 +1,7 @@
+```{only} html
 ![PowSyBl Logo](_static/logos/logo_lfe_powsybl.svg)
+```
+
 # PowSyBl Desktop
 
 PowSyBl Desktop is a desktop application for [PowSyBl](https://www.powsybl.org/), the open-source power system

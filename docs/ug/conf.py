@@ -112,6 +112,14 @@ latex_documents = [
     ('index', 'powsybl-desktop-user-guide.tex', "PowSyBl Desktop User's Guide", 'PowSyBl Desktop authors', 'manual'),
 ]
 
+# pdflatex fails on Unicode characters it has no definition for, such as the arrows of the UI's search buttons
+latex_elements = {
+    'preamble': r'''
+\sphinxDUC{25B6}{\ensuremath{\blacktriangleright}}
+\sphinxDUC{25C0}{\ensuremath{\blacktriangleleft}}
+''',
+}
+
 # Links to external documentations.
 # PowSyBl versions come from the powsybl-dependencies BOM, not from pom.xml properties: link to latest.
 intersphinx_mapping = {

@@ -138,11 +138,15 @@ notifications popup, placed in the window's corner, is moved to the view's. Move
 ## CI
 
 `.github/workflows/ci.yml`: on every branch push (no pull request or tag trigger), `mvn -B clean install
--DforkCount=1C` on Windows, Ubuntu and macOS with Temurin 25.
+-DforkCount=1C` on Windows, Ubuntu and macOS with Temurin 25. In parallel, the `user-guide` jobs build the user's guide
+on the same three platforms, and `user-guide-artifact` merges them into one `user-guide` artifact with a `windows`,
+`linux` and `macos` folder, each holding `html/` and the PDF (from the platforms that succeeded).
 `.github/workflows/package-release.yml` (manual dispatch, publishes from branch `init`): tags the commit
-(`vYYYYMMDD-sha`), runs the three packaging scripts on Windows, Linux and macOS (Apple Silicon) runners with downloaded
-JavaFX jmods, archives the app-images and creates a GitHub release marked latest, then deletes all but the newest 5
-such releases and their tags.
+(`vYYYYMMDD-sha`), builds the user's guide and runs the three packaging scripts on Windows, Linux and macOS (Apple
+Silicon) runners with downloaded JavaFX jmods, archives the app-images and creates a GitHub release marked latest, then
+deletes all but the newest 5 such releases and their tags. The guide is not a release asset.
+Both build the guide with the composite action `.github/actions/build-user-guide` (Python 3.12, TeX Live through
+`teatimeguest/setup-texlive-action`, screenshots, then `sphinx -M html` with warnings as errors and `-M latexpdf`).
 
 ## Packaging
 

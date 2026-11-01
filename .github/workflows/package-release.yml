@@ -63,6 +63,9 @@ jobs:
           java-version: '25'
           cache: maven
 
+      # to docs/ug/_build, where the packaging scripts take it from
+      - uses: ./.github/actions/build-user-guide
+
       - name: Download JavaFX jmods
         shell: bash
         run: |
