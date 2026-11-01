@@ -72,7 +72,7 @@ JDEPS_MODULES="$(jdeps \
     "$MAIN_JAR")"
 echo "    Detected: $JDEPS_MODULES"
 
-ALL_MODULES="$JDEPS_MODULES,javafx.controls,javafx.fxml,javafx.web"
+ALL_MODULES="$JDEPS_MODULES,javafx.controls,javafx.fxml,javafx.swing,javafx.web"
 
 rm -rf "$RUNTIME_DIR"
 echo "==> jlink: building custom runtime image"

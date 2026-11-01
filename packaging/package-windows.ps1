@@ -73,7 +73,7 @@ if ($LASTEXITCODE -ne 0) { throw "jdeps failed" }
 $jdepsModules = $jdepsModules.Trim()
 Write-Host "    Detected: $jdepsModules"
 
-$allModules = "$jdepsModules,javafx.controls,javafx.fxml,javafx.web"
+$allModules = "$jdepsModules,javafx.controls,javafx.fxml,javafx.swing,javafx.web"
 
 if (Test-Path $runtimeDir) { Remove-Item $runtimeDir -Recurse -Force }
 Write-Host "==> jlink: building custom runtime image"
