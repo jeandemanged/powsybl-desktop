@@ -34,3 +34,7 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Sphinx user guide ###
+docs/ug/_build/
+docs/ug/_generated/
