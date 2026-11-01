@@ -84,6 +84,11 @@ that:
 - only `MainController` and `SceneModel` call `MainModel.getNavigationHistory()`;
 - only the shell and `SeparateWindows` create a `Stage`.
 
+The layering, JavaFX and cycle rules cover test classes too, so a test lives in the package of what it tests:
+test helpers needing JavaFX go under `ui` (`ui/testutil`), and a test exercising a view of an upper package (e.g. a
+network view in a `SeparateWindows` window) goes in that package, not the lower one. The last two rules cover
+production code only.
+
 Every rule is strict: fix the dependency, never weaken a rule or exempt a class to make a change pass. Views never
 reference `MainApplication`: resources are loaded relative to the class next to them (or by absolute path for the
 root's `styles.css` and logo), and the window title is `MainModel.APP_TITLE`.

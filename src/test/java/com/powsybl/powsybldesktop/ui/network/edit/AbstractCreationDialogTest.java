@@ -13,7 +13,7 @@ import com.powsybl.iidm.network.SwitchKind;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.network.edit.Containers;
-import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
+import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import javafx.application.Platform;
 import javafx.geometry.Rectangle2D;

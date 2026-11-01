@@ -65,7 +65,7 @@ Tests mirror the main package layout under `src/test/java/com/powsybl/powsybldes
 
 ### Headless UI tests
 
-- Extend `src/test/java/com/powsybl/powsybldesktop/testutil/AbstractHeadlessApplicationTest.java`. Its static
+- Extend `src/test/java/com/powsybl/powsybldesktop/ui/testutil/AbstractHeadlessApplicationTest.java`. Its static
   initializer selects JavaFX's built-in headless Glass platform (`glass.platform=Headless`, `testfx.robot=glass`,
   `prism.order=sw`). Do **not** add `openjfx-monocle` or set `testfx.headless` — that makes TestFX install Monocle and
   breaks the suite. The headless platform never positions a stage, so the base class places the shared primary stage

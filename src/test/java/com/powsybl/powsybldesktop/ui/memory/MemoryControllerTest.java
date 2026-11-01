@@ -8,7 +8,7 @@
 package com.powsybl.powsybldesktop.ui.memory;
 
 import com.powsybl.powsybldesktop.memory.MaxHeapConfig;
-import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
+import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;

@@ -10,7 +10,7 @@ package com.powsybl.powsybldesktop.ui.parameters;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.parameters.ApplicationParameters;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
-import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
+import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXMLLoader;

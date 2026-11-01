@@ -37,6 +37,9 @@ class ArchitectureTest {
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
             .importPackages(ROOT);
 
+    // for the package rules only: tests legitimately do what production code may not, e.g. use the navigation history
+    private static final JavaClasses CLASSES_AND_TESTS = new ClassFileImporter().importPackages(ROOT);
+
     private static final String[] STATE = packages("core..", "navigation..", "logs..");
     private static final String[] DOMAIN = packages("network..", "search..", "diagram..", "map..", "contingency..", "loadflow..",
             "security..", "violations..", "memory..", "parameters..", "notification..");
@@ -55,7 +58,7 @@ class ArchitectureTest {
                 .whereLayer("UI").mayOnlyBeAccessedByLayers("Shell")
                 .whereLayer("State").mayOnlyBeAccessedByLayers("Shell", "UI")
                 .whereLayer("Domain").mayOnlyBeAccessedByLayers("Shell", "UI", "State")
-                .check(CLASSES);
+                .check(CLASSES_AND_TESTS);
     }
 
     // what keeps the code outside ui unit-testable without a JavaFX toolkit
@@ -64,12 +67,12 @@ class ArchitectureTest {
         noClasses().that().resideOutsideOfPackages(ROOT, ROOT + ".ui..")
                 .should().dependOnClassesThat().resideInAnyPackage("javafx.scene..", "javafx.stage..", "javafx.fxml..",
                         "org.controlsfx..", "org.kordamp.ikonli..")
-                .check(CLASSES);
+                .check(CLASSES_AND_TESTS);
     }
 
     @Test
     void packagesAreFreeOfCycles() {
-        slices().matching(ROOT + ".(**)").should().beFreeOfCycles().check(CLASSES);
+        slices().matching(ROOT + ".(**)").should().beFreeOfCycles().check(CLASSES_AND_TESTS);
     }
 
     // views navigate through SceneModel, so that one shown in a separate window drives the main window without

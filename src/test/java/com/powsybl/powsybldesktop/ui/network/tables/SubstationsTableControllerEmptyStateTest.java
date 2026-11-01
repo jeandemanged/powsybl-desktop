@@ -8,7 +8,7 @@
 package com.powsybl.powsybldesktop.ui.network.tables;
 
 import com.powsybl.powsybldesktop.core.MainModel;
-import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
+import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;

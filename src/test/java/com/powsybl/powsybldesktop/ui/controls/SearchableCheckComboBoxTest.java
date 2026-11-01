@@ -8,7 +8,7 @@
 package com.powsybl.powsybldesktop.ui.controls;
 
 import com.powsybl.iidm.network.Country;
-import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
+import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Labels;
 import javafx.collections.ListChangeListener;
 import javafx.scene.Scene;

@@ -8,7 +8,7 @@
 package com.powsybl.powsybldesktop.ui.form;
 
 import com.powsybl.commons.PowsyblException;
-import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
+import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.scene.Node;

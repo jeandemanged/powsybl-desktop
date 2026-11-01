@@ -8,7 +8,7 @@
 package com.powsybl.powsybldesktop.ui.parameters;
 
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
-import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
+import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.security.SecurityAnalysisParameters;
 import javafx.beans.property.ObjectProperty;

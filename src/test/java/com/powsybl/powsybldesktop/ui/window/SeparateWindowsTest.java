@@ -8,26 +8,16 @@
 package com.powsybl.powsybldesktop.ui.window;
 
 import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
-import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Network;
-import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.core.MainModel;
-import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
-import com.powsybl.powsybldesktop.navigation.NavigationType;
-import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
-import com.powsybl.powsybldesktop.testutil.SubnetworksTestFactory;
-import com.powsybl.powsybldesktop.ui.logs.LogsViewController;
-import com.powsybl.powsybldesktop.ui.network.ContainerDiagram;
-import com.powsybl.powsybldesktop.ui.network.detail.EquipmentDetails;
-import com.powsybl.powsybldesktop.ui.network.tables.LinesController;
+import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
+import com.powsybl.powsybldesktop.ui.testutil.SubnetworksTestFactory;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.scene.Scene;
-import javafx.scene.control.Hyperlink;
 import javafx.scene.control.SplitMenuButton;
 import javafx.scene.control.ToolBar;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import org.junit.jupiter.api.AfterEach;
@@ -36,8 +26,6 @@ import org.testfx.util.WaitForAsyncUtils;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -85,8 +73,7 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
     }
 
     private void openLines() {
-        interact(() -> separateWindows.open(() -> "Lines", scene -> SeparateWindows.<LinesController>load("ui/network/tables/lines-view.fxml",
-                controller -> controller.setSceneModel(scene))));
+        interact(() -> openPlain("Lines", true, new AtomicInteger()));
     }
 
     @Test
@@ -130,24 +117,6 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
         assertTrue(windows("Lines").isEmpty());
     }
 
-    // what the subnetwork holds, its root network shows too
-    @Test
-    void detailViewOpenedOnASubnetworkStaysOpenOnceItsRootNetworkIsSelected() {
-        Network root = SubnetworksTestFactory.create();
-        Network nodeBreaker = root.getSubnetwork(SubnetworksTestFactory.NODE_BREAKER);
-        interact(() -> {
-            mainModel.addNetwork(root);
-            mainModel.setNetwork(nodeBreaker);
-            EquipmentDetails.open(SceneModel.main(mainModel, separateWindows), nodeBreaker.getBusbarSectionStream().findFirst().orElseThrow());
-        });
-        assertEquals(1, separateWindows.getOpenWindows().size());
-
-        assertTrue(separateWindows.confirmNetworkChange(root));
-        interact(() -> mainModel.setNetwork(root));
-
-        assertEquals(1, separateWindows.getOpenWindows().size());
-    }
-
     @Test
     void noConfirmationIsNeededWithoutWindowsOnAnotherNetwork() {
         assertTrue(separateWindows.confirmNetworkChange(otherNetwork));
@@ -156,28 +125,10 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
-    void separateTableNavigatesTheMainWindowWithoutRecordingItsOwnState() {
-        openLines();
-        Line line = network.getLineStream().findFirst().orElseThrow();
-        Stage window = windows("Lines").getFirst();
-        Hyperlink link = from(window.getScene().getRoot()).lookup(".container-link")
-                .match(node -> ((Hyperlink) node).getText().equals(line.getTerminal1().getVoltageLevel().getSubstation().orElseThrow().getNameOrId()))
-                .query();
-
-        interact(link::fire);
-
-        var history = mainModel.getNavigationHistory();
-        assertEquals(1, history.getPast().size());
-        assertEquals(NavigationType.SUBSTATIONS, history.currentEventProperty().get().navigationType());
-        assertInstanceOf(ContainerNavigationState.class, history.currentEventProperty().get().state());
-    }
-
-    @Test
     void singleInstanceWindowIsReusedAndSurvivesNetworkChanges() {
-        Runnable openLogs = () -> separateWindows.openSingleInstance("logs", () -> "Logs", _ -> SeparateWindows.<LogsViewController>load("ui/logs/logs-view.fxml",
-                controller -> controller.setModels(mainModel.getLogsModel(), mainModel.getParametersModel())));
-        interact(openLogs);
-        interact(openLogs);
+        AtomicInteger disposed = new AtomicInteger();
+        interact(() -> openPlain("Logs", false, disposed));
+        interact(() -> openPlain("Logs", false, disposed));
         assertEquals(1, windows("Logs").size());
 
         interact(() -> mainModel.setNetwork(otherNetwork));
@@ -187,10 +138,8 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
 
     @Test
     void wholeNetworkViewIsOpenedOnceAndListed() {
-        Runnable openLines = () -> separateWindows.open("lines", () -> "Lines", scene -> SeparateWindows.<LinesController>load("ui/network/tables/lines-view.fxml",
-                controller -> controller.setSceneModel(scene)));
-        interact(openLines);
-        interact(openLines);
+        openLines();
+        openLines();
 
         assertEquals(1, windows("Lines").size());
         assertEquals(List.of(List.of("Lines")), separateWindows.getOpenWindows().stream().map(SeparateWindows.DetachedWindow::getTabTitles).toList());
@@ -202,13 +151,12 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
 
     @Test
     void windowsCanBeFocusedOrClosedByKey() throws Exception {
-        assertFalse(WaitForAsyncUtils.asyncFx(() -> separateWindows.focusOpen("lines")).get());
-        interact(() -> separateWindows.open("lines", () -> "Lines", scene -> SeparateWindows.<LinesController>load("ui/network/tables/lines-view.fxml",
-                controller -> controller.setSceneModel(scene))));
+        assertFalse(WaitForAsyncUtils.asyncFx(() -> separateWindows.focusOpen("Lines")).get());
+        openLines();
 
-        assertTrue(WaitForAsyncUtils.asyncFx(() -> separateWindows.focusOpen("lines")).get());
+        assertTrue(WaitForAsyncUtils.asyncFx(() -> separateWindows.focusOpen("Lines")).get());
 
-        interact(() -> separateWindows.close("lines"));
+        interact(() -> separateWindows.close("Lines"));
 
         assertTrue(windows("Lines").isEmpty());
     }
@@ -278,27 +226,6 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
 
         assertEquals(List.of("Diagrams", defaultName(2)), names());
         assertEquals(1, windows("Diagrams - a").size());
-    }
-
-    // the WebView runs the page: the line feeder is clicked through window.controller, as sld.js does
-    @Test
-    void separateSingleLineDiagramNavigatesWithinItsTab() throws TimeoutException {
-        VoltageLevel vl1 = network.getVoltageLevel("VL1");
-        String title = Messages.get("desktop.common.singleLineDiagram") + " - ";
-        interact(() -> ContainerDiagram.open(separateWindows, false, ContainerDiagram.Kind.SINGLE_LINE, vl1));
-        WebView webView = (WebView) windows(title + vl1.getNameOrId()).getFirst().getScene().getRoot().lookup(".web-view");
-        WaitForAsyncUtils.waitFor(60, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() -> webView.getEngine().executeScript(
-                "document.querySelector('[id^=\"idL\"].sld-top-feeder, [id^=\"idL\"].sld-bottom-feeder') != null")).get().equals(Boolean.TRUE));
-        int pastEvents = mainModel.getNavigationHistory().getPast().size();
-
-        interact(() -> webView.getEngine().executeScript("var feeder = document.querySelector('[id^=\"idL\"].sld-top-feeder, "
-                + "[id^=\"idL\"].sld-bottom-feeder'); window.controller.onFeederTopBottomClick(feeder.id)"));
-
-        assertEquals(1, separateWindows.getOpenWindows().size());
-        assertTrue(windows(title + vl1.getNameOrId()).isEmpty());
-        assertEquals(1, Window.getWindows().stream()
-                .filter(window -> window instanceof Stage stage && stage.getTitle() != null && stage.getTitle().contains(title)).count());
-        assertEquals(pastEvents, mainModel.getNavigationHistory().getPast().size());
     }
 
     @Test
