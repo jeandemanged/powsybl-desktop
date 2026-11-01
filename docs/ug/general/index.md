@@ -1,5 +1,122 @@
 # General usage
 
-```{todo}
-Main window, menus, toolbar, navigation history, separate windows and tabs.
-```
+This section describes the application's window, menus and toolbar, and how to arrange views in several windows. The
+views themselves are described in [Views and associated tasks](../views/index.md).
+
+## The main window
+
+The main window has, from top to bottom:
+
+- the **menu bar**;
+- the **main toolbar**, giving access to every view and computation;
+- the **current view**, which fills the rest of the window. Most views have their own toolbar at their top.
+
+![The main window](../_generated/images/quickstart-network-loaded.png)
+
+Only one view at a time is shown in the main window. Choosing another view in the toolbar replaces it; to see several
+views side by side, open them in [separate windows](#separate-windows-and-tabs).
+
+## Menu bar
+
+| Menu         | Items                                                                                              |
+|--------------|----------------------------------------------------------------------------------------------------|
+| **File**     | **Exit** closes the application, with all its windows.                                             |
+| **Language** | **English** or **Français**. See [Language](#language).                                            |
+| **Windows**  | One submenu per separate window. See [Separate windows and tabs](#separate-windows-and-tabs).     |
+| **Help**     | **Memory** opens the memory window, **About** shows links to PowSyBl, the versions of the PowSyBl modules and the third-party licenses. |
+
+## Main toolbar
+
+From left to right:
+
+| Button                                                       | Action                                                                                                         |
+|--------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
+| Back and forward arrows                                      | Go back to the previous view, or forward again. See [Navigation history](#navigation-history).                 |
+| **Networks**                                                 | Open the [Networks](../views/networks.md) view.                                                                |
+| **Substations**                                              | Open the [Substations](../views/substations.md) view.                                                          |
+| **Map**                                                      | Open the [Map](../views/map.md).                                                                               |
+| **Contingencies**                                            | Open the [Contingencies](../views/contingencies.md) view.                                                      |
+| **Tables**                                                   | Open an [equipment table](../views/tables.md) (**Equipment** submenu), or a results table.                     |
+| **Run**                                                      | Run a **Load Flow** or a **Security Analysis** on the selected network.                                        |
+| **Parameters**                                               | Open the [Parameters](../views/parameters.md) view.                                                            |
+| **Logs**                                                     | Open the [Logs](../views/logs.md).                                                                             |
+| **Reports**                                                  | Open the [Reports](../views/reports.md).                                                                       |
+| Speech bubble, at the right end                              | Show or hide the [notifications panel](#notifications).                                                        |
+
+The views showing network content all show the network selected in the [Networks](../views/networks.md) view.
+
+## Navigation history
+
+Every view change is recorded, like in a web browser: opening a view from the toolbar, clicking an equipment link in a
+table, selecting a voltage level in the substations tree... The back and forward arrows of the main toolbar move
+through this history, restoring the view and its selection. The history keeps the last 30 steps. Steps referring to
+something that no longer exists (a closed network, a removed equipment) are dropped.
+
+## Separate windows and tabs
+
+Any view can also be opened in a separate window, to keep it visible while working in the main window, for instance a
+single-line diagram next to a table, or on a second screen.
+
+### Opening a view in a separate window
+
+- In the toolbar of a view, click the **Open in new window** button (the square with an arrow, at the right end):
+  the view opens in a new window. The small arrow next to it offers **New window** or the existing windows, to open
+  the view as a new tab of one of them instead.
+- The **Map**, **Contingencies**, **Parameters**, **Logs** and **Reports** buttons of the main toolbar can also be
+  dragged: release the mouse over a separate window to add the view to it as a tab, anywhere else to open it in a new
+  window at that place.
+- Some views open in a separate window by themselves: the equipment detail views, and the diagrams opened from the
+  map, open as a tab of the most recently created window.
+
+A view can be open only once: opening it again brings its window to the front and selects its tab.
+
+### Windows
+
+Separate windows are named "Window 1", "Window 2"... To rename one, double-click its name, left of its tabs, or use
+**Windows** > *window name* > **Rename…** in the main window. The **Windows** menu also brings any window, or any of
+its tabs, to the front.
+
+Separate windows are independent of the main window: they don't stay in front of it, and the main window can be
+brought in front of them. Closing the main window closes all of them, and closes the application.
+
+### Tabs
+
+Each separate window holds one or more views as tabs:
+
+- drag a tab to reorder it, or to move it to another window's tabs;
+- drop a tab outside of any window to give it a window of its own;
+- close a tab with its close button. A window closes with its last tab.
+
+A separate window has no menu, toolbar nor history of its own. Navigating from it, e.g. clicking an equipment link in
+a table, opens the target in the main window and brings the main window to the front. The exception is a single-line
+diagram: following a line to the voltage level at its other end stays in the same tab.
+
+### Separate windows and networks
+
+A separate window showing network content keeps showing the network that was selected when it was opened. Selecting
+another network in the [Networks](../views/networks.md) view closes these tabs, after asking for confirmation. The map
+is the exception: it always follows the selected network.
+
+## Notifications
+
+Every operation that takes time or may fail reports its outcome in a notification: imports, load flows, security
+analyses, exports... A notification pops up at the bottom right of the main window, with:
+
+- a colored status: running, succeeded, partially succeeded, failed or cancelled;
+- the elapsed time of the operation;
+- links to follow up, such as **View results** and **View report**, or the logs when something failed;
+- while the operation runs, a **Cancel** button.
+
+The popup hides by itself a few seconds after the operation ends. The speech bubble button at the right end of the main
+toolbar opens the notifications panel, which keeps all of them; **Clear All** empties it.
+
+## Language
+
+The **Language** menu switches the user interface between English and French. The change applies immediately: loaded
+networks, open windows and tabs, history, notifications and reports are kept, only the views are rebuilt. The choice
+is remembered for the next start.
+
+## Memory
+
+**Help** > **Memory** opens a window showing how much memory the application uses, out of its maximum. In the packaged
+application, the maximum can be changed there; it applies at the next start. A larger network needs more memory.
