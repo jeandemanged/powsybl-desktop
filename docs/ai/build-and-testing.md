@@ -149,6 +149,8 @@ Both build the guide with the composite action `.github/actions/build-user-guide
 official installer (`install-tl`, scheme-basic plus the collections Sphinx's LaTeX needs, in `~/texlive`, cached per OS
 with a key changing with the action file), the screenshots, then `sphinx -M html` with warnings as errors and
 `-M latexpdf`. Only GitHub's own actions are used: the third-party TeX Live action first tried had disappeared.
+The installer uses the first answering of a fixed list of CTAN mirrors: `mirror.ctan.org` redirects to a random one,
+and some have HTTPS certificate chains `curl` can't verify.
 
 ## Packaging
 

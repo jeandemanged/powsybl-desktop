@@ -112,6 +112,10 @@ latex_documents = [
     ('index', 'powsybl-desktop-user-guide.tex', "PowSyBl Desktop User's Guide", 'PowSyBl Desktop authors', 'manual'),
 ]
 
+# The default also has 'colorrows', whose alternating row colors make pdflatex loop on every table with the current TeX
+# Live ("TeX capacity exceeded ... \the \everycr")
+latex_table_style = ['booktabs']
+
 # pdflatex fails on Unicode characters it has no definition for, such as the arrows of the UI's search buttons
 latex_elements = {
     'preamble': r'''

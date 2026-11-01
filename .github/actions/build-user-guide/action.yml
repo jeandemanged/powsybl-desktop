@@ -25,7 +25,14 @@ runs:
       if: steps.texlive-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        repository=https://mirror.ctan.org/systems/texlive/tlnet
+        # mirror.ctan.org redirects to a random mirror, some with broken HTTPS: the first of these answering is used
+        # for the whole installation
+        for mirror in https://ctan.math.illinois.edu https://mirror.las.iastate.edu/tex-archive https://ftp.fau.de/ctan \
+            https://mirror.ctan.org; do
+          repository="$mirror/systems/texlive/tlnet"
+          if curl -fsS --max-time 30 -o /dev/null -r 0-0 "$repository/install-tl-unx.tar.gz"; then break; fi
+        done
+        echo "Using $repository"
         texdir="$HOME/texlive"
         if [ "$RUNNER_OS" = Windows ]; then texdir="$(cygpath -m "$texdir")"; fi
         cd "$RUNNER_TEMP"
@@ -75,4 +82,11 @@ runs:
       run: |
         pip install -r requirements.txt
         python -m sphinx -M html . _build -W --keep-going
-        python -m sphinx -M latexpdf . _build
+        # on Windows, the make.bat Sphinx runs doesn't pass latexmk's failure on: check for the PDF too
+        status=0
+        python -m sphinx -M latexpdf . _build || status=$?
+        if [ "$status" -ne 0 ] || [ ! -f _build/latex/powsybl-desktop-user-guide.pdf ]; then
+          echo "::error::The PDF user's guide wasn't built. LaTeX errors:"
+          grep -n -A8 '^!' _build/latex/powsybl-desktop-user-guide.log || true
+          exit 1
+        fi
