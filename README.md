@@ -189,7 +189,7 @@ jdeps --multi-release 25 --ignore-missing-deps --print-module-deps ^
 # -> comma-separated list of JDK platform modules actually used (java.base, java.desktop, ...)
 
 jlink --module-path "<jdk>/jmods;<javafx-jmods-dir>" ^
-      --add-modules <jdeps output>,javafx.controls,javafx.fxml,javafx.web ^
+      --add-modules <jdeps output>,javafx.controls,javafx.fxml,javafx.swing,javafx.web ^
       --output target/runtime --strip-debug --no-header-files --no-man-pages --compress=zip-6
 
 jpackage --type app-image --input target/app-libs --dest target/dist ^

@@ -421,7 +421,7 @@
     -fx-text-fill: black;
 }
 
-/* ===== Equipment detail views (network/detail, e.g. generator-detail-view.fxml) ===== */
+/* ===== Equipment detail views (ui/network/detail, equipment-detail-view.fxml) ===== */
 
 /* Equipment name heading above the tabs. */
 .detail-title {

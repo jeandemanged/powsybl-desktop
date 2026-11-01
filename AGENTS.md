@@ -7,9 +7,9 @@ if you were pointed here, read it in full before changing anything.
 
 PowSyBl Desktop is a JavaFX 27 / Java 25 desktop client (Maven, classpath application, not modular) for
 [PowSyBl](https://www.powsybl.org/): load power networks, browse them through equipment tables and
-single-line / network-area diagrams, edit equipment values, run load flow and security analysis, and inspect
-reports, logs and notifications. It is a thin UI over PowSyBl libraries: most behavior questions are really
-questions about PowSyBl itself.
+single-line / network-area diagrams and a map, create, edit and remove equipment, run load flow and security
+analysis, and inspect violations, reports, logs and notifications. It is a thin UI over PowSyBl libraries: most
+behavior questions are really questions about PowSyBl itself.
 
 ## Before you change code
 
@@ -28,7 +28,7 @@ questions about PowSyBl itself.
 - Never call slow PowSyBl APIs on the JavaFX Application Thread. Any background job reading or writing a loaded
   network is an `AbstractNetworkTask` run by a JavaFX `Service`; results are applied in `setOnSucceeded`.
 - Editors must respect the network busy lock (`MainModel.networkBusyProperty()`); add editor columns through
-  `TableColumnSupport`.
+  `TableColumnSupport`. Creations and removals go through `NetworkChanges`.
 - Every UI string goes in both `i18n/messages.properties` and `i18n/messages_fr.properties`; every `FXMLLoader`
   gets `Messages.bundle()`.
 - Keep `fx:id` / `@FXML` field names and `onAction="#method"` handlers in sync between FXML and controller.
@@ -39,7 +39,7 @@ questions about PowSyBl itself.
 ```
 mvn clean install                 # build + checkstyle + all tests (checkstyle failures fail the build)
 mvn test -Dtest=ClassName         # one test class
-mvn checkstyle:check@default     # style only, powsybl rules (NOT bare checkstyle:check)
+mvn checkstyle:check@default     # style only, powsybl rules (NOT bare checkstyle:check, see build-and-testing)
 mvn clean javafx:run              # run the app
 ```
 
@@ -52,12 +52,13 @@ Easy to get wrong:
   records for plain data carriers; text blocks; unnamed variables `_` for every unused lambda parameter, catch
   parameter or loop variable (`(_, _, newValue) -> ...`, `_ -> ...`, `catch (IOException _)`). Jackson `JsonNode` is
   not a `List`: keep `node.get(0)` there.
-- Checkstyle standalone is `mvn checkstyle:check@default` (or `mvn validate`), never bare `mvn checkstyle:check`,
-  which runs Sun's default rules instead of powsybl's — see `docs/ai/build-and-testing.md`.
-- PowSyBl module versions come from the `powsybl-starter` BOM, not from plain numbers in `pom.xml`: resolve them with
-  `mvn -o dependency:tree` before reading a PowSyBl sources jar; don't trust whichever version sits in `~/.m2`.
+- PowSyBl module versions are not written in `pom.xml`: they come transitively from the `powsybl-starter` aggregator
+  (see domain-and-persistence). Resolve them with `mvn -o dependency:tree` before reading a PowSyBl sources jar; don't
+  trust whichever version sits in `~/.m2`.
 - Line endings: the repository stores LF (`.gitattributes`: `* text=auto`); working copies use the platform's
   convention (CRLF on Windows, LF on Linux/macOS). Every file you create or rewrite must use the same endings as the
   rest of the working copy (on Windows, CRLF everywhere). Scripted rewrites (Python `open(...).write`, `sed`,
   heredocs) silently produce LF, so convert back if needed. Exception: `*.sh` are always LF (`eol=lf`). Check with
   `git ls-files --eol` (text files must match their `attr/`: `w/crlf` on Windows, `w/lf` for `eol=lf`).
+- Keep the knowledge base current: a change to documented behavior updates the matching `docs/ai` document in the
+  same change.

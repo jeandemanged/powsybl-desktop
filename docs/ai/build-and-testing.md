@@ -4,12 +4,14 @@
 
 - Java 25 (`java.version` in `pom.xml`), JavaFX 27 (`javafx.version`), Maven. The JavaFX platform classifier is
   chosen by OS-activated profiles (`win`, `linux`, `mac` = Apple Silicon only).
-- Parent POM `com.powsybl:powsybl-parent:30` contributes plugins not visible in this `pom.xml` (checkstyle,
-  buildnumber, templating, surefire defaults). Use `mvn help:effective-pom` before concluding a build behavior is absent.
+- Parent POM `com.powsybl:powsybl-parent` contributes plugins and configuration not visible in this `pom.xml`
+  (checkstyle, buildnumber, templating, surefire defaults, license). Use `mvn help:effective-pom` before concluding a
+  build behavior is absent.
 - Classpath application: there is no `module-info.java`; `javafx-maven-plugin` runs
   `com.powsybl.powsybldesktop.MainApplication`; the jar manifest main class is `Launcher`.
-- Main libraries: PowSyBl (`powsybl-starter` BOM), ControlsFX, Ikonli (Material Design 2), Lucene, Logback, Jackson
-  (via PowSyBl), Leaflet webjar (build-time only), AutoService (annotation processor).
+- Main libraries: PowSyBl (`powsybl-starter`, see [domain-and-persistence.md](domain-and-persistence.md)), ControlsFX,
+  Ikonli (Material Design 2), Lucene, Logback, Jackson (via PowSyBl), Leaflet webjar (build-time only, see
+  [diagrams-and-map.md](diagrams-and-map.md#leaflet-in-a-webview)), AutoService (annotation processor).
 
 ## Commands
 
@@ -24,8 +26,8 @@ mvn -o dependency:tree            # resolve actual PowSyBl module versions
 
 ## Checkstyle (fails the build)
 
-Rules come from `powsybl-build-tools` (version 30, `checkstyle.xml`), applied to `java`, `properties` and `xml`
-files, test sources included.
+Rules come from `powsybl-build-tools` (`checkstyle.xml`), applied to `java`, `properties` and `xml` files, test
+sources included.
 
 **Run it the right way.** `powsybl-parent` puts the checkstyle configuration (`configLocation`, `failsOnError`,
 `includeTestSourceDirectory`, excludes) inside an execution bound to `validate` with no explicit id, i.e. the
@@ -46,9 +48,10 @@ Rules that commonly bite:
 - `reports*.properties` must have a `fr` translation with the same keys (`Translation`). The `i18n/messages` bundle
   isn't covered by that check, but the project keeps both languages in sync anyway.
 - No two consecutive blank lines, no trailing whitespace, no tabs, newline at end of file.
-- Java line length max 200; braces required; no unused/redundant imports; custom import order; utility classes
-  need a private constructor and `final`; catching `RuntimeException`/`NullPointerException` is an error,
-  `Exception`/`Throwable` a warning.
+- Java line length max 200; method length limited (long dispatch methods get split, e.g.
+  `MainController.onNetworkObjectTableEvent`); lambdas max 20 lines; braces required; no unused/redundant imports;
+  custom import order; utility classes need a private constructor and `final`; catching
+  `RuntimeException`/`NullPointerException` is an error, `Exception`/`Throwable` a warning.
 
 Every source, FXML and XML file starts with the MPL-2.0 Artelys copyright header, and every Java type has an
 `@author` javadoc tag — copy them from a neighboring file.
@@ -67,12 +70,15 @@ Tests mirror the main package layout under `src/test/java/com/powsybl/powsybldes
   `prism.order=sw`). Do **not** add `openjfx-monocle` or set `testfx.headless` — that makes TestFX install Monocle and
   breaks the suite. The headless platform never positions a stage, so the base class places the shared primary stage
   when it has no position: robot clicks (`clickOn`) on a stage at NaN miss, failing only after some test orders.
-- Surefire pins `-Duser.language=en -Duser.country=US` as a JVM arg so assertions on English UI strings are stable.
+- Surefire's `argLine` is `-Duser.language=en -Duser.country=US` (a JVM arg, so that assertions on English UI strings
+  are stable). It replaces the parent's `@{argLine} -XX:+EnableDynamicAgentLoading`: adding a Java agent (JaCoCo,
+  Mockito's inline mock maker) requires putting `@{argLine}` back.
 - Test classes run in parallel across forked JVMs (`forkCount` `0.5C`, one per two cores: at `1C` a many-core dev box
   times out UI tests; CI passes `-DforkCount=1C` as runners have few cores; override with `-DforkCount=N`,
   `-DforkCount=1` for a serial run). Don't enable JUnit's in-JVM parallel execution: a JVM has a
   single JavaFX toolkit and TestFX shares one primary stage, so concurrent UI tests would overwrite each other's
-  scene. Tests must not share state outside the JVM: write files under `@TempDir`.
+  scene. Tests must not share state outside the JVM: write files under `@TempDir`. A UI test flaky only in CI is more
+  likely a race with a short timer than a fork problem.
 
 Canonical controller test: `ui/network/tables/LoadsControllerTest.java`:
 
@@ -85,44 +91,66 @@ tests:        read controller fields (columns, currentItems), build cells via th
               fire edit commits, mutate inside interact(...), WaitForAsyncUtils.waitForFxEvents() for async work
 ```
 
-Testing the shell: `MainControllerMapButtonTest` loads `main-view.fxml` with a controller factory supplying
-`new MainController(mainModel)`.
+Testing the shell: `MainControllerDragToOpenTest` (and the other `MainController*Test`s) load `main-view.fxml` with a
+controller factory supplying `new MainController(mainModel)`.
 
 ### Conventions
 
-- `XControllerTest` for behavior; `XControllerEmptyStateTest` for table/detail views, asserting the view renders with
-  no network selected (`new MainModel()` without networks). Follow this pair for new views.
+- `XControllerTest` for behavior; `XControllerEmptyStateTest` for table views, asserting the view renders with no
+  network selected (`new MainModel()` without networks). Follow this pair for new views. Detail views are covered
+  together by `EquipmentDetailViewsTest`.
 - Add every new table FXML to `EditLockTest.VIEWS`; it fails if any editor stays enabled while the network is busy.
 - Pure logic is tested with plain JUnit, no toolkit: e.g. `SubstationDiagramRendererTest`, `ContingencyListsIOTest`,
-  `ApplicationParametersJsonTest`, `NetworkSearchTest`, `LoadFlowConvergenceTest`, `CategoryTitlesTest`. Prefer factoring
+  `ApplicationParametersJsonTest`, `NetworkSearchTest`, `LoadFlowConvergenceTest`, `InjectionsTest`. Prefer factoring
   logic into such a class when it is non-trivial.
-- Tests needing the toolkit without a stage call `Platform.startup` in `@BeforeAll` (`NetworkTaskTest`).
+- Tests needing the toolkit without a stage call `Platform.startup` in `@BeforeAll` (`NetworkTaskTest`,
+  `MainModelTest`, `NetworkChangesTest`).
 - `ArchitectureTest` enforces the package layering, strictly; see [architecture.md](architecture.md#enforced-layering).
-  Logic outside `ui` gets plain JUnit tests (no toolkit); TestFX tests cover the views' wiring.
+  Logic outside `ui` gets plain JUnit tests; TestFX tests cover the views' wiring.
 - Test names are sentences in camelCase describing behavior (`togglingConnectedCheckBoxDisconnectsAndReconnectsLoad`).
+
+### Debugging rendering
+
+For a view that renders wrong (WebView diagrams and map especially), look at it instead of theorizing from the source:
+write a throwaway headless test extending `AbstractHeadlessApplicationTest` that loads the view's FXML with a real
+network, puts its root in a `Pane` at a realistic size, waits for the async content (map tiles take seconds), then on
+the FX thread writes `node.snapshot(...)` through `SwingFXUtils.fromFXImage` and `ImageIO.write` to a PNG outside the
+repository, and read the image. Dump the page's state in the same run with
+`webView.getEngine().executeScript("JSON.stringify({...})")`. Resize by changing the root's `prefSize` inside a
+fixed-size `Scene`: resizing the `Stage` crashes the headless platform (`HeadlessWindow.blit` →
+`IndexOutOfBoundsException`). The tests render with `prism.order=sw`: a hardware-pipeline-only problem won't
+reproduce there. Delete the harness afterwards: network-dependent and slow, not suite material.
 
 ## CI
 
-`.github/workflows/ci.yml`: on every push, `mvn -B clean install` on Windows, Ubuntu and macOS with Temurin 25.
-`.github/workflows/package-release.yml` (manual dispatch, publishes from branch `init`): tags the commit, runs the three
-packaging scripts on Windows, Linux and macOS (Apple Silicon) runners with downloaded JavaFX jmods, archives the
-app-images and creates a GitHub release.
+`.github/workflows/ci.yml`: on every branch push (no pull request or tag trigger), `mvn -B clean install
+-DforkCount=1C` on Windows, Ubuntu and macOS with Temurin 25.
+`.github/workflows/package-release.yml` (manual dispatch, publishes from branch `init`): tags the commit
+(`vYYYYMMDD-sha`), runs the three packaging scripts on Windows, Linux and macOS (Apple Silicon) runners with downloaded
+JavaFX jmods, archives the app-images and creates a GitHub release marked latest, then deletes all but the newest 5
+such releases and their tags.
 
 ## Packaging
 
 `packaging/package-windows.ps1`, `package-linux.sh`, `package-macos.sh` (all run by the release workflow):
-`mvn package` → `jdeps` → `jlink` (JDK + separately downloaded JavaFX 27 jmods) → `jpackage --type app-image`. The
-`copy-dependencies` execution excludes `org.openjfx` on purpose (JavaFX is jlinked as modules; having the jars on the
-classpath too breaks startup) — do not remove that exclusion. Full details in `README.md`.
-Don't add `-Xmx` through `--java-options`: the Memory popup owns that line of the launcher `.cfg`
-(`memory/MaxHeapConfig`). It must stay in the `.cfg`: a `-XX:VMOptionsFile` pointing to a per-user file stops the JVM
-from starting while that file doesn't exist.
+`mvn clean package -DskipTests` → `jdeps` → `jlink` (JDK + separately downloaded JavaFX 27 jmods) →
+`jpackage --type app-image`. Full details in `README.md`.
+- The `copy-dependencies` execution excludes `org.openjfx` on purpose (JavaFX is jlinked as modules; having the jars
+  on the classpath too breaks startup) — do not remove that exclusion.
+- Hence `jdeps` can't see which JavaFX modules the app uses: the scripts list them by hand
+  (`javafx.controls,javafx.fxml,javafx.swing,javafx.web`). Code using another JavaFX module (e.g. `javafx.media`) must
+  add it to all three scripts and to the README's manual sequence, or the packaged app fails at runtime while tests
+  and `javafx:run` pass.
+- Don't add `-Xmx` through `--java-options`: the Memory window owns that line of the launcher `.cfg`
+  (`memory/MaxHeapConfig`). It must stay in the `.cfg`: a `-XX:VMOptionsFile` pointing to a per-user file stops the
+  JVM from starting while that file doesn't exist.
 
 ## Third-party licenses
 
 `license-maven-plugin` (configured in the `com.powsybl:powsybl` grandparent POM) regenerates `THIRD-PARTY.txt` at the
 repo root on every build (`generate-resources`); it is committed, so dependency changes show up in diffs. It is also
 copied into the jar (shown in the About dialog's "Third-Party Licenses" tab) and into `target/app-libs` (shipped in the
-app-image). `excludedScopes` is overridden to `test` only so the `provided` Leaflet webjar, whose files we
-redistribute, is listed. The build fails on a dependency without license metadata (`failOnMissing`): declare it in
-`THIRD-PARTY.properties` at the repo root.
+app-image). PowSyBl's own artifacts are excluded (`excludedGroups`). `excludedScopes` is overridden to `test` only so
+the `provided` Leaflet webjar, whose files we redistribute, is listed; `licenseMerges` appends the project's merges of
+equivalent license names. The build fails on a dependency without license metadata (`failOnMissing`): declare it in
+`THIRD-PARTY.properties` at the repo root (the configured `missingFile`, absent until needed).

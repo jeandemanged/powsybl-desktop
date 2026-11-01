@@ -1,61 +1,67 @@
 # Invariants and known inconsistencies
 
+Each invariant is stated briefly; the linked document holds the detail. Change a rule there and here together.
+
 ## Invariants (preserve in every change)
 
 State and communication
 1. `MainModel` (one instance per app, survives language reloads) is the only shared state. Views communicate only
    through it and `NavigationHistory`; no static mutable state, event bus, or controller-to-controller references
-   (except a parent controller driving its `fx:include`d children).
-2. Per-root-network state lives in `NetworkStudy`; access it with `MainModel.getStudy(network)`.
-3. After mutating a network from the UI, fire `mainModel.setUpdate()` / `setUpdate(voltageLevel)`. Creating or
-   removing network objects goes through `NetworkChanges.apply`, which fires both the structure change and the update.
+   (except a parent controller driving its `fx:include`d children). [architecture](architecture.md#shared-state-mainmodel-networkstudy-scenemodel)
+2. Per-root-network state lives in `NetworkStudy` (`MainModel.getStudy(network)`); per-window state in `SceneModel`.
+3. Creating or removing network objects goes through `NetworkChanges.apply`/`remove`, which fires the structure change
+   and the update. Other mutations fire `mainModel.setUpdate()` / `setUpdate(voltageLevel)` where other views must
+   follow. [editing](editing.md#structural-edits)
 4. Only `MainController` swaps the center view, in response to `NavigationHistory.currentEventProperty()`. There is a
    single history, the main window's: views navigate through `SceneModel.navigate` / `record`, never through
-   `getNavigationHistory()` directly, so that a separate window drives the main window without recording its own state.
-   A user-initiated change of the selected network goes through `MainModel.confirmNetworkChange` (the history guard
-   does it for navigation).
+   `getNavigationHistory()` directly. A user-initiated change of the selected network goes through
+   `MainModel.confirmNetworkChange` (the history guard does it for navigation). [architecture](architecture.md#navigation)
 
 Lifecycle
-5. Center-view controllers extend `AbstractDisposableController`; model listeners go through
-   `listenerManager.listen(...)`; `dispose()` releases listeners, services and sub-controllers and calls `super.dispose()`.
-6. Every window other than modal dialogs and the memory window (single-instance, owned by the main window) goes through
-   `ui/window/SeparateWindows`: independent stages (not owned, so that the main window can come in front of them; never
-   raise them from a focus listener, it steals the activation from the clicked window), showing views as tabs,
-   disposing a view's controller when its tab closes or its window hides (not when the tab moves to another window),
-   closed with their last tab, with the main window and on language reload; network-bound views close when the
-   selection changes to another root network, never while it moves within the same root network; the map isn't
-   bound, it follows the selection. Never create a `Stage` for a view elsewhere.
+5. Swappable controllers extend `AbstractDisposableController`; model listeners go through
+   `listenerManager.listen(...)`; `dispose()` releases listeners, services and sub-controllers and calls
+   `super.dispose()`. [architecture](architecture.md#controller-lifecycle)
+6. Every window other than the main window, the splash screen, modal dialogs and the memory window goes through
+   `ui/window/SeparateWindows`; never create a `Stage` for a view elsewhere, never raise a separate window from a focus
+   listener. Network-bound views close when the selection changes to another root network; windows stay open across
+   a language reload. [windows](windows.md)
 
 Threading
 7. No slow PowSyBl call on the FX thread. Background network reads/writes are `AbstractNetworkTask`s created in
-   `Service.createTask()`; model/UI updates happen in the service's FX-thread handlers.
+   `Service.createTask()`; model/UI updates happen in the service's FX-thread handlers. [threading](threading.md)
 8. Inputs to background work are captured (and parameters copied) on the FX thread.
-9. The UI does not edit a busy network: editable tables bind `editable` to `networkBusyProperty().not()`, custom editors
-   use `TableColumnSupport.disableUnlessTableEditable`, computations go through `refuseIfBusy`.
-10. LF/SA run on the root network, never a subnetwork.
+9. The UI does not edit a busy network: every editor is disabled or refused while busy.
+   [threading](threading.md#the-busy-lock)
+10. LF/SA run on the root network, never a subnetwork. [domain](domain-and-persistence.md#networks-and-subnetworks)
+11. Violation indications read the study's cached violations, never check limits on the fly.
 
 UI resources
-11. `fx:id` ↔ `@FXML` field, `onAction="#m"` ↔ method, `fx:controller` ↔ class stay consistent; `fx:include` controllers
-    are injected as `<fx:id>Controller`.
-12. Every `FXMLLoader` receives `Messages.bundle()`; every UI string exists in both `messages.properties` and
-    `messages_fr.properties`; `reports*.properties` stay a separate bundle.
-13. No inline styles: no `setStyle(...)` in Java nor `style="..."` in FXML. Styling goes through classes in
-    `styles.css`; per-instance padding/spacing may stay layout properties (`<padding><Insets/></padding>`).
-14. Long-running and failed operations are reported through `NotificationsModel` (RUNNING → `replace` with outcome),
-    failures also logged with SLF4J.
+12. `fx:id` ↔ `@FXML` field, `onAction="#m"` ↔ method, `fx:controller` ↔ class stay consistent; `fx:include` controllers
+    are injected as `<fx:id>Controller`. [ui-conventions](ui-conventions.md#screens-fxml--controller)
+13. Every `FXMLLoader` receives `Messages.bundle()`; every UI string exists in both `messages.properties` and
+    `messages_fr.properties`, worded as PowSyBl's own translations; `reports*.properties` stay a separate bundle.
+    [ui-conventions](ui-conventions.md#internationalization)
+14. No inline styles: no `setStyle(...)` in Java nor `style="..."` in FXML; styling goes through classes in
+    `styles.css`. [ui-conventions](ui-conventions.md#styling-and-icons)
+15. Editors go through `CellFields`/`TableColumnSupport` (tables) and `DetailForm`/`DetailPart` (detail views), never
+    ad-hoc cell factories. [editing](editing.md#editing-cells)
+16. Long-running and failed operations are reported through `NotificationsModel` (RUNNING → `replace` with outcome),
+    failures also logged with SLF4J. [architecture](architecture.md#notifications)
 
 Build
-15. Checkstyle must pass (sorted property keys, headers, formatting) — it fails the build.
-16. Do not add dependencies, re-add Monocle, set `testfx.headless`, or remove the `org.openjfx` exclusion from
-    `copy-dependencies`.
-17. `ArchitectureTest` passes: a new package goes into a layer, code using JavaFX UI goes under `ui`, and a forbidden
-    dependency is fixed, never exempted (see architecture, Enforced layering).
-18. New table views are added to `EditLockTest`; new views get a controller test (and an `*EmptyStateTest` for
-    table/detail views).
-19. `README.md` stays in sync with the features: a user-visible feature added, removed or changed updates "What it
+17. Checkstyle must pass — it fails the build. [build-and-testing](build-and-testing.md#checkstyle-fails-the-build)
+18. Do not add dependencies, re-add Monocle, set `testfx.headless`, or remove the `org.openjfx` exclusion from
+    `copy-dependencies`; a JavaFX module used by the code is listed in the packaging scripts.
+    [build-and-testing](build-and-testing.md#packaging)
+19. `ArchitectureTest` passes: a new package goes into a layer, code using JavaFX UI goes under `ui`, and a forbidden
+    dependency is fixed, never exempted. [architecture](architecture.md#enforced-layering)
+20. New table views are added to `EditLockTest`; new views get a controller test (and an `*EmptyStateTest` for table
+    views). [build-and-testing](build-and-testing.md#conventions)
+21. `README.md` stays in sync with the features: a user-visible feature added, removed or changed updates "What it
     can do" (and drops the matching item from "What it cannot do yet"); new logic of the app's own rather than
     PowSyBl's is added to the intro's list of exceptions; a new import/export format is listed only if its converter
     is on the classpath (`mvn -o dependency:list`).
+22. `docs/ai` stays in sync with the code: a change to documented behavior updates its document in the same change.
 
 ## Review checklist
 
@@ -63,32 +69,35 @@ Build
 - Any new listener on `MainModel` registered through `listenerManager`? Any new service cancelled on dispose or tracked
   in `NetworkStudy`?
 - Any PowSyBl call that can be slow on the FX thread? Any background job missing `AbstractNetworkTask`?
-- Any new editor not going through `TableColumnSupport`? Busy lock respected?
+- Any new editor not going through `TableColumnSupport`/`DetailForm`? Busy lock respected? Creations/removals through
+  `NetworkChanges`?
 - New strings in both bundles, keys sorted? FXML ids/handlers matching? Styling through `styles.css` classes, no inline style?
 - New SLD/NAD/GUI parameter field added to `ApplicationParametersJson`'s `Binder`? Form calls its `onChange` hook?
-- New navigation type handled in `NavigationEvent.describe()` and `MainController.onNavigationEvent`?
-- User-visible feature change reflected in `README.md`?
+- New navigation type handled in `NavigationEvent.describe()` and `MainController.onNavigationEvent` (or
+  `onNetworkObjectTableEvent`)?
+- User-visible feature change reflected in `README.md`? Documented behavior change reflected in `docs/ai`?
 - New package added to a layer of `ArchitectureTest`? New logic outside `ui`, with plain JUnit tests?
 - Tests added/updated and `mvn clean install` (or affected tests + `mvn checkstyle:check@default`) run?
 
 ## Known inconsistencies (documented, not to be "fixed" silently)
 
-- **Navigation dispatch is a long `if/else` chain** in `MainController.onNavigationEvent`, while
-  `NavigationEvent.describe()` is an exhaustive `switch`. Both must be extended for a new view; only the switch is
-  compiler-checked.
-- **Table controllers have two shapes**: most extend `AbstractEquipmentTableController`, but
-  `SubstationsTableController`, `VoltageLevelsController`, `ComponentsController`, `SecurityAnalysisResultsController`,
-  `ViolationsController` and `SwitchesController` extend `AbstractDisposableController` directly and re-implement parts (e.g. the busy-lock
-  binding). Prefer the abstract base for a new flat equipment table.
-- **Model injection**: views that can be shown in a separate window implement `SceneView.setSceneModel(SceneModel)`;
-  main-window-only controllers (notifications, parameters) use `setMainModel(MainModel)`, `NetworksController` the main
-  window's `setSceneModel(SceneModel)` without being a `SceneView`; `LogsViewController`
-  uses `setModels(LogsModel, ParametersModel)`; `MainController` uses constructor injection through a controller factory.
+- **Navigation dispatch is a long `if/else` chain** in `MainController.onNavigationEvent` (plus
+  `onNetworkObjectTableEvent`), while `NavigationEvent.describe()` is an exhaustive `switch`. Both must be extended for
+  a new view; only the switch is compiler-checked.
+- **Table controllers have several shapes**: `AbstractEquipmentTableController` (and `AbstractBusesController`),
+  `AbstractNetworkObjectTableController`, and six controllers extending `AbstractDisposableController` directly that
+  re-implement parts (e.g. the busy-lock binding) - see [editing](editing.md#equipment-tables). Prefer the abstract base
+  for a new flat equipment table.
+- **Model injection** differs per controller (`setSceneModel`, `setMainModel`, `setModels`, constructor) - see
+  [architecture](architecture.md#controller-lifecycle).
 - **Dialogs**: modal dialogs are built in code (static `show` helpers), secondary windows are FXML; there is no
   single dialog abstraction. Follow the form matching your need (see ui-conventions).
+- **Table value edits don't fire `setUpdate()`**, unlike detail view edits: other views showing the edited value
+  refresh on the next update.
 - **Contingency list refresh** is explicit (`refreshInstantiatedTable()`) rather than listener-based, because
   `ListenerManager` cannot detach a single listener.
 - **File I/O on the FX thread**: contingency list and parameters JSON import/export run synchronously in event
   handlers (small files), unlike network import/export which run in services.
-- **Network import** uses a plain `Task` rather than `AbstractNetworkTask` — intentional, since the network is not loaded
-  yet.
+- **Network import uses a plain `Task`** rather than `AbstractNetworkTask` — intentional, since the network is not
+  loaded yet (see [threading](threading.md#rules)).
+- **One inline style remains**: `ui/about/about-view.fxml` (monospace license text), against invariant 14.
