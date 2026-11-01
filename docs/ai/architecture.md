@@ -41,7 +41,7 @@ used, so tests of `core` start the toolkit with `Platform.startup`.
 | `logs` | `LogsModel` (Logback appender → observable list) |
 | `memory` | `MaxHeapConfig` (the launcher `.cfg`'s `-Xmx` line) |
 | `reports` | `PowsyblDesktopReportResourceBundle` registering `reports(_fr).properties` |
-| `utils` | `Messages`, `Labels`, `ListenerManager`, `LanguagePreferences`, `Futures` (waiting on a PowSyBl future so that interruption cancels it) |
+| `utils` | `Messages`, `Labels`, `ListenerManager`, `LanguagePreferences`, `Futures` (waiting on a PowSyBl future so that interruption cancels it), `UserGuide` (where the built user's guide is) |
 | `ui` | `AbstractDisposableController`, `DisposableController` |
 | `ui/window` | A view's per-window context: `SceneModel`, `SceneView`, and `SeparateWindows` (the separate windows and their tabs, see [windows.md](windows.md)) |
 | `ui/controls` | Reusable controls and helpers: `CopyButtons`, `DateTimePicker`, `SearchableCheckComboBox`, `TableAutoFitLimiter`, `TreeItems`, `FileChooserPreferences` |

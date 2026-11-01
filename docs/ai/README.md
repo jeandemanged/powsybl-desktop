@@ -53,7 +53,8 @@ changes, change it there and in the invariant, nowhere else.
 
 1. **Inspect** the closest existing implementation (each document names canonical examples) and the tests next to it.
 2. **Identify affected layers**: FXML, controller, `MainModel`/`NetworkStudy`/sub-model, navigation, i18n bundles
-   (both languages), CSS, `ApplicationParametersJson` (for parameters), tests, `README.md` (user-visible features).
+   (both languages), CSS, `ApplicationParametersJson` (for parameters), tests, `README.md` and the user's guide
+   `docs/ug` (user-visible features; a new screenshot needs `UserGuideScreenshotsTest`).
 3. **Make the smallest coherent change** that follows the existing pattern. No speculative abstractions, no
    unrelated refactoring.
 4. **Update resources, tests and docs** together with the code: FXML ids, message keys in both bundles, a controller

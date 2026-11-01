@@ -87,6 +87,24 @@ Write-Host "==> jlink: building custom runtime image"
     --compress=zip-6
 if ($LASTEXITCODE -ne 0) { throw "jlink failed" }
 
+# The user's guide is built separately (see docs/ug/README.md); the Help menu disables a missing format
+Write-Host "==> Adding the user's guide"
+$guideBuild = "docs\ug\_build"
+$guidePdf = "powsybl-desktop-user-guide.pdf"
+$guideDir = "$appLibs\user-guide"
+if (Test-Path $guideDir) { Remove-Item $guideDir -Recurse -Force }
+New-Item -ItemType Directory -Path $guideDir | Out-Null
+if (Test-Path "$guideBuild\latex\$guidePdf") {
+    Copy-Item "$guideBuild\latex\$guidePdf" $guideDir
+} else {
+    Write-Host "    No $guideBuild\latex\$guidePdf - shipping without the PDF user's guide."
+}
+if (Test-Path "$guideBuild\html") {
+    Copy-Item "$guideBuild\html" "$guideDir\html" -Recurse
+} else {
+    Write-Host "    No $guideBuild\html - shipping without the HTML user's guide."
+}
+
 if (Test-Path $distDir) { Remove-Item $distDir -Recurse -Force }
 Write-Host "==> jpackage: building app-image"
 $jpackageArgs = @(

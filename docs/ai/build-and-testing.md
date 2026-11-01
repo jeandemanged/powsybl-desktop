@@ -128,7 +128,10 @@ reproduce there. Delete the harness afterwards: network-dependent and slow, not 
 tutorials (robot clicks through the real menus) and writes the PNGs the guide shows to `docs/ug/_generated/images`
 (git-ignored; override with `-Dug.screenshots.dir`). It is tagged `user-guide`, excluded by default through the
 `surefire.excludedGroups` property; the `ug-screenshots` profile runs it alone. Each screenshot composites every
-showing window over the main one, so open menus and notifications appear. Move the robot into menus with
+showing window over the main one, so open menus and notifications appear. The headless screen is a fixed 1000 x 1000
+that keeps popups within it: the window is smaller than that, at its origin, and shows the top left of a main view laid
+out larger (1680 x 1050), which is what gets snapshot; robot targets must stay in that visible part, and the
+notifications popup, placed in the window's corner, is moved to the view's. Move the robot into menus with
 `Motion.HORIZONTAL_FIRST`: a diagonal move crosses sibling items and closes the submenu being aimed at. A page of
 `docs/ug` referencing a new image needs that image added to the test.
 
@@ -146,6 +149,11 @@ such releases and their tags.
 `packaging/package-windows.ps1`, `package-linux.sh`, `package-macos.sh` (all run by the release workflow):
 `mvn clean package -DskipTests` → `jdeps` → `jlink` (JDK + separately downloaded JavaFX 27 jmods) →
 `jpackage --type app-image`. Full details in `README.md`.
+- Before `jpackage`, the scripts copy the user's guide, if built in `docs/ug/_build` (see `docs/ug/README.md`), to
+  `target/app-libs/user-guide` (the PDF and the `html` directory), which lands next to the jar in the app-image.
+  `utils/UserGuide` looks for it there (or in `docs/ug/_build` when not packaged), and the Help menu's
+  **User's Guide (PDF)** / **(HTML)** items, opening it with the system's default application, are disabled for a
+  missing format.
 - The `copy-dependencies` execution excludes `org.openjfx` on purpose (JavaFX is jlinked as modules; having the jars
   on the classpath too breaks startup) — do not remove that exclusion.
 - Hence `jdeps` can't see which JavaFX modules the app uses: the scripts list them by hand

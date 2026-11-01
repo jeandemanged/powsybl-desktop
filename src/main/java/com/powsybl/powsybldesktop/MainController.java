@@ -72,6 +72,7 @@ import com.powsybl.powsybldesktop.ui.window.SceneView;
 import com.powsybl.powsybldesktop.ui.window.SeparateWindows;
 import com.powsybl.powsybldesktop.utils.LanguagePreferences;
 import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.powsybldesktop.utils.UserGuide;
 import com.powsybl.powsybldesktop.violations.NetworkViolations;
 import com.powsybl.security.SecurityAnalysisParameters;
 import javafx.application.Platform;
@@ -103,8 +104,10 @@ import javafx.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.Desktop;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
@@ -152,6 +155,10 @@ public class MainController extends AbstractDisposableController {
     private Button logsButton;
     @FXML
     private Button reportsButton;
+    @FXML
+    private MenuItem userGuidePdfItem;
+    @FXML
+    private MenuItem userGuideHtmlItem;
 
     private static final String LOGS_WINDOW = "logs";
     private static final String REPORTS_WINDOW = "reports";
@@ -176,6 +183,8 @@ public class MainController extends AbstractDisposableController {
 
     private Stage memoryStage;
 
+    private final UserGuide userGuide = UserGuide.locate();
+
     public MainController(MainModel mainModel) {
         this(mainModel, new SeparateWindows(mainModel, () -> null));
     }
@@ -192,6 +201,24 @@ public class MainController extends AbstractDisposableController {
     @FXML
     protected void onExit() {
         Platform.exit();
+    }
+
+    @FXML
+    protected void onUserGuidePdf() {
+        userGuide.pdf().ifPresent(MainController::openWithSystem);
+    }
+
+    @FXML
+    protected void onUserGuideHtml() {
+        userGuide.html().ifPresent(MainController::openWithSystem);
+    }
+
+    private static void openWithSystem(Path file) {
+        try {
+            Desktop.getDesktop().open(file.toFile());
+        } catch (IOException e) {
+            LOGGER.warn("Could not open {}", file, e);
+        }
     }
 
     @FXML
@@ -636,6 +663,8 @@ public class MainController extends AbstractDisposableController {
 
     @FXML
     private void initialize() {
+        userGuidePdfItem.setDisable(userGuide.pdf().isEmpty());
+        userGuideHtmlItem.setDisable(userGuide.html().isEmpty());
         mainModel.getNavigationHistory().setGuard(event -> {
             Network target = networkToSelect(event);
             return target == null || mainModel.confirmNetworkChange(target);

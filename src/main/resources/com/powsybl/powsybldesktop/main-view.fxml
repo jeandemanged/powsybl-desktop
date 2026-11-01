@@ -36,6 +36,9 @@
                         <Menu fx:id="windowsMenu" mnemonicParsing="false" text="%main.menu.windows"/>
                         <Menu mnemonicParsing="false" text="%main.menu.help">
                             <items>
+                                <MenuItem fx:id="userGuidePdfItem" mnemonicParsing="false" onAction="#onUserGuidePdf" text="%main.menu.help.userGuidePdf" />
+                                <MenuItem fx:id="userGuideHtmlItem" mnemonicParsing="false" onAction="#onUserGuideHtml" text="%main.menu.help.userGuideHtml" />
+                                <SeparatorMenuItem mnemonicParsing="false" />
                                 <MenuItem mnemonicParsing="false" onAction="#onMemory" text="%main.menu.help.memory" />
                                 <MenuItem mnemonicParsing="false" onAction="#onAbout" text="%main.about" />
                             </items>

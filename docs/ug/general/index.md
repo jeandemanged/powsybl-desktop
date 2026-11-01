@@ -23,7 +23,7 @@ views side by side, open them in [separate windows](#separate-windows-and-tabs).
 | **File**     | **Exit** closes the application, with all its windows.                                             |
 | **Language** | **English** or **Français**. See [Language](#language).                                            |
 | **Windows**  | One submenu per separate window. See [Separate windows and tabs](#separate-windows-and-tabs).     |
-| **Help**     | **Memory** opens the memory window, **About** shows links to PowSyBl, the versions of the PowSyBl modules and the third-party licenses. |
+| **Help**     | **User's Guide (PDF)** and **User's Guide (HTML)** open this guide with the system's PDF viewer or web browser, **Memory** opens the memory window, **About** shows links to PowSyBl, the versions of the PowSyBl modules and the third-party licenses. |
 
 ## Main toolbar
 

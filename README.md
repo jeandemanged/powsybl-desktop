@@ -55,6 +55,9 @@ Start the application, then either load one of the sample networks (_Sample Netw
 open a network file (from the file chooser or by drag and drop), or create a new empty network. Run a load flow from
 the toolbar, and browse the results in the equipment tables, diagrams and violations view.
 
+The user's guide, with step-by-step load flow and security analysis tutorials, is in the application under
+_Help > User's Guide_. Its sources are in [`docs/ug`](docs/ug).
+
 ## What it can do
 
 - **Networks**: import CGMES, UCTE-DEF, IIDM (XML, JSON, binary), MATPOWER, PSS®E, IEEE CDF and PowerFactory
@@ -149,7 +152,7 @@ exclusion.
 #### Running the packaging scripts
 
 One script per OS under `packaging/`, each running the same pipeline
-(`mvn package` → `jdeps` → `jlink` → `jpackage --type app-image`):
+(`mvn package` → `jdeps` → `jlink` → user's guide copy → `jpackage --type app-image`):
 
 **Windows (PowerShell):**
 ```powershell
@@ -175,6 +178,31 @@ Output:
 - Linux: `target/dist/PowSyBl Desktop/bin/PowSyBl Desktop`
 - macOS: `target/dist/PowSyBl Desktop.app`
 
+#### User's guide
+
+The app-image ships the user's guide (Sphinx sources in `docs/ug`), opened from Help > User's Guide (PDF) or (HTML)
+with the system's PDF viewer or web browser. It isn't built by the packaging scripts: build it first, on the same OS
+(its screenshots are taken from the app, and differ between platforms), as described in
+[`docs/ug/README.md`](docs/ug/README.md).
+
+Requirements, on top of JDK 25 and Maven (details and install commands per OS in `docs/ug/README.md`):
+- Python 3.12 or later, with `pip install -r docs/ug/requirements.txt` (Sphinx and its extensions);
+- for the PDF only, a LaTeX distribution with `pdflatex` and `latexmk` (TeX Live on Linux, MacTeX on macOS, MiKTeX
+  and Perl on Windows);
+- `make` on Linux and macOS (`docs/ug/make.bat` on Windows).
+
+```
+mvn test -Pug-screenshots                # screenshots, to docs/ug/_generated/images
+cd docs/ug
+make html latexpdf                       # to _build/html and _build/latex/powsybl-desktop-user-guide.pdf
+```
+
+On Windows, `make.bat` takes a single target: run `make html`, then `make latexpdf`.
+
+The scripts then copy `docs/ug/_build/latex/powsybl-desktop-user-guide.pdf` and `docs/ug/_build/html` to
+`target/app-libs/user-guide`, which ends up next to the app's jar in the app-image. A format that wasn't built is
+skipped with a message, and its Help menu item is disabled in the packaged app.
+
 #### What the scripts do, step by step
 
 If you need to debug the pipeline or adapt it, here's the same sequence run manually (Windows
@@ -191,6 +219,11 @@ jdeps --multi-release 25 --ignore-missing-deps --print-module-deps ^
 jlink --module-path "<jdk>/jmods;<javafx-jmods-dir>" ^
       --add-modules <jdeps output>,javafx.controls,javafx.fxml,javafx.swing,javafx.web ^
       --output target/runtime --strip-debug --no-header-files --no-man-pages --compress=zip-6
+
+mkdir target\app-libs\user-guide
+copy docs\ug\_build\latex\powsybl-desktop-user-guide.pdf target\app-libs\user-guide
+xcopy /e /i docs\ug\_build\html target\app-libs\user-guide\html
+# -> only if the user's guide was built, see above
 
 jpackage --type app-image --input target/app-libs --dest target/dist ^
          --name "PowSyBl Desktop" --app-version <version without -SNAPSHOT> ^

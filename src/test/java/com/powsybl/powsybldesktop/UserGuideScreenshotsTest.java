@@ -18,15 +18,18 @@ import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
-import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Labeled;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.Region;
+import javafx.stage.Popup;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.testfx.robot.Motion;
+import org.testfx.util.NodeQueryUtils;
 import org.testfx.util.WaitForAsyncUtils;
 
 import javax.imageio.ImageIO;
@@ -52,9 +55,13 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
 
     private static final Path OUTPUT_DIRECTORY = Path.of(System.getProperty("ug.screenshots.dir", "docs/ug/_generated/images"));
 
+    private static final int WIDTH = 1680;
+    private static final int HEIGHT = 1050;
+
     private MainModel mainModel;
     private MainController controller;
     private Stage stage;
+    private Region root;
 
     @Override
     public void start(Stage stage) throws IOException {
@@ -65,12 +72,18 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         FXMLLoader loader = new FXMLLoader(getClass().getResource(
                 "/com/powsybl/powsybldesktop/main-view.fxml"), Messages.bundle());
         loader.setControllerFactory(_ -> controller);
-        Parent root = loader.load();
+        root = loader.load();
+        root.setPrefSize(WIDTH, HEIGHT);
 
-        Scene scene = new Scene(root, 1280, 800);
+        // The headless screen is 1000 x 1000 and keeps popups within it: the window must fit in it, at its origin, for
+        // menus to open under their button as on a real screen. So the window shows the top left part of a larger main
+        // view, laid out at its preferred size by the Pane, and the screenshots are taken from that view.
+        Scene scene = new Scene(new Pane(root), 1000, 720);
         scene.getStylesheets().add(MainApplication.class.getResource("styles.css").toExternalForm());
         stage.setScene(scene);
         stage.show();
+        stage.setX(0);
+        stage.setY(0);
     }
 
     @AfterEach
@@ -119,6 +132,9 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
                 .orElseThrow();
         interact(() -> mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
                 ContainerNavigationState.create(voltageLevel, ContainerNavigationState.ContainerTab.SINGLE_LINE))));
+        waitForWebViews();
+        Node fitToScreen = lookup("#fitToScreenToggleButton").match(NodeQueryUtils.isVisible()).query();
+        clickOn(fitToScreen);
         waitForWebViews();
         screenshot("quickstart-loadflow-sld");
 
@@ -176,32 +192,42 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         WaitForAsyncUtils.waitForFxEvents();
     }
 
-    /**
-     * The main window with the popups (menus, tooltips) and windows showing over it, as a user would see it.
-     */
     private void screenshot(String name) {
         WaitForAsyncUtils.waitForFxEvents();
         BufferedImage[] image = new BufferedImage[1];
-        interact(() -> {
-            Scene mainScene = stage.getScene();
-            double originX = stage.getX() + mainScene.getX();
-            double originY = stage.getY() + mainScene.getY();
-            image[0] = new BufferedImage((int) mainScene.getWidth(), (int) mainScene.getHeight(), BufferedImage.TYPE_INT_ARGB);
-            Graphics2D graphics = image[0].createGraphics();
-            for (Window window : Window.getWindows()) {
-                Scene scene = window.getScene();
-                if (window.isShowing() && scene != null) {
-                    graphics.drawImage(SwingFXUtils.fromFXImage(scene.snapshot(null), null),
-                            (int) Math.round(window.getX() + scene.getX() - originX),
-                            (int) Math.round(window.getY() + scene.getY() - originY), null);
-                }
-            }
-            graphics.dispose();
-        });
+        interact(() -> image[0] = composite());
         try {
             ImageIO.write(image[0], "png", OUTPUT_DIRECTORY.resolve(name + ".png").toFile());
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    /**
+     * The main view with the popups (menus, notifications) showing over it, as a user would see it.
+     */
+    private BufferedImage composite() {
+        Scene mainScene = stage.getScene();
+        double originX = stage.getX() + mainScene.getX();
+        double originY = stage.getY() + mainScene.getY();
+        BufferedImage image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        graphics.drawImage(SwingFXUtils.fromFXImage(root.snapshot(null, null), null), 0, 0, null);
+        for (Window window : Window.getWindows()) {
+            Scene scene = window.getScene();
+            if (window != stage && window.isShowing() && scene != null) {
+                // the notifications popup sits in the window's bottom right corner, to be moved to the view's
+                double x = window.getX() + scene.getX() - originX;
+                double y = window.getY() + scene.getY() - originY;
+                if (window.getClass() == Popup.class) {
+                    x += WIDTH - mainScene.getWidth();
+                    y += HEIGHT - mainScene.getHeight();
+                }
+                graphics.drawImage(SwingFXUtils.fromFXImage(scene.snapshot(null), null),
+                        (int) Math.round(x), (int) Math.round(y), null);
+            }
+        }
+        graphics.dispose();
+        return image;
     }
 }

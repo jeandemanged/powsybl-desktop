@@ -82,6 +82,23 @@ jlink \
     --no-man-pages \
     --compress=zip-6
 
+# The user's guide is built separately (see docs/ug/README.md); the Help menu disables a missing format
+echo "==> Adding the user's guide"
+GUIDE_BUILD="docs/ug/_build"
+GUIDE_PDF="powsybl-desktop-user-guide.pdf"
+rm -rf "$APP_LIBS/user-guide"
+mkdir -p "$APP_LIBS/user-guide"
+if [ -f "$GUIDE_BUILD/latex/$GUIDE_PDF" ]; then
+    cp "$GUIDE_BUILD/latex/$GUIDE_PDF" "$APP_LIBS/user-guide/"
+else
+    echo "    No $GUIDE_BUILD/latex/$GUIDE_PDF - shipping without the PDF user's guide."
+fi
+if [ -d "$GUIDE_BUILD/html" ]; then
+    cp -R "$GUIDE_BUILD/html" "$APP_LIBS/user-guide/html"
+else
+    echo "    No $GUIDE_BUILD/html - shipping without the HTML user's guide."
+fi
+
 rm -rf "$DIST_DIR"
 echo "==> jpackage: building app-image"
 JPACKAGE_ARGS=(
