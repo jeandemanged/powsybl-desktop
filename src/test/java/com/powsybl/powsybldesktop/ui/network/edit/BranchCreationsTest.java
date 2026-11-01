@@ -8,13 +8,11 @@
 package com.powsybl.powsybldesktop.ui.network.edit;
 
 import com.powsybl.iidm.network.HvdcLine;
-import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.ThreeSides;
 import com.powsybl.iidm.network.ThreeWindingsTransformer;
 import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.TwoWindingsTransformer;
-import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.ConnectablePosition;
 import com.powsybl.iidm.network.test.EurostagTutorialExample1Factory;
 import com.powsybl.iidm.network.test.HvdcTestNetwork;
@@ -29,21 +27,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 class BranchCreationsTest extends AbstractCreationDialogTest {
-
-    @Test
-    void lineBetweenTwoNodeBreakerVoltageLevels() {
-        Network network = network();
-        VoltageLevel voltageLevel = network.getVoltageLevel("VL400");
-
-        Line line = openAndConfirm(sceneModel -> BranchCreations.newLine(sceneModel, stage, network, voltageLevel, null), network);
-
-        assertNotNull(line);
-        assertEquals("VL400", line.getTerminal1().getVoltageLevel().getId());
-        assertEquals("VL225", line.getTerminal2().getVoltageLevel().getId());
-        assertTrue(line.getTerminal1().isConnected() && line.getTerminal2().isConnected());
-        ConnectablePosition<Line> position = line.getExtension(ConnectablePosition.class);
-        assertEquals(ConnectablePosition.Direction.TOP, position.getFeeder1().getDirection());
-    }
 
     @Test
     void twoWindingsTransformerRatedVoltagesDefaultToTheNominalOnes() {

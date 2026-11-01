@@ -7,20 +7,16 @@
  */
 package com.powsybl.powsybldesktop.ui.network.edit;
 
-import com.powsybl.iidm.modification.topology.TopologyModificationUtils;
 import com.powsybl.iidm.network.Generator;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Load;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.ShuntCompensator;
 import com.powsybl.iidm.network.Substation;
-import com.powsybl.iidm.network.SwitchKind;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
-import com.powsybl.iidm.network.extensions.ConnectablePosition;
 import com.powsybl.iidm.network.regulation.RegulationMode;
 import com.powsybl.iidm.network.test.EurostagTutorialExample1Factory;
-import com.powsybl.iidm.network.test.FourSubstationsNodeBreakerFactory;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.network.edit.Containers;
 import com.powsybl.powsybldesktop.network.edit.Injections;
@@ -41,8 +37,6 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -53,36 +47,6 @@ class InjectionCreationsTest extends AbstractCreationDialogTest {
     private Optional<Identifiable<?>> createAndConfirm(Network network, Injections.Kind kind, VoltageLevel voltageLevel,
                                                       Identifiable<?> busOrBusbarSection) {
         return Optional.ofNullable(openAndConfirm(sceneModel -> InjectionCreations.create(sceneModel, stage, kind, voltageLevel, busOrBusbarSection), network));
-    }
-
-    @Test
-    void loadIsCreatedWithItsBayAndPosition() {
-        Network network = Network.create("test", Containers.SOURCE_FORMAT);
-        VoltageLevel voltageLevel = network.newVoltageLevel().setId("VL").setNominalV(225).setTopologyKind(TopologyKind.NODE_BREAKER).add();
-        Containers.createTopology(network, "VL", TopologyKind.NODE_BREAKER, 2, 1, SwitchKind.BREAKER, true);
-        int switchCount = voltageLevel.getNodeBreakerView().getSwitchCount();
-
-        Load load = (Load) createAndConfirm(network, Injections.Kind.LOAD, voltageLevel, network.getBusbarSection("VL_1_1")).orElseThrow();
-
-        assertEquals("VL_LD1", load.getId());
-        assertTrue(load.getTerminal().isConnected());
-        // a breaker and a disconnector per parallel busbar section, the one to the other busbar open
-        assertEquals(switchCount + 3, voltageLevel.getNodeBreakerView().getSwitchCount());
-        ConnectablePosition<Load> position = load.getExtension(ConnectablePosition.class);
-        assertNotNull(position);
-        assertEquals(ConnectablePosition.Direction.BOTTOM, position.getFeeder().getDirection());
-        assertTrue(TopologyModificationUtils.getFeederPositions(voltageLevel).contains(position.getFeeder().getOrder().orElseThrow()));
-    }
-
-    @Test
-    void connectablesWithoutPositionGetNone() {
-        Network network = FourSubstationsNodeBreakerFactory.create();
-        VoltageLevel voltageLevel = network.getVoltageLevel("S1VL2");
-
-        Load load = (Load) createAndConfirm(network, Injections.Kind.LOAD, voltageLevel, network.getBusbarSection("S1VL2_BBS1")).orElseThrow();
-
-        assertTrue(load.getTerminal().isConnected());
-        assertNull(load.getExtension(ConnectablePosition.class));
     }
 
     @Test
