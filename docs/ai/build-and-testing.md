@@ -145,8 +145,10 @@ on the same three platforms, and `user-guide-artifact` merges them into one `use
 (`vYYYYMMDD-sha`), builds the user's guide and runs the three packaging scripts on Windows, Linux and macOS (Apple
 Silicon) runners with downloaded JavaFX jmods, archives the app-images and creates a GitHub release marked latest, then
 deletes all but the newest 5 such releases and their tags. The guide is not a release asset.
-Both build the guide with the composite action `.github/actions/build-user-guide` (Python 3.12, TeX Live through
-`teatimeguest/setup-texlive-action`, screenshots, then `sphinx -M html` with warnings as errors and `-M latexpdf`).
+Both build the guide with the composite action `.github/actions/build-user-guide`: Python 3.12, TeX Live from its
+official installer (`install-tl`, scheme-basic plus the collections Sphinx's LaTeX needs, in `~/texlive`, cached per OS
+with a key changing with the action file), the screenshots, then `sphinx -M html` with warnings as errors and
+`-M latexpdf`. Only GitHub's own actions are used: the third-party TeX Live action first tried had disappeared.
 
 ## Packaging
 
