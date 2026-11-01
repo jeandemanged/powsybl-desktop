@@ -52,7 +52,7 @@ Easy to get wrong:
   records for plain data carriers; text blocks; unnamed variables `_` for every unused lambda parameter, catch
   parameter or loop variable (`(_, _, newValue) -> ...`, `_ -> ...`, `catch (IOException _)`). Jackson `JsonNode` is
   not a `List`: keep `node.get(0)` there.
-- PowSyBl module versions are not written in `pom.xml`: they come transitively from the `powsybl-starter` aggregator
+- PowSyBl module versions are not written in `pom.xml`: they are managed by the imported `powsybl-dependencies` BOM
   (see domain-and-persistence). Resolve them with `mvn -o dependency:tree` before reading a PowSyBl sources jar; don't
   trust whichever version sits in `~/.m2`.
 - Line endings: the repository stores LF (`.gitattributes`: `* text=auto`); working copies use the platform's

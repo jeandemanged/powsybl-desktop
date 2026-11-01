@@ -9,12 +9,12 @@ The app has almost no domain model of its own: it displays and edits PowSyBl IID
 values, topology, convergence) come from PowSyBl; the app surfaces them (e.g. a `PowsyblException` thrown by a setter
 becomes an edit-error popup, see [editing.md](editing.md#editing-cells)).
 
-**Check PowSyBl's actual behavior before relying on it.** Module versions are not written in `pom.xml`: they come
-transitively from the `com.powsybl:powsybl-starter` dependency, an aggregator jar (not a BOM: there is no
-`dependencyManagement` import), at `powsybl-starter.version`, under the `powsybl-parent` parent. Modules outside the
-starter (CGMES conformity and GL, IIDM extensions and modification, ENTSO-E utils, ...) are declared with
-`powsybl-core.version`, which must stay the core version the starter resolves. Read the versions in `pom.xml`'s
-properties, and resolve the in-use ones with `mvn -o dependency:tree` before reading a PowSyBl sources jar; the local
+**Check PowSyBl's actual behavior before relying on it.** Module versions are not written in `pom.xml`: every PowSyBl
+module used (directly, or at runtime through ServiceLoader such as the format converters, `powsybl-iidm-impl`,
+`powsybl-config-classic` and the RDF4J triple store) is declared without a version and managed by the
+`com.powsybl:powsybl-dependencies` BOM imported in `dependencyManagement` at `powsybl-dependencies.version`, under the
+`powsybl-parent` parent. The BOM manages Logback as `runtime`, so the Logback dependencies state `compile` explicitly.
+Read the BOM version in `pom.xml`'s properties, and resolve the in-use ones with `mvn -o dependency:tree` before reading a PowSyBl sources jar; the local
 Maven cache may contain unrelated versions.
 
 ## Networks and subnetworks

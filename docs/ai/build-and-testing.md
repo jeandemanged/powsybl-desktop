@@ -9,7 +9,7 @@
   build behavior is absent.
 - Classpath application: there is no `module-info.java`; `javafx-maven-plugin` runs
   `com.powsybl.powsybldesktop.MainApplication`; the jar manifest main class is `Launcher`.
-- Main libraries: PowSyBl (`powsybl-starter`, see [domain-and-persistence.md](domain-and-persistence.md)), ControlsFX,
+- Main libraries: PowSyBl (`powsybl-dependencies` BOM, see [domain-and-persistence.md](domain-and-persistence.md)), ControlsFX,
   Ikonli (Material Design 2), Lucene, Logback, Jackson (via PowSyBl), Leaflet webjar (build-time only, see
   [diagrams-and-map.md](diagrams-and-map.md#leaflet-in-a-webview)), AutoService (annotation processor).
 

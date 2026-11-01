@@ -26,23 +26,35 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>25</java.version>
-        <junit.version>5.14.4</junit.version>
+        <powsybl-dependencies.version>2026.2.0</powsybl-dependencies.version>
         <autoservice.version>1.1.1</autoservice.version>
+        <javafx.version>27.0.1</javafx.version>
+        <controlsfx.version>11.2.6</controlsfx.version>
+        <ikonli.version>12.4.0</ikonli.version>
+        <lucene.version>10.6.0</lucene.version>
+        <logback.version>1.6.6</logback.version>
+        <leaflet.version>1.9.4</leaflet.version>
+        <junit.version>5.14.4</junit.version>
         <testfx.version>4.0.18</testfx.version>
         <archunit.version>1.5.1</archunit.version>
-        <lucene.version>10.5.1</lucene.version>
-        <powsybl-starter.version>2026.2.0</powsybl-starter.version>
-        <powsybl-core.version>7.4.2</powsybl-core.version>
-        <javafx.version>27</javafx.version>
-        <controlsfx.version>11.2.5</controlsfx.version>
-        <ikonli.version>12.4.0</ikonli.version>
-        <logback.version>1.6.3</logback.version>
-        <leaflet.version>1.9.4</leaflet.version>
         <!-- surefire forks test classes in parallel JVMs, not JUnit's in-JVM parallel mode: a JVM has a
              single JavaFX toolkit and TestFX shares one primary stage between test classes. A property
              rather than plugin configuration so that -DforkCount=N overrides it -->
         <forkCount>0.5C</forkCount>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <!-- BOM aligning the versions of all PowSyBl modules (core, open-loadflow, diagram...) -->
+                <groupId>com.powsybl</groupId>
+                <artifactId>powsybl-dependencies</artifactId>
+                <version>${powsybl-dependencies.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -51,54 +63,121 @@
             <version>${autoservice.version}</version>
         </dependency>
         <dependency>
-            <!-- an aggregator jar, not a BOM: the PowSyBl modules and their versions come transitively from it -->
+            <!-- reads the PowSyBl platform configuration (config.yml) through PlatformConfig -->
             <groupId>com.powsybl</groupId>
-            <artifactId>powsybl-starter</artifactId>
-            <version>${powsybl-starter.version}</version>
+            <artifactId>powsybl-config-classic</artifactId>
         </dependency>
         <dependency>
-            <!-- provides CGMES conformity sample networks; not pulled in by powsybl-starter, so
-                 pinned explicitly to the powsybl-core version that powsybl-starter resolves -->
             <groupId>com.powsybl</groupId>
-            <artifactId>powsybl-cgmes-conformity</artifactId>
-            <version>${powsybl-core.version}</version>
+            <artifactId>powsybl-tools</artifactId>
         </dependency>
         <dependency>
-            <!-- provides CgmesGLImportPostProcessor, registered via ServiceLoader, so the geographical layout
-                 profile (GL) present in some CGMES sample networks gets imported; not pulled in by powsybl-starter,
-                 so pinned explicitly to the powsybl-core version that powsybl-starter resolves -->
             <groupId>com.powsybl</groupId>
-            <artifactId>powsybl-cgmes-gl</artifactId>
-            <version>${powsybl-core.version}</version>
+            <artifactId>powsybl-loadflow-api</artifactId>
         </dependency>
         <dependency>
-            <!-- provides SubstationPosition/LinePosition (used by the Map view); already pulled in
-                 transitively via powsybl-cgmes-gl, but pinned explicitly since that's incidental -->
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-security-analysis-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-sensitivity-analysis-api</artifactId>
+        </dependency>
+        <dependency>
+            <!-- default IIDM implementation, discovered via ServiceLoader -->
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-iidm-impl</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-iidm-reducer</artifactId>
+        </dependency>
+        <dependency>
+            <!-- provides the IIDM sample networks -->
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-iidm-test</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-iidm-serde</artifactId>
+        </dependency>
+        <dependency>
+            <!-- provides SubstationPosition/LinePosition (used by the Map view) -->
             <groupId>com.powsybl</groupId>
             <artifactId>powsybl-iidm-extensions</artifactId>
-            <version>${powsybl-core.version}</version>
-        </dependency>
-        <dependency>
-            <!-- provides the CGMES extensions (metadata models, tap changers, boundary nodes...) shown in the
-                 detail views; already pulled in transitively via powsybl-cgmes-conversion, but used directly -->
-            <groupId>com.powsybl</groupId>
-            <artifactId>powsybl-cgmes-extensions</artifactId>
-            <version>${powsybl-core.version}</version>
-        </dependency>
-        <dependency>
-            <!-- provides EntsoeArea, edited in the substation detail view; already pulled in transitively via
-                 powsybl-ucte-converter, but used directly -->
-            <groupId>com.powsybl</groupId>
-            <artifactId>powsybl-entsoe-util</artifactId>
-            <version>${powsybl-core.version}</version>
         </dependency>
         <dependency>
             <!-- provides the network modifications (feeder bays, voltage level topologies, removals...) used to
-                 create and remove equipment; already pulled in transitively via powsybl-cgmes-conversion, but used
-                 directly -->
+                 create and remove equipment -->
             <groupId>com.powsybl</groupId>
             <artifactId>powsybl-iidm-modification</artifactId>
-            <version>${powsybl-core.version}</version>
+        </dependency>
+        <dependency>
+            <!-- provides EntsoeArea, edited in the substation detail view -->
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-entsoe-util</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-ucte-converter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-cgmes-conversion</artifactId>
+        </dependency>
+        <dependency>
+            <!-- provides the CGMES extensions (metadata models, tap changers, boundary nodes...) shown in the
+                 detail views -->
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-cgmes-extensions</artifactId>
+        </dependency>
+        <dependency>
+            <!-- provides CGMES conformity sample networks -->
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-cgmes-conformity</artifactId>
+        </dependency>
+        <dependency>
+            <!-- provides CgmesGLImportPostProcessor, registered via ServiceLoader, so the geographical layout
+                 profile (GL) present in some CGMES sample networks gets imported -->
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-cgmes-gl</artifactId>
+        </dependency>
+        <dependency>
+            <!-- triple store implementation the CGMES importer/exporter discovers via ServiceLoader -->
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-triple-store-impl-rdf4j</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-psse-converter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-powerfactory-converter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-powerfactory-dgs</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-ieee-cdf-converter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-matpower-converter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-open-loadflow</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-single-line-diagram-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>powsybl-network-area-diagram</artifactId>
         </dependency>
         <dependency>
             <!-- Leaflet's leaflet.js/leaflet.css for the Map view's WebView. "provided" because the jar itself
@@ -155,14 +234,23 @@
             <version>${lucene.version}</version>
         </dependency>
         <dependency>
+            <!-- compile scope stated explicitly: the PowSyBl BOM manages logback as runtime, but the Logs view
+                 uses its API directly -->
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-core</artifactId>
             <version>${logback.version}</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>${logback.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <!-- routes the log4j 1.x API calls of some PowSyBl dependencies to SLF4J/logback -->
+            <groupId>org.slf4j</groupId>
+            <artifactId>log4j-over-slf4j</artifactId>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
