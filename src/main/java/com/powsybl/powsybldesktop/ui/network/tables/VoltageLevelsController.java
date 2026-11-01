@@ -87,6 +87,7 @@ public class VoltageLevelsController extends AbstractDisposableController implem
         sortedVoltageLevels.comparatorProperty().bind(voltageLevelsTableView.comparatorProperty());
         voltageLevelsTableView.setItems(sortedVoltageLevels);
         TableAutoFitLimiter.install(voltageLevelsTableView);
+        TableColumnSupport.onEditApplied(voltageLevelsTableView, voltageLevel -> mainModel.setUpdate(voltageLevel));
 
         TableColumnSupport.configureNullableColumn(countryColumn,
                 voltageLevel -> voltageLevel.getSubstation().map(Substation::getNullableCountry).orElse(null));
@@ -117,7 +118,13 @@ public class VoltageLevelsController extends AbstractDisposableController implem
         voltageLevelsTableView.editableProperty().bind(mainModel.networkBusyProperty().not());
         updateVoltageLevels();
         listenerManager.listen(sceneModel.networkProperty(), (_, _, _) -> updateVoltageLevels());
-        listenerManager.listen(this.mainModel.updateProperty(), (_, _, _) -> updateVoltageLevels());
+        listenerManager.listen(this.mainModel.structureChangeProperty(), (_, _, change) -> {
+            if (change != null) {
+                updateVoltageLevels();
+            }
+        });
+        // see AbstractEquipmentTableController.setSceneModel
+        listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> voltageLevelsTableView.refresh());
         // for the decimal places, read by the cells on every render
         listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (_, _, _) -> voltageLevelsTableView.refresh());
         searchBoxController.bind(sceneModel, this::onSearchMatch);

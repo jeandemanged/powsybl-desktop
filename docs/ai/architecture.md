@@ -126,8 +126,8 @@ Rules:
 - New per-network state goes in `NetworkStudy`, not in a `Map<Network, ...>` elsewhere.
 - New state depending on the window showing a view goes in `SceneModel`.
 - After mutating a network value from the UI, call `mainModel.setUpdate()` (or `setUpdate(voltageLevel)` when the
-  change is confined to one voltage level, which lets the search index refresh only that level's buses), unless the
-  editor already does (see [editing.md](editing.md#editing-cells)). Views refresh from `updateProperty()`.
+  change is confined to one voltage level, which lets the search index refresh only that level's buses); table and
+  detail view editors already do (see [editing.md](editing.md#editing-cells)). Views refresh from `updateProperty()`.
 - Collections exposed to views are unmodifiable views cached in a field (see the comment in
   `navigation/NavigationHistory.java` on why a fresh unmodifiable wrapper per call can silently stop forwarding).
 

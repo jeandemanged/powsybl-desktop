@@ -256,6 +256,7 @@ public final class CellFields {
             return;
         }
         flash.flash(editor, edited, TableColumnSupport.EDIT_SUCCESS_STYLE_CLASS);
+        TableColumnSupport.fireEditApplied(editor);
     }
 
     private static void reject(Node editor, KeyedFlash flash, Object edited, PowsyblException exception) {

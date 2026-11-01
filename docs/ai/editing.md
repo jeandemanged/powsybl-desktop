@@ -17,7 +17,8 @@ resources package. The busy lock every editor respects is described in [threadin
   of the root network in place (`NetworkSearchIndex.applyStructureChange`) and closes the separate-window views of
   removed objects (`SeparateWindows.closeRemoved`: detail views, container diagrams and tabs); `SubstationsController`
   rebuilds its tree keeping expansion and selection (or the closest remaining ancestor); `NetworksController` refreshes
-  the statistics. Tables and diagrams already re-query on `updateProperty()`.
+  the statistics; editable tables reload their rows (see [Equipment tables](#equipment-tables)). Diagrams re-query on
+  `updateProperty()`.
 - powsybl-iidm-modification modifications are applied with `NetworkEdits.apply(network, modification)`, which throws
   on error (they only log by default). Node breaker feeders get their bay (`CreateFeederBay`,
   `CreateBranchFeederBays`, and leg by leg for three-winding transformers) and a `ConnectablePosition` where the voltage
@@ -31,7 +32,7 @@ Pattern for "one row per equipment of a kind" tables (Loads, Generators, Lines, 
 
 1. Controller extends `…/ui/network/tables/AbstractEquipmentTableController.java` (`<T extends Identifiable<?>>`,
    implements `EmbeddableEquipmentTable`). It provides sorted data loading, refresh on
-   `networkProperty()`/`updateProperty()`, search integration, embedded-in-substations filtering (`setContainer`),
+   `networkProperty()`/`structureChangeProperty()`/`updateProperty()` (see below), search integration, embedded-in-substations filtering (`setContainer`),
    container link cells, row selection, the busy-lock binding and `goTo(Identifiable)`.
 2. `@FXML private void initialize()` calls `initializeTable()` first, then configures each column with a
    `TableColumnSupport.configure*Column(...)` factory and `setCellValueFactory`.
@@ -59,6 +60,13 @@ Other table shapes - read the closest one before adding a similar view:
 Large tables: `initializeTable()` installs `TableAutoFitLimiter`; do the same for any new large `TableView` (the Logs
 table uses it too).
 
+Refreshing (editable tables): the rows (`data.setAll`) are reloaded only when they can be other objects - the selected
+network changes, or a structure change (`MainModel.structureChangeProperty()`, non-null) is published. A plain
+`updateProperty()` change only re-reads the visible cells (`TableView.refresh()`): its cost is the visible rows whatever
+the table's size, the order is kept (an edited row sorted by its column stays by its field) and a field being typed in
+keeps its focus and text, uncommitted. Bus tables reload on every update (`rowsChangeOnUpdate`): IIDM computes their
+buses anew after a topology change. Hence objects created or removed outside `NetworkChanges` don't show in the tables.
+
 Every violation indication (the Violations view, the "Loading" and "Voltage Range" columns, `ViolationColumns`) reads
 the study's cached violations, never checks limits in a cell: see
 [domain-and-persistence.md](domain-and-persistence.md#networks-and-subnetworks).
@@ -66,9 +74,12 @@ the study's cached violations, never checks limits in a cell: see
 ## Editing cells
 
 - Editing writes straight to the PowSyBl object in the commit handler, e.g.
-  `p0Column.setOnEditCommit(e -> e.getRowValue().setP0(e.getNewValue()))`. There is no form object/DTO layer. A plain
-  value commit does not fire `mainModel.setUpdate()`: only edits changing connectivity do (connected-checkbox
-  toggles call `setUpdate(terminal.getVoltageLevel())`, bus tables and switches too), as do detail views' edits.
+  `p0Column.setOnEditCommit(e -> e.getRowValue().setP0(e.getNewValue()))`. There is no form object/DTO layer. Setters
+  only write to IIDM: once an edit applied, its editor fires an event bubbling up to the table
+  (`TableColumnSupport.fireEditApplied`), whose controller follows it with the network update
+  (`TableColumnSupport.onEditApplied`, installed by every editable table: `setUpdate(voltageLevel)` when the row lies in
+  a single voltage level, else `setUpdate()`), as detail views' `onEdit` does. Connected checkboxes call their
+  `onToggle` (`setUpdate(terminal.getVoltageLevel())`) instead. A new editable table installs `onEditApplied`.
 - Editable cells are always-visible fields, edited like the parameters and detail views' fields - never a
   double-click-to-edit cell (no `TextFieldTableCell`/`ChoiceBoxTableCell`). The fields live in
   `…/ui/form/CellFields.java` (`CellTextField`, `CellChoiceBox`, `CellSearchableComboBox`, `IntStepper`):
@@ -88,7 +99,7 @@ the study's cached violations, never checks limits in a cell: see
   - validation errors: a `PowsyblException` (or `IllegalArgumentException`, e.g. unparsable text; a
     `NumberFormatException` gets `desktop.common.editError.invalidNumber`) from the setter is caught, the value shown
     again, with a ControlsFX popup + red flash;
-  - success feedback: green flash;
+  - success feedback: green flash, then the network update (above);
   - both flashes keyed by row (`CellFields.KeyedFlash`), not held on a cell: a table rebuilds its cells on any change
     of its items (e.g. the refresh after `mainModel.setUpdate`), which can rebind a cell to another row before the
     flash fades. For the same reason the focus, with what is being typed, follows its row through a rebuild. Never

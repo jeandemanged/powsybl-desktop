@@ -51,6 +51,7 @@ abstract class AbstractNetworkObjectTableController<T> extends AbstractDisposabl
         sorted.comparatorProperty().bind(tableView().comparatorProperty());
         tableView().setItems(sorted);
         TableAutoFitLimiter.install(tableView());
+        TableColumnSupport.onEditApplied(tableView(), _ -> mainModel.setUpdate());
     }
 
     @Override
@@ -63,7 +64,13 @@ abstract class AbstractNetworkObjectTableController<T> extends AbstractDisposabl
         }
         refresh();
         listenerManager.listen(sceneModel.networkProperty(), (_, _, _) -> refresh());
-        listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> refresh());
+        listenerManager.listen(mainModel.structureChangeProperty(), (_, _, change) -> {
+            if (change != null) {
+                refresh();
+            }
+        });
+        // see AbstractEquipmentTableController.setSceneModel
+        listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> tableView().refresh());
         listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (_, _, _) -> tableView().refresh());
     }
 

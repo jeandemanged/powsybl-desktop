@@ -70,25 +70,16 @@ public class SwitchesController extends AbstractDisposableController implements 
         sorted.comparatorProperty().bind(switchesTableView.comparatorProperty());
         switchesTableView.setItems(sorted);
         TableAutoFitLimiter.install(switchesTableView);
+        TableColumnSupport.onEditApplied(switchesTableView, aSwitch -> mainModel.setUpdate(aSwitch.getVoltageLevel()));
 
         nameColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getNameOrId()));
         TableColumnSupport.configureDetailNameColumn(nameColumn, item -> EquipmentDetails.open(sceneModel, item));
         kindColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getKind()));
-        TableColumnSupport.configureEditableBooleanColumn(openColumn, Switch::isOpen, this::setOpen);
+        TableColumnSupport.configureEditableBooleanColumn(openColumn, Switch::isOpen, Switch::setOpen);
         // retain status only means anything in a node/breaker voltage level (see Switch::setRetained) -
         // greyed out and non-interactive otherwise, rather than throwing on every edit attempt.
-        TableColumnSupport.configureEditableBooleanColumn(retainedColumn, Switch::isRetained, this::setRetained,
+        TableColumnSupport.configureEditableBooleanColumn(retainedColumn, Switch::isRetained, Switch::setRetained,
                 aSwitch -> aSwitch.getVoltageLevel().getTopologyKind() == TopologyKind.NODE_BREAKER);
-    }
-
-    private void setOpen(Switch aSwitch, boolean open) {
-        aSwitch.setOpen(open);
-        mainModel.setUpdate(aSwitch.getVoltageLevel());
-    }
-
-    private void setRetained(Switch aSwitch, boolean retained) {
-        aSwitch.setRetained(retained);
-        mainModel.setUpdate(aSwitch.getVoltageLevel());
     }
 
     @Override
@@ -97,7 +88,13 @@ public class SwitchesController extends AbstractDisposableController implements 
         this.mainModel = sceneModel.getMainModel();
         // see AbstractEquipmentTableController.setSceneModel
         switchesTableView.editableProperty().bind(mainModel.networkBusyProperty().not());
-        listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> refresh());
+        listenerManager.listen(mainModel.structureChangeProperty(), (_, _, change) -> {
+            if (change != null) {
+                refresh();
+            }
+        });
+        // see AbstractEquipmentTableController.setSceneModel
+        listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> switchesTableView.refresh());
         TableEditActions.install(switchesTableView, sceneModel, () -> List.of(EditMenus.switchItem(sceneModel,
                 () -> switchesTableView.getScene().getWindow(), sceneModel.getNetwork(), container instanceof VoltageLevel voltageLevel ? voltageLevel : null)));
     }

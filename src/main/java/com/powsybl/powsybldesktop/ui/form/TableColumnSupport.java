@@ -22,6 +22,8 @@ import com.powsybl.powsybldesktop.violations.ViolationTexts;
 import com.powsybl.powsybldesktop.violations.VoltageRange;
 import javafx.animation.PauseTransition;
 import javafx.beans.property.ReadOnlyObjectWrapper;
+import javafx.event.Event;
+import javafx.event.EventType;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
@@ -30,6 +32,7 @@ import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
@@ -81,8 +84,33 @@ public final class TableColumnSupport {
     private static final Duration EDIT_SUCCESS_FLASH_DURATION = Duration.millis(200);
     private static final Duration EDIT_ERROR_FLASH_DURATION = Duration.seconds(1.5);
 
+    // Fired by an editor whose edit applied, bubbling up to its table: the setters only write to IIDM, and the table's
+    // controller follows every edit with the network update (onEditApplied), as detail views do, for the other views.
+    private static final EventType<Event> EDIT_APPLIED = new EventType<>(Event.ANY, "EDIT_APPLIED");
+
     static Duration flashDuration(String styleClass) {
         return EDIT_ERROR_STYLE_CLASS.equals(styleClass) ? EDIT_ERROR_FLASH_DURATION : EDIT_SUCCESS_FLASH_DURATION;
+    }
+
+    /**
+     * Runs {@code onEdited} with the row of every edit applied by the editors of {@code table}'s cells.
+     */
+    @SuppressWarnings("unchecked")
+    public static <S> void onEditApplied(TableView<S> table, Consumer<S> onEdited) {
+        table.addEventHandler(EDIT_APPLIED, event -> {
+            Node node = (Node) event.getTarget();
+            while (node != null && !(node instanceof TableRow<?>)) {
+                node = node.getParent();
+            }
+            if (node instanceof TableRow<?> row && row.getItem() != null) {
+                event.consume();
+                onEdited.accept((S) row.getItem());
+            }
+        });
+    }
+
+    static void fireEditApplied(Node editor) {
+        Event.fireEvent(editor, new Event(EDIT_APPLIED));
     }
 
     // Decimal places read on every call rather than captured: GuiParameters is edited in place, or replaced on a
@@ -986,9 +1014,8 @@ public final class TableColumnSupport {
     // node/breaker voltage level): the checkbox is disabled (greyed out by the default skin) rather than
     // hidden, so the field's current value stays visible.
     //
-    // The flash is keyed by row (see CellFields.KeyedFlash): setter can trigger a mainModel.setUpdate() (e.g. a
-    // switch's open/retained status affecting the diagram), which refreshes this very table and can rebind this
-    // cell to another row before the flash fades.
+    // The flash is keyed by row (see CellFields.KeyedFlash): the edit is followed by a mainModel.setUpdate()
+    // (onEditApplied), which refreshes this very table and can rebind this cell to another row before the flash fades.
     public static <S> void configureEditableBooleanColumn(TableColumn<S, Boolean> column, Function<S, Boolean> getter,
                                                     BiConsumer<S, Boolean> setter, Predicate<S> editable) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
@@ -1024,6 +1051,7 @@ public final class TableColumnSupport {
                 try {
                     setter.accept(row, checkBox.isSelected());
                     flash.flash(this, row, EDIT_SUCCESS_STYLE_CLASS);
+                    fireEditApplied(this);
                 } catch (PowsyblException e) {
                     checkBox.setSelected(!checkBox.isSelected());
                     showEditErrorPopup(this, e);
@@ -1075,6 +1103,7 @@ public final class TableColumnSupport {
             try {
                 onChange.accept(newValue);
                 flashEditSuccess(cell);
+                fireEditApplied(cell);
             } catch (PowsyblException e) {
                 checkBox.setSelected(!newValue);
                 notifyEditError(cell, e);

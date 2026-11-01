@@ -15,6 +15,7 @@ import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.core.NetworkStructureChange;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
@@ -45,6 +46,7 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -340,7 +342,7 @@ class LinesControllerTest extends AbstractHeadlessApplicationTest {
                 .setB2(0)
                 .add();
 
-        interact(() -> mainModel.setUpdate());
+        interact(() -> mainModel.setStructureChange(new NetworkStructureChange(network, Set.of(line), Set.of())));
 
         VBox substationBox = cellBox(controller.substationColumn, rowOf(line));
         assertFalse(substationBox.getChildren().getFirst() instanceof Hyperlink);

@@ -10,8 +10,9 @@ State and communication
    (except a parent controller driving its `fx:include`d children). [architecture](architecture.md#shared-state-mainmodel-networkstudy-scenemodel)
 2. Per-root-network state lives in `NetworkStudy` (`MainModel.getStudy(network)`); per-window state in `SceneModel`.
 3. Creating or removing network objects goes through `NetworkChanges.apply`/`remove`, which fires the structure change
-   and the update. Other mutations fire `mainModel.setUpdate()` / `setUpdate(voltageLevel)` where other views must
-   follow. [editing](editing.md#structural-edits)
+   and the update. Every other mutation from the UI is followed by `mainModel.setUpdate()` / `setUpdate(voltageLevel)`
+   (table editors through `TableColumnSupport.onEditApplied`, detail views through `onEdit`).
+   [editing](editing.md#editing-cells)
 4. Only `MainController` swaps the center view, in response to `NavigationHistory.currentEventProperty()`. There is a
    single history, the main window's: views navigate through `SceneModel.navigate` / `record`, never through
    `getNavigationHistory()` directly. A user-initiated change of the selected network goes through
@@ -92,8 +93,6 @@ Build
   [architecture](architecture.md#controller-lifecycle).
 - **Dialogs**: modal dialogs are built in code (static `show` helpers), secondary windows are FXML; there is no
   single dialog abstraction. Follow the form matching your need (see ui-conventions).
-- **Table value edits don't fire `setUpdate()`**, unlike detail view edits: other views showing the edited value
-  refresh on the next update.
 - **Contingency list refresh** is explicit (`refreshInstantiatedTable()`) rather than listener-based, because
   `ListenerManager` cannot detach a single listener.
 - **File I/O on the FX thread**: contingency list and parameters JSON import/export run synchronously in event

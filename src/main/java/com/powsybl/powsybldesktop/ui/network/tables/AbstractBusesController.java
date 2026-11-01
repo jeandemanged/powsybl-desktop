@@ -79,17 +79,11 @@ abstract class AbstractBusesController extends AbstractEquipmentTableController<
 
         fictitiousP0Column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getFictitiousP0()));
         TableColumnSupport.configureDoubleColumn(fictitiousP0Column, format(GuiParameters.Quantity.POWER));
-        fictitiousP0Column.setOnEditCommit(event -> {
-            event.getRowValue().setFictitiousP0(event.getNewValue());
-            mainModel.setUpdate(event.getRowValue().getVoltageLevel());
-        });
+        fictitiousP0Column.setOnEditCommit(event -> event.getRowValue().setFictitiousP0(event.getNewValue()));
 
         fictitiousQ0Column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getFictitiousQ0()));
         TableColumnSupport.configureDoubleColumn(fictitiousQ0Column, format(GuiParameters.Quantity.POWER));
-        fictitiousQ0Column.setOnEditCommit(event -> {
-            event.getRowValue().setFictitiousQ0(event.getNewValue());
-            mainModel.setUpdate(event.getRowValue().getVoltageLevel());
-        });
+        fictitiousQ0Column.setOnEditCommit(event -> event.getRowValue().setFictitiousQ0(event.getNewValue()));
 
         TableColumnSupport.configureVoltageRangeColumn(voltageRangeColumn,
                 bus -> VoltageRange.of(bus.getV(), bus.getVoltageLevel(), violations().getVoltageViolation(busViewBusId(bus))), this::guiParameters);
@@ -123,6 +117,11 @@ abstract class AbstractBusesController extends AbstractEquipmentTableController<
     @Override
     final List<VoltageLevel> voltageLevelsOf(Bus bus) {
         return List.of(bus.getVoltageLevel());
+    }
+
+    @Override
+    final boolean rowsChangeOnUpdate() {
+        return true;
     }
 
     @Override

@@ -91,6 +91,7 @@ public class SubstationsTableController extends AbstractDisposableController imp
         sortedSubstations.comparatorProperty().bind(substationsTableView.comparatorProperty());
         substationsTableView.setItems(sortedSubstations);
         TableAutoFitLimiter.install(substationsTableView);
+        TableColumnSupport.onEditApplied(substationsTableView, _ -> mainModel.setUpdate());
 
         TableColumnSupport.configureContainerColumn(nameColumn, substation -> Optional.of(substation),
                 (container, item) -> TableColumnSupport.withDetailAndCopyButtons(containerLink(container, item), item, () -> EquipmentDetails.open(sceneModel, item)));
@@ -117,7 +118,13 @@ public class SubstationsTableController extends AbstractDisposableController imp
         substationsTableView.editableProperty().bind(mainModel.networkBusyProperty().not());
         updateSubstations();
         listenerManager.listen(sceneModel.networkProperty(), (_, _, _) -> updateSubstations());
-        listenerManager.listen(this.mainModel.updateProperty(), (_, _, _) -> updateSubstations());
+        listenerManager.listen(this.mainModel.structureChangeProperty(), (_, _, change) -> {
+            if (change != null) {
+                updateSubstations();
+            }
+        });
+        // see AbstractEquipmentTableController.setSceneModel
+        listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> substationsTableView.refresh());
         searchBoxController.bind(sceneModel, this::onSearchMatch);
         TableEditActions.install(substationsTableView, sceneModel,
                 () -> List.of(EditMenus.substationItem(sceneModel, () -> substationsTableView.getScene().getWindow(), sceneModel.getNetwork())));

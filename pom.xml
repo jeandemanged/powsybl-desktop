@@ -51,21 +51,22 @@
             <version>${autoservice.version}</version>
         </dependency>
         <dependency>
+            <!-- an aggregator jar, not a BOM: the PowSyBl modules and their versions come transitively from it -->
             <groupId>com.powsybl</groupId>
             <artifactId>powsybl-starter</artifactId>
             <version>${powsybl-starter.version}</version>
         </dependency>
         <dependency>
-            <!-- provides CGMES conformity sample networks; not part of the powsybl-starter BOM, so pinned
-                 explicitly to the powsybl-core version that powsybl-starter 2026.2.0 resolves -->
+            <!-- provides CGMES conformity sample networks; not pulled in by powsybl-starter, so
+                 pinned explicitly to the powsybl-core version that powsybl-starter resolves -->
             <groupId>com.powsybl</groupId>
             <artifactId>powsybl-cgmes-conformity</artifactId>
             <version>${powsybl-core.version}</version>
         </dependency>
         <dependency>
             <!-- provides CgmesGLImportPostProcessor, registered via ServiceLoader, so the geographical layout
-                 profile (GL) present in some CGMES sample networks gets imported; not part of the powsybl-starter
-                 BOM, so pinned explicitly to the powsybl-core version that powsybl-starter 2026.2.0 resolves -->
+                 profile (GL) present in some CGMES sample networks gets imported; not pulled in by powsybl-starter,
+                 so pinned explicitly to the powsybl-core version that powsybl-starter resolves -->
             <groupId>com.powsybl</groupId>
             <artifactId>powsybl-cgmes-gl</artifactId>
             <version>${powsybl-core.version}</version>

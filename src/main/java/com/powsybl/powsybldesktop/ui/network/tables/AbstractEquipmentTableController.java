@@ -141,6 +141,25 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
         sorted.comparatorProperty().bind(tableView().comparatorProperty());
         tableView().setItems(sorted);
         TableAutoFitLimiter.install(tableView());
+        TableColumnSupport.onEditApplied(tableView(), this::onEdited);
+    }
+
+    /**
+     * Whether the rows are other objects after any update, rather than only after a structure change: the bus tables'
+     * buses, which IIDM computes anew after a topology change.
+     */
+    boolean rowsChangeOnUpdate() {
+        return false;
+    }
+
+    // as a detail view's edits: an edit confined to one voltage level lets the search index refresh only its buses
+    private void onEdited(T item) {
+        List<VoltageLevel> voltageLevels = voltageLevelsOf(item);
+        if (voltageLevels.size() == 1) {
+            mainModel.setUpdate(voltageLevels.getFirst());
+        } else {
+            mainModel.setUpdate();
+        }
     }
 
     @Override
@@ -153,7 +172,21 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
         }
         refreshAll();
         listenerManager.listen(sceneModel.networkProperty(), (_, _, _) -> refreshAll());
-        listenerManager.listen(this.mainModel.updateProperty(), (_, _, _) -> refreshAll());
+        listenerManager.listen(this.mainModel.structureChangeProperty(), (_, _, change) -> {
+            if (change != null) {
+                refreshAll();
+            }
+        });
+        // An update leaves the rows the same objects: only the shown cells re-read them, which costs the visible rows
+        // whatever the table's size, keeps the order (an edited row sorted by its column doesn't move away from its
+        // field) and a field being typed in.
+        listenerManager.listen(this.mainModel.updateProperty(), (_, _, _) -> {
+            if (rowsChangeOnUpdate()) {
+                refreshAll();
+            } else {
+                tableView().refresh();
+            }
+        });
         // for the decimal places, read by the cells on every render
         listenerManager.listen(this.mainModel.getParametersModel().guiParametersRevisionProperty(), (_, _, _) -> tableView().refresh());
         searchBox().bind(sceneModel, searchKinds(), this::onSearchMatch);

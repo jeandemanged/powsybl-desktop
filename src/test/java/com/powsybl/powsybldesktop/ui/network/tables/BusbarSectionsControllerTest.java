@@ -15,6 +15,7 @@ import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.test.FourSubstationsNodeBreakerFactory;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.core.NetworkStructureChange;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
@@ -36,6 +37,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -130,7 +132,7 @@ class BusbarSectionsControllerTest extends AbstractHeadlessApplicationTest {
                 .setNode(0)
                 .add();
 
-        interact(() -> mainModel.setUpdate());
+        interact(() -> mainModel.setStructureChange(new NetworkStructureChange(network, Set.of(busbarSection), Set.of())));
 
         assertNull(cellGraphic(controller.substationColumn, rowOf(busbarSection)));
         assertNull(cellValue(controller.countryColumn, rowOf(busbarSection)));

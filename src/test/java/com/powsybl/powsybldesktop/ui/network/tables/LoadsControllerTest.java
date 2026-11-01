@@ -15,6 +15,7 @@ import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.core.NetworkChanges;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
@@ -38,12 +39,14 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -211,6 +214,53 @@ class LoadsControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> enter(field, " 12.5 "));
         assertEquals(12.5, load.getP0());
         assertEquals("12.5", field.getText());
+    }
+
+    @Test
+    void appliedEditUpdatesTheNetworkForTheOtherViews() {
+        Load load = load("B3-L");
+        Instant before = mainModel.updateProperty().get();
+
+        interact(() -> enter(p0Field(load), "x"));
+        assertEquals(before, mainModel.updateProperty().get(), "a rejected edit changes nothing");
+
+        interact(() -> enter(p0Field(load), "7.5"));
+        assertNotEquals(before, mainModel.updateProperty().get());
+        assertEquals(load.getTerminal().getVoltageLevel(), mainModel.getUpdatedVoltageLevel());
+    }
+
+    @Test
+    void editedRowStaysInPlaceInATableSortedByTheEditedColumn() {
+        interact(() -> controller.loadsTableView.getSortOrder().setAll(controller.p0Column));
+        Load first = controller.loadsTableView.getItems().getFirst();
+
+        interact(() -> enter(p0Field(first), "9999"));
+        assertEquals(9999.0, first.getP0());
+        assertEquals(first, controller.loadsTableView.getItems().getFirst());
+    }
+
+    @Test
+    void updateKeepsTheFieldBeingTypedIn() {
+        Load load = load("B3-L");
+        double p0 = load.getP0();
+        TextField field = p0Field(load);
+        interact(() -> {
+            field.requestFocus();
+            field.setText("55");
+        });
+
+        interact(() -> mainModel.setUpdate());
+        assertTrue(p0Field(load).isFocused());
+        assertEquals("55", p0Field(load).getText());
+        assertEquals(p0, load.getP0(), "not committed by the update");
+    }
+
+    @Test
+    void structureChangeReloadsTheRows() {
+        Load load = load("B3-L");
+
+        interact(() -> NetworkChanges.remove(mainModel, load));
+        assertFalse(controller.loadsTableView.getItems().stream().anyMatch(item -> item.getId().equals("B3-L")));
     }
 
     // the field shown in the table: its error popup needs a window
