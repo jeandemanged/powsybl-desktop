@@ -1,5 +1,0 @@
-#
-#Sat Oct 31 20:58:43 CET 2026
-Layered\ architecture\ considering\ only\ dependencies\ in\ layers,\ consisting\ of\nlayer\ 'Shell'\ (the\ application\ shell)\nlayer\ 'Views'\ (the\ views)\nlayer\ 'State'\ (the\ shared\ state)\nlayer\ 'Domain'\ (the\ domain)\nlayer\ 'Base'\ (the\ base\ utilities)\nwhere\ layer\ 'Shell'\ may\ not\ be\ accessed\ by\ any\ layer\nwhere\ layer\ 'Views'\ may\ only\ be\ accessed\ by\ layers\ ['Shell']\nwhere\ layer\ 'State'\ may\ only\ be\ accessed\ by\ layers\ ['Shell',\ 'Views']\nwhere\ layer\ 'Domain'\ may\ only\ be\ accessed\ by\ layers\ ['Shell',\ 'Views',\ 'State']=c13005ab-6d01-4717-9793-0bf9300e5fca
-no\ classes\ that\ not\ the\ shell\ or\ SceneModel\ should\ call\ method\ MainModel.getNavigationHistory()=fb7ba16b-e71f-4e1d-91f3-f83d4494e53d
-slices\ assigned\ from\ view,\ domain\ and\ base\ packages\ should\ be\ free\ of\ cycles=423a09ba-2b6c-443f-83c0-4358cbe4b77c

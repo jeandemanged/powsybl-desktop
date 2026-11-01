@@ -11,6 +11,7 @@ import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.ConnectablePosition;
+import com.powsybl.powsybldesktop.core.NetworkChanges;
 import com.powsybl.powsybldesktop.network.edit.Connection;
 import com.powsybl.powsybldesktop.network.edit.Kinds;
 import com.powsybl.powsybldesktop.network.edit.LineModifications;
@@ -69,7 +70,7 @@ public final class LineEdits {
             LineModifications.TapSpec spec = new LineModifications.TapSpec(percent.get(), teePointId.get(), substation.get(), line1Id.get(),
                     line2Id.get(), newLineId.get(), r.get(), x.get());
             Connection at = tapped.connection();
-            return NetworkEdits.apply(sceneModel.getMainModel(), network, n -> LineModifications.tapLine(n, line, spec, at));
+            return NetworkChanges.apply(sceneModel.getMainModel(), network, n -> LineModifications.tapLine(n, line, spec, at));
         });
     }
 
@@ -89,7 +90,7 @@ public final class LineEdits {
             String id1 = line1Id.get();
             String id2 = line2Id.get();
             Connection at = connection.connection();
-            return NetworkEdits.apply(sceneModel.getMainModel(), network, n -> LineModifications.connectVoltageLevelOnLine(n, line, position, id1, id2, at));
+            return NetworkChanges.apply(sceneModel.getMainModel(), network, n -> LineModifications.connectVoltageLevelOnLine(n, line, position, id1, id2, at));
         });
     }
 
@@ -112,7 +113,7 @@ public final class LineEdits {
             Line tapping = removed.get();
             String id = mergedId.get();
             String name = mergedName.get();
-            return NetworkEdits.apply(sceneModel.getMainModel(), network, n -> LineModifications.revertTapLine(n, line1, line2, tapping, id, name));
+            return NetworkChanges.apply(sceneModel.getMainModel(), network, n -> LineModifications.revertTapLine(n, line1, line2, tapping, id, name));
         });
     }
 
@@ -131,7 +132,7 @@ public final class LineEdits {
             Line merged2 = line2.get();
             String id = mergedId.get();
             String name = mergedName.get();
-            return NetworkEdits.apply(sceneModel.getMainModel(), network, n -> LineModifications.revertConnectVoltageLevelOnLine(n, merged1, merged2, id, name));
+            return NetworkChanges.apply(sceneModel.getMainModel(), network, n -> LineModifications.revertConnectVoltageLevelOnLine(n, merged1, merged2, id, name));
         });
     }
 
@@ -157,7 +158,7 @@ public final class LineEdits {
             String busOrBusbarSectionId = connection.busOrBusbarSectionId();
             String id1 = newLine1Id.get();
             String id2 = newLine2Id.get();
-            return NetworkEdits.apply(sceneModel.getMainModel(), network,
+            return NetworkChanges.apply(sceneModel.getMainModel(), network,
                     n -> LineModifications.replaceTeePoint(n, line1, line2, tapping, busOrBusbarSectionId, id1, id2));
         });
     }

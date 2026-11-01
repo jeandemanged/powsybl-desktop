@@ -5,7 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.network.edit;
+package com.powsybl.powsybldesktop.core;
 
 import com.powsybl.commons.PowsyblException;
 import com.powsybl.iidm.modification.topology.RemoveVoltageLevelBuilder;
@@ -13,12 +13,11 @@ import com.powsybl.iidm.network.Load;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.test.FourSubstationsNodeBreakerFactory;
-import com.powsybl.powsybldesktop.core.MainModel;
-import com.powsybl.powsybldesktop.core.NetworkStructureChange;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.LoadNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
+import com.powsybl.powsybldesktop.network.edit.NetworkEdits;
 import com.powsybl.powsybldesktop.search.NetworkSearch;
 import com.powsybl.powsybldesktop.search.NetworkSearchIndex;
 import javafx.application.Platform;
@@ -38,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-class NetworkEditsTest {
+class NetworkChangesTest {
 
     private final Network network = FourSubstationsNodeBreakerFactory.create();
     private final MainModel mainModel = new MainModel();
@@ -72,7 +71,7 @@ class NetworkEditsTest {
         VoltageLevel voltageLevel = network.getVoltageLevel("S1VL1");
         Load load = network.getLoad("LD1");
 
-        assertTrue(NetworkEdits.apply(mainModel, network, n -> NetworkEdits.apply(n, new RemoveVoltageLevelBuilder().withVoltageLevelId("S1VL1").build())));
+        assertTrue(NetworkChanges.apply(mainModel, network, n -> NetworkEdits.apply(n, new RemoveVoltageLevelBuilder().withVoltageLevelId("S1VL1").build())));
 
         assertEquals(1, changes.size());
         NetworkStructureChange change = changes.getFirst();
@@ -84,7 +83,7 @@ class NetworkEditsTest {
 
     @Test
     void publishesCreatedObjectsButNotThoseCreatedThenRemoved() {
-        NetworkEdits.apply(mainModel, network, n -> {
+        NetworkChanges.apply(mainModel, network, n -> {
             n.newSubstation().setId("NEW_S").add();
             n.newSubstation().setId("TEMP_S").add().remove();
         });
@@ -97,7 +96,7 @@ class NetworkEditsTest {
 
     @Test
     void publishesWhatWasChangedBeforeAFailure() {
-        assertThrows(PowsyblException.class, () -> NetworkEdits.apply(mainModel, network, n -> {
+        assertThrows(PowsyblException.class, () -> NetworkChanges.apply(mainModel, network, n -> {
             n.newSubstation().setId("NEW_S").add();
             n.newSubstation().setId("NEW_S").add();
         }));
@@ -109,7 +108,7 @@ class NetworkEditsTest {
     void refusedWhileBusy() {
         Runnable done = mainModel.markBusy(network);
 
-        assertFalse(NetworkEdits.apply(mainModel, network, n -> n.newSubstation().setId("NEW_S").add()));
+        assertFalse(NetworkChanges.apply(mainModel, network, n -> n.newSubstation().setId("NEW_S").add()));
 
         done.run();
         assertTrue(changes.isEmpty());
@@ -128,7 +127,7 @@ class NetworkEditsTest {
         mainModel.getNavigationHistory().navigate(containerEvent);
         mainModel.getNavigationHistory().navigate(otherEvent);
 
-        NetworkEdits.apply(mainModel, network, n -> NetworkEdits.apply(n, new RemoveVoltageLevelBuilder().withVoltageLevelId("S1VL1").build()));
+        NetworkChanges.apply(mainModel, network, n -> NetworkEdits.apply(n, new RemoveVoltageLevelBuilder().withVoltageLevelId("S1VL1").build()));
 
         assertEquals(List.of(otherEvent), mainModel.getNavigationHistory().getPast());
     }
@@ -136,7 +135,7 @@ class NetworkEditsTest {
     @Test
     void searchIndexFollowsStructureChanges() {
         try (NetworkSearchIndex index = NetworkSearchIndex.build(network)) {
-            NetworkEdits.apply(mainModel, network, n -> {
+            NetworkChanges.apply(mainModel, network, n -> {
                 n.newSubstation().setId("NEW_S").add();
                 NetworkEdits.apply(n, new RemoveVoltageLevelBuilder().withVoltageLevelId("S1VL1").build());
             });

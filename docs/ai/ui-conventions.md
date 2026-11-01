@@ -168,7 +168,7 @@ Two established forms:
   with defaults; a form with many fields is a small class with a `create` method (checkstyle limits lambdas to 20 lines).
   The dialog only reads its fields into a spec record (checking what must point at an editor, with `FieldException`)
   and applies the toolkit-free builder of `network/edit` (e.g. `Injections.add(network, id, name, spec, connection)`)
-  inside `NetworkEdits.apply`: what gets created is tested there with plain JUnit, the dialog test only covers the
+  inside `NetworkChanges.apply`: what gets created is tested there with plain JUnit, the dialog test only covers the
   wiring.
 - Where a connectable is connected is a `ConnectionSection` (read as a `network/edit/Connection`): voltage level, busbar section (node breaker: position
   order, suggested at the end of the section, and direction) or bus (bus breaker). Orders are never refused:
@@ -276,7 +276,7 @@ shared `equipment-detail-view.fxml` (no `fx:controller`: `EquipmentDetails.load`
 - Anything map.js draws itself (search markers, the position edit overlay) avoids Leaflet's vector panes, which the
   WebView mis-composites while zooming: DOM markers, or a canvas laid over the map container redrawn on every move.
 - Position edits (`SubstationPosition`, `LinePosition`, both immutable) go through `network/edit/PositionEdits`, run
-  by `NetworkEdits.apply`: moving a substation moves the route ends at its old position, and a tie line's route is
+  by `NetworkChanges.apply`: moving a substation moves the route ends at its old position, and a tie line's route is
   its two boundary lines'. A voltage level may have no substation: reach a position through
   `PositionEdits.substationCoordinate(VoltageLevel)`, never `getSubstation().get()`.
 

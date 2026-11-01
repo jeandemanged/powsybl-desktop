@@ -7,7 +7,6 @@
  */
 package com.powsybl.powsybldesktop.network.edit;
 
-import com.powsybl.commons.PowsyblException;
 import com.powsybl.iidm.modification.topology.RemoveFeederBayBuilder;
 import com.powsybl.iidm.modification.topology.RemoveSubstationBuilder;
 import com.powsybl.iidm.modification.topology.RemoveVoltageLevelBuilder;
@@ -26,13 +25,10 @@ import com.powsybl.iidm.network.Switch;
 import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
-import com.powsybl.powsybldesktop.core.MainModel;
-import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.utils.Messages;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -64,19 +60,6 @@ public final class Removals {
     private static boolean isConfiguredBus(Bus bus) {
         VoltageLevel voltageLevel = bus.getVoltageLevel();
         return voltageLevel.getTopologyKind() == TopologyKind.BUS_BREAKER && voltageLevel.getBusBreakerView().getBus(bus.getId()) == bus;
-    }
-
-    /**
-     * Removes {@code identifiable}; a failure is reported as an error notification.
-     */
-    public static void remove(MainModel mainModel, Identifiable<?> identifiable) {
-        try {
-            NetworkEdits.apply(mainModel, identifiable.getParentNetwork(), network -> remove(network, identifiable));
-        } catch (PowsyblException | IllegalArgumentException | IllegalStateException e) {
-            LOGGER.error("Failed to remove {}", identifiable.getId(), e);
-            mainModel.getNotificationsModel().add(Notification.createError(Instant.now(), "edit.remove.failed")
-                    .withMessageArgs(Kinds.describe(identifiable), e.getMessage()));
-        }
     }
 
     /**
@@ -122,7 +105,7 @@ public final class Removals {
         dependents.add(Messages.get("edit.remove.unpaired", Kinds.describe(other)));
     }
 
-    static void remove(Network network, Identifiable<?> identifiable) {
+    public static void remove(Network network, Identifiable<?> identifiable) {
         switch (identifiable) {
             case Substation substation -> NetworkEdits.apply(network, new RemoveSubstationBuilder().withSubstationId(substation.getId()).build());
             case VoltageLevel voltageLevel -> NetworkEdits.apply(network, new RemoveVoltageLevelBuilder().withVoltageLevelId(voltageLevel.getId()).build());

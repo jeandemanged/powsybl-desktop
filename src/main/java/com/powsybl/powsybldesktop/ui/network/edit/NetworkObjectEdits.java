@@ -21,6 +21,7 @@ import com.powsybl.iidm.network.TwoSides;
 import com.powsybl.iidm.network.VoltageAngleLimit;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.core.NetworkChanges;
 import com.powsybl.powsybldesktop.network.edit.NetworkEdits;
 import com.powsybl.powsybldesktop.network.edit.NetworkObjects;
 import com.powsybl.powsybldesktop.notification.Notification;
@@ -85,7 +86,7 @@ public final class NetworkObjectEdits {
         return CreateDialog.showThenDetails(sceneModel, owner, Messages.get("edit.create.title", Messages.get("desktop.common.equipment.area")), form, () -> {
             NetworkObjects.AreaSpec spec = new NetworkObjects.AreaSpec(id.get(), name.get(), areaType.get(), interchangeTarget.get(),
                     List.copyOf(voltageLevels.getCheckModel().getCheckedItems()));
-            NetworkEdits.apply(sceneModel.getMainModel(), network, n -> NetworkObjects.addArea(n, spec));
+            NetworkChanges.apply(sceneModel.getMainModel(), network, n -> NetworkObjects.addArea(n, spec));
             return network.getArea(spec.id());
         });
     }
@@ -130,7 +131,7 @@ public final class NetworkObjectEdits {
                     }
                     NetworkObjects.OverloadManagementSystemSpec spec = new NetworkObjects.OverloadManagementSystemSpec(systemId, name.get(),
                             enabled.get(), monitored.get(), monitoredSide.get(), trippings.getItems().stream().map(TrippingRow::tripping).toList());
-                    NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> NetworkObjects.addOverloadManagementSystem(substation, spec));
+                    NetworkChanges.apply(sceneModel.getMainModel(), network, _ -> NetworkObjects.addOverloadManagementSystem(substation, spec));
                     return network.getOverloadManagementSystem(systemId);
                 });
     }
@@ -201,7 +202,7 @@ public final class NetworkObjectEdits {
                 throw new CreationForm.FieldException(id.getEditor(), Messages.get("edit.create.idTaken", limitId));
             }
             NetworkObjects.VoltageAngleLimitSpec spec = new NetworkObjects.VoltageAngleLimitSpec(limitId, from.get(), to.get(), low.get(), high.get());
-            return NetworkEdits.apply(sceneModel.getMainModel(), network, n -> NetworkObjects.addVoltageAngleLimit(n, spec));
+            return NetworkChanges.apply(sceneModel.getMainModel(), network, n -> NetworkObjects.addVoltageAngleLimit(n, spec));
         });
     }
 
@@ -238,7 +239,7 @@ public final class NetworkObjectEdits {
             return;
         }
         try {
-            NetworkEdits.apply(mainModel, limit.getTerminalFrom().getVoltageLevel().getParentNetwork(), _ -> limit.remove());
+            NetworkChanges.apply(mainModel, limit.getTerminalFrom().getVoltageLevel().getParentNetwork(), _ -> limit.remove());
         } catch (PowsyblException e) {
             mainModel.getNotificationsModel().add(Notification.createError(Instant.now(), "edit.remove.failed").withMessageArgs(description, e.getMessage()));
         }

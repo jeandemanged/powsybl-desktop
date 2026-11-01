@@ -15,6 +15,7 @@ import com.powsybl.iidm.network.ShuntCompensatorModelType;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.ConnectablePosition;
 import com.powsybl.iidm.network.regulation.RegulationMode;
+import com.powsybl.powsybldesktop.core.NetworkChanges;
 import com.powsybl.powsybldesktop.network.VoltageRegulations;
 import com.powsybl.powsybldesktop.network.edit.Connection;
 import com.powsybl.powsybldesktop.network.edit.Injections;
@@ -77,7 +78,7 @@ public final class InjectionCreations {
             String injectionName = name.get();
             Injections.Spec spec = specFields.read();
             Connection at = connection.connection();
-            NetworkEdits.apply(sceneModel.getMainModel(), network, n -> Injections.add(n, injectionId, injectionName, spec, at));
+            NetworkChanges.apply(sceneModel.getMainModel(), network, n -> Injections.add(n, injectionId, injectionName, spec, at));
             return network.getIdentifiable(injectionId);
         });
     }

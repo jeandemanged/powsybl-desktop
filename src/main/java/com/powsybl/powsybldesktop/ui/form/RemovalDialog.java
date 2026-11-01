@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.ui.form;
 
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.core.NetworkChanges;
 import com.powsybl.powsybldesktop.network.edit.Kinds;
 import com.powsybl.powsybldesktop.network.edit.Removals;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -37,7 +38,7 @@ public final class RemovalDialog {
      */
     public static void confirmThenRemove(MainModel mainModel, Window owner, Identifiable<?> identifiable) {
         if (confirm(owner, Kinds.describe(identifiable), Removals.dependents(identifiable))) {
-            Removals.remove(mainModel, identifiable);
+            NetworkChanges.remove(mainModel, identifiable);
         }
     }
 

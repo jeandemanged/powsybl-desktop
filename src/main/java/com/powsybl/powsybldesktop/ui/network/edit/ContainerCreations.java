@@ -15,6 +15,7 @@ import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.core.NetworkChanges;
 import com.powsybl.powsybldesktop.network.edit.Containers;
 import com.powsybl.powsybldesktop.network.edit.NetworkEdits;
 import com.powsybl.powsybldesktop.ui.form.CreationForm;
@@ -89,7 +90,7 @@ public final class ContainerCreations {
             }
             Containers.SubstationSpec spec = new Containers.SubstationSpec(substationId, name.get(), countryField.get(), tso.get(),
                     Double.isNaN(lat) ? null : new Coordinate(lat, lon));
-            NetworkEdits.apply(sceneModel.getMainModel(), network, n -> Containers.addSubstation(n, spec));
+            NetworkChanges.apply(sceneModel.getMainModel(), network, n -> Containers.addSubstation(n, spec));
             return network.getSubstation(substationId);
         });
     }
@@ -153,7 +154,7 @@ public final class ContainerCreations {
             }
             Containers.VoltageLevelSpec spec = new Containers.VoltageLevelSpec(voltageLevelId, name.get(), substation.get(), nominalV.get(),
                     lowVoltageLimit.get(), highVoltageLimit.get(), topologyKind.get(), bars, sections, sectionSwitchKind.get(), couplings.get());
-            NetworkEdits.apply(sceneModel.getMainModel(), network, n -> Containers.addVoltageLevel(n, spec));
+            NetworkChanges.apply(sceneModel.getMainModel(), network, n -> Containers.addVoltageLevel(n, spec));
             return network.getVoltageLevel(voltageLevelId);
         }
     }

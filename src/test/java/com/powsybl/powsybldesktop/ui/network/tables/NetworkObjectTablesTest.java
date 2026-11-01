@@ -14,7 +14,7 @@ import com.powsybl.iidm.network.ThreeSides;
 import com.powsybl.iidm.network.TwoSides;
 import com.powsybl.iidm.network.test.EurostagTutorialExample1Factory;
 import com.powsybl.powsybldesktop.core.MainModel;
-import com.powsybl.powsybldesktop.network.edit.NetworkEdits;
+import com.powsybl.powsybldesktop.core.NetworkChanges;
 import com.powsybl.powsybldesktop.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.ui.DisposableController;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
@@ -108,7 +108,7 @@ class NetworkObjectTablesTest extends AbstractHeadlessApplicationTest {
         OverloadManagementSystem system = network.getOverloadManagementSystem("OMS");
         assertEquals(1, systems.overloadManagementSystemsTableView.getItems().size());
 
-        interact(() -> NetworkEdits.apply(mainModel, network, _ -> system.remove()));
+        interact(() -> NetworkChanges.apply(mainModel, network, _ -> system.remove()));
 
         assertEquals(0, systems.overloadManagementSystemsTableView.getItems().size());
     }

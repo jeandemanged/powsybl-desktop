@@ -23,11 +23,11 @@ import com.powsybl.iidm.network.extensions.LinePosition;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
 import com.powsybl.powsybldesktop.core.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.core.NetworkChanges;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
 import com.powsybl.powsybldesktop.diagram.BaseVoltages;
 import com.powsybl.powsybldesktop.map.MapNetworkData;
 import com.powsybl.powsybldesktop.map.MapTileRenderer;
-import com.powsybl.powsybldesktop.network.edit.NetworkEdits;
 import com.powsybl.powsybldesktop.network.edit.PositionEdits;
 import com.powsybl.powsybldesktop.parameters.Basemap;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
@@ -746,7 +746,7 @@ public class MapController extends AbstractDisposableController implements Scene
                 return;
             }
             int index = unplacedListView.getSelectionModel().getSelectedIndex();
-            if (NetworkEdits.apply(mainModel, network, _ -> PositionEdits.setSubstationPosition(substation, new Coordinate(latitude, longitude)))) {
+            if (NetworkChanges.apply(mainModel, network, _ -> PositionEdits.setSubstationPosition(substation, new Coordinate(latitude, longitude)))) {
                 // until the refreshed list shows the next one: a click meanwhile would move this one instead
                 unplacedListView.getSelectionModel().clearSelection();
                 nextPlacement = index;
@@ -765,7 +765,7 @@ public class MapController extends AbstractDisposableController implements Scene
         alert.setTitle(Messages.get("edit.menu.straightRoute"));
         alert.setHeaderText(Messages.get("map.position.straightRoutes.confirm", networkData.unroutedCount()));
         if (alert.showAndWait().filter(ButtonType.OK::equals).isPresent()) {
-            NetworkEdits.apply(mainModel, network, PositionEdits::createStraightRoutes);
+            NetworkChanges.apply(mainModel, network, PositionEdits::createStraightRoutes);
         }
     }
 
@@ -775,7 +775,7 @@ public class MapController extends AbstractDisposableController implements Scene
         switch (identifiable) {
             case Substation substation -> {
                 items.add(menuItem("map.edit.moveSubstation", () -> startSubstationMove(network, substation)));
-                items.add(menuItem("map.edit.removePosition", () -> NetworkEdits.apply(mainModel, network,
+                items.add(menuItem("map.edit.removePosition", () -> NetworkChanges.apply(mainModel, network,
                         _ -> PositionEdits.removeSubstationPosition(substation))));
             }
             case TieLine tieLine -> {
@@ -788,12 +788,12 @@ public class MapController extends AbstractDisposableController implements Scene
                     editRoute.getItems().add(item);
                 }
                 items.add(editRoute);
-                MenuItem straight = menuItem("edit.menu.straightRoute", () -> NetworkEdits.apply(mainModel, network,
+                MenuItem straight = menuItem("edit.menu.straightRoute", () -> NetworkChanges.apply(mainModel, network,
                         _ -> halves.forEach(half -> PositionEdits.straightRoute(half).ifPresent(route -> PositionEdits.setRoute(half, route)))));
                 straight.setDisable(PositionEdits.straightRoute(halves.getFirst()).isEmpty());
                 items.add(straight);
                 if (!implied) {
-                    items.add(menuItem("map.edit.removeRoute", () -> NetworkEdits.apply(mainModel, network,
+                    items.add(menuItem("map.edit.removeRoute", () -> NetworkChanges.apply(mainModel, network,
                             _ -> halves.forEach(half -> PositionEdits.setRoute(half, List.of())))));
                 }
             }
@@ -813,12 +813,12 @@ public class MapController extends AbstractDisposableController implements Scene
         List<MenuItem> items = new ArrayList<>();
         items.add(menuItem(implied ? "map.edit.defineRoute" : "map.edit.editRoute", () -> startRouteEdit(network, line)));
         List<Coordinate> straightRoute = PositionEdits.straightRoute(line).orElse(null);
-        MenuItem straight = menuItem("edit.menu.straightRoute", () -> NetworkEdits.apply(mainModel, network,
+        MenuItem straight = menuItem("edit.menu.straightRoute", () -> NetworkChanges.apply(mainModel, network,
                 _ -> PositionEdits.setRoute(line, straightRoute)));
         straight.setDisable(straightRoute == null);
         items.add(straight);
         if (!implied) {
-            items.add(menuItem("map.edit.removeRoute", () -> NetworkEdits.apply(mainModel, network, _ -> PositionEdits.setRoute(line, List.of()))));
+            items.add(menuItem("map.edit.removeRoute", () -> NetworkChanges.apply(mainModel, network, _ -> PositionEdits.setRoute(line, List.of()))));
         }
         return items;
     }
@@ -891,7 +891,7 @@ public class MapController extends AbstractDisposableController implements Scene
             LOGGER.error(e.getMessage(), e);
             return;
         }
-        if (NetworkEdits.apply(mainModel, editedNetwork, _ -> {
+        if (NetworkChanges.apply(mainModel, editedNetwork, _ -> {
             if (target instanceof Substation substation) {
                 PositionEdits.setSubstationPosition(substation, points.getFirst());
             } else {

@@ -8,7 +8,7 @@ State and communication
    (except a parent controller driving its `fx:include`d children).
 2. Per-root-network state lives in `NetworkStudy`; access it with `MainModel.getStudy(network)`.
 3. After mutating a network from the UI, fire `mainModel.setUpdate()` / `setUpdate(voltageLevel)`. Creating or
-   removing network objects goes through `NetworkEdits.apply`, which fires both the structure change and the update.
+   removing network objects goes through `NetworkChanges.apply`, which fires both the structure change and the update.
 4. Only `MainController` swaps the center view, in response to `NavigationHistory.currentEventProperty()`. There is a
    single history, the main window's: views navigate through `SceneModel.navigate` / `record`, never through
    `getNavigationHistory()` directly, so that a separate window drives the main window without recording its own state.
@@ -48,8 +48,8 @@ Build
 15. Checkstyle must pass (sorted property keys, headers, formatting) — it fails the build.
 16. Do not add dependencies, re-add Monocle, set `testfx.headless`, or remove the `org.openjfx` exclusion from
     `copy-dependencies`.
-17. `ArchitectureTest` passes without adding to its frozen store (`src/test/archunit_store`): fix the dependency
-    instead, and commit the store when a fix shrinks it (see architecture, Enforced layering).
+17. `ArchitectureTest` passes: a new package goes into a layer, code using JavaFX UI goes under `ui`, and a forbidden
+    dependency is fixed, never exempted (see architecture, Enforced layering).
 18. New table views are added to `EditLockTest`; new views get a controller test (and an `*EmptyStateTest` for
     table/detail views).
 19. `README.md` stays in sync with the features: a user-visible feature added, removed or changed updates "What it
@@ -68,7 +68,7 @@ Build
 - New SLD/NAD/GUI parameter field added to `ApplicationParametersJson`'s `Binder`? Form calls its `onChange` hook?
 - New navigation type handled in `NavigationEvent.describe()` and `MainController.onNavigationEvent`?
 - User-visible feature change reflected in `README.md`?
-- New model class in a package shared with views added to the State layer in `ArchitectureTest`?
+- New package added to a layer of `ArchitectureTest`? New logic outside `ui`, with plain JUnit tests?
 - Tests added/updated and `mvn clean install` (or affected tests + `mvn checkstyle:check@default`) run?
 
 ## Known inconsistencies (documented, not to be "fixed" silently)

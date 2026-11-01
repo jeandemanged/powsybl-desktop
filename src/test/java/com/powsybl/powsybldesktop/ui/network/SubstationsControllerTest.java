@@ -15,6 +15,7 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.core.NetworkChanges;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
@@ -118,14 +119,14 @@ class SubstationsControllerTest extends AbstractHeadlessApplicationTest {
 
         // the single line diagram's render keeps the network busy for a while, refusing edits
         waitUntilNotBusy();
-        interact(() -> assertTrue(NetworkEdits.apply(mainModel, network, n -> n.newSubstation().setId("NEW_S").add())));
+        interact(() -> assertTrue(NetworkChanges.apply(mainModel, network, n -> n.newSubstation().setId("NEW_S").add())));
 
         assertTrue(findItem(treeView().getRoot(), network.getSubstation("NEW_S")) != null);
         assertEquals(vl1, treeView().getSelectionModel().getSelectedItem().getValue());
 
         Substation substation = vl1.getSubstation().orElseThrow();
         waitUntilNotBusy();
-        interact(() -> assertTrue(NetworkEdits.apply(mainModel, network, n -> NetworkEdits.apply(n,
+        interact(() -> assertTrue(NetworkChanges.apply(mainModel, network, n -> NetworkEdits.apply(n,
                 new RemoveVoltageLevelBuilder().withVoltageLevelId("VL1").build()))));
 
         assertEquals(null, findItem(treeView().getRoot(), vl1));

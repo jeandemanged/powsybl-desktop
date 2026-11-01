@@ -24,10 +24,10 @@ directory. Code outside `ui` (and the shell) is therefore unit-testable without 
 | Package | Responsibility |
 |---|---|
 | root (`…/`) | The shell: `Launcher`, `MainApplication`, `SplashScreen`, `MainController` |
-| `core` | The shared state: `MainModel`, `NetworkStudy`, `AbstractNetworkTask`, `NetworkStructureChange` |
+| `core` | The shared state: `MainModel`, `NetworkStudy`, `AbstractNetworkTask`, `NetworkStructureChange`, `NetworkChanges` (the single mutation funnel) |
 | `navigation` | `NavigationType`, `NavigationEvent` (record), `NavigationState` + one subclass per restorable selection, `NavigationHistory` |
 | `network` | `NetworkIO` (import/export formats, format detection of a file, import and export with their reports), `NetworkAndReport`, `NetworkTieLines`, `VoltageRegulations` (IIDM voltage regulation helpers), sample networks (`MapTestNetworkFactory`) |
-| `network/edit` | Changing the network structure: `NetworkEdits` (the single mutation funnel), what each creation builds from its values (`Containers`, `Injections`, `Branches`, `Topologies`, `LineModifications`, `NetworkObjects`, each with spec records; `Connection` for where a feeder is connected), `Removals` (what a removal takes along, and the removal itself), `PositionEdits`, `FeederOrders`, `Kinds` |
+| `network/edit` | Changing the network structure: `NetworkEdits` (applying modifications, ids proposed), what each creation builds from its values (`Containers`, `Injections`, `Branches`, `Topologies`, `LineModifications`, `NetworkObjects`, each with spec records; `Connection` for where a feeder is connected), `Removals` (what a removal takes along, and the removal itself), `PositionEdits`, `FeederOrders`, `Kinds` |
 | `search` | `NetworkSearch` (kinds, container resolution), `NetworkSearchIndex` (Lucene) |
 | `diagram` | `BaseVoltages` (base voltage ranges and colors as single line diagrams use them, for whatever colors equipment outside diagrams), `SubstationDiagramRenderer`, `NetworkAreaDiagramRenderer` |
 | `map` | `MapNetworkData` snapshot, `MapTileRenderer` |
@@ -47,7 +47,7 @@ directory. Code outside `ui` (and the shell) is therefore unit-testable without 
 | `ui/network` | `NetworksController` (load/import/export/merge/detach networks), `SubstationsController` (tree + SLD/NAD tabs + embedded tables), `ContainerDiagram`, `DropImportDialog` |
 | `ui/network/tables` | One controller per equipment table, `AbstractEquipmentTableController`, `EmbeddableEquipmentTable`, `ViolationColumns` (columns of the Violations and Security Analysis Results views), `ColumnVisibilityToolbarController`, `TableEditActions` (a table's context menu: details, creations, removal), edit dialogs |
 | `ui/network/detail` | Equipment detail views, one `AbstractEquipmentDetailController` subclass per equipment type, opened by `EquipmentDetails.open` as separate-window tabs (`EquipmentDetails.equipmentLink` links one to another), and their reusable parts: `EquipmentSymbol`, `ReactiveLimitsPane` + `CapabilityChart`, `TapChangerPane`, `ExtensionsPane` + `ExtensionEditors`, `KeyValueTablePane` (properties, aliases), `CoordinatesPane` |
-| `ui/network/edit` | Creation dialogs (`CreateDialog` + `ui/form/CreationForm`, `ConnectionSection`) per family (`ContainerCreations`, `InjectionCreations`, `BranchCreations`, `NetworkObjectEdits`, `TopologyEdits`, `LineEdits`): they read and check the fields, then apply the matching `network/edit` builder through `NetworkEdits.apply`; and the menus offering them everywhere (`EditMenus`) |
+| `ui/network/edit` | Creation dialogs (`CreateDialog` + `ui/form/CreationForm`, `ConnectionSection`) per family (`ContainerCreations`, `InjectionCreations`, `BranchCreations`, `NetworkObjectEdits`, `TopologyEdits`, `LineEdits`): they read and check the fields, then apply the matching `network/edit` builder through `NetworkChanges.apply`; and the menus offering them everywhere (`EditMenus`) |
 | `ui/network/limits` | `OperationalLimitsPane`: an equipment's operational limits groups, read-only with violations highlighted (`FlowViolationsDialog`) or editable (detail views) |
 | `ui/network/search` | `SearchBoxController` (reusable search box) |
 | `ui/diagram` | `DiagramPaneController`: reusable WebView viewport (zoom, fit, PNG/SVG export); `MapBaseVoltages` (per base voltage filter checkboxes, in the map and the GUI parameters) |
@@ -63,29 +63,29 @@ directory. Code outside `ui` (and the shell) is therefore unit-testable without 
 
 ## Enforced layering
 
-`src/test/java/com/powsybl/powsybldesktop/ArchitectureTest.java` (ArchUnit) checks the dependencies between these layers,
-each one using only the layers below it (from top to bottom):
+`src/test/java/com/powsybl/powsybldesktop/ArchitectureTest.java` (ArchUnit) checks, by package only, that each layer
+uses only the layers below it (from top to bottom):
 
-| Layer | Classes |
+| Layer | Packages |
 |---|---|
-| Shell | `Launcher`, `MainApplication`, `MainController`, `SplashScreen` |
-| Views | everything not listed in the other layers |
-| State | `core`, `navigation`, and the sub-models with their values: `LogsModel`, `Notification*` (not the views), `ParametersModel`, `ApplicationParameters` and its parts (`Basemap` included), `ApplicationParametersJson`, `ParametersConfigFile` |
-| Domain | `violations`, `loadflow`, `security`, `search`, `contingency` (no `javafx.scene`/`javafx.stage`) |
+| Shell | the root package: `Launcher`, `MainApplication`, `MainController`, `SplashScreen` |
+| UI | `ui..` |
+| State | `core`, `navigation`, `logs` |
+| Domain | `network..` (`network.edit` included), `search`, `diagram`, `map`, `contingency`, `loadflow`, `security`, `violations`, `memory`, `parameters`, `notification` |
 | Base | `utils`, `util`, `reports` |
 
-The sub-models in the State layer are listed class by class because they share packages with views. So when you add a
-model class to such a package, add it to the State list in the test, or the test treats it as a view.
-Views therefore never reference `MainApplication`: resources are loaded relative to `MainModel.class`, and the window
-title is `MainModel.APP_TITLE`. `ArchitectureTest` also checks that the view packages are free of cycles, that only
-`MainController` and `SceneModel` call `MainModel.getNavigationHistory()`, and that only the shell and `SeparateWindows`
-create a `Stage`.
+Every class must be in a layer: a new top-level package fails the test until it is added to one. The test also checks
+that:
+- nothing outside the shell and `ui` uses JavaFX UI (`javafx.scene`, `javafx.stage`, `javafx.fxml`, ControlsFX,
+  Ikonli): the rest is unit-testable without a toolkit. `javafx.beans`/`javafx.collections` (observable models) are
+  allowed everywhere;
+- no packages depend on each other in a cycle;
+- only `MainController` and `SceneModel` call `MainModel.getNavigationHistory()`;
+- only the shell and `SeparateWindows` create a `Stage`.
 
-Existing violations are frozen in `src/test/archunit_store` (path set in `src/test/resources/archunit.properties`). A
-new violation fails the build, and a fixed one is removed from the store by the next run (commit the updated store). Cycles
-are recorded per package edge, so a new class dependency along an already cyclic edge passes, but a new cyclic edge
-fails. Never refreeze (`-Darchunit.freeze.refreeze=true`) to accept a new violation; that is only for re-recording the
-store after a rule's own text changes. Nothing is frozen today.
+Every rule is strict: fix the dependency, never weaken a rule or exempt a class to make a change pass. Views never
+reference `MainApplication`: resources are loaded relative to the class next to them (or by absolute path for the
+root's `styles.css` and logo), and the window title is `MainModel.APP_TITLE`.
 
 ## Entry point and lifecycle
 
@@ -134,7 +134,8 @@ Rules:
 
 ## Structural edits (creating and removing network objects)
 
-- Every creation or removal goes through `network/edit/NetworkEdits.apply(mainModel, network, change)`: refused (error
+- Every creation or removal goes through `core/NetworkChanges.apply(mainModel, network, change)` (removals:
+  `NetworkChanges.remove(mainModel, identifiable)`): refused (error
   notification) while the network is busy, run on the FX thread (a few objects, like value edits). A temporary IIDM
   `NetworkListener` on the root network collects what `change` created and removed - modifications create and remove
   more than they are given (a bay's switches, a voltage level's contents, a converter station's HVDC line) - and

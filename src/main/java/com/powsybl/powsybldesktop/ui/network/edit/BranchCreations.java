@@ -19,6 +19,7 @@ import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.ConnectablePosition;
+import com.powsybl.powsybldesktop.core.NetworkChanges;
 import com.powsybl.powsybldesktop.network.edit.Branches;
 import com.powsybl.powsybldesktop.network.edit.Connection;
 import com.powsybl.powsybldesktop.network.edit.NetworkEdits;
@@ -71,7 +72,7 @@ public final class BranchCreations {
             Branches.LineSpec spec = new Branches.LineSpec(id.get(), name.get(), r.get(), x.get(), g1.get(), b1.get(), g2.get(), b2.get());
             Connection at1 = side1.connection();
             Connection at2 = side2.connection();
-            NetworkEdits.apply(sceneModel.getMainModel(), network, n -> Branches.addLine(n, spec, at1, at2));
+            NetworkChanges.apply(sceneModel.getMainModel(), network, n -> Branches.addLine(n, spec, at1, at2));
             return network.getLine(spec.id());
         });
     }
@@ -106,7 +107,7 @@ public final class BranchCreations {
                             g.get(), b.get(), ratedU1.get(), ratedU2.get(), ratedS.get());
                     Connection at1 = side1.connection();
                     Connection at2 = side2.connection();
-                    NetworkEdits.apply(sceneModel.getMainModel(), network, _ -> Branches.addTwoWindingsTransformer(substation, spec, at1, at2));
+                    NetworkChanges.apply(sceneModel.getMainModel(), network, _ -> Branches.addTwoWindingsTransformer(substation, spec, at1, at2));
                     return network.getTwoWindingsTransformer(spec.id());
                 });
     }
@@ -165,7 +166,7 @@ public final class BranchCreations {
                     .map(leg -> new Branches.Leg(leg.r().get(), leg.x().get(), leg.g().get(), leg.b().get(), leg.ratedU().get(), leg.connection().connection()))
                     .toList();
             Branches.ThreeWindingsTransformerSpec spec = new Branches.ThreeWindingsTransformerSpec(id.get(), name.get(), ratedU0.get(), legSpecs);
-            NetworkEdits.apply(sceneModel.getMainModel(), substation.getParentNetwork(), _ -> Branches.addThreeWindingsTransformer(substation, spec));
+            NetworkChanges.apply(sceneModel.getMainModel(), substation.getParentNetwork(), _ -> Branches.addThreeWindingsTransformer(substation, spec));
             return substation.getParentNetwork().getThreeWindingsTransformer(spec.id());
         }
     }
@@ -191,7 +192,7 @@ public final class BranchCreations {
                 throw new CreationForm.FieldException(boundaryLine2.getEditor(), Messages.get("edit.create.sameBoundaryLine"));
             }
             String tieLineName = name.get();
-            NetworkEdits.apply(sceneModel.getMainModel(), network, n -> Branches.addTieLine(n, tieLineId, tieLineName, line1, line2));
+            NetworkChanges.apply(sceneModel.getMainModel(), network, n -> Branches.addTieLine(n, tieLineId, tieLineName, line1, line2));
             return network.getTieLine(tieLineId);
         });
     }
@@ -224,7 +225,7 @@ public final class BranchCreations {
             }
             Branches.HvdcLineSpec spec = new Branches.HvdcLineSpec(hvdcLineId, name.get(), converter1, converter2, r.get(), nominalV.get(),
                     convertersMode.get(), setpoint.get(), maxP.get());
-            NetworkEdits.apply(sceneModel.getMainModel(), network, n -> Branches.addHvdcLine(n, spec));
+            NetworkChanges.apply(sceneModel.getMainModel(), network, n -> Branches.addHvdcLine(n, spec));
             return network.getHvdcLine(hvdcLineId);
         });
     }
