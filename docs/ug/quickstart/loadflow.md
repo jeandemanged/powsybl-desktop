@@ -1,7 +1,7 @@
 # Load flow
 
 This tutorial runs an AC load flow on SmallGrid and goes through its results: convergence, flows and voltages in a
-single-line diagram, and the limit violations. It starts from the network loaded in the
+single-line diagram, and the limit violations, in a table and on the map. It starts from the network loaded in the
 [previous tutorial](load_network.md).
 
 ## Run the load flow
@@ -53,5 +53,15 @@ Open **Tables** > **Violations**. The **Flows** tab lists the branches loaded be
 On SmallGrid, two lines are overloaded. The **Loading** column shows how far beyond its permanent limit each one is,
 and for how long it may stay so (here 1 and 15 minutes). The info button next to the bar opens the details of the
 line's violations, and its limits with the crossed ones highlighted. See [Violations](../views/violations.md).
+
+The **Voltages** tab is empty: all bus voltages are within the limits of their voltage level.
+
+## See the violations on the map
+
+Click **Map** in the main toolbar. A red warning bubble now marks each overloaded line, above its middle.
+
+![Limit violations on the map](../_generated/images/quickstart-loadflow-map.png)
+
+Hover a bubble to list the line's violations; click it to open the line's details.
 
 Next, check what happens when lines trip with a [security analysis](security_analysis.md).

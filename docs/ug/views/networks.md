@@ -65,7 +65,7 @@ Below them, three tabs:
 ### Load a sample network
 
 - In the import menu, open **Sample Networks** and pick a network: IEEE test cases (9 to 300 buses), CGMES conformity
-  and ReliCap grids, the Metrix tutorial, and under **Miscellaneous Testing** the PowSyBl test networks.
+  and ReliCap grids, the Metrix tutorial, SmallGrid with voltage limits, and under **Miscellaneous Testing** the PowSyBl test networks.
 - Sample networks labelled **(Geographical Layout)** come with substation and line positions, which the [Map](map.md)
   displays.
 

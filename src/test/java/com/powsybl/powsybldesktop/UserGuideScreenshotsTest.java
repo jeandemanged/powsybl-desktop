@@ -13,12 +13,14 @@ import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
+import com.powsybl.powsybldesktop.parameters.MapViolationLayer;
 import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Labeled;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
@@ -104,14 +106,16 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
 
         clickOn("#importMenuButton");
         moveTo(shown(Messages.get("networks.toolbar.import.sampleNetworks")), Motion.HORIZONTAL_FIRST);
-        moveTo(shown("CgmesConformity1Catalog"), Motion.HORIZONTAL_FIRST);
-        String smallNodeBreaker = "smallNodeBreaker (" + Messages.get("networks.toolbar.import.sampleNetworks.geographicalLayout") + ")";
+        String smallNodeBreaker = "smallNodeBreakerWithVoltageLimits (" + Messages.get("networks.toolbar.import.sampleNetworks.geographicalLayout") + ")";
         moveTo(shown(smallNodeBreaker), Motion.HORIZONTAL_FIRST);
         screenshot("quickstart-sample-menu");
         clickOn(shown(smallNodeBreaker), Motion.HORIZONTAL_FIRST);
 
         waitUntil(() -> mainModel.getNetwork() != null && !mainModel.isBusy(mainModel.getNetwork()));
         screenshot("quickstart-network-loaded");
+
+        openMap();
+        screenshot("quickstart-network-map");
         return mainModel.getNetwork();
     }
 
@@ -140,6 +144,9 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
 
         openTable("main.toolbar.violations");
         screenshot("quickstart-loadflow-violations");
+
+        openMap();
+        screenshot("quickstart-loadflow-map");
     }
 
     private void runSecurityAnalysis(Network network) throws TimeoutException {
@@ -167,6 +174,14 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         clickOn(flowsByContingencyTab);
         WaitForAsyncUtils.waitForFxEvents();
         screenshot("quickstart-sa-flows-by-contingency");
+
+        openMap();
+        screenshot("quickstart-sa-map");
+        // the Violations box is outside the headless window, which only shows the main view's top left part
+        CheckBox contingencyVoltage = (CheckBox) shown(MapViolationLayer.CONTINGENCY_VOLTAGE.getLabel());
+        interact(() -> contingencyVoltage.setSelected(false));
+        waitForWebViews();
+        screenshot("quickstart-sa-map-no-contingency-voltage");
     }
 
     // Menu labels also exist in menus that aren't showing: only a node of a showing window can be pointed at
@@ -179,6 +194,11 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         clickOn(shown(Messages.get("main.toolbar.tables")), Motion.HORIZONTAL_FIRST);
         clickOn(shown(Messages.get(key)), Motion.HORIZONTAL_FIRST);
         WaitForAsyncUtils.waitForFxEvents();
+    }
+
+    private void openMap() {
+        clickOn(shown(Messages.get("main.toolbar.map")), Motion.HORIZONTAL_FIRST);
+        waitForWebViews();
     }
 
     private static void waitUntil(Callable<Boolean> condition) throws TimeoutException {
