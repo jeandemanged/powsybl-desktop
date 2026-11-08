@@ -48,9 +48,11 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
 
     private MainModel mainModel;
     private SeparateWindows separateWindows;
+    private Stage mainStage;
 
     @Override
     public void start(Stage stage) {
+        mainStage = stage;
         mainModel = new MainModel();
         mainModel.addNetwork(network);
         mainModel.addNetwork(otherNetwork);
@@ -299,6 +301,20 @@ class SeparateWindowsTest extends AbstractHeadlessApplicationTest {
 
         assertEquals(1, separateWindows.getOpenWindows().size());
         assertEquals(List.of("a", "b"), separateWindows.getOpenWindows().getFirst().getTabTitles());
+    }
+
+    // on the screen of the window it's opened from, not on the primary screen
+    @Test
+    void newWindowOpensCenteredOverTheWindowItIsOpenedFrom() {
+        interact(() -> {
+            mainStage.setX(300);
+            mainStage.setY(200);
+        });
+        interact(() -> separateWindows.openSingleInstance("a", () -> "a", _ -> new SeparateWindows.View(new StackPane(), () -> { }, 100, 50)));
+
+        Stage window = windows("a").getFirst();
+        assertEquals(mainStage.getX() + mainStage.getWidth() / 2, window.getX() + 50, 1);
+        assertEquals(mainStage.getY() + mainStage.getHeight() / 2, window.getY() + 25, 1);
     }
 
     @Test

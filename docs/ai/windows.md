@@ -14,6 +14,9 @@ create a `Stage` for a view elsewhere (`ArchitectureTest` allows only the shell 
 
 - Independent stages, not owned by the main window, so that the main window can come in front of them. Never raise
   them from a focus listener: it steals the activation from the clicked window.
+- A new window opens centered over the window it's opened from (the focused one, else the main window), kept within
+  that window's screen (`showOverActiveWindow`): JavaFX centers an unpositioned stage with no owner on the primary screen. Dialogs get
+  the window they're opened from as owner, for the same reason.
 - A window closes with its last tab, and all close with the main window. A view's controller is disposed when its tab
   closes or its window hides, not when the tab moves to another window.
 - A tab can be dragged to another window's tab strip, reordered, or dropped outside any window to get its own window

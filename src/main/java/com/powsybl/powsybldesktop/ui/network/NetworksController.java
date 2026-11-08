@@ -1153,6 +1153,7 @@ public class NetworksController extends AbstractDisposableController {
 
     private boolean confirmClose(String message) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION, message, ButtonType.YES, ButtonType.NO);
+        alert.initOwner(networksTreeView.getScene().getWindow());
         alert.setHeaderText(null);
         return alert.showAndWait().filter(ButtonType.YES::equals).isPresent();
     }

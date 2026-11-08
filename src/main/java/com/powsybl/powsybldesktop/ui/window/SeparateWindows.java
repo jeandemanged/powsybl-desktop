@@ -25,6 +25,7 @@ import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -56,6 +57,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.robot.Robot;
 import javafx.stage.Popup;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import org.kordamp.ikonli.javafx.FontIcon;
@@ -493,7 +495,7 @@ public final class SeparateWindows {
     void move(String key, DetachedWindow target, int index) {
         SeparateView view = find(key).orElseThrow();
         if (target == null) {
-            newWindowFor(view, view.window.stage.getScene().getWidth(), view.window.stage.getScene().getHeight()).stage.show();
+            showOverActiveWindow(newWindowFor(view, view.window.stage.getScene().getWidth(), view.window.stage.getScene().getHeight()).stage);
         } else {
             move(view, target, index);
         }
@@ -542,7 +544,7 @@ public final class SeparateWindows {
         } else {
             DetachedWindow window = new DetachedWindow(content.width(), content.height());
             window.add(view, 0);
-            window.stage.show();
+            showOverActiveWindow(window.stage);
         }
     }
 
@@ -559,6 +561,25 @@ public final class SeparateWindows {
         DetachedWindow window = new DetachedWindow(width, height);
         move(view, window, 0);
         return window;
+    }
+
+    // without an explicit position, JavaFX centers a stage with no owner on the primary screen
+    private void showOverActiveWindow(Stage stage) {
+        Window source = Window.getWindows().stream()
+                .filter(window -> window != stage && window.isFocused())
+                .findFirst()
+                .orElseGet(mainWindow);
+        if (source != null && source.isShowing()) {
+            Rectangle2D bounds = Screen.getScreensForRectangle(source.getX(), source.getY(), source.getWidth(), source.getHeight()).stream()
+                    .findFirst()
+                    .orElseGet(Screen::getPrimary)
+                    .getVisualBounds();
+            double width = stage.getScene().getWidth();
+            double height = stage.getScene().getHeight();
+            stage.setX(Math.clamp(source.getX() + (source.getWidth() - width) / 2, bounds.getMinX(), Math.max(bounds.getMinX(), bounds.getMaxX() - width)));
+            stage.setY(Math.clamp(source.getY() + (source.getHeight() - height) / 2, bounds.getMinY(), Math.max(bounds.getMinY(), bounds.getMaxY() - height)));
+        }
+        stage.show();
     }
 
     private void tearOff(SeparateView view, Point2D position) {
