@@ -20,7 +20,7 @@ column, hover it to read it in full in a tooltip.
 ![The logs of a security analysis](../_generated/images/logs.png)
 
 New messages appear as they are logged, and the table scrolls to the newest one. Only the latest 20,000 messages are
-kept, and the logs are not saved between sessions.
+kept. The logs are not saved between sessions, unless saved in a [study](../general/index.md#studies).
 
 For the detailed outcome of an import, export, load flow or security analysis, see the [Reports](reports.md) view
 instead.

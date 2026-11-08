@@ -39,6 +39,7 @@ used, so tests of `core` start the toolkit with `Platform.startup`.
 | `parameters` | `ParametersModel`, `ApplicationParameters` record, `GuiParameters` (with the map's `Basemap`, ...), `DesktopSldParameters`/`DesktopNadParameters` (PowSyBl's diagram parameters plus desktop-only fields), `ApplicationParametersJson`, `ParametersConfigFile` |
 | `notification` | `Notification` record, `NotificationAction`, `NotificationStatus`, `NotificationsModel` |
 | `logs` | `LogsModel` (Logback appender → observable list) |
+| `study` | Study files: `Study` (capture from / restore to `MainModel`), `StudyArchive` (`.psbx` zip write/read), see [domain-and-persistence.md](domain-and-persistence.md#studies) |
 | `memory` | `MaxHeapConfig` (the launcher `.cfg`'s `-Xmx` line) |
 | `reports` | `PowsyblDesktopReportResourceBundle` registering `reports(_fr).properties` |
 | `utils` | `Messages`, `Labels`, `ListenerManager`, `LanguagePreferences`, `Futures` (waiting on a PowSyBl future so that interruption cancels it), `UserGuide` (where the built user's guide is) |
@@ -59,6 +60,7 @@ used, so tests of `core` start the toolkit with `Platform.startup`.
 | `ui/notification` | Overlay popup and history panel (`NotificationOverlay`, `NotificationView`, `NotificationsController`) |
 | `ui/report` | Report viewer (`ReportsController`, `ReportNodeViewController`, `ReportNodeTreeCell`) |
 | `ui/logs`, `ui/memory`, `ui/about` | Logs view, small secondary windows |
+| `ui/study` | File > Save Study / Load Study: `StudyCommands`, `SaveStudyDialog` |
 
 `src/main/java-templates/…/util/PowsyblDesktopVersion.java` is filled in at build time by the
 `templating-maven-plugin` (declared in `pom.xml`, configured by `powsybl-parent`).
@@ -72,7 +74,7 @@ uses only the layers below it (from top to bottom):
 |---|---|
 | Shell | the root package: `Launcher`, `MainApplication`, `MainController`, `SplashScreen` |
 | UI | `ui..` |
-| State | `core`, `navigation`, `logs` |
+| State | `core`, `navigation`, `logs`, `study` |
 | Domain | `network..` (`network.edit` included), `search`, `diagram`, `map`, `contingency`, `loadflow`, `security`, `violations`, `memory`, `parameters`, `notification` |
 | Base | `utils`, `util`, `reports` |
 

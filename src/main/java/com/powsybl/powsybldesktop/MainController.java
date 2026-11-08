@@ -67,6 +67,7 @@ import com.powsybl.powsybldesktop.ui.notification.NotificationOverlay;
 import com.powsybl.powsybldesktop.ui.notification.NotificationsController;
 import com.powsybl.powsybldesktop.ui.parameters.ParametersController;
 import com.powsybl.powsybldesktop.ui.report.ReportsController;
+import com.powsybl.powsybldesktop.ui.study.StudyCommands;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.ui.window.SceneView;
 import com.powsybl.powsybldesktop.ui.window.SeparateWindows;
@@ -198,6 +199,16 @@ public class MainController extends AbstractDisposableController {
         separateWindows.setMainWindow(() -> borderPane.getScene() == null ? null : borderPane.getScene().getWindow());
         this.sceneModel = SceneModel.main(mainModel, separateWindows);
         mainModel.setNetworkChangeGuard(separateWindows::confirmNetworkChange);
+    }
+
+    @FXML
+    protected void onSaveStudy() {
+        StudyCommands.save(borderPane.getScene().getWindow(), sceneModel);
+    }
+
+    @FXML
+    protected void onLoadStudy() {
+        StudyCommands.load(borderPane.getScene().getWindow(), sceneModel);
     }
 
     @FXML

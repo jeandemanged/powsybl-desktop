@@ -23,8 +23,10 @@ Paths `…/X.java` are relative to `src/main/java/com/powsybl/powsybldesktop/`.
    `LoadFlowParameters.copy()`, `SecurityAnalysisRun.copyParameters(SecurityAnalysisParameters)`,
    `ApplicationParametersJson.copy(...)` for SLD/NAD.
 5. Plain `Task`s are only for work not touching a loaded network: network import (`NetworksController.runImport`,
-   `runImports`, calling `NetworkIO.importNetwork`) and sample networks (`loadSample`), whose network isn't loaded yet
-   (no study to mark busy); format detection of dropped files; the search box's Lucene query.
+   `runImports`, calling `NetworkIO.importNetwork`), sample networks (`loadSample`) and study loading
+   (`StudyCommands`), whose networks aren't loaded yet (no study to mark busy). Saving a study writes several root
+   networks at once, so instead of an `AbstractNetworkTask` it marks each of them busy with `markBusy` before
+   starting and releases them in its handlers (it can't be cancelled); format detection of dropped files; the search box's Lucene query.
 
 ## The busy lock
 

@@ -20,7 +20,7 @@ views side by side, open them in [separate windows](#separate-windows-and-tabs).
 
 | Menu         | Items                                                                                              |
 |--------------|----------------------------------------------------------------------------------------------------|
-| **File**     | **Exit** closes the application, with all its windows. With networks loaded, it first asks for confirmation, as their unsaved changes are lost; closing the main window does the same. Turn this off with **Confirm before exiting** in the parameters' **User Interface** tab. |
+| **File**     | **Load Study…** and **Save Study…** load and save a [study](#studies). **Exit** closes the application, with all its windows. With networks loaded, it first asks for confirmation, as their unsaved changes are lost; closing the main window does the same. Turn this off with **Confirm before exiting** in the parameters' **User Interface** tab. |
 | **Language** | **English** or **Français**. See [Language](#language).                                            |
 | **Windows**  | One submenu per separate window. See [Separate windows and tabs](#separate-windows-and-tabs).     |
 | **Help**     | **User's Guide (PDF)** and **User's Guide (HTML)** open this guide with the system's PDF viewer or web browser, **Memory** opens the memory window, **About** shows links to PowSyBl, the versions of the PowSyBl modules and the third-party licenses. |
@@ -117,6 +117,27 @@ The popup hides by itself a few seconds after the operation ends. The speech bub
 toolbar opens the notifications panel, which keeps all of them; **Clear all** empties it.
 
 ![The notifications panel](../_generated/images/general-notifications.png)
+
+## Studies
+
+A study saves the application's work in a single `.psbx` file, to resume it later or hand it to someone else:
+**File** > **Save Study…** writes it, **File** > **Load Study…** reads it back.
+
+Saving first asks what the study holds, in two groups of check boxes, each with **All** and **None** buttons:
+
+- **Data**: **Parameters**, **Contingencies** (the contingency lists, with whether each one is enabled), **Load Flow
+  Results**, **Security Analysis Results**, **Reports** and **Logs**;
+- **Networks**: the loaded networks to save, each with its subnetworks. A network is saved with its current values,
+  including the ones a load flow computed.
+
+Loading a study replaces the loaded networks by the study's. With networks loaded, it first asks for confirmation, and
+offers **Save Study First…** to keep them in a study before. The parameters, reports and logs are replaced by the
+study's when it holds them, and kept otherwise. The network selected when the study was saved is selected again.
+Limit violations and the search index are computed again once the networks are loaded.
+
+Saving and loading can take a while for large networks: a progress bar shows each step, and the application can't be
+used meanwhile. A notification tells the outcome. A network busy with another operation, such as a running load flow,
+can't be saved until it is over.
 
 ## Language
 

@@ -128,7 +128,29 @@ There is no database. Persistent state is:
 | UI language | Java Preferences API | `…/utils/LanguagePreferences.java` |
 | Last file-chooser directory | Java Preferences API | `…/ui/controls/FileChooserPreferences.java` |
 | Networks | User files, imported/exported through PowSyBl `Importer`/`Exporter` | `NetworksController` (import: plain `Task`; export: `AbstractNetworkTask`), `NetworkIO` |
+| Studies (parameters, networks, contingency lists, results, reports, logs) | User-chosen `.psbx` zip file | `…/study/StudyArchive.java`, see [Studies](#studies) |
 | Contingency lists, parameters, reports, diagrams | User-chosen JSON/text/SVG/PNG files | `ContingencyListsIO`, `ApplicationParametersJson`, `ReportsController`, `DiagramPaneController` |
 
 Use the existing helpers (and `FileChooserPreferences` for any new `FileChooser`) rather than adding new storage.
-Network state (loaded networks, results, contingency lists) is not persisted between runs.
+Network state (loaded networks, results, contingency lists) is not persisted between runs, except in study files.
+
+## Studies
+
+File > Save Study / Load Study write and read the app's state as one zip file, `.psbx`
+(`…/study/StudyArchive.java`, layout in its javadoc): a `manifest.json` (format version, networks in order with the
+selected one and their contingency lists' enabled flags, report count, `null` when reports are not saved), then one
+file per part, each written by an existing serializer — `ApplicationParametersJson`, binary IIDM (`NetworkSerDe`,
+subnetworks included), `ContingencyListsIO`, PowSyBl's load flow / security analysis result and `ReportNode` JSON
+serializers — plus the logs as JSON. Entries are written and read through the JDK zip file system (`jdk.zipfs`,
+listed explicitly in the packaging scripts since jdeps can't see it), so these serializers must go through
+`Files`/`Path`, never `Path.toFile()`. A write goes to a `.tmp` sibling first, moved over the target once complete.
+
+- `…/study/Study.java` is the content: `capture` snapshots the chosen root networks and `Part`s on the FX thread
+  (parameters deep-copied through their JSON), `restore` replaces the loaded networks and, when the study holds them,
+  the parameters, reports and logs (FX thread). Violations and search indexes are not saved: they are rebuilt when
+  the networks are added, the networks carrying the load flow's values.
+- Restored logs are renumbered below 0 so that they stay ordered before the session's own (`LogsModel.restoreLogs`).
+- `…/ui/study/StudyCommands.java` drives both: `SaveStudyDialog` (Data and Networks check boxes with All/None), file
+  choice, then a `Service` behind an application-modal progress dialog fed by the archive's per-step `Progress`.
+  Saving marks the saved networks busy (refused if one already is); loading is a plain `Task` (networks not loaded
+  yet), asks to confirm replacing loaded networks and offers to save them in a study first.

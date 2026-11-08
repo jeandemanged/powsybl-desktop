@@ -74,6 +74,13 @@ public class LogsModel {
         logs.clear();
     }
 
+    /**
+     * Replaces the logs by a study's, which must be numbered below this session's logs to stay ordered before them.
+     */
+    public void restoreLogs(List<LogEntry> entries) {
+        logs.setAll(entries);
+    }
+
     class Appender extends AppenderBase<ILoggingEvent> {
 
         @Override

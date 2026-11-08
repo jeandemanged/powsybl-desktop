@@ -40,7 +40,7 @@ class ArchitectureTest {
     // for the package rules only: tests legitimately do what production code may not, e.g. use the navigation history
     private static final JavaClasses CLASSES_AND_TESTS = new ClassFileImporter().importPackages(ROOT);
 
-    private static final String[] STATE = packages("core..", "navigation..", "logs..");
+    private static final String[] STATE = packages("core..", "navigation..", "logs..", "study..");
     private static final String[] DOMAIN = packages("network..", "search..", "diagram..", "map..", "contingency..", "loadflow..",
             "security..", "violations..", "memory..", "parameters..", "notification..");
     private static final String[] BASE = packages("utils..", "util..", "reports..");

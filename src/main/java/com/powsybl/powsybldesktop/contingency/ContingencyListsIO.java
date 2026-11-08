@@ -14,6 +14,9 @@ import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.contingency.list.ListOfContingencyLists;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
@@ -35,11 +38,16 @@ public final class ContingencyListsIO {
         return mapper;
     }
 
+    // through streams rather than path.toFile(): the path can be inside a study's zip file system
     public static ContingencyList read(Path path) throws IOException {
-        return mapper().readValue(path.toFile(), ContingencyList.class);
+        try (InputStream in = Files.newInputStream(path)) {
+            return mapper().readValue(in, ContingencyList.class);
+        }
     }
 
     public static void write(ListOfContingencyLists list, Path path) throws IOException {
-        mapper().writerWithDefaultPrettyPrinter().writeValue(path.toFile(), list);
+        try (OutputStream out = Files.newOutputStream(path)) {
+            mapper().writerWithDefaultPrettyPrinter().writeValue(out, list);
+        }
     }
 }

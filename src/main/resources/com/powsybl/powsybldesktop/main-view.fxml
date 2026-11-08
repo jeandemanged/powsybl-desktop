@@ -20,6 +20,9 @@
                     <menus>
                         <Menu mnemonicParsing="false" text="%main.menu.file">
                             <items>
+                                <MenuItem mnemonicParsing="false" onAction="#onLoadStudy" text="%main.menu.file.loadStudy" />
+                                <MenuItem mnemonicParsing="false" onAction="#onSaveStudy" text="%main.menu.file.saveStudy" />
+                                <SeparatorMenuItem mnemonicParsing="false" />
                                 <MenuItem mnemonicParsing="false" onAction="#onExit" text="%main.menu.file.exit" />
                             </items>
                         </Menu>

@@ -80,6 +80,8 @@ _Help > User's Guide_. Its sources are in [`docs/ug`](docs/ug).
   contingency lists (JSON import/export); load flow, security analysis results and limit violations views.
 - **Reports, logs and notifications** for every operation; parameters saved to a per-user configuration file;
   English and French UI.
+- **Studies**: save the parameters, chosen networks with their contingency lists and load flow and security analysis
+  results, reports and logs to a single `.psbx` file, and load it back.
 
 ## What it cannot do yet
 
@@ -101,7 +103,6 @@ The following PowSyBl features are not supported yet in PowSyBl Desktop and are 
   [scaling](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/grid_features/network_modifications/scaling.html),
   [load flow validation](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/grid_features/loadflow_validation/index.html),
   network variants, time series.
-- **Persistence of a study**: loaded networks, results and contingency lists are not saved between runs.
 
 ## Developer guide
 
