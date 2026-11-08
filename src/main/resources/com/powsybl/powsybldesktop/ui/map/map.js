@@ -339,7 +339,7 @@ function setBasemap(name) {
 
 // A single shared tooltip, re-anchored whenever the hovered element changes. Hover and clicks are hit-tested by
 // MapController, which returns what is under the mouse as {key, text, lat, lng, violations}: its name, then one line
-// per violation, set as text rather than HTML.
+// per violation, {text, contingency}, set as text rather than HTML.
 var tooltip = L.tooltip();
 var hovered = null;
 var pendingHoverEvent = null;
@@ -369,10 +369,10 @@ function tooltipContent(hit) {
     content.appendChild(title);
     if (hit.violations.length > 0) {
         title.className = 'tooltip-title';
-        hit.violations.forEach(function (text) {
+        hit.violations.forEach(function (violation) {
             var line = document.createElement('div');
-            line.className = 'tooltip-violation';
-            line.textContent = text;
+            line.className = violation.contingency ? 'tooltip-violation contingency' : 'tooltip-violation';
+            line.textContent = violation.text;
             content.appendChild(line);
         });
     }

@@ -10,7 +10,7 @@ A toolbar with four buttons (described by their tooltips), then one tab per fami
 
 | Tab | What it sets |
 |---|---|
-| **User Interface** | Settings of the application itself, in the categories **Decimal Places** (number of decimals of each displayed quantity: voltage, angle, power, current, percentage...), **Map** (**Basemap**, **Voltage ranges** shown, **Base case flow violations** and **Base case voltage violations** shown), **Logs** (**Level filter**, **Sort order**), **Reports** (**Severity filter**) and **Network Editing** (**Open the details after creation**). |
+| **User Interface** | Settings of the application itself, in the categories **Decimal Places** (number of decimals of each displayed quantity: voltage, angle, power, current, percentage...), **Map** (**Basemap**, **Voltage ranges** shown, base case and contingency flow and voltage violations shown), **Logs** (**Level filter**, **Sort order**), **Reports** (**Severity filter**) and **Network Editing** (**Open the details after creation**). |
 | **Network Import** | The parameters of each network import format. |
 | **Network Export** | The parameters of each network export format. |
 | **Single Line Diagram** | How single-line diagrams are laid out and drawn (layout algorithms, labels, feeder information, sizes, style...). |

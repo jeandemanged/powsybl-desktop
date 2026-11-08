@@ -7,18 +7,29 @@
  */
 package com.powsybl.powsybldesktop.map;
 
+import com.powsybl.contingency.Contingency;
+import com.powsybl.contingency.violations.LimitViolation;
+import com.powsybl.contingency.violations.LimitViolationType;
 import com.powsybl.iidm.network.Country;
 import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
+import com.powsybl.iidm.network.ThreeSides;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.iidm.network.extensions.LinePositionAdder;
 import com.powsybl.iidm.network.extensions.SubstationPositionAdder;
 import com.powsybl.iidm.network.limitmodification.LimitsComputer;
+import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.powsybldesktop.parameters.MapViolationLayer;
 import com.powsybl.powsybldesktop.violations.NetworkViolations;
+import com.powsybl.security.LimitViolationsResult;
+import com.powsybl.security.PostContingencyComputationStatus;
+import com.powsybl.security.SecurityAnalysisResult;
+import com.powsybl.security.results.ConnectivityResult;
+import com.powsybl.security.results.NetworkResult;
+import com.powsybl.security.results.PostContingencyResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -85,7 +96,7 @@ class MapNetworkDataTest {
                 .setVoltageLevel2("VL_ALONE").setBus2("VL_ALONE_B")
                 .setR(1).setX(10)
                 .add();
-        data = MapNetworkData.build(network, NetworkViolations.EMPTY, _ -> null, (_, defaultColor) -> defaultColor);
+        data = MapNetworkData.build(network, NetworkViolations.EMPTY, null, _ -> null, (_, defaultColor) -> defaultColor);
     }
 
     // L overloaded on side 1, a transformer of S4 overloaded, S3's bus above its voltage level's high limit
@@ -111,8 +122,26 @@ class MapNetworkDataTest {
         network.getVoltageLevel("S3_VL").newLoad().setId("S3_LOAD").setBus("S3_B").setP0(0).setQ0(0).add();
         network.getVoltageLevel("S3_VL").setHighVoltageLimit(410);
         network.getBusBreakerView().getBus("S3_B").setV(420);
-        return MapNetworkData.build(network, NetworkViolations.compute(network, LimitsComputer.NO_MODIFICATIONS),
+        return MapNetworkData.build(network, NetworkViolations.compute(network, LimitsComputer.NO_MODIFICATIONS), null,
                 _ -> null, (_, defaultColor) -> defaultColor);
+    }
+
+    // After C1, L overloaded and S5's voltage level too high; C2 failed, its violation of L_NO_POSITION left out
+    private SecurityAnalysisResult securityAnalysisResult() {
+        LimitViolation overload = new LimitViolation("L", null, null, LimitViolationType.CURRENT, "permanent", Integer.MAX_VALUE,
+                100, 1, 150, ThreeSides.ONE, null);
+        LimitViolation highVoltage = LimitViolation.builder().subject("S5_VL").type(LimitViolationType.HIGH_VOLTAGE)
+                .limit(420).value(430).build();
+        LimitViolation failedOverload = new LimitViolation("L_NO_POSITION", null, null, LimitViolationType.CURRENT, "permanent",
+                Integer.MAX_VALUE, 100, 1, 150, ThreeSides.ONE, null);
+        return new SecurityAnalysisResult(LimitViolationsResult.empty(), LoadFlowResult.ComponentResult.Status.CONVERGED, List.of(
+                postContingencyResult("C1", PostContingencyComputationStatus.CONVERGED, overload, highVoltage),
+                postContingencyResult("C2", PostContingencyComputationStatus.FAILED, failedOverload)));
+    }
+
+    private static PostContingencyResult postContingencyResult(String id, PostContingencyComputationStatus status, LimitViolation... violations) {
+        return new PostContingencyResult(new Contingency(id), status, new LimitViolationsResult(List.of(violations)), NetworkResult.empty(),
+                ConnectivityResult.empty(), 0, List.of());
     }
 
     // the point BUBBLE_OFFSET pixels above a position at whole zoom level zoom: the center of its bubble
@@ -293,6 +322,58 @@ class MapNetworkDataTest {
         BufferedImage hidden = ImageIO.read(new ByteArrayInputStream(
                 MapTileRenderer.render(withViolations, false, Set.of(), Set.of(), zoom, tileX, tileY, 1)));
         assertEquals(0, hidden.getRGB(pixelX - 4, pixelY) >>> 24);
+    }
+
+    @Test
+    void contingencyViolationsAreMarkedAfterBaseCaseOnes() {
+        buildWithViolations();
+        MapNetworkData withViolations = MapNetworkData.build(network, NetworkViolations.compute(network, LimitsComputer.NO_MODIFICATIONS),
+                securityAnalysisResult(), _ -> null, (_, defaultColor) -> defaultColor);
+
+        List<MapNetworkData.MarkedFlowViolation> line = withViolations.violationMarker("L").flowViolations();
+        assertEquals(2, line.size());
+        assertNull(line.getFirst().contingency());
+        assertEquals(MapViolationLayer.CONTINGENCY_FLOW, line.getLast().layer());
+        assertEquals("C1", line.getLast().contingency());
+
+        MapNetworkData.ViolationMarker voltage = withViolations.violationMarker("S5");
+        assertEquals(MapViolationLayer.CONTINGENCY_VOLTAGE, voltage.voltageViolations().getFirst().layer());
+        assertFalse(voltage.hasShownBaseCase(ALL_VIOLATIONS));
+        assertTrue(withViolations.violationMarker("L").hasShownBaseCase(ALL_VIOLATIONS));
+        assertFalse(withViolations.violationMarker("L").hasShownBaseCase(Set.of(MapViolationLayer.CONTINGENCY_FLOW)));
+
+        // a failed contingency's
+        assertNull(withViolations.violationMarker("L_NO_POSITION"));
+    }
+
+    @Test
+    void failedPreContingencyLoadFlowMarksNoContingencyViolations() {
+        SecurityAnalysisResult result = securityAnalysisResult();
+        SecurityAnalysisResult failed = new SecurityAnalysisResult(LimitViolationsResult.empty(), LoadFlowResult.ComponentResult.Status.FAILED,
+                result.getPostContingencyResults());
+
+        MapNetworkData withViolations = MapNetworkData.build(network, NetworkViolations.EMPTY, failed, _ -> null, (_, defaultColor) -> defaultColor);
+
+        assertNull(withViolations.violationMarker("L"));
+        assertNull(withViolations.violationMarker("S5"));
+    }
+
+    // orange: S5 has contingency violations only
+    @Test
+    void contingencyOnlyBubbleIsOrange() throws IOException {
+        MapNetworkData withViolations = MapNetworkData.build(network, NetworkViolations.EMPTY, securityAnalysisResult(), _ -> null,
+                (_, defaultColor) -> defaultColor);
+        int zoom = 14;
+        double scale = Math.pow(2, zoom);
+        double[] bubble = bubbleCenter(48, 2.5, zoom);
+        int tileX = (int) (MapNetworkData.projectX(bubble[1]) * scale / MapTileRenderer.TILE_SIZE);
+        int tileY = (int) (MapNetworkData.projectY(bubble[0]) * scale / MapTileRenderer.TILE_SIZE);
+        int pixelX = (int) (MapNetworkData.projectX(bubble[1]) * scale) - tileX * MapTileRenderer.TILE_SIZE;
+        int pixelY = (int) (MapNetworkData.projectY(bubble[0]) * scale) - tileY * MapTileRenderer.TILE_SIZE;
+
+        BufferedImage image = ImageIO.read(new ByteArrayInputStream(
+                MapTileRenderer.render(withViolations, false, Set.of(), ALL_VIOLATIONS, zoom, tileX, tileY, 1)));
+        assertEquals(0xF57C00, image.getRGB(pixelX - 4, pixelY) & 0xFFFFFF);
     }
 
     // Lesotho is a hole in South Africa; the Atlantic and Somaliland, unrecognized, have no country

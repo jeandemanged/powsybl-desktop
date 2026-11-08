@@ -65,6 +65,8 @@ public final class MapTileRenderer {
     private static final int IMPLIED_LINE_ALPHA = 128;
     /** Violation warning bubbles: white outlined, so they stand out on any basemap and voltage color. */
     private static final Color BUBBLE_COLOR = new Color(0xD32F2F);
+    /** For an element whose shown violations are all contingency ones: red is kept for violations of the present state. */
+    private static final Color CONTINGENCY_BUBBLE_COLOR = new Color(0xF57C00);
     private static final double BUBBLE_OUTLINE_WIDTH = 1.5;
     // twice the outline: the bubble is filled over its inner half
     private static final Stroke BUBBLE_OUTLINE_STROKE = new BasicStroke((float) (2 * BUBBLE_OUTLINE_WIDTH), BasicStroke.CAP_ROUND,
@@ -329,7 +331,7 @@ public final class MapTileRenderer {
             g.setStroke(BUBBLE_OUTLINE_STROKE);
             g.setColor(Color.WHITE);
             g.draw(area);
-            g.setColor(BUBBLE_COLOR);
+            g.setColor(marker.hasShownBaseCase(shownViolations) ? BUBBLE_COLOR : CONTINGENCY_BUBBLE_COLOR);
             g.fill(area);
             // the exclamation mark
             g.setColor(Color.WHITE);

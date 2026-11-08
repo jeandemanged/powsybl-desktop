@@ -28,7 +28,7 @@ class MapTestNetworkViolationsTest {
     @Test
     void thirtyPercentOfLinesAndSubstationsAreMarked() {
         Network network = MapTestNetworkFactory.create();
-        MapNetworkData data = MapNetworkData.build(network, NetworkViolations.compute(network, LimitsComputer.NO_MODIFICATIONS),
+        MapNetworkData data = MapNetworkData.build(network, NetworkViolations.compute(network, LimitsComputer.NO_MODIFICATIONS), null,
                 _ -> null, (_, defaultColor) -> defaultColor);
 
         long markedSubstations = Arrays.stream(data.substationIds()).map(data::violationMarker).filter(Objects::nonNull).count();

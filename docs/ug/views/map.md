@@ -18,12 +18,18 @@ main window to open the map in a separate window.
   shown otherwise), and the **Open in new window** button.
 - Below it, the **Voltage ranges** box: one checkbox per base voltage range of the single line diagrams (a range in
   kV, the highest one reading "and above"), with **Check all** and **Check none**.
-- Below it, the **Violations** box: **Base case flow violations** and **Base case voltage violations** checkboxes.
-- Limit violations of the network's present state (see [Violations](violations.md)) are marked with red warning
-  bubbles: a line's flow violations above its middle, a transformer's flow violations and a voltage level's voltage
-  violations above their substation. Hovering a marked element or its bubble lists its violations under its name:
-  limit type, value and crossed limit, loading, side and acceptable duration for a flow violation; bus, voltage,
-  limit and percentage of nominal voltage for a voltage violation.
+- Below it, the **Violations** box: **Base case flow violations**, **Base case voltage violations**,
+  **Contingency flow violations** and **Contingency voltage violations** checkboxes.
+- Limit violations are marked with warning bubbles: those of the network's present state (see
+  [Violations](violations.md)), and those after each contingency of the last security analysis (see
+  [Security Analysis Results](security_analysis_results.md); none for a contingency whose computation failed). A
+  line's flow violations are marked above its middle, a transformer's flow violations and a voltage level's voltage
+  violations above their substation. A bubble is red when the element has a shown violation of the present state,
+  orange when all its shown violations follow contingencies.
+- Hovering a marked element or its bubble lists its violations under its name: limit type, value and crossed limit,
+  loading, side and acceptable duration for a flow violation; bus, voltage, limit and percentage of nominal voltage
+  for a voltage violation. Present state violations come first, then **After** each contingency, at most 10 of them,
+  the most severe first, followed by **... and N more after contingencies** when there are more.
 
 The map view (center and zoom) is remembered per network and restored when coming back to the map. In a separate
 window, the map follows the network selected in the main window.
@@ -40,7 +46,7 @@ window, the map follows the network selected in the main window.
 ### Filter and change the basemap
 
 - Uncheck a voltage range to hide its substations and lines; hidden elements can't be hovered nor clicked.
-- Uncheck **Base case flow violations** or **Base case voltage violations** to hide those warning bubbles.
+- Uncheck a **Violations** checkbox to hide those violations' warning bubbles and tooltip lines.
 - Choose the basemap in the list at the top right.
 
 The basemap, the hidden voltage ranges and the shown violations are saved with the **User Interface** parameters (see

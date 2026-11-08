@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop.map;
 
+import com.powsybl.contingency.violations.LimitViolation;
 import com.powsybl.iidm.network.BoundaryLine;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Line;
@@ -19,12 +20,17 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.iidm.network.extensions.LinePosition;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
+import com.powsybl.loadflow.LoadFlowResult;
+import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.diagram.BaseVoltages;
 import com.powsybl.powsybldesktop.network.edit.PositionEdits;
 import com.powsybl.powsybldesktop.parameters.MapViolationLayer;
 import com.powsybl.powsybldesktop.violations.FlowViolation;
 import com.powsybl.powsybldesktop.violations.NetworkViolations;
 import com.powsybl.powsybldesktop.violations.VoltageViolation;
+import com.powsybl.security.PostContingencyComputationStatus;
+import com.powsybl.security.SecurityAnalysisResult;
+import com.powsybl.security.results.PostContingencyResult;
 
 import java.awt.Color;
 import java.util.ArrayList;
@@ -143,21 +149,24 @@ public record MapNetworkData(List<Color> colors,
     /**
      * A flow violation marked on a line or a substation.
      *
+     * @param contingency the display name of the contingency it follows, null for a base case violation
      * @param equipmentText the transformer's name or id for a substation, null for the line itself
      */
-    public record MarkedFlowViolation(MapViolationLayer layer, String equipmentText, FlowViolation violation) {
+    public record MarkedFlowViolation(MapViolationLayer layer, String contingency, String equipmentText, FlowViolation violation) {
     }
 
     /**
      * A voltage violation marked on its voltage level's substation.
+     *
+     * @param contingency the display name of the contingency it follows, null for a base case violation
      */
-    public record MarkedVoltageViolation(MapViolationLayer layer, String voltageLevelText, VoltageViolation violation) {
+    public record MarkedVoltageViolation(MapViolationLayer layer, String contingency, String voltageLevelText, VoltageViolation violation) {
     }
 
     /**
      * The warning bubble of a drawn substation ({@code element} indexes {@code substationIds}) or line ({@code element}
      * indexes {@code lineIds}, the first part of a tie line drawn from its two halves), above {@code x}, {@code y}: the
-     * substation's position or the line's middle. Each list is sorted most severe first.
+     * substation's position or the line's middle. Each list is sorted base case first, then most severe first.
      */
     public record ViolationMarker(boolean substation, int element, double x, double y, String baseVoltage,
                                   List<MarkedFlowViolation> flowViolations, List<MarkedVoltageViolation> voltageViolations) {
@@ -165,6 +174,14 @@ public record MapNetworkData(List<Color> colors,
         public boolean isShown(Set<MapViolationLayer> shownLayers) {
             return flowViolations.stream().anyMatch(v -> shownLayers.contains(v.layer()))
                     || voltageViolations.stream().anyMatch(v -> shownLayers.contains(v.layer()));
+        }
+
+        /**
+         * Whether some of its shown violations are base case ones, rather than only contingency ones.
+         */
+        public boolean hasShownBaseCase(Set<MapViolationLayer> shownLayers) {
+            return flowViolations.stream().anyMatch(v -> !v.layer().isContingency() && shownLayers.contains(v.layer()))
+                    || voltageViolations.stream().anyMatch(v -> !v.layer().isContingency() && shownLayers.contains(v.layer()));
         }
     }
 
@@ -200,14 +217,17 @@ public record MapNetworkData(List<Color> colors,
      * positions on its two boundary line halves, which are then drawn as, and navigate to, that tie line. A
      * substation takes its highest voltage level nominal voltage, a line the highest of its two ends.
      *
-     * Base case violations are marked on their line, tie line or unpaired boundary line, transformer ones on its
-     * substation, voltage ones on their voltage level's substation.
+     * Base case and contingency violations are marked on their line, tie line or unpaired boundary line, transformer
+     * ones on its substation, voltage ones on their voltage level's substation. A security analysis whose
+     * pre-contingency load flow failed has no contingency violations, nor has a contingency whose computation failed,
+     * as in the Security Analysis Results view.
      *
      * @param violations the network's cached base case violations
+     * @param securityAnalysisResult the network's last security analysis result, null for none
      * @param color the color of a base voltage, or the given default color for a null one
      */
-    public static MapNetworkData build(Network network, NetworkViolations violations, DoubleFunction<String> baseVoltageName,
-                                       BinaryOperator<String> color) {
+    public static MapNetworkData build(Network network, NetworkViolations violations, SecurityAnalysisResult securityAnalysisResult,
+                                       DoubleFunction<String> baseVoltageName, BinaryOperator<String> color) {
         List<MarkerData> substations = new ArrayList<>();
         List<LineData> lines = new ArrayList<>();
         List<UnplacedSubstation> unplaced = new ArrayList<>();
@@ -254,37 +274,76 @@ public record MapNetworkData(List<Color> colors,
             unplaced.sort(Comparator.comparing(UnplacedSubstation::text, String.CASE_INSENSITIVE_ORDER));
             unroutedCount = PositionEdits.unroutedCount(network);
             markViolations(network, violations, markedViolations);
+            markContingencyViolations(network, securityAnalysisResult, markedViolations);
+            markedViolations.values().forEach(m -> {
+                m.flowViolations().sort(Comparator.comparing((MarkedFlowViolation v) -> v.contingency() != null)
+                        .thenComparing(MarkedFlowViolation::violation, FlowViolation.SEVERITY));
+                m.voltageViolations().sort(Comparator.comparing((MarkedVoltageViolation v) -> v.contingency() != null)
+                        .thenComparing(MarkedVoltageViolation::violation, VoltageViolation.SEVERITY));
+            });
         }
         return pack(substations, lines, List.copyOf(unplaced), unroutedCount, markedViolations);
     }
 
     // keyed by the id of the line or substation marked; the cache may hold equipment no longer in the network, skipped
     private static void markViolations(Network network, NetworkViolations violations, Map<String, MarkedViolations> marked) {
-        violations.getFlowViolations().forEach((id, flowViolations) -> {
-            Identifiable<?> equipment = network.getIdentifiable(id);
-            String markedId = switch (equipment) {
-                case Line _, TieLine _, BoundaryLine _ -> id;
-                case TwoWindingsTransformer transformer -> transformer.getSubstation().map(Substation::getId).orElse(null);
-                case ThreeWindingsTransformer transformer -> transformer.getSubstation().map(Substation::getId).orElse(null);
-                case null, default -> null;
-            };
-            if (markedId != null) {
-                String equipmentText = markedId.equals(id) ? null : equipment.getNameOrId();
-                List<MarkedFlowViolation> marks = marked.computeIfAbsent(markedId, _ -> new MarkedViolations()).flowViolations();
-                flowViolations.forEach(v -> marks.add(new MarkedFlowViolation(MapViolationLayer.BASE_CASE_FLOW, equipmentText, v)));
+        violations.getFlowViolations().forEach((id, flowViolations) -> flowViolations.forEach(v ->
+                markFlowViolation(network, MapViolationLayer.BASE_CASE_FLOW, null, v, marked)));
+        violations.getVoltageViolations().forEach(v -> markVoltageViolation(network, MapViolationLayer.BASE_CASE_VOLTAGE, null, v, marked));
+    }
+
+    private static void markContingencyViolations(Network network, SecurityAnalysisResult result, Map<String, MarkedViolations> marked) {
+        if (result == null || result.getPreContingencyResult().getStatus() != LoadFlowResult.ComponentResult.Status.CONVERGED) {
+            return;
+        }
+        for (PostContingencyResult postContingencyResult : result.getPostContingencyResults()) {
+            PostContingencyComputationStatus status = postContingencyResult.getStatus();
+            if (status != PostContingencyComputationStatus.CONVERGED && status != PostContingencyComputationStatus.NO_IMPACT) {
+                continue;
             }
-        });
-        for (VoltageViolation violation : violations.getVoltageViolations()) {
-            VoltageLevel voltageLevel = network.getVoltageLevel(violation.violation().getSubjectId());
-            if (voltageLevel != null) {
-                voltageLevel.getSubstation().ifPresent(substation -> marked.computeIfAbsent(substation.getId(), _ -> new MarkedViolations())
-                        .voltageViolations().add(new MarkedVoltageViolation(MapViolationLayer.BASE_CASE_VOLTAGE, voltageLevel.getNameOrId(), violation)));
+            String contingency = ContingencyNames.displayName(postContingencyResult.getContingency(), network);
+            for (LimitViolation violation : postContingencyResult.getLimitViolationsResult().getLimitViolations()) {
+                switch (violation.getLimitType()) {
+                    case CURRENT, ACTIVE_POWER, APPARENT_POWER -> markFlowViolation(network, MapViolationLayer.CONTINGENCY_FLOW, contingency,
+                            FlowViolation.of(violation, network), marked);
+                    case LOW_VOLTAGE, HIGH_VOLTAGE -> {
+                        VoltageViolation voltageViolation = VoltageViolation.of(violation, network);
+                        if (voltageViolation != null) {
+                            markVoltageViolation(network, MapViolationLayer.CONTINGENCY_VOLTAGE, contingency, voltageViolation, marked);
+                        }
+                    }
+                    default -> {
+                        // voltage angle, short-circuit current and other limit violations are out of scope
+                    }
+                }
             }
         }
-        marked.values().forEach(m -> {
-            m.flowViolations().sort(Comparator.comparing(MarkedFlowViolation::violation, FlowViolation.SEVERITY));
-            m.voltageViolations().sort(Comparator.comparing(MarkedVoltageViolation::violation, VoltageViolation.SEVERITY));
-        });
+    }
+
+    private static void markFlowViolation(Network network, MapViolationLayer layer, String contingency, FlowViolation violation,
+                                          Map<String, MarkedViolations> marked) {
+        String id = violation.violation().getSubjectId();
+        Identifiable<?> equipment = network.getIdentifiable(id);
+        String markedId = switch (equipment) {
+            case Line _, TieLine _, BoundaryLine _ -> id;
+            case TwoWindingsTransformer transformer -> transformer.getSubstation().map(Substation::getId).orElse(null);
+            case ThreeWindingsTransformer transformer -> transformer.getSubstation().map(Substation::getId).orElse(null);
+            case null, default -> null;
+        };
+        if (markedId != null) {
+            String equipmentText = markedId.equals(id) ? null : equipment.getNameOrId();
+            marked.computeIfAbsent(markedId, _ -> new MarkedViolations()).flowViolations()
+                    .add(new MarkedFlowViolation(layer, contingency, equipmentText, violation));
+        }
+    }
+
+    private static void markVoltageViolation(Network network, MapViolationLayer layer, String contingency, VoltageViolation violation,
+                                             Map<String, MarkedViolations> marked) {
+        VoltageLevel voltageLevel = network.getVoltageLevel(violation.violation().getSubjectId());
+        if (voltageLevel != null) {
+            voltageLevel.getSubstation().ifPresent(substation -> marked.computeIfAbsent(substation.getId(), _ -> new MarkedViolations())
+                    .voltageViolations().add(new MarkedVoltageViolation(layer, contingency, voltageLevel.getNameOrId(), violation)));
+        }
     }
 
     private static double nominalV(TieLine tieLine) {

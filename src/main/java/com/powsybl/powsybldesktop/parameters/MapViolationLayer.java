@@ -11,20 +11,28 @@ import com.powsybl.powsybldesktop.utils.Messages;
 
 /**
  * A kind of limit violation the map can mark with warning bubbles, each shown or not from its own checkbox, a GUI
- * parameter.
+ * parameter: the base case ones of the network's present state, and the contingency ones of its last security analysis.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 public enum MapViolationLayer {
-    BASE_CASE_FLOW("baseCaseFlow", "map.violations.baseCaseFlow"),
-    BASE_CASE_VOLTAGE("baseCaseVoltage", "map.violations.baseCaseVoltage");
+    BASE_CASE_FLOW("baseCaseFlow", "map.violations.baseCaseFlow", false),
+    BASE_CASE_VOLTAGE("baseCaseVoltage", "map.violations.baseCaseVoltage", false),
+    CONTINGENCY_FLOW("contingencyFlow", "map.violations.contingencyFlow", true),
+    CONTINGENCY_VOLTAGE("contingencyVoltage", "map.violations.contingencyVoltage", true);
 
     private final String jsonName;
     private final String labelKey;
+    private final boolean contingency;
 
-    MapViolationLayer(String jsonName, String labelKey) {
+    MapViolationLayer(String jsonName, String labelKey, boolean contingency) {
         this.jsonName = jsonName;
         this.labelKey = labelKey;
+        this.contingency = contingency;
+    }
+
+    public boolean isContingency() {
+        return contingency;
     }
 
     // its field in the parameters file

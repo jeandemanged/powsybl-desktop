@@ -50,6 +50,7 @@ import com.powsybl.powsybldesktop.violations.FlowViolation;
 import com.powsybl.powsybldesktop.violations.NetworkViolations;
 import com.powsybl.powsybldesktop.violations.ViolationTexts;
 import com.powsybl.powsybldesktop.violations.VoltageViolation;
+import com.powsybl.security.SecurityAnalysisResult;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -136,9 +137,11 @@ import java.util.stream.Collectors;
  * from an overlay checkbox. The basemap and hidden base voltages are {@link GuiParameters}, also editable from the
  * parameters view.
  * <p>
- * Limit violations of the network's cached {@code NetworkViolations} are marked with warning bubbles, on their line, or
- * on the substation of their transformer or voltage level. Each {@link MapViolationLayer} is shown or not from its
- * own checkbox, a {@link GuiParameters} too. Hovering a marked element or its bubble lists its violations.
+ * Limit violations, base case ones from the network's cached {@code NetworkViolations} and contingency ones from its
+ * last security analysis, are marked with warning bubbles, on their line, or on the substation of their transformer or
+ * voltage level: red, or orange when all its shown violations follow contingencies. Each {@link MapViolationLayer} is
+ * shown or not from its own checkbox, a {@link GuiParameters} too. Hovering a marked element or its bubble lists its
+ * violations, base case ones first, then the most severe contingency ones.
  * <p>
  * The search box zooms to its current match: a line, tie line or boundary line to fit it whole, anything else to its
  * substation, with some neighbouring substations around it, and marks it: a line halfway along, anything else at its
@@ -184,6 +187,7 @@ public class MapController extends AbstractDisposableController implements Scene
                         /* an element's violations, below its name, in the warning bubbles' color */
                         .tooltip-title { font-weight: bold; }
                         .tooltip-violation { color: #d32f2f; }
+                        .tooltip-violation.contingency { color: #e65100; }
                     </style>
                     <script>%s</script>
                 </head>
@@ -280,10 +284,11 @@ public class MapController extends AbstractDisposableController implements Scene
             Network network = network();
             buildingNetwork = network;
             NetworkViolations violations = network == null ? NetworkViolations.EMPTY : mainModel.getStudy(network).getViolations();
+            SecurityAnalysisResult securityAnalysisResult = network == null ? null : mainModel.getStudy(network).getSecurityAnalysisResult();
             return new AbstractNetworkTask<>(mainModel, network) {
                 @Override
                 protected MapNetworkData compute() {
-                    return MapNetworkData.build(network, violations, baseVoltages::name, baseVoltages::color);
+                    return MapNetworkData.build(network, violations, securityAnalysisResult, baseVoltages::name, baseVoltages::color);
                 }
             };
         }
@@ -619,10 +624,20 @@ public class MapController extends AbstractDisposableController implements Scene
      * What map.js' tooltip shows for a hovered element.
      *
      * @param key identifies the element, to tell whether the hovered element changed
-     * @param violations its shown violations, one text each, most severe first
+     * @param violations its shown violations, base case ones first, at most {@value #MAX_CONTINGENCY_VIOLATION_LINES}
+     *                   contingency ones then
      */
-    private record Hover(String key, String text, double lat, double lng, List<String> violations) {
+    private record Hover(String key, String text, double lat, double lng, List<ViolationLine> violations) {
     }
+
+    /**
+     * @param contingency whether a contingency's violation, or the line counting those left out
+     */
+    private record ViolationLine(String text, boolean contingency) {
+    }
+
+    /** An element may be violated after many contingencies: the Security Analysis Results view lists them all. */
+    private static final int MAX_CONTINGENCY_VIOLATION_LINES = 10;
 
     /**
      * Called from map.js as the mouse moves: the JSON of the {@link Hover} of what is under it, or null.
@@ -643,22 +658,39 @@ public class MapController extends AbstractDisposableController implements Scene
         return networkData == null ? null : networkData.hitTest(latitude, longitude, zoom, hiddenBaseVoltages, shownViolations);
     }
 
-    // formatted when hovered rather than when the map data is built, so with the decimals of the moment
-    private List<String> violationTexts(MapNetworkData.ViolationMarker marker) {
+    // Formatted when hovered rather than when the map data is built, so with the decimals of the moment. Flow then
+    // voltage violations, base case ones first, as the marker sorts them.
+    private List<ViolationLine> violationTexts(MapNetworkData.ViolationMarker marker) {
         if (marker == null) {
             return List.of();
         }
-        List<String> texts = new ArrayList<>();
+        List<ViolationLine> baseCase = new ArrayList<>();
+        List<ViolationLine> contingency = new ArrayList<>();
         marker.flowViolations().stream()
                 .filter(marked -> shownViolations.contains(marked.layer()))
                 .forEach(marked -> {
                     String text = flowViolationText(marked.violation());
-                    texts.add(marked.equipmentText() == null ? text : Messages.get("map.violations.of", marked.equipmentText(), text));
+                    text = marked.equipmentText() == null ? text : Messages.get("map.violations.of", marked.equipmentText(), text);
+                    addViolationLine(marked.contingency(), text, baseCase, contingency);
                 });
         marker.voltageViolations().stream()
                 .filter(marked -> shownViolations.contains(marked.layer()))
-                .forEach(marked -> texts.add(voltageViolationText(marked.voltageLevelText(), marked.violation())));
-        return texts;
+                .forEach(marked -> addViolationLine(marked.contingency(), voltageViolationText(marked.voltageLevelText(), marked.violation()),
+                        baseCase, contingency));
+        List<ViolationLine> lines = new ArrayList<>(baseCase);
+        lines.addAll(contingency.subList(0, Math.min(contingency.size(), MAX_CONTINGENCY_VIOLATION_LINES)));
+        if (contingency.size() > MAX_CONTINGENCY_VIOLATION_LINES) {
+            lines.add(new ViolationLine(Messages.get("map.violations.more", String.valueOf(contingency.size() - MAX_CONTINGENCY_VIOLATION_LINES)), true));
+        }
+        return lines;
+    }
+
+    private static void addViolationLine(String contingency, String text, List<ViolationLine> baseCase, List<ViolationLine> contingencyLines) {
+        if (contingency == null) {
+            baseCase.add(new ViolationLine(text, false));
+        } else {
+            contingencyLines.add(new ViolationLine(Messages.get("map.violations.after", contingency, text), true));
+        }
     }
 
     private String flowViolationText(FlowViolation violation) {
