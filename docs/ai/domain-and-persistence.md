@@ -78,7 +78,9 @@ Maven cache may contain unrelated versions.
   `MainController.ensureSearchIndex` on network selection and cached in the `NetworkStudy`. Kept current in place:
   structure changes update every index of the root network (`applyStructureChange`); on `updateProperty()`, the
   selected network's index re-indexes its bus-view buses (`refreshBuses`), only the updated voltage level's when
-  `setUpdate(voltageLevel)` named one.
+  `setUpdate(voltageLevel)` named one. An id or name change (`Identifiable.setId`/`setName`) is re-indexed with
+  `applyRename(network, identifiable, oldId)`, which swaps that one document; the detail view's id and name
+  fields (`AbstractEquipmentDetailController.updateSearchIndexes`) call it on every index of the root network.
 - `…/search/NetworkSearch.java`: `Kind` enum, `kindOf`, `containerOf`, `hasMatchingEquipment`. Add a new
   searchable equipment kind here and in `NetworkSearchIndex`, not per view.
 - Views use `SearchBoxController` with their own set of `Kind`s.

@@ -236,6 +236,26 @@ public final class NetworkSearchIndex implements Closeable {
         refreshBuses(network);
     }
 
+    /**
+     * Re-indexes {@code identifiable} of {@code network} (the one this index was built for) in place after its id
+     * and/or name changed, {@code oldId} being its id before the change: drops the old mapping, adds the new one.
+     */
+    public synchronized void applyRename(Network network, Identifiable<?> identifiable, String oldId) {
+        NetworkSearch.Kind kind = indexedKind(identifiable);
+        if (kind == null || !isPartOf(identifiable, network)) {
+            return;
+        }
+        try {
+            writer.deleteDocuments(new Term(FIELD_ID_EXACT, oldId));
+            writer.addDocument(toDocument(identifiable, kind));
+            commitAndRefreshSearcher();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        byId.remove(oldId, identifiable);
+        byId.put(identifiable.getId(), identifiable);
+    }
+
     // created buses are configured ones: bus view buses are calculated, never created
     private static NetworkSearch.Kind indexedKind(Identifiable<?> identifiable) {
         return identifiable instanceof Bus ? NetworkSearch.Kind.CONFIGURED_BUS : NetworkSearch.findKind(identifiable);

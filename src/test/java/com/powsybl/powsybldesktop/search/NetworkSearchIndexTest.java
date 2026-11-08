@@ -120,6 +120,24 @@ class NetworkSearchIndexTest {
     }
 
     @Test
+    void applyRenameReplacesTheOldIdAndNameMapping() {
+        Load load = network.getLoad("B10-L");
+        load.setName("Old name");
+        index.applyRename(network, load, "B10-L");
+        assertEquals(List.of(load), index.search("Old name", EnumSet.of(NetworkSearch.Kind.LOAD)).matches());
+
+        load.setId("RENAMED-LOAD");
+        load.setName("Brand new");
+        index.applyRename(network, load, "B10-L");
+
+        assertEquals(List.of(load), index.search("RENAMED-LOAD", EnumSet.of(NetworkSearch.Kind.LOAD)).matches());
+        assertEquals(List.of(load), index.search("Brand new", EnumSet.of(NetworkSearch.Kind.LOAD)).matches());
+        // the fuzzy fallback still finds B11-L... for "B10-L", but no longer the renamed load
+        assertFalse(index.search("B10-L", EnumSet.of(NetworkSearch.Kind.LOAD)).matches().contains(load));
+        assertFalse(index.search("Old name", EnumSet.of(NetworkSearch.Kind.LOAD)).matches().contains(load));
+    }
+
+    @Test
     void refreshBusesPicksUpABusViewSplitFromOpeningACoupler() {
         // S1VL2's bus view is a single merged bus (S1VL2_0) until its coupler is opened, splitting it into two
         Network nodeBreakerNetwork = FourSubstationsNodeBreakerFactory.create();

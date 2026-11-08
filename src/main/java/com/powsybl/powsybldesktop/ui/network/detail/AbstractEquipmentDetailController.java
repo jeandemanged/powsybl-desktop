@@ -172,7 +172,7 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
         form.section("detail.section.general")
                 .textField("desktop.common.column.id", equipment::getId, this::setId)
                 .copyButton(equipment::getId)
-                .textField("desktop.common.column.name", () -> equipment.getOptionalName().orElse(null), equipment::setName)
+                .textField("desktop.common.column.name", () -> equipment.getOptionalName().orElse(null), this::setName)
                 .copyButton(() -> equipment.getOptionalName().orElse(null))
                 .booleanField("detail.fictitious", equipment::isFictitious, equipment::setFictitious);
         buildMain(form);
@@ -297,8 +297,21 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
      * IIDM checks the id is new; the separate window's tab is re-keyed to it.
      */
     private void setId(String id) {
+        String oldId = equipment.getId();
         equipment.setId(id);
+        updateSearchIndexes(oldId);
         sceneModel.getDetailWindows().ifPresent(windows -> windows.retarget(this, EquipmentDetails.key(equipment)));
+    }
+
+    private void setName(String name) {
+        equipment.setName(name);
+        updateSearchIndexes(equipment.getId());
+    }
+
+    // every cached index of the root network may hold the equipment: the root's and its subnetwork's
+    private void updateSearchIndexes(String oldId) {
+        mainModel.getStudy(equipment.getNetwork()).getSearchIndexes()
+                .forEach((network, index) -> index.applyRename(network, equipment, oldId));
     }
 
     private void refresh() {

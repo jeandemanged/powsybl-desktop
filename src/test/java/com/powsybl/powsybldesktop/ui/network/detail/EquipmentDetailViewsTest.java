@@ -32,11 +32,14 @@ import com.powsybl.iidm.network.test.EurostagTutorialExample1Factory;
 import com.powsybl.iidm.network.test.FourSubstationsNodeBreakerFactory;
 import com.powsybl.iidm.network.test.ThreeWindingsTransformerNetworkFactory;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.search.NetworkSearch;
+import com.powsybl.powsybldesktop.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.ui.network.limits.OperationalLimitsPane;
 import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.ui.window.SeparateWindows;
 import com.powsybl.powsybldesktop.utils.Messages;
+import javafx.event.ActionEvent;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -59,7 +62,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -231,6 +236,30 @@ class EquipmentDetailViewsTest extends AbstractHeadlessApplicationTest {
         return type.cast(form.getChildren().stream()
                 .filter(node -> GridPane.getColumnIndex(node) == 1 && GridPane.getRowIndex(node).equals(GridPane.getRowIndex(labelNode)))
                 .findFirst().orElseThrow());
+    }
+
+    @Test
+    void idAndNameEditsUpdateTheSearchIndex() {
+        Network network = EurostagTutorialExample1Factory.create();
+        Generator generator = network.getGenerator("GEN");
+        open(network, generator);
+        NetworkSearchIndex index = NetworkSearchIndex.build(network);
+        interact(() -> mainModel.setSearchIndex(network, index));
+        // the general section's id field, followed by the name field
+        List<TextField> fields = host.lookupAll(".text-field").stream().map(TextField.class::cast).toList();
+        int idField = fields.indexOf(fields.stream().filter(field -> "GEN".equals(field.getText())).findFirst().orElseThrow());
+
+        interact(() -> {
+            fields.get(idField).setText("RENAMED_GEN");
+            fields.get(idField).fireEvent(new ActionEvent());
+            fields.get(idField + 1).setText("Main unit");
+            fields.get(idField + 1).fireEvent(new ActionEvent());
+        });
+
+        Set<NetworkSearch.Kind> generators = EnumSet.of(NetworkSearch.Kind.GENERATOR);
+        assertEquals("RENAMED_GEN", generator.getId());
+        assertEquals(List.of(generator), index.search("RENAMED_GEN", generators).matches());
+        assertEquals(List.of(generator), index.search("Main unit", generators).matches());
     }
 
     @Test
