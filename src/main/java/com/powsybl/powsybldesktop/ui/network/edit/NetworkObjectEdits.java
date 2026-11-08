@@ -159,8 +159,8 @@ public final class NetworkObjectEdits {
             elementBox.setValue(elements.stream().findFirst().orElse(null));
             sideBox.getItems().setAll(switch (chosen) {
                 case SWITCH_TRIPPING -> List.of();
-                case BRANCH_TRIPPING -> List.<Object>of(TwoSides.values());
-                case THREE_WINDINGS_TRANSFORMER_TRIPPING -> List.<Object>of(ThreeSides.values());
+                case BRANCH_TRIPPING -> List.<Object>of((Object[]) TwoSides.values());
+                case THREE_WINDINGS_TRANSFORMER_TRIPPING -> List.<Object>of((Object[]) ThreeSides.values());
             });
             sideBox.setValue(sideBox.getItems().stream().findFirst().orElse(null));
         };

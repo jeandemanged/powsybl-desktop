@@ -145,6 +145,8 @@ public final class ContainerDiagram extends AbstractDisposableController {
         }
     };
 
+    // on the classpath, JSObject resolves to JDK 25's jdk.jsobject, deprecated for removal, rather than JavaFX's own copy
+    @SuppressWarnings("removal")
     public ContainerDiagram(Kind kind, DiagramPaneController pane, SceneModel sceneModel) {
         this.kind = Objects.requireNonNull(kind);
         this.pane = Objects.requireNonNull(pane);

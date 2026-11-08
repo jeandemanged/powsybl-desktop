@@ -14,6 +14,7 @@ import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.contingency.list.DefaultContingencyList;
 import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.loadflow.LoadFlowResultImpl;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
@@ -69,7 +70,8 @@ class StudyTest {
         ContingencyList disabled = new DefaultContingencyList("disabled", List.of(Contingency.line("L1-5-1")));
         study14.getContingencyLists().setAll(enabled, disabled);
         study14.contingencyListEnabledProperty(disabled).set(false);
-        study14.setLoadFlowResult(new LoadFlowResultImpl(true, Map.of(), "lf log"));
+        study14.setLoadFlowResult(new LoadFlowResultImpl(true, Map.of(), "lf log",
+                List.of(new LoadFlowResultImpl.ComponentResultImpl(0, 0, LoadFlowResult.ComponentResult.Status.CONVERGED, 0, "slack", 0, 0))));
         study14.setSecurityAnalysisResult(SecurityAnalysisResult.empty());
         mainModel.getParametersModel().loadFlowParametersProperty().getValue().setDc(true);
         mainModel.addReport(ReportNode.newRootReportNode().withAllResourceBundlesFromClasspath().withMessageTemplate("desktop.loadFlow").build());
@@ -95,7 +97,7 @@ class StudyTest {
         assertEquals(List.of("enabled", "disabled"), restored14.getContingencyLists().stream().map(ContingencyList::getName).toList());
         assertTrue(restored14.contingencyListEnabledProperty(restored14.getContingencyLists().getFirst()).get());
         assertFalse(restored14.contingencyListEnabledProperty(restored14.getContingencyLists().getLast()).get());
-        assertTrue(restored14.getLoadFlowResult().isOk());
+        assertTrue(restored14.getLoadFlowResult().isFullyConverged());
         assertNotNull(restored14.getSecurityAnalysisResult());
         assertNull(restored.getStudy(restored.getNetworks().getLast()).getLoadFlowResult());
         assertTrue(restored.getParametersModel().loadFlowParametersProperty().getValue().isDc());

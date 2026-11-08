@@ -32,7 +32,7 @@ public final class Labels {
     private static final StringConverter<Country> COUNTRY_FORMAT = new StringConverter<>() {
         @Override
         public String toString(Country country) {
-            return country == null ? "-" : country.name() + " - " + country.getName();
+            return country == null ? "-" : country.name() + " - " + country.getFullName();
         }
 
         @Override

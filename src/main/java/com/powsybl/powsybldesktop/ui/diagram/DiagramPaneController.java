@@ -260,6 +260,8 @@ public class DiagramPaneController {
 
     // set as a JS value rather than spliced into script source, where backslashes, backticks or "${" in
     // equipment names would be interpreted as JavaScript
+    // on the classpath, JSObject resolves to JDK 25's jdk.jsobject, deprecated for removal, rather than JavaFX's own copy
+    @SuppressWarnings("removal")
     private void inject(String content) {
         JSObject container = (JSObject) webView.getEngine().executeScript("document.getElementById('svgContainer')");
         container.setMember("innerHTML", content);

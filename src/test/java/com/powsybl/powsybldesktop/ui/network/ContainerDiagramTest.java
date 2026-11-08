@@ -74,6 +74,8 @@ class ContainerDiagramTest extends AbstractHeadlessApplicationTest {
 
     // the WebView, its own context menu disabled, doesn't dispatch contextmenu events to the page: ContainerDiagram
     // handles the JavaFX event and asks sld.js which equipment is under the pointer
+    // on the classpath, JSObject resolves to JDK 25's jdk.jsobject, deprecated for removal, rather than JavaFX's own copy
+    @SuppressWarnings("removal")
     @Test
     void rightClickOnAGeneratorOffersItsDetails() throws TimeoutException {
         // the single line diagram's page (sld.js) loaded first: a diagram injected meanwhile would land in the page it replaces
@@ -121,6 +123,7 @@ class ContainerDiagramTest extends AbstractHeadlessApplicationTest {
         assertFalse(details.isDisabled());
     }
 
+    @SuppressWarnings("removal")
     private static double number(JSObject object, String member) {
         return ((Number) object.getMember(member)).doubleValue();
     }

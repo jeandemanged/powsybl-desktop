@@ -325,8 +325,11 @@ public class MapController extends AbstractDisposableController implements Scene
     private SceneModel sceneModel;
     private MainModel mainModel;
     private boolean engineLoaded;
+    // on the classpath, JSObject resolves to JDK 25's jdk.jsobject, deprecated for removal, rather than JavaFX's own copy
+    @SuppressWarnings("removal")
     private JSObject jsWindow;
 
+    @SuppressWarnings("removal")
     @FXML
     private void initialize() {
         webView.setContextMenuEnabled(false);
