@@ -18,6 +18,12 @@ main window to open the map in a separate window.
   shown otherwise), and the **Open in new window** button.
 - Below it, the **Voltage ranges** box: one checkbox per base voltage range of the single line diagrams (a range in
   kV, the highest one reading "and above"), with **Check all** and **Check none**.
+- Below it, the **Violations** box: **Base case flow violations** and **Base case voltage violations** checkboxes.
+- Limit violations of the network's present state (see [Violations](violations.md)) are marked with red warning
+  bubbles: a line's flow violations above its middle, a transformer's flow violations and a voltage level's voltage
+  violations above their substation. Hovering a marked element or its bubble lists its violations under its name:
+  limit type, value and crossed limit, loading, side and acceptable duration for a flow violation; bus, voltage,
+  limit and percentage of nominal voltage for a voltage violation.
 
 The map view (center and zoom) is remembered per network and restored when coming back to the map. In a separate
 window, the map follows the network selected in the main window.
@@ -34,15 +40,17 @@ window, the map follows the network selected in the main window.
 ### Filter and change the basemap
 
 - Uncheck a voltage range to hide its substations and lines; hidden elements can't be hovered nor clicked.
+- Uncheck **Base case flow violations** or **Base case voltage violations** to hide those warning bubbles.
 - Choose the basemap in the list at the top right.
 
-The basemap and the hidden voltage ranges are saved with the **User Interface** parameters (see
+The basemap, the hidden voltage ranges and the shown violations are saved with the **User Interface** parameters (see
 [Parameters](parameters.md)).
 
 ### Open diagrams and details
 
 - Click a substation to open its single line diagram in a separate window.
 - Click a line, tie line or boundary line to open its [Equipment details](details.md).
+- Click a warning bubble to open what it marks, as a click on it does.
 - Right-click a substation for **Single line diagram of** the substation or of each of its voltage levels.
 
 ### Create and remove network objects

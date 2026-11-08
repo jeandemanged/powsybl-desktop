@@ -10,6 +10,7 @@ package com.powsybl.powsybldesktop.map;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.powsybl.iidm.network.Country;
+import com.powsybl.powsybldesktop.parameters.MapViolationLayer;
 
 import javax.imageio.ImageIO;
 import java.awt.BasicStroke;
@@ -17,7 +18,10 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.Stroke;
+import java.awt.geom.Area;
+import java.awt.geom.Ellipse2D;
 import java.awt.geom.Path2D;
+import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -59,6 +63,14 @@ public final class MapTileRenderer {
     private static final Stroke DASHED_IMPLIED_LINE_STROKE = new BasicStroke(1, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
             10, new float[] {4, 4}, 0);
     private static final int IMPLIED_LINE_ALPHA = 128;
+    /** Violation warning bubbles: white outlined, so they stand out on any basemap and voltage color. */
+    private static final Color BUBBLE_COLOR = new Color(0xD32F2F);
+    private static final double BUBBLE_OUTLINE_WIDTH = 1.5;
+    // twice the outline: the bubble is filled over its inner half
+    private static final Stroke BUBBLE_OUTLINE_STROKE = new BasicStroke((float) (2 * BUBBLE_OUTLINE_WIDTH), BasicStroke.CAP_ROUND,
+            BasicStroke.JOIN_ROUND);
+    /** Pixels from what a bubble marks up to the tip of its tail. */
+    private static final double BUBBLE_TAIL_GAP = 2;
 
     /**
      * Every polygon ring of every country, projected like {@link MapNetworkData}: ring {@code i}'s points are
@@ -81,11 +93,12 @@ public final class MapTileRenderer {
     /**
      * @param data the network to draw, null for none
      * @param showCountries whether to draw the offline basemap
+     * @param shownViolations the violations marked by warning bubbles
      * @param ratio device pixels per CSS pixel: the tile is drawn {@code 256 * ratio} pixels wide
      * @return the tile as PNG, or null when it would be fully transparent
      */
     public static byte[] render(MapNetworkData data, boolean showCountries, Set<String> hiddenBaseVoltages,
-                         int zoom, int tileX, int tileY, double ratio) throws IOException {
+                                Set<MapViolationLayer> shownViolations, int zoom, int tileX, int tileY, double ratio) throws IOException {
         int pixels = (int) Math.ceil(TILE_SIZE * ratio);
         double scale = Math.pow(2, zoom);
         double originX = tileX * (double) TILE_SIZE;
@@ -103,6 +116,7 @@ public final class MapTileRenderer {
             }
             if (data != null && data.grid() != null) {
                 drawn |= drawNetwork(g, image, data, hiddenBaseVoltages, scale, originX, originY, ratio);
+                drawn |= drawViolationBubbles(g, data, hiddenBaseVoltages, shownViolations, scale, originX, originY);
             }
         } finally {
             g.dispose();
@@ -285,6 +299,43 @@ public final class MapTileRenderer {
             }
         } finally {
             g.dispose();
+        }
+        return drawn;
+    }
+
+    // Above everything else. Pixel offsets (MapNetworkData.BUBBLE_OFFSET) are the same at every zoom.
+    private static boolean drawViolationBubbles(Graphics2D g, MapNetworkData data, Set<String> hiddenBaseVoltages,
+                                                Set<MapViolationLayer> shownViolations, double scale, double originX, double originY) {
+        double radius = MapNetworkData.BUBBLE_RADIUS;
+        double extent = radius + BUBBLE_OUTLINE_WIDTH;
+        boolean drawn = false;
+        for (MapNetworkData.ViolationMarker marker : data.violationMarkers().values()) {
+            double x = marker.x() * scale;
+            double y = marker.y() * scale;
+            double centerY = y - MapNetworkData.BUBBLE_OFFSET;
+            if (x + extent < originX || x - extent > originX + TILE_SIZE || y < originY || centerY - extent > originY + TILE_SIZE
+                    || !MapNetworkData.isBubbleShown(marker, hiddenBaseVoltages, shownViolations)) {
+                continue;
+            }
+            // the tail: a triangle from the disc down to just above what it marks
+            Path2D.Double bubble = new Path2D.Double();
+            double tailHalfWidth = radius * 0.6;
+            bubble.moveTo(x - tailHalfWidth, centerY + radius * 0.5);
+            bubble.lineTo(x, y - BUBBLE_TAIL_GAP);
+            bubble.lineTo(x + tailHalfWidth, centerY + radius * 0.5);
+            bubble.closePath();
+            Area area = new Area(bubble);
+            area.add(new Area(new Ellipse2D.Double(x - radius, centerY - radius, 2 * radius, 2 * radius)));
+            g.setStroke(BUBBLE_OUTLINE_STROKE);
+            g.setColor(Color.WHITE);
+            g.draw(area);
+            g.setColor(BUBBLE_COLOR);
+            g.fill(area);
+            // the exclamation mark
+            g.setColor(Color.WHITE);
+            g.fill(new RoundRectangle2D.Double(x - 1, centerY - radius * 0.65, 2, radius * 0.85, 2, 2));
+            g.fill(new Ellipse2D.Double(x - 1.1, centerY + radius * 0.35, 2.2, 2.2));
+            drawn = true;
         }
         return drawn;
     }

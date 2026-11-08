@@ -9,6 +9,8 @@ package com.powsybl.powsybldesktop.ui.map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.powsybl.contingency.violations.LimitViolation;
+import com.powsybl.contingency.violations.LimitViolationType;
 import com.powsybl.iidm.network.BoundaryLine;
 import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Identifiable;
@@ -31,6 +33,7 @@ import com.powsybl.powsybldesktop.map.MapTileRenderer;
 import com.powsybl.powsybldesktop.network.edit.PositionEdits;
 import com.powsybl.powsybldesktop.parameters.Basemap;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.powsybldesktop.parameters.MapViolationLayer;
 import com.powsybl.powsybldesktop.search.NetworkSearch;
 import com.powsybl.powsybldesktop.ui.AbstractDisposableController;
 import com.powsybl.powsybldesktop.ui.diagram.MapBaseVoltages;
@@ -43,6 +46,10 @@ import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.ui.window.SceneView;
 import com.powsybl.powsybldesktop.ui.window.SeparateWindows;
 import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.powsybldesktop.violations.FlowViolation;
+import com.powsybl.powsybldesktop.violations.NetworkViolations;
+import com.powsybl.powsybldesktop.violations.ViolationTexts;
+import com.powsybl.powsybldesktop.violations.VoltageViolation;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -55,6 +62,7 @@ import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Hyperlink;
@@ -87,6 +95,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -126,6 +135,10 @@ import java.util.stream.Collectors;
  * Substations and lines are colored by base voltage (see {@link BaseVoltages}). Each base voltage can be hidden
  * from an overlay checkbox. The basemap and hidden base voltages are {@link GuiParameters}, also editable from the
  * parameters view.
+ * <p>
+ * Limit violations of the network's cached {@code NetworkViolations} are marked with warning bubbles, on their line, or
+ * on the substation of their transformer or voltage level. Each {@link MapViolationLayer} is shown or not from its
+ * own checkbox, a {@link GuiParameters} too. Hovering a marked element or its bubble lists its violations.
  * <p>
  * The search box zooms to its current match: a line, tie line or boundary line to fit it whole, anything else to its
  * substation, with some neighbouring substations around it, and marks it: a line halfway along, anything else at its
@@ -168,6 +181,9 @@ public class MapController extends AbstractDisposableController implements Scene
                             border-radius: 50%%;
                             box-shadow: 0 0 0 2px #fff, inset 0 0 0 2px #fff;
                         }
+                        /* an element's violations, below its name, in the warning bubbles' color */
+                        .tooltip-title { font-weight: bold; }
+                        .tooltip-violation { color: #d32f2f; }
                     </style>
                     <script>%s</script>
                 </head>
@@ -209,6 +225,10 @@ public class MapController extends AbstractDisposableController implements Scene
 
     @FXML
     private Hyperlink checkNoBaseVoltagesLink;
+
+    @FXML
+    private VBox violationsBox;
+    private final Map<MapViolationLayer, CheckBox> violationCheckBoxes = new EnumMap<>(MapViolationLayer.class);
 
     @FXML
     private SearchBoxController searchBoxController;
@@ -259,10 +279,11 @@ public class MapController extends AbstractDisposableController implements Scene
         protected Task<MapNetworkData> createTask() {
             Network network = network();
             buildingNetwork = network;
+            NetworkViolations violations = network == null ? NetworkViolations.EMPTY : mainModel.getStudy(network).getViolations();
             return new AbstractNetworkTask<>(mainModel, network) {
                 @Override
                 protected MapNetworkData compute() {
-                    return MapNetworkData.build(network, baseVoltages::name, baseVoltages::color);
+                    return MapNetworkData.build(network, violations, baseVoltages::name, baseVoltages::color);
                 }
             };
         }
@@ -284,6 +305,7 @@ public class MapController extends AbstractDisposableController implements Scene
     // the network the running networkDataService build is for: restarting it drops the result of a previous build
     private Network buildingNetwork;
     private Set<String> hiddenBaseVoltages = Set.of();
+    private Set<MapViolationLayer> shownViolations = Set.of();
 
     private SceneModel sceneModel;
     private MainModel mainModel;
@@ -372,6 +394,7 @@ public class MapController extends AbstractDisposableController implements Scene
         this.sceneModel = Objects.requireNonNull(sceneModel);
         this.mainModel = sceneModel.getMainModel();
         hiddenBaseVoltages = gui().getMapHiddenBaseVoltages();
+        shownViolations = gui().getMapShownViolations();
         basemapComboBox.setValue(gui().getMapBasemap());
         basemapComboBox.valueProperty().addListener((_, _, newValue) -> {
             if (gui().getMapBasemap() != newValue) {
@@ -389,6 +412,7 @@ public class MapController extends AbstractDisposableController implements Scene
         });
         listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> refresh());
         createBaseVoltageCheckBoxes();
+        createViolationCheckBoxes();
         listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (_, _, _) -> applyGuiParameters());
         searchBoxController.bind(sceneModel, this::onSearchMatch);
         searchBoxController.setOnNoMatch(this::clearSearchHighlight);
@@ -496,12 +520,30 @@ public class MapController extends AbstractDisposableController implements Scene
         baseVoltagesBox.getChildren().addAll(baseVoltageCheckBoxes.getCheckBoxes());
     }
 
+    // the network is redrawn by applyGuiParameters, once the change has gone through the GUI parameters
+    private void createViolationCheckBoxes() {
+        for (MapViolationLayer layer : MapViolationLayer.values()) {
+            CheckBox checkBox = new CheckBox(layer.getLabel());
+            checkBox.setSelected(shownViolations.contains(layer));
+            checkBox.selectedProperty().addListener((_, _, selected) -> {
+                if (selected != gui().getMapShownViolations().contains(layer)) {
+                    gui().setMapViolationsShown(layer, selected);
+                    mainModel.getParametersModel().guiParametersChanged();
+                }
+            });
+            violationCheckBoxes.put(layer, checkBox);
+            violationsBox.getChildren().add(checkBox);
+        }
+    }
+
     // edited from this view or the parameters view, or replaced by a parameters reset or import
     private void applyGuiParameters() {
         basemapComboBox.setValue(gui().getMapBasemap());
         baseVoltageCheckBoxes.setHidden(gui().getMapHiddenBaseVoltages());
-        if (!hiddenBaseVoltages.equals(gui().getMapHiddenBaseVoltages())) {
+        violationCheckBoxes.forEach((layer, checkBox) -> checkBox.setSelected(gui().getMapShownViolations().contains(layer)));
+        if (!hiddenBaseVoltages.equals(gui().getMapHiddenBaseVoltages()) || !shownViolations.equals(gui().getMapShownViolations())) {
             hiddenBaseVoltages = gui().getMapHiddenBaseVoltages();
+            shownViolations = gui().getMapShownViolations();
             if (engineLoaded) {
                 webView.getEngine().executeScript("redrawNetwork()");
             }
@@ -530,10 +572,11 @@ public class MapController extends AbstractDisposableController implements Scene
         MapNetworkData data = networkData;
         boolean showCountries = basemapComboBox.getValue() == Basemap.OFFLINE;
         Set<String> hidden = hiddenBaseVoltages;
+        Set<MapViolationLayer> violations = shownViolations;
         pendingTiles.put(id, tileExecutor.submit(() -> {
             String url = "";
             try {
-                url = renderTile(data, showCountries, hidden, zoom, x, y, ratio);
+                url = renderTile(data, showCountries, hidden, violations, zoom, x, y, ratio);
             } finally {
                 // even if drawing failed, or Leaflet would wait for the tile forever
                 deliverTile(id, url);
@@ -541,9 +584,10 @@ public class MapController extends AbstractDisposableController implements Scene
         }));
     }
 
-    private static String renderTile(MapNetworkData data, boolean showCountries, Set<String> hidden, int zoom, int x, int y, double ratio) {
+    private static String renderTile(MapNetworkData data, boolean showCountries, Set<String> hidden, Set<MapViolationLayer> violations,
+                                     int zoom, int x, int y, double ratio) {
         try {
-            byte[] png = MapTileRenderer.render(data, showCountries, hidden, zoom, x, y, ratio);
+            byte[] png = MapTileRenderer.render(data, showCountries, hidden, violations, zoom, x, y, ratio);
             return png == null ? "" : "data:image/png;base64," + Base64.getEncoder().encodeToString(png);
         } catch (IOException e) {
             LOGGER.error(e.getMessage(), e);
@@ -572,17 +616,75 @@ public class MapController extends AbstractDisposableController implements Scene
     }
 
     /**
-     * Called from map.js as the mouse moves: the JSON of the {@link MapNetworkData.Hit} under it, or null.
+     * What map.js' tooltip shows for a hovered element.
+     *
+     * @param key identifies the element, to tell whether the hovered element changed
+     * @param violations its shown violations, one text each, most severe first
+     */
+    private record Hover(String key, String text, double lat, double lng, List<String> violations) {
+    }
+
+    /**
+     * Called from map.js as the mouse moves: the JSON of the {@link Hover} of what is under it, or null.
      */
     @SuppressWarnings("unused") // called from map.js
     public String hitTest(double latitude, double longitude, double zoom) {
-        MapNetworkData.Hit hit = networkData == null ? null : networkData.hitTest(latitude, longitude, zoom, hiddenBaseVoltages);
+        MapNetworkData.Hit hit = hitAt(latitude, longitude, zoom);
         try {
-            return hit == null ? null : objectMapper.writeValueAsString(hit);
+            return hit == null ? null : objectMapper.writeValueAsString(new Hover(hit.key(), hit.text(), hit.lat(), hit.lng(),
+                    violationTexts(networkData.violationMarker(hit.id()))));
         } catch (JsonProcessingException e) {
             LOGGER.error(e.getMessage(), e);
             return null;
         }
+    }
+
+    private MapNetworkData.Hit hitAt(double latitude, double longitude, double zoom) {
+        return networkData == null ? null : networkData.hitTest(latitude, longitude, zoom, hiddenBaseVoltages, shownViolations);
+    }
+
+    // formatted when hovered rather than when the map data is built, so with the decimals of the moment
+    private List<String> violationTexts(MapNetworkData.ViolationMarker marker) {
+        if (marker == null) {
+            return List.of();
+        }
+        List<String> texts = new ArrayList<>();
+        marker.flowViolations().stream()
+                .filter(marked -> shownViolations.contains(marked.layer()))
+                .forEach(marked -> {
+                    String text = flowViolationText(marked.violation());
+                    texts.add(marked.equipmentText() == null ? text : Messages.get("map.violations.of", marked.equipmentText(), text));
+                });
+        marker.voltageViolations().stream()
+                .filter(marked -> shownViolations.contains(marked.layer()))
+                .forEach(marked -> texts.add(voltageViolationText(marked.voltageLevelText(), marked.violation())));
+        return texts;
+    }
+
+    private String flowViolationText(FlowViolation violation) {
+        LimitViolation limitViolation = violation.violation();
+        GuiParameters.Quantity quantity = limitViolation.getLimitType() == LimitViolationType.CURRENT
+                ? GuiParameters.Quantity.CURRENT : GuiParameters.Quantity.POWER;
+        String unit = switch (limitViolation.getLimitType()) {
+            case CURRENT -> "A";
+            case ACTIVE_POWER -> "MW";
+            default -> "MVA";
+        };
+        // numbers as strings: MessageFormat would group their digits
+        return Messages.get("map.violations.flow", ViolationTexts.limitViolationTypeText(limitViolation.getLimitType()),
+                gui().format(quantity, limitViolation.getValue()), gui().format(quantity, limitViolation.getLimit()), unit,
+                gui().format(GuiParameters.Quantity.PERCENTAGE, violation.percent()),
+                limitViolation.getSide() == null ? "-" : String.valueOf(limitViolation.getSide().getNum()),
+                ViolationTexts.acceptableDurationText(limitViolation.getAcceptableDuration()));
+    }
+
+    private String voltageViolationText(String voltageLevelText, VoltageViolation violation) {
+        LimitViolation limitViolation = violation.violation();
+        return Messages.get("map.violations.voltage", voltageLevelText, violation.busId(),
+                ViolationTexts.limitViolationTypeText(limitViolation.getLimitType()),
+                gui().format(GuiParameters.Quantity.VOLTAGE, limitViolation.getValue()),
+                gui().format(GuiParameters.Quantity.VOLTAGE, limitViolation.getLimit()),
+                gui().format(GuiParameters.Quantity.PERCENTAGE, violation.percentOfNominal()));
     }
 
     @SuppressWarnings("unused") // called from map.js
@@ -606,7 +708,7 @@ public class MapController extends AbstractDisposableController implements Scene
 
     @SuppressWarnings("unused") // called from map.js
     public void onMapClick(double latitude, double longitude, double zoom) {
-        MapNetworkData.Hit hit = networkData == null ? null : networkData.hitTest(latitude, longitude, zoom, hiddenBaseVoltages);
+        MapNetworkData.Hit hit = hitAt(latitude, longitude, zoom);
         Network network = network();
         if (hit == null || network == null) {
             return;
@@ -627,7 +729,7 @@ public class MapController extends AbstractDisposableController implements Scene
         if (network == null) {
             return;
         }
-        MapNetworkData.Hit hit = networkData == null ? null : networkData.hitTest(latitude, longitude, zoom, hiddenBaseVoltages);
+        MapNetworkData.Hit hit = hitAt(latitude, longitude, zoom);
         Identifiable<?> identifiable = hit == null ? null : network.getIdentifiable(hit.id());
         List<MenuItem> items = new ArrayList<>();
         if (identifiable instanceof Substation substation) {

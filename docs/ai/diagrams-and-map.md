@@ -40,6 +40,14 @@ when one looks wrong, snapshot it rather than reason from the source (see
   markers and line strokes, substations winning over lines.
 - The map shows the selected network's root network with all its subnetworks, in any window (see
   [windows.md](windows.md#network-binding)).
+- Limit violations are warning bubbles drawn in the same tiles, on top, from `MapNetworkData.violationMarkers`, built
+  with the snapshot from the study's cached `NetworkViolations` (see
+  [domain-and-persistence.md](domain-and-persistence.md)): flow ones on their line, tie line or unpaired boundary
+  line, transformer ones on the transformer's substation, voltage ones on their voltage level's substation; equipment
+  not drawn gets none. Each marked violation has a `MapViolationLayer` (base case flows, base case voltages; contingency
+  ones are meant to be new layers), shown or not from its own checkbox, a GUI parameter like the hidden base voltages.
+  A bubble hits as what it marks, before anything else; the hover tooltip lists the shown violations, formatted by
+  `MapController` when hovered (current decimals), and set as text by `map.js`, never HTML.
 
 ### Leaflet in a WebView
 

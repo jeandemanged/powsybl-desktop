@@ -7,15 +7,24 @@
  */
 package com.powsybl.powsybldesktop.map;
 
+import com.powsybl.iidm.network.BoundaryLine;
 import com.powsybl.iidm.network.Identifiable;
+import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.Substation;
+import com.powsybl.iidm.network.ThreeWindingsTransformer;
 import com.powsybl.iidm.network.TieLine;
+import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.iidm.network.extensions.LinePosition;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
 import com.powsybl.powsybldesktop.diagram.BaseVoltages;
 import com.powsybl.powsybldesktop.network.edit.PositionEdits;
+import com.powsybl.powsybldesktop.parameters.MapViolationLayer;
+import com.powsybl.powsybldesktop.violations.FlowViolation;
+import com.powsybl.powsybldesktop.violations.NetworkViolations;
+import com.powsybl.powsybldesktop.violations.VoltageViolation;
 
 import java.awt.Color;
 import java.util.ArrayList;
@@ -23,6 +32,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,6 +55,7 @@ import java.util.function.DoubleFunction;
  *                          two distinct positions
  * @param unplacedSubstations the substations without position, by name
  * @param unroutedCount how many lines and tie lines {@link PositionEdits#createStraightRoutes} would give a route to
+ * @param violationMarkers the drawn substations and lines with limit violations, by id
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 public record MapNetworkData(List<Color> colors,
@@ -54,11 +65,19 @@ public record MapNetworkData(List<Color> colors,
                       boolean[] lineDisconnected, boolean[] lineImplied, int[] lineStart, double[] lineBounds,
                       double[] pointX, double[] pointY, int[] pointLine,
                       Grid grid, double substationSpacing,
-                      List<UnplacedSubstation> unplacedSubstations, int unroutedCount) {
+                      List<UnplacedSubstation> unplacedSubstations, int unroutedCount,
+                      Map<String, ViolationMarker> violationMarkers) {
 
     static final String DEFAULT_LINE_COLOR = "#616161";
     static final double WORLD_SIZE = 256;
     static final double LINE_WEIGHT = 2;
+
+    /** Warning bubble radius, in pixels: a disc above what it marks, its tail pointing at it. */
+    static final double BUBBLE_RADIUS = 7;
+    /** Pixels from what a bubble marks (a substation's position, a line's middle) up to the bubble's center. */
+    static final double BUBBLE_OFFSET = 13;
+    /** Pixels around a bubble that still hit it. */
+    private static final double BUBBLE_CLICK_TOLERANCE = 2;
 
     /** Leaflet's {@code L.Projection.SphericalMercator.MAX_LATITUDE}. */
     private static final double MAX_LATITUDE = 85.0511287798;
@@ -121,6 +140,40 @@ public record MapNetworkData(List<Color> colors,
     public record Hit(String key, boolean substation, String id, String text, double lat, double lng, boolean implied) {
     }
 
+    /**
+     * A flow violation marked on a line or a substation.
+     *
+     * @param equipmentText the transformer's name or id for a substation, null for the line itself
+     */
+    public record MarkedFlowViolation(MapViolationLayer layer, String equipmentText, FlowViolation violation) {
+    }
+
+    /**
+     * A voltage violation marked on its voltage level's substation.
+     */
+    public record MarkedVoltageViolation(MapViolationLayer layer, String voltageLevelText, VoltageViolation violation) {
+    }
+
+    /**
+     * The warning bubble of a drawn substation ({@code element} indexes {@code substationIds}) or line ({@code element}
+     * indexes {@code lineIds}, the first part of a tie line drawn from its two halves), above {@code x}, {@code y}: the
+     * substation's position or the line's middle. Each list is sorted most severe first.
+     */
+    public record ViolationMarker(boolean substation, int element, double x, double y, String baseVoltage,
+                                  List<MarkedFlowViolation> flowViolations, List<MarkedVoltageViolation> voltageViolations) {
+
+        public boolean isShown(Set<MapViolationLayer> shownLayers) {
+            return flowViolations.stream().anyMatch(v -> shownLayers.contains(v.layer()))
+                    || voltageViolations.stream().anyMatch(v -> shownLayers.contains(v.layer()));
+        }
+    }
+
+    private record MarkedViolations(List<MarkedFlowViolation> flowViolations, List<MarkedVoltageViolation> voltageViolations) {
+        MarkedViolations() {
+            this(new ArrayList<>(), new ArrayList<>());
+        }
+    }
+
     public record UnplacedSubstation(String id, String text) {
         @Override
         public String toString() {
@@ -147,12 +200,18 @@ public record MapNetworkData(List<Color> colors,
      * positions on its two boundary line halves, which are then drawn as, and navigate to, that tie line. A
      * substation takes its highest voltage level nominal voltage, a line the highest of its two ends.
      *
+     * Base case violations are marked on their line, tie line or unpaired boundary line, transformer ones on its
+     * substation, voltage ones on their voltage level's substation.
+     *
+     * @param violations the network's cached base case violations
      * @param color the color of a base voltage, or the given default color for a null one
      */
-    public static MapNetworkData build(Network network, DoubleFunction<String> baseVoltageName, BinaryOperator<String> color) {
+    public static MapNetworkData build(Network network, NetworkViolations violations, DoubleFunction<String> baseVoltageName,
+                                       BinaryOperator<String> color) {
         List<MarkerData> substations = new ArrayList<>();
         List<LineData> lines = new ArrayList<>();
         List<UnplacedSubstation> unplaced = new ArrayList<>();
+        Map<String, MarkedViolations> markedViolations = new LinkedHashMap<>();
         int unroutedCount = 0;
         if (network != null) {
             network.getSubstationStream().forEach(substation -> {
@@ -194,8 +253,38 @@ public record MapNetworkData(List<Color> colors,
             });
             unplaced.sort(Comparator.comparing(UnplacedSubstation::text, String.CASE_INSENSITIVE_ORDER));
             unroutedCount = PositionEdits.unroutedCount(network);
+            markViolations(network, violations, markedViolations);
         }
-        return pack(substations, lines, List.copyOf(unplaced), unroutedCount);
+        return pack(substations, lines, List.copyOf(unplaced), unroutedCount, markedViolations);
+    }
+
+    // keyed by the id of the line or substation marked; the cache may hold equipment no longer in the network, skipped
+    private static void markViolations(Network network, NetworkViolations violations, Map<String, MarkedViolations> marked) {
+        violations.getFlowViolations().forEach((id, flowViolations) -> {
+            Identifiable<?> equipment = network.getIdentifiable(id);
+            String markedId = switch (equipment) {
+                case Line _, TieLine _, BoundaryLine _ -> id;
+                case TwoWindingsTransformer transformer -> transformer.getSubstation().map(Substation::getId).orElse(null);
+                case ThreeWindingsTransformer transformer -> transformer.getSubstation().map(Substation::getId).orElse(null);
+                case null, default -> null;
+            };
+            if (markedId != null) {
+                String equipmentText = markedId.equals(id) ? null : equipment.getNameOrId();
+                List<MarkedFlowViolation> marks = marked.computeIfAbsent(markedId, _ -> new MarkedViolations()).flowViolations();
+                flowViolations.forEach(v -> marks.add(new MarkedFlowViolation(MapViolationLayer.BASE_CASE_FLOW, equipmentText, v)));
+            }
+        });
+        for (VoltageViolation violation : violations.getVoltageViolations()) {
+            VoltageLevel voltageLevel = network.getVoltageLevel(violation.violation().getSubjectId());
+            if (voltageLevel != null) {
+                voltageLevel.getSubstation().ifPresent(substation -> marked.computeIfAbsent(substation.getId(), _ -> new MarkedViolations())
+                        .voltageViolations().add(new MarkedVoltageViolation(MapViolationLayer.BASE_CASE_VOLTAGE, voltageLevel.getNameOrId(), violation)));
+            }
+        }
+        marked.values().forEach(m -> {
+            m.flowViolations().sort(Comparator.comparing(MarkedFlowViolation::violation, FlowViolation.SEVERITY));
+            m.voltageViolations().sort(Comparator.comparing(MarkedVoltageViolation::violation, VoltageViolation.SEVERITY));
+        });
     }
 
     private static double nominalV(TieLine tieLine) {
@@ -246,7 +335,7 @@ public record MapNetworkData(List<Color> colors,
     }
 
     private static MapNetworkData pack(List<MarkerData> substations, List<LineData> lines, List<UnplacedSubstation> unplacedSubstations,
-                                       int unroutedCount) {
+                                       int unroutedCount, Map<String, MarkedViolations> markedViolations) {
         List<Color> colors = new ArrayList<>();
         Map<String, Integer> colorIndices = new HashMap<>();
         int substationCount = substations.size();
@@ -312,9 +401,46 @@ public record MapNetworkData(List<Color> colors,
         }
         lineStart[lineCount] = k;
         Grid grid = buildGrid(substationX, substationY, lineStart, pointX, pointY);
+        Map<String, ViolationMarker> violationMarkers = violationMarkers(markedViolations, substationIds, substationX, substationY,
+                substationBaseVoltages, lineIds, lineBaseVoltages, lineStart, pointX, pointY);
         return new MapNetworkData(colors, substationIds, substationTexts, substationBaseVoltages, substationX, substationY,
                 substationColor, lineIds, lineTexts, lineBaseVoltages, lineColor, lineDisconnected, lineImplied, lineStart, lineBounds,
-                pointX, pointY, pointLine, grid, substationSpacing(grid, substationX, substationY), unplacedSubstations, unroutedCount);
+                pointX, pointY, pointLine, grid, substationSpacing(grid, substationX, substationY), unplacedSubstations, unroutedCount,
+                violationMarkers);
+    }
+
+    // only for what is drawn
+    private static Map<String, ViolationMarker> violationMarkers(Map<String, MarkedViolations> markedViolations,
+                                                                 String[] substationIds, double[] substationX, double[] substationY,
+                                                                 String[] substationBaseVoltages, String[] lineIds, String[] lineBaseVoltages,
+                                                                 int[] lineStart, double[] pointX, double[] pointY) {
+        if (markedViolations.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Integer> substationIndices = new HashMap<>();
+        for (int i = 0; i < substationIds.length; i++) {
+            substationIndices.put(substationIds[i], i);
+        }
+        Map<String, List<Integer>> lineIndices = new HashMap<>();
+        for (int i = 0; i < lineIds.length; i++) {
+            lineIndices.computeIfAbsent(lineIds[i], _ -> new ArrayList<>()).add(i);
+        }
+        Map<String, ViolationMarker> markers = new HashMap<>();
+        markedViolations.forEach((id, marked) -> {
+            List<MarkedFlowViolation> flows = List.copyOf(marked.flowViolations());
+            List<MarkedVoltageViolation> voltages = List.copyOf(marked.voltageViolations());
+            Integer substation = substationIndices.get(id);
+            List<Integer> lines = lineIndices.get(id);
+            if (substation != null) {
+                markers.put(id, new ViolationMarker(true, substation, substationX[substation], substationY[substation],
+                        substationBaseVoltages[substation], flows, voltages));
+            } else if (lines != null) {
+                double[] middle = lineMiddle(lines, lineStart, pointX, pointY);
+                markers.put(id, new ViolationMarker(false, lines.getFirst(), middle[0], middle[1], lineBaseVoltages[lines.getFirst()],
+                        flows, voltages));
+            }
+        });
+        return Map.copyOf(markers);
     }
 
     private static int colorIndex(String color, List<Color> colors, Map<String, Integer> colorIndices) {
@@ -595,7 +721,8 @@ public record MapNetworkData(List<Color> colors,
      * At a fractional {@code zoom}, Leaflet shows the tiles of the rounded zoom level scaled, markers and lines
      * included, so the hit distances are those of that level, scaled the same.
      */
-    public Hit hitTest(double latitude, double longitude, double zoom, Set<String> hiddenBaseVoltages) {
+    public Hit hitTest(double latitude, double longitude, double zoom, Set<String> hiddenBaseVoltages,
+                       Set<MapViolationLayer> shownViolations) {
         if (grid == null) {
             return null;
         }
@@ -604,6 +731,10 @@ public record MapNetworkData(List<Color> colors,
         double scale = Math.pow(2, zoom);
         double tileScale = Math.pow(2, Math.round(zoom));
         double displayScale = scale / tileScale;
+        ViolationMarker bubble = bubbleAt(px, py, tileScale, displayScale, hiddenBaseVoltages, shownViolations);
+        if (bubble != null) {
+            return bubble.substation() ? substationHit(bubble.element()) : lineHit(bubble.element());
+        }
         double substationLimit = (substationSize(tileScale) * displayScale / 2 + SUBSTATION_CLICK_TOLERANCE) / scale;
         double lineLimit = LINE_HIT_DISTANCE * displayScale / scale;
         double tolerance = Math.max(substationLimit, lineLimit);
@@ -636,15 +767,52 @@ public record MapNetworkData(List<Color> colors,
             }
         }
         if (bestSubstation >= 0) {
-            return new Hit("s" + bestSubstation, true, substationIds[bestSubstation], substationTexts[bestSubstation],
-                    unprojectLatitude(substationY[bestSubstation]), unprojectLongitude(substationX[bestSubstation]), false);
+            return substationHit(bestSubstation);
         }
         if (bestLine >= 0) {
-            double[] anchor = lineMiddle(List.of(bestLine));
-            return new Hit("l" + bestLine, false, lineIds[bestLine], lineTexts[bestLine],
-                    unprojectLatitude(anchor[1]), unprojectLongitude(anchor[0]), lineImplied[bestLine]);
+            return lineHit(bestLine);
         }
         return null;
+    }
+
+    private Hit substationHit(int substation) {
+        return new Hit("s" + substation, true, substationIds[substation], substationTexts[substation],
+                unprojectLatitude(substationY[substation]), unprojectLongitude(substationX[substation]), false);
+    }
+
+    private Hit lineHit(int line) {
+        double[] anchor = lineMiddle(List.of(line));
+        return new Hit("l" + line, false, lineIds[line], lineTexts[line], unprojectLatitude(anchor[1]), unprojectLongitude(anchor[0]),
+                lineImplied[line]);
+    }
+
+    /**
+     * Whether a marker's bubble is drawn: some of its violations are shown, and what it marks isn't hidden.
+     */
+    static boolean isBubbleShown(ViolationMarker marker, Set<String> hiddenBaseVoltages, Set<MapViolationLayer> shownViolations) {
+        return marker.isShown(shownViolations) && !isHidden(hiddenBaseVoltages, marker.baseVoltage());
+    }
+
+    // Bubbles are few next to substations and lines, so scanned rather than gridded. Measured in pixels of the tiles'
+    // whole zoom level, where bubbles have their nominal size (see hitTest).
+    private ViolationMarker bubbleAt(double px, double py, double tileScale, double displayScale, Set<String> hiddenBaseVoltages,
+                                     Set<MapViolationLayer> shownViolations) {
+        double limit = BUBBLE_RADIUS + BUBBLE_CLICK_TOLERANCE / displayScale;
+        for (ViolationMarker marker : violationMarkers.values()) {
+            double dx = (px - marker.x()) * tileScale;
+            double dy = (py - marker.y()) * tileScale + BUBBLE_OFFSET;
+            if (dx * dx + dy * dy <= limit * limit && isBubbleShown(marker, hiddenBaseVoltages, shownViolations)) {
+                return marker;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The violations marked on substation or line {@code id}, null for none.
+     */
+    public ViolationMarker violationMarker(String id) {
+        return violationMarkers.get(id);
     }
 
     private static double squaredDistanceToSegment(double px, double py, double ax, double ay, double bx, double by) {
@@ -661,6 +829,10 @@ public record MapNetworkData(List<Color> colors,
     // after the other for a tie line's two halves. Pixel positions at any zoom are the zoom 0 ones scaled, so
     // measuring at zoom 0 is exact.
     private double[] lineMiddle(List<Integer> lines) {
+        return lineMiddle(lines, lineStart, pointX, pointY);
+    }
+
+    private static double[] lineMiddle(List<Integer> lines, int[] lineStart, double[] pointX, double[] pointY) {
         double length = 0;
         for (int line : lines) {
             for (int k = lineStart[line]; k < lineStart[line + 1] - 1; k++) {

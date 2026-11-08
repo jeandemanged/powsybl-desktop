@@ -425,6 +425,10 @@ public final class ApplicationParametersJson {
         Binder map = b.child("map");
         map.enumeration("basemap", Basemap.class, p::getMapBasemap, p::setMapBasemap);
         map.stringSet("hiddenBaseVoltages", p::getMapHiddenBaseVoltages, p::setMapHiddenBaseVoltages);
+        Binder violations = map.child("violations");
+        for (MapViolationLayer layer : MapViolationLayer.values()) {
+            violations.bool(layer.getJsonName(), () -> p.getMapShownViolations().contains(layer), v -> p.setMapViolationsShown(layer, v));
+        }
         Binder logs = b.child("logs");
         logs.enumeration("minLevel", GuiParameters.LogLevel.class, p::getLogsMinLevel, p::setLogsMinLevel);
         logs.bool("newestOnTop", p::isLogsNewestOnTop, p::setLogsNewestOnTop);

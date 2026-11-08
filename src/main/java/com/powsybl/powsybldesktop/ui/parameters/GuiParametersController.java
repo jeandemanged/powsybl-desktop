@@ -10,6 +10,7 @@ package com.powsybl.powsybldesktop.ui.parameters;
 import com.powsybl.powsybldesktop.diagram.BaseVoltages;
 import com.powsybl.powsybldesktop.parameters.Basemap;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.powsybldesktop.parameters.MapViolationLayer;
 import com.powsybl.powsybldesktop.parameters.ParametersModel;
 import com.powsybl.powsybldesktop.ui.diagram.MapBaseVoltages;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -72,6 +73,10 @@ public class GuiParametersController extends AbstractDiagramParametersController
         addChoiceField(CAT_MAP, label("basemap"), List.of(Basemap.values()), Basemap::getLabel,
                 GuiParameters::getMapBasemap, GuiParameters::setMapBasemap);
         addBaseVoltagesField();
+        for (MapViolationLayer layer : MapViolationLayer.values()) {
+            addBooleanField(CAT_MAP, layer.getLabel(), null,
+                    p -> p.getMapShownViolations().contains(layer), (p, shown) -> p.setMapViolationsShown(layer, shown));
+        }
         addChoiceField(CAT_LOGS, label("logsMinLevel"), List.of(GuiParameters.LogLevel.values()),
                 level -> Messages.get("logs.filter." + level.name().toLowerCase(Locale.ROOT)),
                 GuiParameters::getLogsMinLevel, GuiParameters::setLogsMinLevel);

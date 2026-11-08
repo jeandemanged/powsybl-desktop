@@ -67,6 +67,7 @@ class ApplicationParametersJsonTest {
 
         parameters.gui().setMapBasemap(Basemap.OPEN_STREET_MAP);
         parameters.gui().setMapHiddenBaseVoltages(Set.of("vl300to500", "vl0to30"));
+        parameters.gui().setMapShownViolations(Set.of(MapViolationLayer.BASE_CASE_VOLTAGE));
         parameters.gui().setLogsMinLevel(GuiParameters.LogLevel.WARN);
         parameters.gui().setLogsNewestOnTop(false);
         parameters.gui().setReportsMinSeverity("DETAIL");
@@ -105,6 +106,7 @@ class ApplicationParametersJsonTest {
         assertEquals(3, read.securityAnalysis().getExtension(OpenSecurityAnalysisParameters.class).getThreadCount());
         assertEquals(Basemap.OPEN_STREET_MAP, read.gui().getMapBasemap());
         assertEquals(Set.of("vl300to500", "vl0to30"), read.gui().getMapHiddenBaseVoltages());
+        assertEquals(Set.of(MapViolationLayer.BASE_CASE_VOLTAGE), read.gui().getMapShownViolations());
         assertEquals(GuiParameters.LogLevel.WARN, read.gui().getLogsMinLevel());
         assertFalse(read.gui().isLogsNewestOnTop());
         assertEquals("DETAIL", read.gui().getReportsMinSeverity());

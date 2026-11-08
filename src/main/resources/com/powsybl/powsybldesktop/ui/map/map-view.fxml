@@ -100,6 +100,15 @@
                         </HBox>
                     </children>
                 </VBox>
+                <!-- one checkbox per MapViolationLayer, added by the controller -->
+                <VBox fx:id="violationsBox" spacing="4.0" maxWidth="-Infinity" styleClass="map-overlay">
+                    <padding>
+                        <Insets bottom="6.0" left="8.0" right="8.0" top="6.0"/>
+                    </padding>
+                    <children>
+                        <Label text="%map.violations" styleClass="section-title"/>
+                    </children>
+                </VBox>
             </children>
         </VBox>
         <StackPane fx:id="loadingPane" mouseTransparent="true" AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0"

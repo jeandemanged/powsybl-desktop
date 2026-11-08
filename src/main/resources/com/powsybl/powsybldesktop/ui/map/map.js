@@ -338,7 +338,8 @@ function setBasemap(name) {
 }
 
 // A single shared tooltip, re-anchored whenever the hovered element changes. Hover and clicks are hit-tested by
-// MapController, which returns what is under the mouse as {key, text, lat, lng}.
+// MapController, which returns what is under the mouse as {key, text, lat, lng, violations}: its name, then one line
+// per violation, set as text rather than HTML.
 var tooltip = L.tooltip();
 var hovered = null;
 var pendingHoverEvent = null;
@@ -352,13 +353,30 @@ function setHovered(hit) {
     // while placing, a click places rather than opens what is under it
     map.getContainer().style.cursor = placing ? 'crosshair' : (hit ? 'pointer' : '');
     if (hit) {
-        tooltip.setLatLng([hit.lat, hit.lng]).setContent(hit.text);
+        tooltip.setLatLng([hit.lat, hit.lng]).setContent(tooltipContent(hit));
         if (!map.hasLayer(tooltip)) {
             tooltip.addTo(map);
         }
     } else if (map.hasLayer(tooltip)) {
         map.removeLayer(tooltip);
     }
+}
+
+function tooltipContent(hit) {
+    var content = document.createElement('div');
+    var title = document.createElement('div');
+    title.textContent = hit.text;
+    content.appendChild(title);
+    if (hit.violations.length > 0) {
+        title.className = 'tooltip-title';
+        hit.violations.forEach(function (text) {
+            var line = document.createElement('div');
+            line.className = 'tooltip-violation';
+            line.textContent = text;
+            content.appendChild(line);
+        });
+    }
+    return content;
 }
 
 map.on('mousemove', function (e) {

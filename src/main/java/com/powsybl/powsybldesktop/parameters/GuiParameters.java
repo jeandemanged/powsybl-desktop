@@ -8,6 +8,7 @@
 package com.powsybl.powsybldesktop.parameters;
 
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -65,6 +66,7 @@ public class GuiParameters {
     private Basemap mapBasemap = Basemap.OFFLINE;
     // names of the base voltages (see BaseVoltagesConfig) whose substations and lines the map view hides
     private Set<String> mapHiddenBaseVoltages = Set.of();
+    private Set<MapViolationLayer> mapShownViolations = Set.copyOf(EnumSet.allOf(MapViolationLayer.class));
     private LogLevel logsMinLevel = LogLevel.INFO;
     private boolean logsNewestOnTop = true;
     private String reportsMinSeverity = REPORT_SEVERITIES.getFirst();
@@ -91,6 +93,25 @@ public class GuiParameters {
 
     public void setMapHiddenBaseVoltages(Set<String> mapHiddenBaseVoltages) {
         this.mapHiddenBaseVoltages = Set.copyOf(requireNonNull(mapHiddenBaseVoltages, "mapHiddenBaseVoltages"));
+    }
+
+    public Set<MapViolationLayer> getMapShownViolations() {
+        return mapShownViolations;
+    }
+
+    public void setMapShownViolations(Set<MapViolationLayer> mapShownViolations) {
+        this.mapShownViolations = Set.copyOf(requireNonNull(mapShownViolations, "mapShownViolations"));
+    }
+
+    public void setMapViolationsShown(MapViolationLayer layer, boolean shown) {
+        Set<MapViolationLayer> layers = EnumSet.noneOf(MapViolationLayer.class);
+        layers.addAll(mapShownViolations);
+        if (shown) {
+            layers.add(layer);
+        } else {
+            layers.remove(layer);
+        }
+        setMapShownViolations(layers);
     }
 
     public LogLevel getLogsMinLevel() {

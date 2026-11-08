@@ -7,10 +7,14 @@
  */
 package com.powsybl.powsybldesktop.network;
 
+import com.powsybl.iidm.network.Bus;
+import com.powsybl.iidm.network.CurrentLimitsAdder;
 import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
+import com.powsybl.iidm.network.Terminal;
 import com.powsybl.iidm.network.TopologyKind;
+import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.iidm.network.extensions.LinePositionAdder;
@@ -19,8 +23,10 @@ import com.powsybl.iidm.network.extensions.SubstationPositionAdder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * Synthetic networks for stress-testing the Map view, made of a grid of substations linked to their neighbours.
@@ -31,6 +37,14 @@ import java.util.Random;
  * stays its own. Within a substation, voltage levels are chained by transformers in decreasing nominal voltage
  * order (e.g. 400/220 and 220/90), so the whole network is one connected component. {@value #DISCONNECTED_LINE_SHARE}
  * of the lines, picked at random, are disconnected on their first side.
+ * <p>
+ * Every network comes with a state, as if solved by a load flow (though not balanced), and with limits, so that limit
+ * violations show: voltage levels have low and high voltage limits at 90% and 110% of their nominal voltage, lines
+ * current limits on both sides and transformers on their first side, each a permanent limit and two temporary ones
+ * (10' at 120%, 1' at 150%). {@value #VIOLATION_SHARE} of the lines, picked among connected ones, and of the
+ * substations are violated: lines loaded from 101% to 160% of their permanent limit, substations with either a
+ * transformer so loaded or a bus beyond a voltage limit (always a bus for a substation without transformer). All the
+ * rest is within limits: buses from 95% to 105% of their nominal voltage, lines and transformers loaded from 30% to 90%.
  * <ul>
  *     <li>{@link #create()}: 100 x 100 substations over mainland France, every neighbour linked.</li>
  *     <li>{@link #createEurope()}: 200 x 250 substations over Europe, all horizontal neighbours and a random subset of
@@ -54,6 +68,13 @@ public final class MapTestNetworkFactory {
     private static final double DISCONNECTED_LINE_SHARE = 0.05;
     private static final double[] NOMINAL_VOLTAGES = {400, 220, 150, 90, 63};
     private static final double[] NOMINAL_VOLTAGE_SHARES = {0.2, 0.3, 0.15, 0.2, 0.15};
+    /** Line permanent current limits, in A, by nominal voltage as in {@link #NOMINAL_VOLTAGES}; transformers get half. */
+    private static final double[] PERMANENT_CURRENT_LIMITS = {2000, 1000, 800, 600, 500};
+    private static final double VIOLATION_SHARE = 0.3;
+    private static final double LOW_VOLTAGE_LIMIT = 0.9;
+    private static final double HIGH_VOLTAGE_LIMIT = 1.1;
+    /** Reactive power of every flow, as a share of its active power. */
+    private static final double Q_SHARE = 0.2;
 
     private record Grid(int rows, int cols, double minLatitude, double maxLatitude, double minLongitude, double maxLongitude) {
         Coordinate coordinate(int row, int col) {
@@ -80,6 +101,7 @@ public final class MapTestNetworkFactory {
         }
         addTransformers(network);
         disconnectLines(network);
+        addStateAndLimits(network);
         return network;
     }
 
@@ -113,6 +135,7 @@ public final class MapTestNetworkFactory {
         }
         addTransformers(network);
         disconnectLines(network);
+        addStateAndLimits(network);
         return network;
     }
 
@@ -177,8 +200,99 @@ public final class MapTestNetworkFactory {
                 .forEach(line -> line.getTerminal1().disconnect());
     }
 
+    // voltages first: flows are set from the current they make at their bus' voltage
+    private static void addStateAndLimits(Network network) {
+        // fixed seed so the network is the same on every load
+        Random random = new Random(0);
+        List<Substation> substations = new ArrayList<>(network.getSubstationStream().toList());
+        Collections.shuffle(substations, random);
+        Set<TwoWindingsTransformer> overloadedTransformers = new HashSet<>();
+        int violatedSubstations = (int) Math.round(substations.size() * VIOLATION_SHARE);
+        for (int i = 0; i < substations.size(); i++) {
+            Substation substation = substations.get(i);
+            List<VoltageLevel> voltageLevels = substation.getVoltageLevelStream().toList();
+            for (VoltageLevel voltageLevel : voltageLevels) {
+                double nominalV = voltageLevel.getNominalV();
+                voltageLevel.setLowVoltageLimit(LOW_VOLTAGE_LIMIT * nominalV).setHighVoltageLimit(HIGH_VOLTAGE_LIMIT * nominalV);
+                bus(voltageLevel).setV(nominalV * between(random, 0.95, 1.05)).setAngle(between(random, -10, 10));
+            }
+            if (i < violatedSubstations) {
+                List<TwoWindingsTransformer> transformers = substation.getTwoWindingsTransformerStream().toList();
+                if (!transformers.isEmpty() && random.nextBoolean()) {
+                    overloadedTransformers.add(transformers.get(random.nextInt(transformers.size())));
+                } else {
+                    VoltageLevel voltageLevel = voltageLevels.get(random.nextInt(voltageLevels.size()));
+                    double factor = random.nextBoolean() ? between(random, 1.11, 1.15) : between(random, 0.85, 0.89);
+                    bus(voltageLevel).setV(voltageLevel.getNominalV() * factor);
+                }
+            }
+        }
+        network.getTwoWindingsTransformerStream().forEach(transformer -> {
+            double limit = permanentCurrentLimit(transformer.getTerminal1().getVoltageLevel()) / 2;
+            addCurrentLimits(transformer.getOrCreateSelectedOperationalLimitsGroup1().newCurrentLimits(), limit);
+            double current = limit * loading(random, overloadedTransformers.contains(transformer));
+            setFlows(transformer.getTerminal1(), transformer.getTerminal2(), current,
+                    current * transformer.getRatedU1() / transformer.getRatedU2());
+        });
+        List<Line> lines = new ArrayList<>(network.getLineStream().toList());
+        Collections.shuffle(lines, random);
+        int violatedLines = (int) Math.round(lines.size() * VIOLATION_SHARE);
+        for (Line line : lines) {
+            double limit = permanentCurrentLimit(line.getTerminal1().getVoltageLevel());
+            addCurrentLimits(line.getOrCreateSelectedOperationalLimitsGroup1().newCurrentLimits(), limit);
+            addCurrentLimits(line.getOrCreateSelectedOperationalLimitsGroup2().newCurrentLimits(), limit);
+            // a line disconnected on a side carries no flow
+            if (line.getTerminal1().isConnected() && line.getTerminal2().isConnected()) {
+                double current = limit * loading(random, violatedLines-- > 0);
+                setFlows(line.getTerminal1(), line.getTerminal2(), current, current);
+            }
+        }
+    }
+
+    private static double between(Random random, double min, double max) {
+        return min + random.nextDouble() * (max - min);
+    }
+
+    // a share of the permanent limit
+    private static double loading(Random random, boolean violated) {
+        return violated ? between(random, 1.01, 1.6) : between(random, 0.3, 0.9);
+    }
+
+    private static double permanentCurrentLimit(VoltageLevel voltageLevel) {
+        for (int i = 0; i < NOMINAL_VOLTAGES.length; i++) {
+            if (NOMINAL_VOLTAGES[i] == voltageLevel.getNominalV()) {
+                return PERMANENT_CURRENT_LIMITS[i];
+            }
+        }
+        throw new IllegalArgumentException("Unexpected nominal voltage: " + voltageLevel.getNominalV());
+    }
+
+    private static void addCurrentLimits(CurrentLimitsAdder adder, double permanentLimit) {
+        adder.setPermanentLimit(permanentLimit)
+                .beginTemporaryLimit().setName("10'").setAcceptableDuration(600).setValue(permanentLimit * 1.2).endTemporaryLimit()
+                .beginTemporaryLimit().setName("1'").setAcceptableDuration(60).setValue(permanentLimit * 1.5).endTemporaryLimit()
+                .add();
+    }
+
+    // from side 1 to side 2, each side's power making the given current, in A, at its bus' voltage
+    private static void setFlows(Terminal terminal1, Terminal terminal2, double current1, double current2) {
+        double p1 = activePower(terminal1, current1);
+        double p2 = activePower(terminal2, current2);
+        terminal1.setP(p1).setQ(Q_SHARE * p1);
+        terminal2.setP(-p2).setQ(-Q_SHARE * p2);
+    }
+
+    private static double activePower(Terminal terminal, double current) {
+        double apparentPower = Math.sqrt(3) * terminal.getBusBreakerView().getBus().getV() * current / 1000;
+        return apparentPower / Math.hypot(1, Q_SHARE);
+    }
+
+    private static Bus bus(VoltageLevel voltageLevel) {
+        return voltageLevel.getBusBreakerView().getBuses().iterator().next();
+    }
+
     private static String busId(VoltageLevel voltageLevel) {
-        return voltageLevel.getBusBreakerView().getBuses().iterator().next().getId();
+        return bus(voltageLevel).getId();
     }
 
     private static double nominalV(Substation substation) {
