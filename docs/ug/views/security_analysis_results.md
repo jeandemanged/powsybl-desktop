@@ -24,11 +24,15 @@ One row per state: the pre-contingency situation and each contingency.
   voltage violation).
 - **Worst Flow Violation** (the most loaded equipment) and **Worst Loading**.
 
+![The Contingencies tab](../_generated/images/quickstart-sa-results.png)
+
 ### Flows by contingency
 
 One row per state and equipment with a flow violation, showing its most severe one: **Contingency**, **Subject**,
 **Type**, **Side**, **Limit Type**, **Limit Name**, **Acceptable Duration**, **Pre-contingency Value**, **Value**,
 **Permanent Limit**, **Pre-contingency Loading**, **Loading**. A **Limit Scaling** column is hidden by default.
+
+![The Flows by contingency tab](../_generated/images/quickstart-sa-flows-by-contingency.png)
 
 ### Flows by equipment
 
@@ -40,6 +44,8 @@ One row per equipment with a flow violation, showing its most severe one over al
 One row per state and bus with a voltage violation: **Contingency**, **Voltage Level**, **Bus**, **Limit Type**,
 **Pre-contingency Value**, **Value**, **Limit**, **Nominal Voltage**, **% of Nominal**, **Pre-contingency Voltage
 Range**, **Voltage Range**.
+
+![The Voltages tab](../_generated/images/sa-results-voltages.png)
 
 ### Loading and voltage range
 

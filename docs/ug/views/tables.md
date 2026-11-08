@@ -7,6 +7,8 @@ voltage level.
 
 ## Content
 
+![The Lines table after a load flow](../_generated/images/tables-lines.png)
+
 ### Rows and columns
 
 - When a subnetwork is selected in the [Networks](networks.md) view, a table lists the objects of that subnetwork only.
@@ -35,6 +37,9 @@ Common columns:
 Tables with many columns have check boxes above the table that show or hide a group of columns at once: **Parameters**
 (electrical parameters such as R, X, G, B, hidden by default), **Solved Values** (shown by default), and, where
 relevant, **Solved Values at Boundary**, **Ratio Tap Changers** and **Phase Tap Changers** (hidden by default).
+
+![The column groups of the Lines table](../_generated/images/tables-column-groups.png)
+
 Individual columns can also be shown or hidden from the **+** menu button at the right end of the column headers.
 
 ### Loading column
@@ -49,6 +54,8 @@ percentage of its permanent limit, with a bar:
 - for a violation of a temporary limit, its acceptable duration follows the percentage, in minutes (e.g. `120.0 % 10'`);
 - hovering over a violated loading tells the limit type, the limit name, the side and the acceptable duration.
 
+![The Loading column in different situations, for a 1000 A permanent limit](../_generated/images/tables-loading-bars.png)
+
 When an object has several violations, the most severe one is shown (shortest acceptable duration first, then
 highest percentage); otherwise, the highest loading over its sides and limits. The info button before the bar opens
 the list of all the object's violations and limits, as in the [Violations](violations.md) view.
@@ -61,7 +68,10 @@ Loadings and violations are computed when the network is loaded and after each l
 The **Voltage Range** column (buses, busbar sections) shows the solved voltage on a scale from 80 % to 120 % of the
 nominal voltage, with the nominal voltage in the middle, the allowed band between the voltage level's low and high
 voltage limits, and the part beyond a limit in red. The percentage of the nominal voltage follows the bar; hovering
-over it gives the voltage, the nominal voltage and the limits in kV.
+over it gives the voltage, the nominal voltage and the limits in kV. An arrow at an end of the scale means the voltage
+is beyond it; on a side without limit, the allowed band goes up to the end of the scale.
+
+![The Voltage Range column in different situations, for a 400 kV bus with limits at 380 and 420 kV](../_generated/images/tables-voltage-bars.png)
 
 ## What you can do
 

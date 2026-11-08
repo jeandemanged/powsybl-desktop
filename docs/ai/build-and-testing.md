@@ -125,10 +125,14 @@ reproduce there. Delete the harness afterwards: network-dependent and slow, not 
 ### User's guide screenshots
 
 `UserGuideScreenshotsTest` is not a regression test: it drives the main window through the user's guide quick start
-tutorials (robot clicks through the real menus) and writes the PNGs the guide shows to `docs/ug/_generated/images`
-(git-ignored; override with `-Dug.screenshots.dir`). It is tagged `user-guide`, excluded by default through the
-`surefire.excludedGroups` property; the `ug-screenshots` profile runs it alone. Each screenshot composites every
-showing window over the main one, so open menus and notifications appear. The headless screen is a fixed 1000 x 1000
+tutorials (robot clicks through the real menus), then through the other views, and writes the PNGs the guide shows to
+`docs/ug/_generated/images` (git-ignored; override with `-Dug.screenshots.dir`). It is tagged `user-guide`, excluded by
+default through the `surefire.excludedGroups` property; the `ug-screenshots` profile runs it alone. `screenshot`
+composites every showing window over the main one, so open menus and notifications appear; `screenshotPart` crops that
+composite to a node (a panel with its popups), `screenshotNode` snapshots a single control (toolbar, map box, search
+box), `screenshotScene` a separate window or dialog (detail views, the violations dialog: a `showAndWait` dialog is
+opened with `Platform.runLater`, never from `interact`). `violationBars` draws the loading and voltage range bars in
+chosen situations, in a table of its own built with `TableColumnSupport` and synthetic violations. The headless screen is a fixed 1000 x 1000
 that keeps popups within it: the window is smaller than that, at its origin, and shows the top left of a main view laid
 out larger (1680 x 1050), which is what gets snapshot; robot targets must stay in that visible part, and the
 notifications popup, placed in the window's corner, is moved to the view's. Move the robot into menus with

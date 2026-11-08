@@ -30,6 +30,8 @@ The same results feed the **Loading** and **Voltage Range** columns of the [equi
 The tab title gives the number of rows, e.g. **Flows (3)**. One row per equipment, showing its most severe violation
 (shortest acceptable duration first, then highest loading); the rows are sorted the same way.
 
+![The Flows tab](../_generated/images/quickstart-loadflow-violations.png)
+
 | Column | Meaning |
 |---|---|
 | **Subject** | The equipment, as a link to its substation or voltage level. |
@@ -52,6 +54,8 @@ The **Loading** column shows the value as a percentage of the permanent limit, w
 - for a temporary limit, the acceptable duration follows the percentage, in minutes (e.g. `120.0 % 10'`);
 - hovering over it tells the limit type, the limit name, the side and the acceptable duration.
 
+![The Loading column in different situations, for a 1000 A permanent limit](../_generated/images/tables-loading-bars.png)
+
 ### Voltages tab
 
 The tab title gives the number of violations, e.g. **Voltages (2)**. One row per bus, the farthest beyond its limit
@@ -68,6 +72,8 @@ The tab title gives the number of violations, e.g. **Voltages (2)**. One row per
 | **% of Nominal** | Bus voltage as a percentage of the nominal voltage. |
 | **Voltage Range** | The voltage on a scale from 80 % to 120 % of the nominal voltage, the allowed band between the limits, the part beyond a limit in red; hovering over it gives the values in kV. |
 
+![The Voltage Range column in different situations, for a 400 kV bus with limits at 380 and 420 kV](../_generated/images/tables-voltage-bars.png)
+
 ## What you can do
 
 - See all the violations and limits of an equipment: click the info button (**Show all violations and limits**) in
@@ -75,6 +81,9 @@ The tab title gives the number of violations, e.g. **Voltages (2)**. One row per
   table marked with a star, with its side, limit type, operational limits group, limit name, acceptable duration,
   value, permanent limit and loading. Below the list, the equipment's operational limits are shown with the present
   values.
+
+  ![The violations and limits of a line](../_generated/images/violations-dialog.png)
+
 - Click a **Subject** or **Voltage Level** link to show it in the [Substations](substations.md) view.
 - Sort a tab by clicking a column header; show or hide columns, e.g. **Limit Scaling**, from the **+** menu button at
   the right end of the column headers.

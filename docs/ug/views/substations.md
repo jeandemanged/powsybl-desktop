@@ -34,6 +34,10 @@ Diagrams show the values held by the network (for instance after a load flow) an
 the network. Their look is set in the **Single Line Diagram** and **Network Area Diagram** tabs of the
 [Parameters](parameters.md).
 
+![The single line diagram of a voltage level](../_generated/images/quickstart-loadflow-sld.png)
+
+![The Lines tab of a voltage level](../_generated/images/substations-lines-tab.png)
+
 ## What you can do
 
 ### Browse the tree
@@ -72,6 +76,8 @@ the network. Their look is set in the **Single Line Diagram** and **Network Area
 
 - The network area diagram shows the voltage levels of the selected container and their neighbours.
 - Set the **Depth** slider (1 to 6): how many steps of neighbouring voltage levels are included.
+
+![The network area diagram, depth 2, fitted to the screen](../_generated/images/substations-nad.png)
 
 ### Zoom and export a diagram
 

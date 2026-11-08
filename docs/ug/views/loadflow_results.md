@@ -23,6 +23,8 @@ component numbers. The rows are listed even before any load flow has been run; t
 
 The bus ids of **Reference Bus** and **Slack Buses** are links when the bus exists in the bus/branch view.
 
+![Load flow results](../_generated/images/quickstart-loadflow-components.png)
+
 ### Convergence verdict
 
 At the end of a load flow, a notification gives an overall verdict, decided by the application from the components'

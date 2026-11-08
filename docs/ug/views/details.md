@@ -46,6 +46,8 @@ switches, substations, voltage levels, grounds, areas and overload management sy
 - Generators, batteries and VSC converter stations also show a P/Q capability chart: the reactive limits, the target
   operating point and the solved one.
 
+![The details of a generator](../_generated/images/details-generator.png)
+
 ### Other tabs
 
 Depending on the equipment kind:
@@ -58,6 +60,9 @@ Depending on the equipment kind:
 - **Limits** (lines, tie lines, transformers, boundary lines): for each side, the operational limits groups, and in
   each group the current, active power and apparent power limits: permanent limit and temporary limits (**Name**,
   **Acceptable Duration**, **Value**, **Fictitious**), with the side's present value.
+
+  ![The Limits tab of a line](../_generated/images/details-line-limits.png)
+
 - **Sections** (shunt compensators): the susceptance and conductance of each section count, with the reactive and
   active power drawn at nominal voltage.
 - **Voltage Levels** and **Boundaries** (areas), **Trippings** (overload management systems).

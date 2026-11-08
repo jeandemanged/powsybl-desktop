@@ -16,6 +16,12 @@ A search box is a text field followed by two buttons, ◀ (previous match) and �
 - **Indexing…** is shown, and the field disabled, while the network's search index is being built, just after the
   network is loaded or selected.
 
+![A match](../_generated/images/search-box-match.png)
+
+![An approximate match, for a typing error](../_generated/images/search-box-approximate.png)
+
+![Nothing found](../_generated/images/search-box-not-found.png)
+
 What a box searches depends on its view:
 
 | Search box of | Finds |
@@ -42,8 +48,9 @@ The equipment tables shown inside the [Substations](substations.md) view have no
 When nothing contains what you typed, the search falls back to approximate matching, tolerating typing errors, and
 the status line says **(Approximate match)**.
 
-The search is kept up to date with the network: created and removed equipment, and buses changed by a topology
-change, are taken into account as soon as the change is made.
+The search is kept up to date with the network: created and removed equipment, ids and names changed in the
+[Equipment details](details.md), and buses changed by a topology change, are taken into account as soon as the change
+is made.
 
 ### What selecting a match does
 

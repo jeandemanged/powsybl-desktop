@@ -6,6 +6,8 @@ main window to open the map in a separate window.
 
 ## Content
 
+![The map after a security analysis](../_generated/images/quickstart-sa-map.png)
+
 - The map shows the whole network the selected network belongs to, with all its subnetworks. Substations and lines
   are colored by base voltage, as in the single line diagrams. A line without route of its own is drawn straight
   between its substations.
@@ -20,6 +22,10 @@ main window to open the map in a separate window.
   kV, the highest one reading "and above"), with **Check all** and **Check none**.
 - Below it, the **Violations** box: **Base case flow violations**, **Base case voltage violations**,
   **Contingency flow violations** and **Contingency voltage violations** checkboxes.
+
+  ![The Voltage ranges box](../_generated/images/map-voltage-ranges-box.png)
+  ![The Violations box](../_generated/images/map-violations-box.png)
+
 - Limit violations are marked with warning bubbles: those of the network's present state (see
   [Violations](violations.md)), and those after each contingency of the last security analysis (see
   [Security Analysis Results](security_analysis_results.md); none for a contingency whose computation failed). A
@@ -46,7 +52,11 @@ window, the map follows the network selected in the main window.
 ### Filter and change the basemap
 
 - Uncheck a voltage range to hide its substations and lines; hidden elements can't be hovered nor clicked.
-- Uncheck a **Violations** checkbox to hide those violations' warning bubbles and tooltip lines.
+- Uncheck a **Violations** checkbox to hide those violations' warning bubbles and tooltip lines. For instance, without
+  the contingency voltage violations, only the overloads remain:
+
+  ![The map without the contingency voltage violations](../_generated/images/quickstart-sa-map-no-contingency-voltage.png)
+
 - Choose the basemap in the list at the top right.
 
 The basemap, the hidden voltage ranges and the shown violations are saved with the **User Interface** parameters (see

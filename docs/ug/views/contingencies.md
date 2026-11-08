@@ -17,6 +17,8 @@ The view has three parts:
   network, duplicates removed, with the columns **Name**, **Elements** (the equipment lost) and **Valid** (checked
   when every element exists in the network).
 
+![A line criterion list and its contingencies](../_generated/images/quickstart-sa-contingencies.png)
+
 ### Kinds of lists
 
 | Kind | Creates |

@@ -22,18 +22,20 @@ Every tab has a list of categories (or of formats, for **Network Import** and **
 the fields of the selected one on the right. Hover a field label to read what the parameter does. A format without
 parameters shows "This format has no parameters."
 
+![The User Interface tab](../_generated/images/parameters-user-interface.png)
+
+![The Load Flow tab](../_generated/images/parameters-load-flow.png)
+
 The **Logs** and **Reports** settings of the **User Interface** tab are the same as the filter buttons of the
 [Logs](logs.md) and [Reports](reports.md) views: changing one side updates the other.
 
 The load flow and security analysis parameters are those of PowSyBl. They are documented in the PowSyBl
 documentation:
 
-- generic load flow parameters:
-  https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/simulation/loadflow/configuration.html
-- Open Load Flow specific parameters:
-  https://powsybl.readthedocs.io/projects/powsybl-open-loadflow/en/latest/loadflow/parameters.html
-- security analysis parameters:
-  https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/simulation/security/configuration.html
+- [generic load flow parameters](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/simulation/loadflow/configuration.html);
+- [Open Load Flow specific load flow parameters](https://powsybl.readthedocs.io/projects/powsybl-open-loadflow/en/latest/loadflow/parameters.html);
+- [generic security analysis parameters](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/simulation/security/configuration.html);
+- [Open Load Flow specific security analysis parameters](https://powsybl.readthedocs.io/projects/powsybl-open-loadflow/en/latest/security/parameters.html).
 
 The security analysis always runs with the load flow parameters of the **Load Flow** tab.
 

@@ -38,6 +38,8 @@ Below them, three tabs:
 
 **No network selected** or **Multiple networks selected** is shown instead of the details when relevant.
 
+![The Networks view](../_generated/images/quickstart-network-loaded.png)
+
 ## What you can do
 
 ### Import a network
@@ -49,6 +51,9 @@ Below them, three tabs:
   to import a single file or an archive.
 - The file chooser offers a **Supported files** filter with the extensions of the chosen format, and **All files**.
   It reopens in the last folder used.
+
+  ![The import menu](../_generated/images/networks-import-menu.png)
+
 - The import runs in the background; a notification tells when it completes, with a **View report** link to its
   report, or **View logs** if it fails. The import parameters of each format are set in the **Network Import** tab
   of the [Parameters](parameters.md).
@@ -65,7 +70,8 @@ Below them, three tabs:
 ### Load a sample network
 
 - In the import menu, open **Sample Networks** and pick a network: IEEE test cases (9 to 300 buses), CGMES conformity
-  and ReliCap grids, the Metrix tutorial, SmallGrid with voltage limits, and under **Miscellaneous Testing** the PowSyBl test networks.
+  and ReliCap grids, the Metrix tutorial, SmallGrid with voltage limits (**smallNodeBreakerWithVoltageLimits**, used by
+  the [quick start tutorials](../quickstart/index.md)), and under **Miscellaneous Testing** the PowSyBl test networks.
 - Sample networks labelled **(Geographical Layout)** come with substation and line positions, which the [Map](map.md)
   displays.
 

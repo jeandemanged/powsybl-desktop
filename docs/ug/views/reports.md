@@ -14,6 +14,8 @@ can also be opened in a separate window (see [General usage](../general/index.md
   its severity (TRACE, DEBUG, INFO, DETAIL, WARN or ERROR).
 - The toolbar: **Clear all**, **Export**, and the severity filter buttons.
 
+![The report of a security analysis](../_generated/images/reports.png)
+
 The messages come from PowSyBl (importers, exporters, Open Load Flow...) and their level of detail depends on it. The
 reports are kept for the session only.
 

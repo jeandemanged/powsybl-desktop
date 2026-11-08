@@ -27,6 +27,8 @@ views side by side, open them in [separate windows](#separate-windows-and-tabs).
 
 ## Main toolbar
 
+![The main toolbar](../_generated/images/general-main-toolbar.png)
+
 From left to right:
 
 | Button                                                       | Action                                                                                                         |
@@ -70,6 +72,10 @@ single-line diagram next to a table, or on a second screen.
 
 A view can be open only once: opening it again brings its window to the front and selects its tab.
 
+A new window opens centered over the window it is opened from, on the same screen.
+
+![A separate window with two equipment detail tabs](../_generated/images/general-separate-window.png)
+
 ### Windows
 
 Separate windows are named "Window 1", "Window 2"... To rename one, double-click its name, left of its tabs, or use
@@ -108,7 +114,9 @@ analyses, exports... A notification pops up at the bottom right of the main wind
 - while the operation runs, a **Cancel** button.
 
 The popup hides by itself a few seconds after the operation ends. The speech bubble button at the right end of the main
-toolbar opens the notifications panel, which keeps all of them; **Clear All** empties it.
+toolbar opens the notifications panel, which keeps all of them; **Clear all** empties it.
+
+![The notifications panel](../_generated/images/general-notifications.png)
 
 ## Language
 

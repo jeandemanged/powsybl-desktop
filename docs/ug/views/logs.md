@@ -17,6 +17,8 @@ WARN rows and ERROR rows are highlighted in their own colors. A message spanning
 load flow parameters) keeps one table line per message line. When a message is too long for its
 column, hover it to read it in full in a tooltip.
 
+![The logs of a security analysis](../_generated/images/logs.png)
+
 New messages appear as they are logged, and the table scrolls to the newest one. Only the latest 20,000 messages are
 kept, and the logs are not saved between sessions.
 
