@@ -8,8 +8,8 @@
 package com.powsybl.powsybldesktop.ui.logs;
 
 import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.spi.ILoggingEvent;
 import com.powsybl.powsybldesktop.logs.LogsModel;
+import com.powsybl.powsybldesktop.logs.LogsModel.LogEntry;
 import com.powsybl.powsybldesktop.parameters.ApplicationParameters;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.parameters.ParametersModel;
@@ -75,15 +75,15 @@ class LogsViewControllerTest extends AbstractHeadlessApplicationTest {
     void emittingALogAddsARowVisibleThroughTheTable() throws TimeoutException {
         int sizeBefore = controller.tableView.getItems().size();
         LOGGER.warn("row test message");
-        ILoggingEvent event = waitForNextLogRow(sizeBefore);
-        assertEquals("row test message", event.getFormattedMessage());
+        LogEntry event = waitForNextLogRow(sizeBefore);
+        assertEquals("row test message", event.message());
     }
 
     @Test
     void levelAndMessageCellValueFactoriesFormatCorrectly() throws TimeoutException {
         int sizeBefore = controller.tableView.getItems().size();
         LOGGER.error("boom");
-        ILoggingEvent event = waitForNextLogRow(sizeBefore);
+        LogEntry event = waitForNextLogRow(sizeBefore);
 
         String level = controller.levelColumn.getCellValueFactory()
                 .call(new TableColumn.CellDataFeatures<>(controller.tableView, controller.levelColumn, event))
@@ -103,18 +103,18 @@ class LogsViewControllerTest extends AbstractHeadlessApplicationTest {
         LOGGER.info("newer");
         WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS, () -> controller.tableView.getItems().size() >= sizeBefore + 2);
 
-        assertEquals("newer", controller.tableView.getItems().getFirst().getFormattedMessage());
+        assertEquals("newer", controller.tableView.getItems().getFirst().message());
 
         clickOn(controller.newestOnBottomToggleButton);
-        assertEquals("newer", controller.tableView.getItems().getLast().getFormattedMessage());
-        assertEquals("older", controller.tableView.getItems().get(controller.tableView.getItems().size() - 2).getFormattedMessage());
+        assertEquals("newer", controller.tableView.getItems().getLast().message());
+        assertEquals("older", controller.tableView.getItems().get(controller.tableView.getItems().size() - 2).message());
 
         // clicking the selected order keeps it selected
         clickOn(controller.newestOnBottomToggleButton);
         assertTrue(controller.newestOnBottomToggleButton.isSelected());
 
         clickOn(controller.newestOnTopToggleButton);
-        assertEquals("newer", controller.tableView.getItems().getFirst().getFormattedMessage());
+        assertEquals("newer", controller.tableView.getItems().getFirst().message());
     }
 
     @Test
@@ -131,7 +131,7 @@ class LogsViewControllerTest extends AbstractHeadlessApplicationTest {
 
         clickOn(controller.errorToggleButton);
         assertTrue(!isShown("filtered info") && !isShown("filtered warn") && isShown("filtered error"));
-        assertTrue(controller.tableView.getItems().stream().allMatch(e -> e.getLevel() == Level.ERROR));
+        assertTrue(controller.tableView.getItems().stream().allMatch(e -> e.level() == Level.ERROR));
 
         // clicking the selected level keeps it selected
         clickOn(controller.errorToggleButton);
@@ -156,7 +156,7 @@ class LogsViewControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     private boolean isShown(String message) {
-        return controller.tableView.getItems().stream().anyMatch(e -> message.equals(e.getFormattedMessage()));
+        return controller.tableView.getItems().stream().anyMatch(e -> message.equals(e.message()));
     }
 
     @Test
@@ -205,7 +205,7 @@ class LogsViewControllerTest extends AbstractHeadlessApplicationTest {
 
     // LogsModel flushes buffered log events onto the observable list once per second (see
     // LogsModel.flushTimeline) rather than immediately on append; the view shows newest first by default.
-    private ILoggingEvent waitForNextLogRow(int sizeBefore) throws TimeoutException {
+    private LogEntry waitForNextLogRow(int sizeBefore) throws TimeoutException {
         WaitForAsyncUtils.waitFor(2, TimeUnit.SECONDS, () -> controller.tableView.getItems().size() > sizeBefore);
         return controller.tableView.getItems().getFirst();
     }

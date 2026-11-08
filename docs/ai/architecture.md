@@ -216,5 +216,6 @@ Canonical example: `MainController.onLoadFlow` and `NetworksController.runImport
   across all PowSyBl report bundles on the classpath, hence one prefix per library, as PowSyBl does (`core.*`,
   `olf.*`): ours is `desktop.<camelCaseName>`.
 - Logging uses SLF4J (`LoggerFactory.getLogger(X.class)`), backed by Logback (`src/main/resources/logback.xml`).
-  `LogsModel` captures root-logger events in a concurrent queue, flushed once per second by a `Timeline` into the
+  `LogsModel` captures root-logger events as `LogEntry` snapshots (sequence number, timestamp, level, formatted
+  message — never the event itself, whose arguments/throwable would retain e.g. closed networks) in a concurrent queue, flushed once per second by a `Timeline` into the
   observable list (capped at 20,000) shown by the Logs view.

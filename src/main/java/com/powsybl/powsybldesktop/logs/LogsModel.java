@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop.logs;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
 import ch.qos.logback.core.spi.BasicSequenceNumberGenerator;
@@ -29,8 +30,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 public class LogsModel {
     private static final int MAX_LOGS_SIZE = 20_000;
-    private final ObservableList<ILoggingEvent> logs = FXCollections.observableArrayList();
-    private final Queue<ILoggingEvent> pendingLogs = new ConcurrentLinkedQueue<>();
+    private final ObservableList<LogEntry> logs = FXCollections.observableArrayList();
+    private final Queue<LogEntry> pendingLogs = new ConcurrentLinkedQueue<>();
     // kept as a field: an unreferenced running Timeline is eligible for GC and would silently stop ticking
     private final Timeline flushTimeline = new Timeline(new KeyFrame(Duration.seconds(1), _ -> flushPendingLogs()));
 
@@ -53,8 +54,8 @@ public class LogsModel {
         if (pendingLogs.isEmpty()) {
             return;
         }
-        List<ILoggingEvent> batch = new ArrayList<>();
-        ILoggingEvent event;
+        List<LogEntry> batch = new ArrayList<>();
+        LogEntry event;
         while ((event = pendingLogs.poll()) != null) {
             batch.add(event);
         }
@@ -65,7 +66,7 @@ public class LogsModel {
         }
     }
 
-    public ObservableList<ILoggingEvent> getLogs() {
+    public ObservableList<LogEntry> getLogs() {
         return logs;
     }
 
@@ -77,7 +78,15 @@ public class LogsModel {
 
         @Override
         protected void append(ILoggingEvent eventObject) {
-            pendingLogs.add(eventObject);
+            pendingLogs.add(new LogEntry(eventObject.getSequenceNumber(), eventObject.getTimeStamp(),
+                    eventObject.getLevel(), eventObject.getFormattedMessage()));
         }
+    }
+
+    /**
+     * Snapshot of a logging event: keeping the event itself would retain its arguments and throwable,
+     * e.g. a closed network logged as a message argument.
+     */
+    public record LogEntry(long sequenceNumber, long timeStamp, Level level, String message) {
     }
 }

@@ -8,8 +8,8 @@
 package com.powsybl.powsybldesktop.ui.logs;
 
 import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.spi.ILoggingEvent;
 import com.powsybl.powsybldesktop.logs.LogsModel;
+import com.powsybl.powsybldesktop.logs.LogsModel.LogEntry;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.parameters.ParametersModel;
 import com.powsybl.powsybldesktop.ui.AbstractDisposableController;
@@ -49,13 +49,13 @@ import static java.time.temporal.ChronoField.*;
  */
 public class LogsViewController extends AbstractDisposableController {
     @FXML
-    public TableColumn<ILoggingEvent, String> timeColumn;
+    public TableColumn<LogEntry, String> timeColumn;
     @FXML
-    public TableColumn<ILoggingEvent, String> levelColumn;
+    public TableColumn<LogEntry, String> levelColumn;
     @FXML
-    public TableColumn<ILoggingEvent, String> messageColumn;
+    public TableColumn<LogEntry, String> messageColumn;
     @FXML
-    public TableView<ILoggingEvent> tableView;
+    public TableView<LogEntry> tableView;
     @FXML
     public ToggleGroup levelToggleGroup;
     @FXML
@@ -74,8 +74,8 @@ public class LogsViewController extends AbstractDisposableController {
     private LogsModel logsModel;
     private ParametersModel parametersModel;
 
-    private static final Comparator<ILoggingEvent> NEWEST_FIRST =
-            Comparator.comparingLong(ILoggingEvent::getSequenceNumber).reversed();
+    private static final Comparator<LogEntry> NEWEST_FIRST =
+            Comparator.comparingLong(LogEntry::sequenceNumber).reversed();
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = new DateTimeFormatterBuilder()
             .parseCaseInsensitive()
@@ -98,8 +98,8 @@ public class LogsViewController extends AbstractDisposableController {
     public void setModels(LogsModel logsModel, ParametersModel parametersModel) {
         this.logsModel = logsModel;
         this.parametersModel = parametersModel;
-        FilteredList<ILoggingEvent> filteredLogs = new FilteredList<>(logsModel.getLogs(), this::isLevelShown);
-        SortedList<ILoggingEvent> sortedLogs = new SortedList<>(filteredLogs, NEWEST_FIRST);
+        FilteredList<LogEntry> filteredLogs = new FilteredList<>(logsModel.getLogs(), this::isLevelShown);
+        SortedList<LogEntry> sortedLogs = new SortedList<>(filteredLogs, NEWEST_FIRST);
         tableView.setItems(sortedLogs);
         TableAutoFitLimiter.install(tableView);
 
@@ -134,16 +134,16 @@ public class LogsViewController extends AbstractDisposableController {
         listenerManager.listen(logsModel.getLogs(), _ -> Platform.runLater(this::scrollToNewest));
         scrollToNewest();
         timeColumn.setCellValueFactory(cellData -> {
-            Instant instant = Instant.ofEpochMilli(cellData.getValue().getTimeStamp());
+            Instant instant = Instant.ofEpochMilli(cellData.getValue().timeStamp());
 
             return new SimpleStringProperty(DATE_TIME_FORMATTER.format(
                     ZonedDateTime.ofInstant(instant, ZoneId.systemDefault())
             ));
         });
         levelColumn.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getLevel().toString()));
+                new SimpleStringProperty(cellData.getValue().level().toString()));
         messageColumn.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getFormattedMessage()));
+                new SimpleStringProperty(cellData.getValue().message()));
         messageColumn.setCellFactory(_ -> new MessageCell());
         tableView.setRowFactory(_ -> new LogRow());
     }
@@ -179,8 +179,8 @@ public class LogsViewController extends AbstractDisposableController {
         return GuiParameters.LogLevel.INFO;
     }
 
-    private boolean isLevelShown(ILoggingEvent event) {
-        return event.getLevel().isGreaterOrEqual(Level.toLevel(selectedLevel().name()));
+    private boolean isLevelShown(LogEntry event) {
+        return event.level().isGreaterOrEqual(Level.toLevel(selectedLevel().name()));
     }
 
     @FXML
@@ -195,21 +195,21 @@ public class LogsViewController extends AbstractDisposableController {
         tableView.scrollTo(newestOnTopToggleButton.isSelected() ? 0 : tableView.getItems().size() - 1);
     }
 
-    private static final class LogRow extends TableRow<ILoggingEvent> {
+    private static final class LogRow extends TableRow<LogEntry> {
         private final ContextMenu contextMenu;
 
         private LogRow() {
             MenuItem copyMessageItem = new MenuItem(Messages.get("desktop.common.action.copyMessage"));
             copyMessageItem.setOnAction(_ -> {
                 ClipboardContent content = new ClipboardContent();
-                content.putString(getItem().getFormattedMessage());
+                content.putString(getItem().message());
                 Clipboard.getSystemClipboard().setContent(content);
             });
             contextMenu = new ContextMenu(copyMessageItem);
         }
 
         @Override
-        protected void updateItem(ILoggingEvent item, boolean empty) {
+        protected void updateItem(LogEntry item, boolean empty) {
             super.updateItem(item, empty);
 
             getStyleClass().removeAll("row-warn", "row-error");
@@ -220,7 +220,7 @@ public class LogsViewController extends AbstractDisposableController {
             }
             setContextMenu(contextMenu);
 
-            String levelStr = item.getLevel().levelStr;
+            String levelStr = item.level().levelStr;
             if (Level.WARN.levelStr.equals(levelStr)) {
                 getStyleClass().add("row-warn");
             } else if (Level.ERROR.levelStr.equals(levelStr)) {
@@ -233,7 +233,7 @@ public class LogsViewController extends AbstractDisposableController {
      * Never wraps: multi-line messages (e.g. load flow parameter tables) keep one row line per message
      * line, each overflowing line being ellipsized, the full message being shown in a tooltip when so.
      */
-    static final class MessageCell extends TableCell<ILoggingEvent, String> {
+    static final class MessageCell extends TableCell<LogEntry, String> {
         private final Tooltip tooltip = new Tooltip();
 
         MessageCell() {
