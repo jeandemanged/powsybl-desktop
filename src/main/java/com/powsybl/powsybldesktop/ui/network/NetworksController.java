@@ -612,6 +612,15 @@ public class NetworksController extends AbstractDisposableController {
                 new Pair<>("IEEE 118", IeeeCdfNetworkFactory::create118),
                 new Pair<>("IEEE 300", IeeeCdfNetworkFactory::create300)));
         addSampleItem(sampleNetworksMenu, "Metrix Tutorial", MetrixTutorialSixBusesFactory::create);
+        addSampleItem(sampleNetworksMenu, withGl("smallNodeBreakerWithVoltageLimits"), () -> {
+            Network network = cgmes(CgmesConformity1Catalog::smallNodeBreaker).get();
+            network.getVoltageLevelStream().forEach(vl -> {
+                double margin = vl.getNominalV() == 132 ? 0.10 : 0.05;
+                vl.setHighVoltageLimit(vl.getNominalV() * (1 + margin))
+                        .setLowVoltageLimit(vl.getNominalV() * (1 - margin));
+            });
+            return network;
+        });
         addFactoryMenu(sampleNetworksMenu, "Cgmes3Catalog", List.of(
                 new Pair<>(withGl("microGrid"), cgmes(Cgmes3Catalog::microGrid)),
                 new Pair<>(withGl("microGridWithoutTpSv"), cgmes(Cgmes3Catalog::microGridWithoutTpSv)),
