@@ -14,7 +14,9 @@ Paths `…/X.java` are relative to `src/main/java/com/powsybl/powsybldesktop/`.
    also used on the FX thread to defer work until after the current event or layout pass.
 3. **IIDM is not thread-safe.** Any background job that reads or writes a *loaded* network is an
    `…/core/AbstractNetworkTask.java`. It marks the root network busy from task creation until `compute()` actually
-   returns (even after a cancel, since most PowSyBl calls ignore interruption). It must be created on the FX thread,
+   returns (even after a cancel, since most PowSyBl calls ignore interruption), released in the FX event reporting
+   its result (before `setOnSucceeded`/`setOnFailed` handlers), so no edit can slip in between the end of the work and
+   the handler storing its result (e.g. a search index missing a rename). It must be created on the FX thread,
    i.e. inside `Service.createTask()`.
 4. **Capture inputs on the FX thread** in `createTask()` (current container, parameter copies) and pass them into the
    task. Parameter objects edited in place by the parameters view must be copied first:

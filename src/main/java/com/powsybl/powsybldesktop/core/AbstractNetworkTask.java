@@ -25,13 +25,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public abstract class AbstractNetworkTask<V> extends Task<V> {
 
     private final Runnable releaseBusy;
-    private final AtomicBoolean started = new AtomicBoolean();
+    private final AtomicBoolean computing = new AtomicBoolean();
 
     protected AbstractNetworkTask(MainModel mainModel, Network network) {
         releaseBusy = network == null ? () -> { } : mainModel.markBusy(network);
+        // released in the same FX event as the onSucceeded/onFailed handlers storing the result, so that no edit can
+        // slip in between and be missing from it (e.g. a rename missing from a search index built meanwhile)
         stateProperty().addListener((_, _, newState) -> {
-            // cancelled before it ever ran: compute() won't run, nor release the network
-            if (newState == Worker.State.CANCELLED && !started.get()) {
+            if (isTerminal(newState) && !computing.get()) {
                 releaseBusy.run();
             }
         });
@@ -39,12 +40,22 @@ public abstract class AbstractNetworkTask<V> extends Task<V> {
 
     @Override
     protected final V call() throws Exception {
-        started.set(true);
+        computing.set(true);
         try {
             return compute();
         } finally {
-            Platform.runLater(releaseBusy);
+            computing.set(false);
+            // cancelled while computing: no later state change will release the network
+            Platform.runLater(() -> {
+                if (isDone()) {
+                    releaseBusy.run();
+                }
+            });
         }
+    }
+
+    private static boolean isTerminal(Worker.State state) {
+        return state == Worker.State.SUCCEEDED || state == Worker.State.FAILED || state == Worker.State.CANCELLED;
     }
 
     protected abstract V compute() throws Exception;

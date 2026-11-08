@@ -72,6 +72,32 @@ class NetworkTaskTest {
     }
 
     @Test
+    void networkStaysBusyUntilTheResultIsReported() throws Exception {
+        MainModel model = new MainModel();
+        model.addNetwork(network);
+        boolean[] busyWhenValueSet = new boolean[1];
+        CountDownLatch succeeded = new CountDownLatch(1);
+        WaitForAsyncUtils.asyncFx(() -> {
+            AbstractNetworkTask<String> task = new AbstractNetworkTask<>(model, network) {
+                @Override
+                protected String compute() {
+                    return "result";
+                }
+            };
+            // set in the same FX event as the SUCCEEDED state, after the work has returned: an edit before it would
+            // be missing from the result
+            task.valueProperty().addListener((_, _, _) -> busyWhenValueSet[0] = model.isBusy(network));
+            task.setOnSucceeded(_ -> succeeded.countDown());
+            new Thread(task).start();
+        }).get();
+        assertTrue(succeeded.await(5, TimeUnit.SECONDS));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertTrue(busyWhenValueSet[0]);
+        assertFalse(model.isBusy(network));
+    }
+
+    @Test
     void taskCancelledBeforeRunningReleasesTheNetwork() throws Exception {
         MainModel model = new MainModel();
         model.addNetwork(network);
