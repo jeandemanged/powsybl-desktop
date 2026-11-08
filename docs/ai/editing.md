@@ -132,7 +132,10 @@ the study's cached violations, never checks limits in a cell: see
 - Where a connectable is connected is a `ConnectionSection` (read as a `network/edit/Connection`): voltage level,
   busbar section (node breaker: position order, suggested at the end of the section, and direction) or bus (bus
   breaker). Orders are never refused: `FeederOrders` brings one out of the section's range back to its nearest end and,
-  when it is taken, moves every following feeder of the voltage level up (moved back if the creation fails).
+  when it is taken, moves every following feeder of the voltage level up (moved back if the creation fails). A voltage
+  level with busbar sections both with and without a `BusbarSectionPosition` is taken as unsectioned: powsybl-core
+  (7.4) throws an NPE ranging orders by section there, so `FeederOrders.apply` hides the target busbar section's
+  position while the modification runs (no open disconnectors to its parallel busbars then).
 - A voltage level is chosen with a `VoltageLevelChoice` (connection sections; busbar section, switch and bus dialogs
   opened from tables): a searchable choice, narrowed by a searchable substation choice above it ("no substation"
   first) when the offered voltage levels span several substations - many voltage levels are named alike. A

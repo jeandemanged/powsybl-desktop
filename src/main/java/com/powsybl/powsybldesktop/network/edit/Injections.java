@@ -136,7 +136,7 @@ public final class Injections {
             if (connection.isNodeBreaker()) {
                 builder.withInjectionPositionOrder(connection.reserve(orders, 1).order()).withInjectionDirection(connection.direction());
             }
-            NetworkEdits.apply(network, builder.build());
+            orders.apply(network, builder.build());
         });
         return network.getIdentifiable(id);
     }

@@ -7,15 +7,20 @@
  */
 package com.powsybl.powsybldesktop.network.edit;
 
+import com.powsybl.iidm.modification.NetworkModification;
 import com.powsybl.iidm.modification.topology.TopologyModificationUtils;
 import com.powsybl.iidm.network.BusbarSection;
+import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.BusbarSectionPosition;
+import com.powsybl.iidm.network.extensions.BusbarSectionPositionAdder;
 import com.powsybl.iidm.network.extensions.ConnectablePosition;
 import org.apache.commons.lang3.Range;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -35,11 +40,13 @@ public final class FeederOrders {
      * makes room before them.
      */
     public static final class Slot {
+        private final BusbarSection busbarSection;
         private final VoltageLevel voltageLevel;
         private final int count;
         private int order;
 
-        private Slot(VoltageLevel voltageLevel, int order, int count) {
+        private Slot(BusbarSection busbarSection, VoltageLevel voltageLevel, int order, int count) {
+            this.busbarSection = busbarSection;
             this.voltageLevel = voltageLevel;
             this.order = order;
             this.count = count;
@@ -93,9 +100,32 @@ public final class FeederOrders {
         if (IntStream.range(from, from + count).anyMatch(taken::contains)) {
             shift(voltageLevel, from, count);
         }
-        Slot slot = new Slot(voltageLevel, order, count);
+        Slot slot = new Slot(busbarSection, voltageLevel, order, count);
         slots.add(slot);
         return slot;
+    }
+
+    /**
+     * Applies {@code modification}, which creates the feeders of the reserved orders. Where a voltage level has busbar
+     * sections both with and without a position, the reserved busbar sections' positions are hidden from it meanwhile:
+     * it would range the orders by section from all of them, failing on those without (powsybl-core 7.4), so the
+     * voltage level is taken as unsectioned, as {@link #reserve} does.
+     */
+    public void apply(Network network, NetworkModification modification) {
+        Map<BusbarSection, BusbarSectionPosition> hidden = new LinkedHashMap<>();
+        slots.stream().map(slot -> slot.busbarSection).distinct().filter(busbarSection -> !hasSections(busbarSection)).forEach(busbarSection -> {
+            BusbarSectionPosition position = busbarSection.getExtension(BusbarSectionPosition.class);
+            if (position != null) {
+                hidden.put(busbarSection, position);
+            }
+        });
+        hidden.keySet().forEach(busbarSection -> busbarSection.removeExtension(BusbarSectionPosition.class));
+        try {
+            NetworkEdits.apply(network, modification);
+        } finally {
+            hidden.forEach((busbarSection, position) -> busbarSection.newExtension(BusbarSectionPositionAdder.class)
+                    .withBusbarIndex(position.getBusbarIndex()).withSectionIndex(position.getSectionIndex()).add());
+        }
     }
 
     /**

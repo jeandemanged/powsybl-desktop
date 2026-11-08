@@ -12,6 +12,7 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.SwitchKind;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.iidm.network.extensions.BusbarSectionPosition;
 import com.powsybl.iidm.network.extensions.ConnectablePosition;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -117,5 +119,24 @@ class FeederOrdersTest {
             throw new IllegalStateException();
         }));
         assertEquals(List.of(0, 1, 2, 3, 4), orders());
+    }
+
+    @Test
+    void busbarSectionWithoutPositionDoesNotPreventCreation() {
+        VoltageLevel voltageLevel = network.getVoltageLevel("VL");
+        Topologies.addBusbarSection(voltageLevel, "UNPOSITIONED", null, voltageLevel.getNodeBreakerView().getMaximumNodeIndex() + 1, null, null);
+
+        FeederOrders.reserving(orders -> orders.apply(network, new CreateFeederBayBuilder()
+                .withInjectionAdder(voltageLevel.newLoad().setId("NEW").setP0(0).setQ0(0))
+                .withBusOrBusbarSectionId("VL_1_1")
+                .withInjectionPositionOrder(orders.reserve(network.getBusbarSection("VL_1_1"), 1, 1).order())
+                .withInjectionDirection(ConnectablePosition.Direction.BOTTOM)
+                .withLogOrThrowIfIncorrectPositionOrder(true)
+                .build()));
+
+        assertNotNull(network.getLoad("NEW").getExtension(ConnectablePosition.class));
+        BusbarSectionPosition position = network.getBusbarSection("VL_1_1").getExtension(BusbarSectionPosition.class);
+        assertEquals(1, position.getBusbarIndex());
+        assertEquals(1, position.getSectionIndex());
     }
 }

@@ -103,7 +103,7 @@ public final class Branches {
             if (slot2 != null) {
                 builder.withPositionOrder2(slot2.order()).withDirection2(side2.direction());
             }
-            NetworkEdits.apply(network, builder.build());
+            orders.apply(network, builder.build());
         });
     }
 

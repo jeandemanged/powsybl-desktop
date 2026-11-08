@@ -59,7 +59,7 @@ public final class LineModifications {
             if (tapped.isNodeBreaker()) {
                 builder.withPositionForNewLine(tapped.reserve(orders, 1).order());
             }
-            NetworkEdits.apply(network, builder.build());
+            orders.apply(network, builder.build());
         });
     }
 
@@ -80,7 +80,7 @@ public final class LineModifications {
                 int order = connection.reserve(orders, 2).order();
                 builder.withPositionForNewLine1(order).withPositionForNewLine2(order + 1);
             }
-            NetworkEdits.apply(network, builder.build());
+            orders.apply(network, builder.build());
         });
     }
 
