@@ -45,9 +45,10 @@ public abstract class AbstractNetworkTask<V> extends Task<V> {
             return compute();
         } finally {
             computing.set(false);
-            // cancelled while computing: no later state change will release the network
+            // cancelled while computing: no later state change will release the network. Not isDone(): it turns true
+            // once call() returns, before the SUCCEEDED state is set, which would release before the result is stored
             Platform.runLater(() -> {
-                if (isDone()) {
+                if (isCancelled()) {
                     releaseBusy.run();
                 }
             });

@@ -89,6 +89,11 @@ class NetworkTaskTest {
             task.valueProperty().addListener((_, _, _) -> busyWhenValueSet[0] = model.isBusy(network));
             task.setOnSucceeded(_ -> succeeded.countDown());
             new Thread(task).start();
+            // holds the FX thread until the work has returned, as a slow FX thread would: the release must still wait
+            // for the SUCCEEDED state
+            while (!task.isDone()) {
+                Thread.onSpinWait();
+            }
         }).get();
         assertTrue(succeeded.await(5, TimeUnit.SECONDS));
         WaitForAsyncUtils.waitForFxEvents();
