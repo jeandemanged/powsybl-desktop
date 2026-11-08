@@ -6,7 +6,7 @@ description: >
 runs:
   using: composite
   steps:
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v7
       with:
         python-version: '3.12'
         cache: pip
@@ -16,7 +16,7 @@ runs:
     # Saved right after installing rather than at the end of the job, so that a failing build doesn't lose it; the key
     # changes with this file, hence with the package list.
     - id: texlive-cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       with:
         path: ~/texlive
         key: texlive-${{ runner.os }}-${{ hashFiles('.github/actions/build-user-guide/action.yml') }}
@@ -60,7 +60,7 @@ runs:
         "$tlmgr" install latexmk babel-english collection-fontsrecommended collection-latexrecommended collection-latexextra
 
     - if: steps.texlive-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v6
       with:
         path: ~/texlive
         key: ${{ steps.texlive-cache.outputs.cache-primary-key }}
