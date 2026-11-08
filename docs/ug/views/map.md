@@ -22,6 +22,9 @@ main window to open the map in a separate window.
   kV, the highest one reading "and above"), with **Check all** and **Check none**.
 - Below it, the **Violations** box: **Base case flow violations**, **Base case voltage violations**,
   **Contingency flow violations** and **Contingency voltage violations** checkboxes.
+- Below it, the **Show flows** checkbox, checked by default.
+
+  ![The Show flows checkbox](../_generated/images/map-show-flows-box.png)
 
   ![The Voltage ranges box](../_generated/images/map-voltage-ranges-box.png)
   ![The Violations box](../_generated/images/map-violations-box.png)
@@ -36,6 +39,21 @@ main window to open the map in a separate window.
   loading, side and acceptable duration for a flow violation; bus, voltage, limit and percentage of nominal voltage
   for a voltage violation. Present state violations come first, then **After** each contingency, at most 10 of them,
   the most severe first, followed by **... and N more after contingencies** when there are more.
+- With **Show flows** checked, flows of the network's present state are drawn on lines, tie lines and boundary lines:
+  - a line overloaded (with a flow violation, see [Violations](violations.md)) is highlighted in red all along, whatever
+    the **Violations** checkboxes;
+  - each end of a line with a computed flow gets chevrons near it, pointing the way the active power flows at that
+    end: away from the end when it enters the line there, towards it when it leaves the line. A tie line or boundary
+    line drawn up to its boundary point gets chevrons there too, from the flow at the boundary point. Their
+    number follows the loading of that side of the line (at a boundary point, of its substation's side): one chevron
+    under 25 %, two under 50 %, three under 75 %, four from 75 %, overloaded lines included, and a single one for a side
+    without limits. The loading is the one of the
+    [Violations](violations.md) view: relative to the permanent limit, of whichever current, active power or apparent
+    power limit is the most loaded on that side.
+  - a line gets no chevrons when its ends can't be told apart on the map: when one of its substations has no position,
+    or both are at the same position. Lines too short on screen get no chevrons either; zoom in to see them.
+
+    ![Flow chevrons around a substation after a load flow](../_generated/images/map-flows-close-up.png)
 
 The map view (center and zoom) is remembered per network and restored when coming back to the map. In a separate
 window, the map follows the network selected in the main window.
@@ -59,7 +77,7 @@ window, the map follows the network selected in the main window.
 
 - Choose the basemap in the list at the top right.
 
-The basemap, the hidden voltage ranges and the shown violations are saved with the **User Interface** parameters (see
+The basemap, the hidden voltage ranges, the shown violations and **Show flows** are saved with the **User Interface** parameters (see
 [Parameters](parameters.md)).
 
 ### Open diagrams and details

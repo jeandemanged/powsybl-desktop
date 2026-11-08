@@ -63,6 +63,28 @@ public final class MapTileRenderer {
     private static final Stroke DASHED_IMPLIED_LINE_STROKE = new BasicStroke(1, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
             10, new float[] {4, 4}, 0);
     private static final int IMPLIED_LINE_ALPHA = 128;
+    private static final Color OVERLOADED_LINE_COLOR = new Color(0xD32F2F);
+    private static final Stroke OVERLOADED_LINE_STROKE = new BasicStroke((float) MapNetworkData.OVERLOADED_LINE_WEIGHT, BasicStroke.CAP_ROUND,
+            BasicStroke.JOIN_ROUND);
+    /**
+     * Flow chevrons, in pixels at their {@link #chevronSize} of 1: from a chevron's tip back to its arms' ends, along
+     * and across the line.
+     */
+    private static final double CHEVRON_LENGTH = 8;
+    private static final double CHEVRON_HALF_WIDTH = 4;
+    private static final double CHEVRON_SPACING = 6;
+    private static final double CHEVRON_WIDTH = 2;
+    /** A white outline sets chevrons apart from their line, of the same color. */
+    private static final double CHEVRON_OUTLINE_WIDTH = 4.5;
+    /** Pixels from a line's end to its chevrons, clear of the substation marker there. */
+    private static final double CHEVRONS_END_OFFSET = 28;
+    /**
+     * Zoomed in beyond this level, chevrons grow by {@value #CHEVRON_GROWTH} per level, up to
+     * {@value #CHEVRON_MAX_SIZE} times: they'd look lost along lines that long.
+     */
+    private static final int CHEVRON_GROWTH_ZOOM = 10;
+    private static final double CHEVRON_GROWTH = 1.25;
+    private static final double CHEVRON_MAX_SIZE = 2.5;
     /** Violation warning bubbles: white outlined, so they stand out on any basemap and voltage color. */
     private static final Color BUBBLE_COLOR = new Color(0xD32F2F);
     /** For an element whose shown violations are all contingency ones: red is kept for violations of the present state. */
@@ -96,11 +118,13 @@ public final class MapTileRenderer {
      * @param data the network to draw, null for none
      * @param showCountries whether to draw the offline basemap
      * @param shownViolations the violations marked by warning bubbles
+     * @param showFlows whether to draw flow chevrons and highlight overloaded lines
      * @param ratio device pixels per CSS pixel: the tile is drawn {@code 256 * ratio} pixels wide
      * @return the tile as PNG, or null when it would be fully transparent
      */
     public static byte[] render(MapNetworkData data, boolean showCountries, Set<String> hiddenBaseVoltages,
-                                Set<MapViolationLayer> shownViolations, int zoom, int tileX, int tileY, double ratio) throws IOException {
+                                Set<MapViolationLayer> shownViolations, boolean showFlows, int zoom, int tileX, int tileY,
+                                double ratio) throws IOException {
         int pixels = (int) Math.ceil(TILE_SIZE * ratio);
         double scale = Math.pow(2, zoom);
         double originX = tileX * (double) TILE_SIZE;
@@ -117,7 +141,7 @@ public final class MapTileRenderer {
                 drawn = drawCountries(g, CountriesHolder.COUNTRIES, scale, originX, originY);
             }
             if (data != null && data.grid() != null) {
-                drawn |= drawNetwork(g, image, data, hiddenBaseVoltages, scale, originX, originY, ratio);
+                drawn |= drawNetwork(g, image, data, hiddenBaseVoltages, showFlows, scale, originX, originY, ratio);
                 drawn |= drawViolationBubbles(g, data, hiddenBaseVoltages, shownViolations, scale, originX, originY);
             }
         } finally {
@@ -224,9 +248,10 @@ public final class MapTileRenderer {
      * All lines crossing the tile, then all substations in it, on top of them.
      */
     private static boolean drawNetwork(Graphics2D g, BufferedImage image, MapNetworkData data, Set<String> hiddenBaseVoltages,
-                                       double scale, double originX, double originY, double ratio) {
+                                       boolean showFlows, double scale, double originX, double originY, double ratio) {
         int substationSize = data.substationSize(scale);
-        double margin = (Math.max(MapNetworkData.LINE_WEIGHT, substationSize / 2.0) + 1) / scale;
+        double chevronExtent = (CHEVRON_HALF_WIDTH + CHEVRON_OUTLINE_WIDTH) * chevronSize(scale);
+        double margin = (Math.max(Math.max(MapNetworkData.OVERLOADED_LINE_WEIGHT / 2, chevronExtent), substationSize / 2.0) + 1) / scale;
         double minX = originX / scale - margin;
         double minY = originY / scale - margin;
         double maxX = (originX + TILE_SIZE) / scale + margin;
@@ -251,14 +276,19 @@ public final class MapTileRenderer {
                 }
             }
         }
-        boolean drawn = drawLines(g, data, lines, hiddenBaseVoltages, scale, minX, minY, maxX, maxY);
+        boolean drawn = drawLines(g, data, lines, hiddenBaseVoltages, showFlows, scale, minX, minY, maxX, maxY);
         return drawSubstations(image, data, substations, hiddenBaseVoltages, substationSize, scale, originX, originY, ratio,
                 minX, minY, maxX, maxY) || drawn;
     }
 
+    /**
+     * Flows shown, overloaded lines are highlighted below all lines, so no highlight hides another line, and chevrons
+     * are drawn above them all, near each end of a line (see {@link MapNetworkData#lineStartChevrons()}).
+     */
     private static boolean drawLines(Graphics2D g, MapNetworkData data, BitSet lines, Set<String> hiddenBaseVoltages,
-                                     double scale, double minX, double minY, double maxX, double maxY) {
-        boolean drawn = false;
+                                     boolean showFlows, double scale, double minX, double minY, double maxX, double maxY) {
+        List<Integer> shown = new ArrayList<>();
+        List<Path2D.Double> paths = new ArrayList<>();
         for (int line = lines.nextSetBit(0); line >= 0; line = lines.nextSetBit(line + 1)) {
             int b = line * 4;
             double[] bounds = data.lineBounds();
@@ -268,16 +298,111 @@ public final class MapTileRenderer {
             }
             Path2D.Double path = new Path2D.Double();
             appendPath(path, data.pointX(), data.pointY(), data.lineStart()[line], data.lineStart()[line + 1], scale);
-            Color color = data.colors().get(data.lineColor()[line]);
+            shown.add(line);
+            paths.add(path);
+        }
+        if (showFlows) {
+            g.setColor(OVERLOADED_LINE_COLOR);
+            g.setStroke(OVERLOADED_LINE_STROKE);
+            for (int i = 0; i < shown.size(); i++) {
+                if (data.lineOverloaded()[shown.get(i)]) {
+                    g.draw(paths.get(i));
+                }
+            }
+        }
+        for (int i = 0; i < shown.size(); i++) {
+            int line = shown.get(i);
             boolean implied = data.lineImplied()[line];
-            g.setColor(implied ? new Color(color.getRed(), color.getGreen(), color.getBlue(), IMPLIED_LINE_ALPHA) : color);
+            g.setColor(lineColor(data, line));
             g.setStroke(data.lineDisconnected()[line]
                     ? (implied ? DASHED_IMPLIED_LINE_STROKE : DASHED_LINE_STROKE)
                     : (implied ? IMPLIED_LINE_STROKE : LINE_STROKE));
-            g.draw(path);
-            drawn = true;
+            g.draw(paths.get(i));
         }
-        return drawn;
+        if (showFlows) {
+            for (int line : shown) {
+                drawChevrons(g, data, line, scale);
+            }
+        }
+        return !shown.isEmpty();
+    }
+
+    private static Color lineColor(MapNetworkData data, int line) {
+        Color color = data.colors().get(data.lineColor()[line]);
+        return data.lineImplied()[line] ? new Color(color.getRed(), color.getGreen(), color.getBlue(), IMPLIED_LINE_ALPHA) : color;
+    }
+
+    /**
+     * How many times their nominal size chevrons are drawn at a zoom of the given {@code scale} (2^zoom).
+     */
+    static double chevronSize(double scale) {
+        double zoom = Math.log(scale) / Math.log(2);
+        return Math.clamp(Math.pow(CHEVRON_GROWTH, zoom - CHEVRON_GROWTH_ZOOM), 1, CHEVRON_MAX_SIZE);
+    }
+
+    /**
+     * Pixels from a line's end to the middle of its {@code i}th chevron from that end, each chevron's middle halfway
+     * from its tip to its arms' ends.
+     */
+    static double chevronDistance(int i, double size) {
+        return (CHEVRONS_END_OFFSET + (i + 0.5) * CHEVRON_SPACING) * size;
+    }
+
+    private static void drawChevrons(Graphics2D g, MapNetworkData data, int line, double scale) {
+        int startChevrons = data.lineStartChevrons()[line];
+        int endChevrons = data.lineEndChevrons()[line];
+        if (startChevrons == 0 && endChevrons == 0) {
+            return;
+        }
+        double length = 0;
+        for (int k = data.lineStart()[line]; k < data.lineStart()[line + 1] - 1; k++) {
+            length += Math.hypot(data.pointX()[k + 1] - data.pointX()[k], data.pointY()[k + 1] - data.pointY()[k]) * scale;
+        }
+        double size = chevronSize(scale);
+        // room for both ends' chevrons
+        if (length < 2 * chevronDistance(MapNetworkData.MAX_CHEVRONS, size)) {
+            return;
+        }
+        Path2D.Double chevrons = new Path2D.Double();
+        for (int i = 0; i < Math.abs(startChevrons); i++) {
+            appendChevron(chevrons, data, line, scale, size, chevronDistance(i, size), Integer.signum(startChevrons));
+        }
+        for (int i = 0; i < Math.abs(endChevrons); i++) {
+            appendChevron(chevrons, data, line, scale, size, length - chevronDistance(i, size), Integer.signum(endChevrons));
+        }
+        // mitered: a sharp tip
+        g.setStroke(new BasicStroke((float) (CHEVRON_OUTLINE_WIDTH * size), BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
+        g.setColor(Color.WHITE);
+        g.draw(chevrons);
+        g.setStroke(new BasicStroke((float) (CHEVRON_WIDTH * size), BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
+        g.setColor(lineColor(data, line));
+        g.draw(chevrons);
+    }
+
+    // distance pixels along the line, along the segment there, pointing along the line's points for a direction of 1
+    private static void appendChevron(Path2D.Double chevrons, MapNetworkData data, int line, double scale, double size, double distance,
+                                      int direction) {
+        double[] pointX = data.pointX();
+        double[] pointY = data.pointY();
+        double remaining = distance;
+        for (int k = data.lineStart()[line]; k < data.lineStart()[line + 1] - 1; k++) {
+            double dx = (pointX[k + 1] - pointX[k]) * scale;
+            double dy = (pointY[k + 1] - pointY[k]) * scale;
+            double segment = Math.hypot(dx, dy);
+            if (segment > 0 && remaining <= segment) {
+                double ux = dx / segment * direction;
+                double uy = dy / segment * direction;
+                double length = CHEVRON_LENGTH * size;
+                double halfWidth = CHEVRON_HALF_WIDTH * size;
+                double tipX = pointX[k] * scale + dx * remaining / segment + ux * length / 2;
+                double tipY = pointY[k] * scale + dy * remaining / segment + uy * length / 2;
+                chevrons.moveTo(tipX - ux * length - uy * halfWidth, tipY - uy * length + ux * halfWidth);
+                chevrons.lineTo(tipX, tipY);
+                chevrons.lineTo(tipX - ux * length + uy * halfWidth, tipY - uy * length - ux * halfWidth);
+                return;
+            }
+            remaining -= segment;
+        }
     }
 
     // Squares snapped to whole device pixels, drawn without antialiasing so they stay crisp.

@@ -143,6 +143,12 @@ import java.util.stream.Collectors;
  * shown or not from its own checkbox, a {@link GuiParameters} too. Hovering a marked element or its bubble lists its
  * violations, base case ones first, then the most severe contingency ones.
  * <p>
+ * Flows are shown or not from a checkbox, a {@link GuiParameters} too: a line overloaded in the base case is
+ * highlighted all along, and each end of a line gets one to four chevrons near it, pointing the way the active power
+ * flows at that end, one per started quarter of that side's base case loading (see
+ * {@code NetworkViolations.getLoading}), a single one without limits, none when the substations' positions don't tell
+ * the route's ends apart.
+ * <p>
  * The search box zooms to its current match: a line, tie line or boundary line to fit it whole, anything else to its
  * substation, with some neighbouring substations around it, and marks it: a line halfway along, anything else at its
  * substation. A match with nothing drawn to zoom to leaves the view as it is, unmarked.
@@ -235,6 +241,9 @@ public class MapController extends AbstractDisposableController implements Scene
     private final Map<MapViolationLayer, CheckBox> violationCheckBoxes = new EnumMap<>(MapViolationLayer.class);
 
     @FXML
+    private CheckBox showFlowsCheckBox;
+
+    @FXML
     private SearchBoxController searchBoxController;
 
     @FXML
@@ -311,6 +320,7 @@ public class MapController extends AbstractDisposableController implements Scene
     private Network buildingNetwork;
     private Set<String> hiddenBaseVoltages = Set.of();
     private Set<MapViolationLayer> shownViolations = Set.of();
+    private boolean showFlows;
 
     private SceneModel sceneModel;
     private MainModel mainModel;
@@ -400,6 +410,7 @@ public class MapController extends AbstractDisposableController implements Scene
         this.mainModel = sceneModel.getMainModel();
         hiddenBaseVoltages = gui().getMapHiddenBaseVoltages();
         shownViolations = gui().getMapShownViolations();
+        showFlows = gui().isMapShowFlows();
         basemapComboBox.setValue(gui().getMapBasemap());
         basemapComboBox.valueProperty().addListener((_, _, newValue) -> {
             if (gui().getMapBasemap() != newValue) {
@@ -418,6 +429,14 @@ public class MapController extends AbstractDisposableController implements Scene
         listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> refresh());
         createBaseVoltageCheckBoxes();
         createViolationCheckBoxes();
+        showFlowsCheckBox.setSelected(showFlows);
+        // the network is redrawn by applyGuiParameters, once the change has gone through the GUI parameters
+        showFlowsCheckBox.selectedProperty().addListener((_, _, selected) -> {
+            if (selected != gui().isMapShowFlows()) {
+                gui().setMapShowFlows(selected);
+                mainModel.getParametersModel().guiParametersChanged();
+            }
+        });
         listenerManager.listen(mainModel.getParametersModel().guiParametersRevisionProperty(), (_, _, _) -> applyGuiParameters());
         searchBoxController.bind(sceneModel, this::onSearchMatch);
         searchBoxController.setOnNoMatch(this::clearSearchHighlight);
@@ -546,9 +565,12 @@ public class MapController extends AbstractDisposableController implements Scene
         basemapComboBox.setValue(gui().getMapBasemap());
         baseVoltageCheckBoxes.setHidden(gui().getMapHiddenBaseVoltages());
         violationCheckBoxes.forEach((layer, checkBox) -> checkBox.setSelected(gui().getMapShownViolations().contains(layer)));
-        if (!hiddenBaseVoltages.equals(gui().getMapHiddenBaseVoltages()) || !shownViolations.equals(gui().getMapShownViolations())) {
+        showFlowsCheckBox.setSelected(gui().isMapShowFlows());
+        if (!hiddenBaseVoltages.equals(gui().getMapHiddenBaseVoltages()) || !shownViolations.equals(gui().getMapShownViolations())
+                || showFlows != gui().isMapShowFlows()) {
             hiddenBaseVoltages = gui().getMapHiddenBaseVoltages();
             shownViolations = gui().getMapShownViolations();
+            showFlows = gui().isMapShowFlows();
             if (engineLoaded) {
                 webView.getEngine().executeScript("redrawNetwork()");
             }
@@ -578,10 +600,11 @@ public class MapController extends AbstractDisposableController implements Scene
         boolean showCountries = basemapComboBox.getValue() == Basemap.OFFLINE;
         Set<String> hidden = hiddenBaseVoltages;
         Set<MapViolationLayer> violations = shownViolations;
+        boolean flows = showFlows;
         pendingTiles.put(id, tileExecutor.submit(() -> {
             String url = "";
             try {
-                url = renderTile(data, showCountries, hidden, violations, zoom, x, y, ratio);
+                url = renderTile(data, showCountries, hidden, violations, flows, zoom, x, y, ratio);
             } finally {
                 // even if drawing failed, or Leaflet would wait for the tile forever
                 deliverTile(id, url);
@@ -590,9 +613,9 @@ public class MapController extends AbstractDisposableController implements Scene
     }
 
     private static String renderTile(MapNetworkData data, boolean showCountries, Set<String> hidden, Set<MapViolationLayer> violations,
-                                     int zoom, int x, int y, double ratio) {
+                                     boolean showFlows, int zoom, int x, int y, double ratio) {
         try {
-            byte[] png = MapTileRenderer.render(data, showCountries, hidden, violations, zoom, x, y, ratio);
+            byte[] png = MapTileRenderer.render(data, showCountries, hidden, violations, showFlows, zoom, x, y, ratio);
             return png == null ? "" : "data:image/png;base64," + Base64.getEncoder().encodeToString(png);
         } catch (IOException e) {
             LOGGER.error(e.getMessage(), e);
@@ -655,7 +678,7 @@ public class MapController extends AbstractDisposableController implements Scene
     }
 
     private MapNetworkData.Hit hitAt(double latitude, double longitude, double zoom) {
-        return networkData == null ? null : networkData.hitTest(latitude, longitude, zoom, hiddenBaseVoltages, shownViolations);
+        return networkData == null ? null : networkData.hitTest(latitude, longitude, zoom, hiddenBaseVoltages, shownViolations, showFlows);
     }
 
     // Formatted when hovered rather than when the map data is built, so with the decimals of the moment. Flow then

@@ -67,6 +67,7 @@ public class GuiParameters {
     // names of the base voltages (see BaseVoltagesConfig) whose substations and lines the map view hides
     private Set<String> mapHiddenBaseVoltages = Set.of();
     private Set<MapViolationLayer> mapShownViolations = Set.copyOf(EnumSet.allOf(MapViolationLayer.class));
+    private boolean mapShowFlows = true;
     private LogLevel logsMinLevel = LogLevel.INFO;
     private boolean logsNewestOnTop = true;
     private String reportsMinSeverity = REPORT_SEVERITIES.getFirst();
@@ -113,6 +114,14 @@ public class GuiParameters {
             layers.remove(layer);
         }
         setMapShownViolations(layers);
+    }
+
+    public boolean isMapShowFlows() {
+        return mapShowFlows;
+    }
+
+    public void setMapShowFlows(boolean mapShowFlows) {
+        this.mapShowFlows = mapShowFlows;
     }
 
     public LogLevel getLogsMinLevel() {

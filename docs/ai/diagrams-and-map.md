@@ -51,6 +51,20 @@ when one looks wrong, snapshot it rather than reason from the source (see
   else; the hover tooltip lists the shown violations, base case first then at most 10 contingency ones (most severe
   first, flows before voltages), formatted by `MapController` when hovered (current decimals), and set as text by
   `map.js`, never HTML.
+- Flows ("Show flows", a GUI parameter, on by default) are drawn in the same tiles, so they cost nothing per frame at
+  any network size (moving arrows were considered and dropped: animating tiles means re-encoding them every frame).
+  `MapNetworkData` holds per drawn line its base case overload and the chevrons at its first and last points (signed:
+  along or against the points), computed per end from that end's P (entering the line: pointing away from the end)
+  and that side's loading from the cached `NetworkViolations` (`getLoading(id, side)`: the worst violated limit, else
+  the most loaded of current, active and apparent power limits, never recomputed): 1 to 4 chevrons, one per started
+  25 %, capped at 4 (overloaded lines included), a single one without limits. `LinePosition` doesn't guarantee its
+  order: which route end is side 1 is found from both substations' positions (only the substation end's for a route
+  ending at a boundary point, whose chevrons follow `Boundary.getP()` and the substation side's loading), never assumed: a substation without position, both at the
+  same position, or a tie leaves the line without chevrons. `MapTileRenderer` draws overloaded lines' red highlights
+  below all lines, then the lines, then the chevrons near each end of lines long enough on screen for both ends' four.
+  Chevrons have a fixed pixel size up to zoom 10, then grow by 1.25 per level (at most 2.5 times, `chevronSize`), so they
+  don't look lost along long lines when zoomed far in; their offset from the line end grows with them.
+  Overloaded lines are hit as wide as highlighted.
 
 ### Leaflet in a WebView
 

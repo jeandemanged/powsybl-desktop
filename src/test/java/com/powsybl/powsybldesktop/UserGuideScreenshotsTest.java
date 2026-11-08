@@ -13,8 +13,11 @@ import com.powsybl.iidm.network.Generator;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.ThreeSides;
 import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.iidm.network.extensions.Coordinate;
+import com.powsybl.iidm.network.extensions.SubstationPosition;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
@@ -50,6 +53,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.scene.paint.Color;
+import javafx.scene.web.WebView;
 import javafx.stage.Popup;
 import javafx.stage.Stage;
 import javafx.stage.Window;
@@ -89,6 +93,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Tag("user-guide")
 class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
 
+    private static final int FLOWS_CLOSE_UP_ZOOM = 12;
+    private static final int FLOWS_CLOSE_UP_WIDTH = 520;
+    private static final int FLOWS_CLOSE_UP_HEIGHT = 340;
     private static final Path OUTPUT_DIRECTORY = Path.of(System.getProperty("ug.screenshots.dir", "docs/ug/_generated/images"));
 
     private static final int WIDTH = 1680;
@@ -137,11 +144,12 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         views(network);
         assertEquals(List.of("quickstart-start", "quickstart-sample-menu", "quickstart-network-loaded", "quickstart-network-map",
                 "quickstart-loadflow-run", "quickstart-loadflow-results", "quickstart-loadflow-components", "quickstart-loadflow-sld",
-                "quickstart-loadflow-violations", "quickstart-loadflow-map", "quickstart-sa-add-contingencies", "quickstart-sa-contingencies",
+                "quickstart-loadflow-violations", "quickstart-loadflow-map",
+                "map-flows-close-up", "quickstart-sa-add-contingencies", "quickstart-sa-contingencies",
                 "quickstart-sa-done", "general-notifications", "quickstart-sa-results", "quickstart-sa-flows-by-contingency",
                 "quickstart-sa-map", "quickstart-sa-map-no-contingency-voltage", "map-violations-box", "map-voltage-ranges-box",
-                "general-main-toolbar", "networks-import-menu", "substations-nad", "substations-lines-tab", "search-box-match",
-                "search-box-approximate", "search-box-not-found", "tables-lines", "tables-column-groups", "violations-dialog",
+                "map-show-flows-box", "general-main-toolbar", "networks-import-menu", "substations-nad", "substations-lines-tab",
+                "search-box-match", "search-box-approximate", "search-box-not-found", "tables-lines", "tables-column-groups", "violations-dialog",
                 "details-generator", "details-line-limits", "general-separate-window", "sa-results-voltages",
                 "parameters-user-interface", "parameters-load-flow", "reports", "logs"), writtenScreenshots);
     }
@@ -192,6 +200,39 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
 
         openMap();
         screenshot("quickstart-loadflow-map");
+        flowsCloseUp(network);
+    }
+
+    /**
+     * Zoomed in on the substation with the most lines, where their flow chevrons show, then back to the view before,
+     * which the map remembers for the next screenshots.
+     */
+    private void flowsCloseUp(Network network) {
+        Substation busiest = network.getSubstationStream()
+                .filter(substation -> substation.getExtension(SubstationPosition.class) != null)
+                .max(Comparator.comparingLong(substation -> network.getLineStream()
+                        .filter(line -> line.getTerminal1().getVoltageLevel().getSubstation().orElse(null) == substation
+                                || line.getTerminal2().getVoltageLevel().getSubstation().orElse(null) == substation)
+                        .count()))
+                .orElseThrow();
+        Coordinate coordinate = busiest.getExtension(SubstationPosition.class).getCoordinate();
+        WebView webView = lookup((Node node) -> node instanceof WebView && node.isVisible()).query();
+        String[] view = new String[1];
+        interact(() -> {
+            view[0] = (String) webView.getEngine().executeScript("JSON.stringify([map.getCenter(), map.getZoom()])");
+            webView.getEngine().executeScript("map.setView([%s, %s], %d, {animate: false})"
+                    .formatted(coordinate.getLatitude(), coordinate.getLongitude(), FLOWS_CLOSE_UP_ZOOM));
+        });
+        waitForWebViews();
+        interact(() -> {
+            Bounds bounds = webView.localToScene(webView.getLayoutBounds());
+            int centerX = (int) bounds.getCenterX();
+            int centerY = (int) bounds.getCenterY();
+            write("map-flows-close-up", composite().getSubimage(centerX - FLOWS_CLOSE_UP_WIDTH / 2, centerY - FLOWS_CLOSE_UP_HEIGHT / 2,
+                    FLOWS_CLOSE_UP_WIDTH, FLOWS_CLOSE_UP_HEIGHT));
+            webView.getEngine().executeScript("var v = JSON.parse('%s'); map.setView(v[0], v[1], {animate: false})".formatted(view[0]));
+        });
+        waitForWebViews();
     }
 
     private void runSecurityAnalysis(Network network) throws TimeoutException {
@@ -235,6 +276,7 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         waitForWebViews();
         screenshotNode("map-violations-box", lookup("#violationsBox").query());
         screenshotNode("map-voltage-ranges-box", lookup("#baseVoltagesBox").query());
+        screenshotNode("map-show-flows-box", lookup("#showFlowsCheckBox").query().getParent());
     }
 
     private void views(Network network) throws TimeoutException {

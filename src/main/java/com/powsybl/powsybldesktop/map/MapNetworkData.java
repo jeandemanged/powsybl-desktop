@@ -13,6 +13,8 @@ import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
+import com.powsybl.iidm.network.Terminal;
+import com.powsybl.iidm.network.ThreeSides;
 import com.powsybl.iidm.network.ThreeWindingsTransformer;
 import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.TwoWindingsTransformer;
@@ -26,6 +28,7 @@ import com.powsybl.powsybldesktop.diagram.BaseVoltages;
 import com.powsybl.powsybldesktop.network.edit.PositionEdits;
 import com.powsybl.powsybldesktop.parameters.MapViolationLayer;
 import com.powsybl.powsybldesktop.violations.FlowViolation;
+import com.powsybl.powsybldesktop.violations.Loading;
 import com.powsybl.powsybldesktop.violations.NetworkViolations;
 import com.powsybl.powsybldesktop.violations.VoltageViolation;
 import com.powsybl.security.PostContingencyComputationStatus;
@@ -56,6 +59,10 @@ import java.util.function.DoubleFunction;
  * {@code BaseVoltagesConfig} names, null outside all ranges.
  *
  * @param lineImplied whether a line has no route of its own, drawn straight between its two substations instead
+ * @param lineOverloaded whether a line has base case flow violations
+ * @param lineStartChevrons the flow chevrons at a line's first point: how many, positive when they point along its
+ *                          points, negative against them, 0 for none
+ * @param lineEndChevrons the same at a line's last point
  * @param grid null when there is nothing to draw
  * @param substationSpacing median distance from a substation to its nearest neighbour, infinite with fewer than
  *                          two distinct positions
@@ -68,7 +75,8 @@ public record MapNetworkData(List<Color> colors,
                       String[] substationIds, String[] substationTexts, String[] substationBaseVoltages,
                       double[] substationX, double[] substationY, int[] substationColor,
                       String[] lineIds, String[] lineTexts, String[] lineBaseVoltages, int[] lineColor,
-                      boolean[] lineDisconnected, boolean[] lineImplied, int[] lineStart, double[] lineBounds,
+                      boolean[] lineDisconnected, boolean[] lineImplied, boolean[] lineOverloaded,
+                      byte[] lineStartChevrons, byte[] lineEndChevrons, int[] lineStart, double[] lineBounds,
                       double[] pointX, double[] pointY, int[] pointLine,
                       Grid grid, double substationSpacing,
                       List<UnplacedSubstation> unplacedSubstations, int unroutedCount,
@@ -77,6 +85,11 @@ public record MapNetworkData(List<Color> colors,
     static final String DEFAULT_LINE_COLOR = "#616161";
     static final double WORLD_SIZE = 256;
     static final double LINE_WEIGHT = 2;
+    /** Flows shown, an overloaded line is highlighted this wide. */
+    static final double OVERLOADED_LINE_WEIGHT = 6;
+    /** One flow chevron per started quarter of the permanent limit, a single one without limits. */
+    static final double CHEVRON_LOADING_STEP = 25;
+    static final int MAX_CHEVRONS = 4;
 
     /** Warning bubble radius, in pixels: a disc above what it marks, its tail pointing at it. */
     static final double BUBBLE_RADIUS = 7;
@@ -100,6 +113,7 @@ public record MapNetworkData(List<Color> colors,
     /** Pixels around a line's stroke that still hit it: the stroke alone is too thin to aim at. */
     private static final double LINE_CLICK_TOLERANCE = 4;
     private static final double LINE_HIT_DISTANCE = LINE_WEIGHT / 2 + LINE_CLICK_TOLERANCE;
+    private static final double OVERLOADED_LINE_HIT_DISTANCE = OVERLOADED_LINE_WEIGHT / 2 + LINE_CLICK_TOLERANCE;
     /** The grid has this many cells along each axis. */
     private static final int GRID_SIZE = 128;
     /** Nearest neighbour distances are measured on at most this many substations, enough for a median. */
@@ -205,7 +219,85 @@ public record MapNetworkData(List<Color> colors,
      * @param points projected coordinates, x and y interleaved
      */
     private record LineData(String id, double[] points, String text, String baseVoltage, String color, boolean disconnected,
-                            boolean implied) {
+                            boolean implied, boolean overloaded, int[] chevrons) {
+    }
+
+    /**
+     * A drawn line's end: the active power entering the line there, and the base case loading of a side of the
+     * equipment shown.
+     *
+     * @param voltageLevel the voltage level at a substation end, null at a boundary point
+     */
+    private record FlowEnd(VoltageLevel voltageLevel, double p, double loading) {
+
+        static FlowEnd of(NetworkViolations violations, Identifiable<?> shown, ThreeSides side, Terminal terminal) {
+            return of(violations, shown, side, terminal.getVoltageLevel(), terminal.getP());
+        }
+
+        /**
+         * A boundary line's boundary point, its loading that of its terminal's side: limits apply there only.
+         */
+        static FlowEnd ofBoundary(NetworkViolations violations, Identifiable<?> shown, ThreeSides side, BoundaryLine boundaryLine) {
+            return of(violations, shown, side, null, boundaryLine.getBoundary().getP());
+        }
+
+        private static FlowEnd of(NetworkViolations violations, Identifiable<?> shown, ThreeSides side, VoltageLevel voltageLevel, double p) {
+            Loading loading = violations.getLoading(shown.getId(), side);
+            return new FlowEnd(voltageLevel, p, loading == null ? Double.NaN : loading.percent());
+        }
+
+        // a positive P enters the line, so its chevrons point away from this end
+        int chevrons(boolean atStart) {
+            if (Double.isNaN(p) || p == 0) {
+                return 0;
+            }
+            int count = Double.isNaN(loading) ? 1 : (int) Math.clamp(Math.floor(loading / CHEVRON_LOADING_STEP) + 1, 1, MAX_CHEVRONS);
+            return (p > 0) == atStart ? count : -count;
+        }
+    }
+
+    /**
+     * What is shown of a drawn line's flow: whether the equipment shown is overloaded in the base case, and the ends of
+     * its route, {@code end1} at a substation, {@code end2} at a substation or a boundary point.
+     */
+    private record Flow(boolean overloaded, FlowEnd end1, FlowEnd end2) {
+
+        static Flow of(NetworkViolations violations, Identifiable<?> shown, FlowEnd end1, FlowEnd end2) {
+            Loading loading = violations.getLoading(shown.getId());
+            return new Flow(loading != null && loading.isViolated(), end1, end2);
+        }
+
+        /**
+         * The chevrons at the route's first and last points. A route isn't guaranteed to start at end 1: which end is
+         * which is found from the substations' positions (end 1's only, for a route ending at a boundary point), and
+         * there are no chevrons when it can't be: a substation without position, both substations at the same
+         * position, or route ends as near one as the other.
+         */
+        int[] chevrons(double[] points) {
+            boolean toBoundary = end2.voltageLevel() == null;
+            Coordinate from = PositionEdits.substationCoordinate(end1.voltageLevel()).orElse(null);
+            Coordinate to = toBoundary ? null : PositionEdits.substationCoordinate(end2.voltageLevel()).orElse(null);
+            if (from == null || !toBoundary && (to == null || to.equals(from))) {
+                return new int[] {0, 0};
+            }
+            int last = points.length - 2;
+            double forward = distance(points[0], points[1], from);
+            double backward = distance(points[last], points[last + 1], from);
+            if (to != null) {
+                forward += distance(points[last], points[last + 1], to);
+                backward += distance(points[0], points[1], to);
+            }
+            if (forward == backward) {
+                return new int[] {0, 0};
+            }
+            FlowEnd first = forward < backward ? end1 : end2;
+            FlowEnd second = forward < backward ? end2 : end1;
+            return new int[] {first.chevrons(true), second.chevrons(false)};
+        }
+
+        private static double distance(double x, double y, Coordinate coordinate) {
+            return Math.hypot(x - projectX(coordinate.getLongitude()), y - projectY(coordinate.getLatitude()));
+        }
     }
 
     private interface GridItemConsumer {
@@ -216,6 +308,10 @@ public record MapNetworkData(List<Color> colors,
      * Lines, tie lines and boundary lines are drawn alike: the CGMES geographical layout import puts a tie line's
      * positions on its two boundary line halves, which are then drawn as, and navigate to, that tie line. A
      * substation takes its highest voltage level nominal voltage, a line the highest of its two ends.
+     *
+     * A drawn line's flow is shown at each of its ends at a substation, from that side's active power and base case
+     * loading; its overload is the base case one of the line, tie line or unpaired boundary line it shows. Loadings
+     * and overloads come from the cached violations.
      *
      * Base case and contingency violations are marked on their line, tie line or unpaired boundary line, transformer
      * ones on its substation, voltage ones on their voltage level's substation. A security analysis whose
@@ -249,26 +345,37 @@ public record MapNetworkData(List<Color> colors,
             network.getLineStream().forEach(line -> {
                 double nominalV = Math.max(line.getTerminal1().getVoltageLevel().getNominalV(), line.getTerminal2().getVoltageLevel().getNominalV());
                 boolean disconnected = !line.getTerminal1().isConnected() || !line.getTerminal2().isConnected();
-                if (!addLine(lines, line, line, nominalV, disconnected, baseVoltageName, color)) {
+                Flow flow = Flow.of(violations, line, FlowEnd.of(violations, line, ThreeSides.ONE, line.getTerminal1()),
+                        FlowEnd.of(violations, line, ThreeSides.TWO, line.getTerminal2()));
+                if (!addLine(lines, line, line, nominalV, disconnected, flow, baseVoltageName, color)) {
                     addImpliedLine(lines, line, line.getTerminal1().getVoltageLevel(), line.getTerminal2().getVoltageLevel(), nominalV,
-                            disconnected, baseVoltageName, color);
+                            disconnected, flow, baseVoltageName, color);
                 }
             });
             network.getTieLineStream().forEach(tieLine -> {
-                if (!addLine(lines, tieLine, tieLine, nominalV(tieLine), isDisconnected(tieLine), baseVoltageName, color)
+                Flow flow = Flow.of(violations, tieLine, FlowEnd.of(violations, tieLine, ThreeSides.ONE, tieLine.getTerminal1()),
+                        FlowEnd.of(violations, tieLine, ThreeSides.TWO, tieLine.getTerminal2()));
+                if (!addLine(lines, tieLine, tieLine, nominalV(tieLine), isDisconnected(tieLine), flow, baseVoltageName, color)
                         && PositionEdits.route(tieLine.getBoundaryLine1()).isEmpty() && PositionEdits.route(tieLine.getBoundaryLine2()).isEmpty()) {
                     addImpliedLine(lines, tieLine, tieLine.getBoundaryLine1().getTerminal().getVoltageLevel(),
                             tieLine.getBoundaryLine2().getTerminal().getVoltageLevel(), nominalV(tieLine), isDisconnected(tieLine),
-                            baseVoltageName, color);
+                            flow, baseVoltageName, color);
                 }
             });
             network.getBoundaryLineStream().forEach(boundaryLine -> {
                 TieLine tieLine = boundaryLine.getTieLine().orElse(null);
                 if (tieLine == null) {
                     addLine(lines, boundaryLine, boundaryLine, boundaryLine.getTerminal().getVoltageLevel().getNominalV(),
-                            !boundaryLine.getTerminal().isConnected(), baseVoltageName, color);
+                            !boundaryLine.getTerminal().isConnected(),
+                            Flow.of(violations, boundaryLine, FlowEnd.of(violations, boundaryLine, ThreeSides.ONE, boundaryLine.getTerminal()),
+                                    FlowEnd.ofBoundary(violations, boundaryLine, ThreeSides.ONE, boundaryLine)),
+                            baseVoltageName, color);
                 } else if (tieLine.getExtension(LinePosition.class) == null) {
-                    addLine(lines, boundaryLine, tieLine, nominalV(tieLine), isDisconnected(tieLine), baseVoltageName, color);
+                    ThreeSides side = tieLine.getBoundaryLine1() == boundaryLine ? ThreeSides.ONE : ThreeSides.TWO;
+                    addLine(lines, boundaryLine, tieLine, nominalV(tieLine), isDisconnected(tieLine),
+                            Flow.of(violations, tieLine, FlowEnd.of(violations, tieLine, side, boundaryLine.getTerminal()),
+                                    FlowEnd.ofBoundary(violations, tieLine, side, boundaryLine)),
+                            baseVoltageName, color);
                 }
             });
             unplaced.sort(Comparator.comparing(UnplacedSubstation::text, String.CASE_INSENSITIVE_ORDER));
@@ -362,7 +469,7 @@ public record MapNetworkData(List<Color> colors,
      * @return whether it has one
      */
     private static <T extends Identifiable<T>> boolean addLine(List<LineData> lines, T positioned, Identifiable<?> shown, double nominalV,
-                                                            boolean disconnected, DoubleFunction<String> baseVoltageName,
+                                                            boolean disconnected, Flow flow, DoubleFunction<String> baseVoltageName,
                                                             BinaryOperator<String> color) {
         LinePosition<T> position = positioned.getExtension(LinePosition.class);
         if (position != null && !position.getCoordinates().isEmpty()) {
@@ -374,7 +481,7 @@ public record MapNetworkData(List<Color> colors,
             }
             String baseVoltage = baseVoltageName.apply(nominalV);
             lines.add(new LineData(shown.getId(), points, shown.getNameOrId(), baseVoltage,
-                    color.apply(baseVoltage, DEFAULT_LINE_COLOR), disconnected, false));
+                    color.apply(baseVoltage, DEFAULT_LINE_COLOR), disconnected, false, flow.overloaded(), flow.chevrons(points)));
             return true;
         }
         return false;
@@ -382,14 +489,14 @@ public record MapNetworkData(List<Color> colors,
 
     // straight between the two ends' substations, if both have a position: voltage levels may have no substation
     private static void addImpliedLine(List<LineData> lines, Identifiable<?> line, VoltageLevel end1, VoltageLevel end2, double nominalV,
-                                       boolean disconnected, DoubleFunction<String> baseVoltageName, BinaryOperator<String> color) {
+                                       boolean disconnected, Flow flow, DoubleFunction<String> baseVoltageName, BinaryOperator<String> color) {
         Coordinate start = PositionEdits.substationCoordinate(end1).orElse(null);
         Coordinate end = PositionEdits.substationCoordinate(end2).orElse(null);
         if (start != null && end != null) {
             double[] points = {projectX(start.getLongitude()), projectY(start.getLatitude()), projectX(end.getLongitude()), projectY(end.getLatitude())};
             String baseVoltage = baseVoltageName.apply(nominalV);
             lines.add(new LineData(line.getId(), points, line.getNameOrId(), baseVoltage,
-                    color.apply(baseVoltage, DEFAULT_LINE_COLOR), disconnected, true));
+                    color.apply(baseVoltage, DEFAULT_LINE_COLOR), disconnected, true, flow.overloaded(), flow.chevrons(points)));
         }
     }
 
@@ -422,6 +529,9 @@ public record MapNetworkData(List<Color> colors,
         int[] lineColor = new int[lineCount];
         boolean[] lineDisconnected = new boolean[lineCount];
         boolean[] lineImplied = new boolean[lineCount];
+        boolean[] lineOverloaded = new boolean[lineCount];
+        byte[] lineStartChevrons = new byte[lineCount];
+        byte[] lineEndChevrons = new byte[lineCount];
         int[] lineStart = new int[lineCount + 1];
         double[] lineBounds = new double[lineCount * 4];
         double[] pointX = new double[pointCount];
@@ -436,6 +546,9 @@ public record MapNetworkData(List<Color> colors,
             lineColor[i] = colorIndex(line.color(), colors, colorIndices);
             lineDisconnected[i] = line.disconnected();
             lineImplied[i] = line.implied();
+            lineOverloaded[i] = line.overloaded();
+            lineStartChevrons[i] = (byte) line.chevrons()[0];
+            lineEndChevrons[i] = (byte) line.chevrons()[1];
             lineStart[i] = k;
             double minX = Double.POSITIVE_INFINITY;
             double minY = Double.POSITIVE_INFINITY;
@@ -463,7 +576,8 @@ public record MapNetworkData(List<Color> colors,
         Map<String, ViolationMarker> violationMarkers = violationMarkers(markedViolations, substationIds, substationX, substationY,
                 substationBaseVoltages, lineIds, lineBaseVoltages, lineStart, pointX, pointY);
         return new MapNetworkData(colors, substationIds, substationTexts, substationBaseVoltages, substationX, substationY,
-                substationColor, lineIds, lineTexts, lineBaseVoltages, lineColor, lineDisconnected, lineImplied, lineStart, lineBounds,
+                substationColor, lineIds, lineTexts, lineBaseVoltages, lineColor, lineDisconnected, lineImplied, lineOverloaded,
+                lineStartChevrons, lineEndChevrons, lineStart, lineBounds,
                 pointX, pointY, pointLine, grid, substationSpacing(grid, substationX, substationY), unplacedSubstations, unroutedCount,
                 violationMarkers);
     }
@@ -775,13 +889,13 @@ public record MapNetworkData(List<Color> colors,
 
     /**
      * Substations win over lines, as they're drawn on top; among each kind the closest one wins. Elements of a
-     * hidden base voltage aren't hit.
+     * hidden base voltage aren't hit. Flows shown, overloaded lines are hit as wide as they're highlighted.
      * <p>
      * At a fractional {@code zoom}, Leaflet shows the tiles of the rounded zoom level scaled, markers and lines
      * included, so the hit distances are those of that level, scaled the same.
      */
     public Hit hitTest(double latitude, double longitude, double zoom, Set<String> hiddenBaseVoltages,
-                       Set<MapViolationLayer> shownViolations) {
+                       Set<MapViolationLayer> shownViolations, boolean showFlows) {
         if (grid == null) {
             return null;
         }
@@ -796,11 +910,12 @@ public record MapNetworkData(List<Color> colors,
         }
         double substationLimit = (substationSize(tileScale) * displayScale / 2 + SUBSTATION_CLICK_TOLERANCE) / scale;
         double lineLimit = LINE_HIT_DISTANCE * displayScale / scale;
-        double tolerance = Math.max(substationLimit, lineLimit);
+        double overloadedLineLimit = (showFlows ? OVERLOADED_LINE_HIT_DISTANCE : LINE_HIT_DISTANCE) * displayScale / scale;
+        double tolerance = Math.max(substationLimit, overloadedLineLimit);
         int bestSubstation = -1;
         double bestSubstationDistance = substationLimit * substationLimit;
         int bestLine = -1;
-        double bestLineDistance = lineLimit * lineLimit;
+        double bestLineDistance = Double.POSITIVE_INFINITY;
         for (int cy = grid.cellY(py - tolerance); cy <= grid.cellY(py + tolerance); cy++) {
             for (int cx = grid.cellX(px - tolerance); cx <= grid.cellX(px + tolerance); cx++) {
                 int cell = grid.cellIndex(cx, cy);
@@ -817,7 +932,9 @@ public record MapNetworkData(List<Color> colors,
                     } else {
                         int k = -item - 1;
                         double distance = squaredDistanceToSegment(px, py, pointX[k], pointY[k], pointX[k + 1], pointY[k + 1]);
-                        if (distance <= bestLineDistance && !isHidden(hiddenBaseVoltages, lineBaseVoltages[pointLine[k]])) {
+                        double limit = lineOverloaded[pointLine[k]] ? overloadedLineLimit : lineLimit;
+                        if (distance <= limit * limit && distance <= bestLineDistance
+                                && !isHidden(hiddenBaseVoltages, lineBaseVoltages[pointLine[k]])) {
                             bestLineDistance = distance;
                             bestLine = pointLine[k];
                         }

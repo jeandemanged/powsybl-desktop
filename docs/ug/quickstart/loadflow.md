@@ -58,9 +58,15 @@ The **Voltages** tab is empty: all bus voltages are within the limits of their v
 
 ## See the violations on the map
 
-Click **Map** in the main toolbar. A red warning bubble now marks each overloaded line, above its middle.
+Click **Map** in the main toolbar. A red warning bubble now marks each overloaded line, above its middle. With **Show flows** checked,
+overloaded lines are also highlighted in red all along, and each end of a line gets chevrons pointing the way the
+active power flows there, one to four depending on the loading of that side (see [Map](../views/map.md)).
 
 ![Limit violations on the map](../_generated/images/quickstart-loadflow-map.png)
+
+Zoom in to see the chevrons, here around the substation with the most lines:
+
+![Flow chevrons around a substation](../_generated/images/map-flows-close-up.png)
 
 Hover a bubble to list the line's violations; click it to open the line's details.
 

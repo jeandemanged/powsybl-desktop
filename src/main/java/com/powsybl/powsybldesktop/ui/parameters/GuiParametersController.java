@@ -79,6 +79,7 @@ public class GuiParametersController extends AbstractDiagramParametersController
             addBooleanField(CAT_MAP, layer.getLabel(), null,
                     p -> p.getMapShownViolations().contains(layer), (p, shown) -> p.setMapViolationsShown(layer, shown));
         }
+        addBooleanField(CAT_MAP, Messages.get("map.showFlows"), null, GuiParameters::isMapShowFlows, GuiParameters::setMapShowFlows);
         addChoiceField(CAT_LOGS, label("logsMinLevel"), List.of(GuiParameters.LogLevel.values()),
                 level -> Messages.get("logs.filter." + level.name().toLowerCase(Locale.ROOT)),
                 GuiParameters::getLogsMinLevel, GuiParameters::setLogsMinLevel);
