@@ -37,6 +37,7 @@ import java.util.function.Function;
  */
 public class GuiParametersController extends AbstractDiagramParametersController<GuiParameters> {
 
+    private static final String CAT_GENERAL = "general";
     private static final String CAT_MAP = "map";
     private static final String CAT_LOGS = "logs";
     private static final String CAT_REPORTS = "reports";
@@ -53,6 +54,7 @@ public class GuiParametersController extends AbstractDiagramParametersController
         titles.put(CAT_LOGS, Messages.get("main.toolbar.logs"));
         titles.put(CAT_REPORTS, Messages.get("main.toolbar.reports"));
         titles.put(CAT_NETWORK_EDITING, Messages.get("parameters.gui.category.networkEditing"));
+        titles.put(CAT_GENERAL, Messages.get("parameters.gui.category.general"));
         buildCategoryList(titles);
     }
 
@@ -88,6 +90,7 @@ public class GuiParametersController extends AbstractDiagramParametersController
                 GuiParameters::getReportsMinSeverity, GuiParameters::setReportsMinSeverity);
         addBooleanField(CAT_NETWORK_EDITING, Messages.get("edit.create.openDetails"), null,
                 GuiParameters::isOpenDetailsAfterCreation, GuiParameters::setOpenDetailsAfterCreation);
+        addBooleanField(CAT_GENERAL, label("confirmExit"), null, GuiParameters::isConfirmExit, GuiParameters::setConfirmExit);
     }
 
     private <V> void addChoiceField(String category, String label, List<V> values, Function<V, String> toLabel,

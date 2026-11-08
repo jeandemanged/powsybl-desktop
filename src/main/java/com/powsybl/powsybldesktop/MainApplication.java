@@ -59,7 +59,7 @@ public class MainApplication extends Application {
         PauseTransition splashPainted = new PauseTransition(Duration.millis(50));
         splashPainted.setOnFinished(_ -> {
             Parent mainView = loadMainView(mainModel, splash);
-            Runnable showMainView = () -> showMainView(stage, mainView, splash);
+            Runnable showMainView = () -> showMainView(stage, mainView, splash, mainModel);
             Duration elapsed = Duration.millis(System.currentTimeMillis() - splashShownAt);
             Duration remaining = MIN_SPLASH_DURATION.subtract(elapsed);
             if (remaining.greaterThan(Duration.ZERO)) {
@@ -73,14 +73,20 @@ public class MainApplication extends Application {
         splashPainted.play();
     }
 
-    private static void showMainView(Stage stage, Parent mainView, SplashScreen splash) {
+    private static void showMainView(Stage stage, Parent mainView, SplashScreen splash, MainModel mainModel) {
         Scene scene = new Scene(mainView, 900, 600);
         scene.getStylesheets().add(MainApplication.class.getResource("styles.css").toExternalForm());
         stage.setTitle(MainModel.APP_TITLE);
         stage.getIcons().add(new Image(Objects.requireNonNull(MainApplication.class.getResourceAsStream("logo.png"))));
         stage.setScene(scene);
         // separate windows are independent stages, which would otherwise keep the application running
-        stage.setOnCloseRequest(_ -> Platform.exit());
+        stage.setOnCloseRequest(event -> {
+            if (MainController.confirmExit(stage, mainModel)) {
+                Platform.exit();
+            } else {
+                event.consume();
+            }
+        });
         stage.show();
         splash.close();
     }

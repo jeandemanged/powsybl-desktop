@@ -71,6 +71,7 @@ public class GuiParameters {
     private boolean logsNewestOnTop = true;
     private String reportsMinSeverity = REPORT_SEVERITIES.getFirst();
     private boolean openDetailsAfterCreation = true;
+    private boolean confirmExit = true;
     private final Map<Quantity, Integer> decimals = new EnumMap<>(Quantity.class);
 
     public GuiParameters() {
@@ -150,6 +151,17 @@ public class GuiParameters {
 
     public void setOpenDetailsAfterCreation(boolean openDetailsAfterCreation) {
         this.openDetailsAfterCreation = openDetailsAfterCreation;
+    }
+
+    /**
+     * Whether exiting the application with networks loaded first asks for confirmation, as their changes are lost.
+     */
+    public boolean isConfirmExit() {
+        return confirmExit;
+    }
+
+    public void setConfirmExit(boolean confirmExit) {
+        this.confirmExit = confirmExit;
     }
 
     public int getDecimals(Quantity quantity) {

@@ -71,6 +71,7 @@ class ApplicationParametersJsonTest {
         parameters.gui().setLogsMinLevel(GuiParameters.LogLevel.WARN);
         parameters.gui().setLogsNewestOnTop(false);
         parameters.gui().setReportsMinSeverity("DETAIL");
+        parameters.gui().setConfirmExit(false);
         parameters.gui().setDecimals(GuiParameters.Quantity.RHO, 4);
         parameters.gui().setDecimals(GuiParameters.Quantity.POWER, 0);
         return parameters;
@@ -110,6 +111,7 @@ class ApplicationParametersJsonTest {
         assertEquals(GuiParameters.LogLevel.WARN, read.gui().getLogsMinLevel());
         assertFalse(read.gui().isLogsNewestOnTop());
         assertEquals("DETAIL", read.gui().getReportsMinSeverity());
+        assertFalse(read.gui().isConfirmExit());
         assertEquals(4, read.gui().getDecimals(GuiParameters.Quantity.RHO));
         assertEquals(0, read.gui().getDecimals(GuiParameters.Quantity.POWER));
         assertEquals(4, json.get("gui").get("decimals").get("rho").intValue());

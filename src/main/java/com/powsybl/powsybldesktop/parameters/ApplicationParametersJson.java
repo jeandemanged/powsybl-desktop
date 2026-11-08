@@ -422,6 +422,8 @@ public final class ApplicationParametersJson {
     // ----- GUI -----
 
     private static void gui(Binder b, GuiParameters p) {
+        Binder general = b.child("general");
+        general.bool("confirmExit", p::isConfirmExit, p::setConfirmExit);
         Binder map = b.child("map");
         map.enumeration("basemap", Basemap.class, p::getMapBasemap, p::setMapBasemap);
         map.stringSet("hiddenBaseVoltages", p::getMapHiddenBaseVoltages, p::setMapHiddenBaseVoltages);

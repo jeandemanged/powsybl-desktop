@@ -92,7 +92,8 @@ Maven cache may contain unrelated versions.
   instance), SLD (`DesktopSldParameters`), NAD (`DesktopNadParameters`), per-format network import/export
   `Properties` (only user-edited values), and the app's own view settings, `…/parameters/GuiParameters.java` (map
   basemap and hidden base voltages, logs level filter and sort order, reports severity filter, whether creation
-  dialogs then open the created object's details, decimals).
+  dialogs then open the created object's details, whether exiting with networks loaded asks for confirmation
+  (`MainController.confirmExit`, used by both File > Exit and the main window's close request), decimals).
 - They are **edited in place** by the parameter tabs (two-way binding, no DTO). After an edit, a form calls its
   `onChange` hook, which bumps `ParametersModel.parametersChanged()` (and `sldParametersChanged()` /
   `nadParametersChanged()` for diagrams, so the displayed diagram re-renders).

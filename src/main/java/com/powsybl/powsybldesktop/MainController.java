@@ -84,6 +84,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ContextMenu;
@@ -100,6 +101,7 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 import javafx.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -200,7 +202,20 @@ public class MainController extends AbstractDisposableController {
 
     @FXML
     protected void onExit() {
-        Platform.exit();
+        if (confirmExit(borderPane.getScene().getWindow(), mainModel)) {
+            Platform.exit();
+        }
+    }
+
+    // nothing tracks whether a network was changed since it was loaded, so any loaded network may hold unsaved data
+    static boolean confirmExit(Window owner, MainModel mainModel) {
+        if (mainModel.getNetworks().isEmpty() || !mainModel.getParametersModel().getGuiParameters().isConfirmExit()) {
+            return true;
+        }
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION, Messages.get("main.exit.confirmMessage"), ButtonType.YES, ButtonType.NO);
+        alert.initOwner(owner);
+        alert.setHeaderText(null);
+        return alert.showAndWait().filter(ButtonType.YES::equals).isPresent();
     }
 
     @FXML
