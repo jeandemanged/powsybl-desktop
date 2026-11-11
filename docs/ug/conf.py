@@ -116,11 +116,13 @@ latex_documents = [
 # Live ("TeX capacity exceeded ... \the \everycr")
 latex_table_style = ['booktabs']
 
-# pdflatex fails on Unicode characters it has no definition for, such as the arrows of the UI's search buttons
+# pdflatex fails on Unicode characters it has no definition for, such as the arrows of the UI's search buttons or the
+# ohm unit
 latex_elements = {
     'preamble': r'''
 \sphinxDUC{25B6}{\ensuremath{\blacktriangleright}}
 \sphinxDUC{25C0}{\ensuremath{\blacktriangleleft}}
+\sphinxDUC{03A9}{\ensuremath{\Omega}}
 ''',
 }
 
