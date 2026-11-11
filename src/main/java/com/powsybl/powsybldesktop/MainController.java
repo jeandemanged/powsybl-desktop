@@ -59,6 +59,7 @@ import com.powsybl.powsybldesktop.ui.network.tables.LinesController;
 import com.powsybl.powsybldesktop.ui.network.tables.LoadsController;
 import com.powsybl.powsybldesktop.ui.network.tables.OverloadManagementSystemsController;
 import com.powsybl.powsybldesktop.ui.network.tables.SecurityAnalysisResultsController;
+import com.powsybl.powsybldesktop.ui.network.tables.SensitivityAnalysisResultsController;
 import com.powsybl.powsybldesktop.ui.network.tables.ShuntCompensatorsController;
 import com.powsybl.powsybldesktop.ui.network.tables.StaticVarCompensatorsController;
 import com.powsybl.powsybldesktop.ui.network.tables.SubstationsTableController;
@@ -685,6 +686,8 @@ public class MainController extends AbstractDisposableController {
 
     // a failed base case throws (the run fails); a failed contingency has no values
     private Notification sensitivityAnalysisOutcome(Instant start, SensitivityAnalysisResultAndReport resultAndReport) {
+        NotificationAction viewResultsAction = new NotificationAction("desktop.common.action.viewResults", _ ->
+                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_SENSITIVITY_ANALYSIS_RESULTS)));
         NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", _ ->
                 mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.REPORTS,
                         ReportNavigationState.create(resultAndReport.reportNode()))));
@@ -692,9 +695,10 @@ public class MainController extends AbstractDisposableController {
                 .filter(status -> status.getStatus() == SensitivityAnalysisResult.Status.FAILURE)
                 .count();
         if (failed > 0) {
-            return Notification.createPartialSuccess(start, "main.sensitivityAnalysis.contingenciesFailed", viewReportAction).withMessageArgs(failed);
+            return Notification.createPartialSuccess(start, "main.sensitivityAnalysis.contingenciesFailed", viewResultsAction, viewReportAction)
+                    .withMessageArgs(failed);
         }
-        return Notification.createSuccess(start, "main.sensitivityAnalysis.completed", viewReportAction);
+        return Notification.createSuccess(start, "main.sensitivityAnalysis.completed", viewResultsAction, viewReportAction);
     }
 
     // Builds the search index for a newly-selected network once, in the background - a network already cached
@@ -1255,6 +1259,9 @@ public class MainController extends AbstractDisposableController {
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS) {
             ensureSceneView(SecurityAnalysisResultsController.class,
                     "ui/network/tables/security-analysis-results-view.fxml", NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS);
+        } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SENSITIVITY_ANALYSIS_RESULTS) {
+            ensureSceneView(SensitivityAnalysisResultsController.class,
+                    "ui/network/tables/sensitivity-analysis-results-view.fxml", NavigationType.NETWORK_TABLE_SENSITIVITY_ANALYSIS_RESULTS);
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_VIOLATIONS) {
             ensureSceneView(ViolationsController.class,
                     "ui/network/tables/violations-view.fxml", NavigationType.NETWORK_TABLE_VIOLATIONS);
@@ -1495,6 +1502,11 @@ public class MainController extends AbstractDisposableController {
 
     public void onSecurityAnalysisResults() {
         mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS));
+    }
+
+    @FXML
+    public void onSensitivityAnalysisResults() {
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_SENSITIVITY_ANALYSIS_RESULTS));
     }
 
     public void onViolations() {

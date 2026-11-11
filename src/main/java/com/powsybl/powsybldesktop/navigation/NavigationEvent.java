@@ -53,6 +53,7 @@ public record NavigationEvent(NavigationType navigationType, NavigationState sta
             case NETWORK_TABLE_VOLTAGE_ANGLE_LIMITS -> Messages.get("desktop.common.equipment.voltageAngleLimit.plural");
             case NETWORK_TABLE_COMPONENTS -> Messages.get("main.toolbar.loadflowresult");
             case NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS -> Messages.get("main.toolbar.securityAnalysisResults");
+            case NETWORK_TABLE_SENSITIVITY_ANALYSIS_RESULTS -> Messages.get("main.toolbar.sensitivityAnalysisResults");
             case NETWORK_TABLE_VIOLATIONS -> Messages.get("main.toolbar.violations");
             case REPORTS -> Messages.get("main.toolbar.reports");
             case PARAMETERS -> Messages.get("desktop.common.parameters");

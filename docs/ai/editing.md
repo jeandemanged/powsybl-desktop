@@ -53,7 +53,7 @@ Other table shapes - read the closest one before adding a similar view:
 - tables of objects outside voltage levels (areas, overload management systems, voltage angle limits) extend
   `AbstractNetworkObjectTableController`: no search box, no embedding;
 - `SubstationsTableController`, `VoltageLevelsController`, `ComponentsController`, `SecurityAnalysisResultsController`,
-  `ViolationsController` extend `AbstractDisposableController` directly and re-implement what they need (e.g. the
+  `SensitivityAnalysisResultsController`, `ViolationsController` extend `AbstractDisposableController` directly and re-implement what they need (e.g. the
   busy-lock binding); `SwitchesController` does too and implements `EmbeddableEquipmentTable` (embedded only, no
   standalone view).
 

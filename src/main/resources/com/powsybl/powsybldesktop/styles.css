@@ -301,6 +301,12 @@
     -fx-font-style: italic;
 }
 
+/* Sensitivity value below the thresholds or not computed (SensitivityAnalysisResultsController). */
+.sensitivity-missing {
+    -fx-text-fill: gray;
+    -fx-font-style: italic;
+}
+
 /* ===== Separate windows (SeparateWindows) ===== */
 
 /* Follows the mouse while a main toolbar button is dragged, telling where its view will open. */

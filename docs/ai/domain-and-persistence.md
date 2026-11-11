@@ -78,6 +78,12 @@ Maven cache may contain unrelated versions.
   lists, after refusing with every reason (`SensitivityAnalysisRun.problems`: unsupported kinds, unknown variable
   sets) rather than letting Open Load Flow fail on the first one. A failed base case throws; failed contingencies
   only have a `FAILURE` state status (partial success notification).
+- The Sensitivity Analysis Results view (`ui/network/tables/SensitivityAnalysisResultsController`) shows one state at
+  a time, optionally one matrix, through `SensitivityResultRows`: a state's factors as their contingency context
+  says, mapped back to their matrix by the run's matrices (the result's factors are their expansion, in order). Open
+  Load Flow doesn't report a value (nor its function reference) below the thresholds: shown as "Below threshold",
+  told apart from NaN ("Not computed"). It tells when the study's matrices differ from the run's.
+  `SensitivityTexts` names the function and variable types.
 - They all produce a `ReportNode` stored with `mainModel.addReport` (see
   [architecture.md](architecture.md#reports-and-logs)).
 
