@@ -12,6 +12,7 @@ when one looks wrong, snapshot it rather than reason from the source (see
   `ContainerDiagram`, `// called from map.js` in `MapController`). Keep the scripts and these method names in sync:
   - `ui/network/sld.js` → `…/ui/network/ContainerDiagram.java`: `isClickableEquipment`, `onEquipmentClick`,
     `onEquipmentContextMenu`, `onBackgroundContextMenu`, `onSwitchClick`, `onFeederTopBottomClick`;
+  - `ui/network/nad.js` → the same `ContainerDiagram` (area kind): `onEquipmentContextMenu`, `onBackgroundContextMenu`;
   - `ui/map/map.js` → `…/ui/map/MapController.java`: `requestTile`, `cancelTile`, `onTileLoad`, `hitTest`,
     `onMapClick`, `onMapContextMenu`, `onViewChanged`, `onPlace`, `onEditChanged`, `onEditContextMenu`, `openLink`.
 - Java → JS is `webEngine.executeScript(...)` calling the scripts' global functions.
@@ -30,6 +31,14 @@ when one looks wrong, snapshot it rather than reason from the source (see
   up the element's ancestors). Busbars, a thin line, get a wider transparent line in their group to catch the
   pointer, added again on every injected diagram; SVG exports use the rendered string, not the page.
 - What clicks open (details, other voltage levels): see [editing.md](editing.md#equipment-detail-views).
+- The network area diagram's metadata maps SVG ids to equipment: `NetworkAreaDiagramRenderer.DiagramRender.equipmentIds`
+  flattens it into one map, a voltage level for its circle, buses and label (a bus's own equipment id is a bus view
+  bus, a boundary node's its boundary line), a branch or injection for its drawing and its values (arrows and labels
+  are drawn in a separate `nad-edge-infos` group, so their ids are mapped explicitly). `nad.js` walks up from the
+  right-clicked element to the first id `ContainerDiagram` resolves; a label is HTML in a `foreignObject` carrying the
+  label's id. Edges get a wider transparent copy of each `nad-edge-path` to catch the pointer, like busbars in
+  `sld.js`. Centering on a voltage level navigates the main window (recording the current area diagram first, so Back
+  returns to it) or, in a separate window, retargets that diagram, as following a feeder does in the SLD.
 - `ContainerDiagram.highlight(container, equipment)` outlines equipment in green for 4 s, fading out over the last
   one: right away if that container's diagram is shown and rendered, else at its next render (any render drops a
   pending highlight). Used for the substations view's search matches, and when following a feeder to its other end's

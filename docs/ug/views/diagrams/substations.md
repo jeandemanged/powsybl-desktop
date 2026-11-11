@@ -78,6 +78,14 @@ the network. Their look is set in the **Single Line Diagram** and **Network Area
 
 - The network area diagram shows the voltage levels of the selected container and their neighbours.
 - Set the **Depth** slider (1 to 6): how many steps of neighbouring voltage levels are included.
+- Right-click a voltage level (its circle or its label) for **Details**, **Open single line diagram**, **Center the
+  diagram on** it and, in the main window, **Open in new window**, then what can be created in it and its removal.
+- Right-click a line, transformer, HVDC line or, when drawn, an injection (or its values) for **Details**, **Show in
+  table**, **Go to** the single line diagram of each voltage level it connects, **Center the diagram on** each of
+  them, then its removal.
+- Right-click the background to create objects in the shown container.
+- Centering the diagram on a voltage level shows its network area diagram at the same depth: **Back** returns to the
+  previous one. In a separate window, the window shows it instead.
 
 ![The network area diagram, depth 2, fitted to the screen](../../_generated/images/substations-nad.png)
 

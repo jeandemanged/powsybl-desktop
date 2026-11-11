@@ -10,13 +10,16 @@ package com.powsybl.powsybldesktop.ui.network;
 import com.google.common.io.ByteStreams;
 import com.powsybl.iidm.network.Battery;
 import com.powsybl.iidm.network.BoundaryLine;
+import com.powsybl.iidm.network.Branch;
 import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.BusbarSection;
 import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Generator;
 import com.powsybl.iidm.network.Ground;
 import com.powsybl.iidm.network.HvdcConverterStation;
+import com.powsybl.iidm.network.HvdcLine;
 import com.powsybl.iidm.network.Identifiable;
+import com.powsybl.iidm.network.Injection;
 import com.powsybl.iidm.network.LccConverterStation;
 import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Load;
@@ -26,6 +29,7 @@ import com.powsybl.iidm.network.StaticVarCompensator;
 import com.powsybl.iidm.network.Switch;
 import com.powsybl.iidm.network.Terminal;
 import com.powsybl.iidm.network.ThreeWindingsTransformer;
+import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.VoltageLevel;
@@ -87,6 +91,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 /**
  * The single line or network area diagram of one container, shown in a {@link DiagramPaneController}: rendered off
@@ -96,7 +101,8 @@ import java.util.function.Supplier;
  * tabs and by separate diagram windows. A feeder click on an equipment with a detail view (see {@link EquipmentDetails})
  * opens it instead, unless the feeder leads to another voltage level (lines, transformers...); a click on a transformer
  * drawn inside the diagram opens its detail view; a right-click on any equipment offers its detail view and where the
- * click leads.
+ * click leads. In the network area diagram, a right-click on a voltage level, branch or injection offers its detail
+ * view, its single line diagram or those of the voltage levels it connects, and centering the area diagram on them.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -109,9 +115,8 @@ public final class ContainerDiagram extends AbstractDisposableController {
         AREA
     }
 
-    // click-to-navigate JS bridge (window.controller); the area diagram has no interactivity yet, so its pane keeps
-    // DiagramPaneController's default (non-interactive) shell
-    private static final String SLD_HTML_SHELL = """
+    // with sld.js or nad.js, which call back this controller (window.controller)
+    private static final String HTML_SHELL = """
                 <html>
                     <script type="text/javascript">%__JS__%</script>
                     <body style='margin: 0'>
@@ -120,7 +125,8 @@ public final class ContainerDiagram extends AbstractDisposableController {
                 </html>
             """;
 
-    private record Render(String svg, GraphMetadata metadata) {
+    // metadata for a single line diagram, areaEquipmentIds for an area diagram (see NetworkAreaDiagramRenderer.DiagramRender)
+    private record Render(String svg, GraphMetadata metadata, Map<String, String> areaEquipmentIds) {
     }
 
     private record Highlight(Container<?> container, Predicate<GraphMetadata.NodeMetadata> nodes) {
@@ -142,6 +148,8 @@ public final class ContainerDiagram extends AbstractDisposableController {
     private boolean stale = true;
     // of the displayed single line diagram, to map an SVG node id back to equipment (see the sld.js callbacks)
     private GraphMetadata sldMetadata;
+    // of the displayed area diagram, the equipment drawn by each SVG element drawing one (see the nad.js callbacks)
+    private Map<String, String> nadEquipmentIds = Map.of();
     // last area diagram depth actually rendered with; the slider fires continuously while dragging
     private int depth;
     private Map<GuiParameters.Quantity, Integer> decimals;
@@ -172,6 +180,7 @@ public final class ContainerDiagram extends AbstractDisposableController {
         pane.getToolBar().getItems().addAll(new Separator(Orientation.VERTICAL), detailsButton);
         renderService.setOnSucceeded(_ -> {
             sldMetadata = renderService.getValue().metadata();
+            nadEquipmentIds = renderService.getValue().areaEquipmentIds();
             pane.showDiagram(renderService.getValue().svg());
             Highlight highlight = pendingHighlight;
             pendingHighlight = null;
@@ -182,11 +191,11 @@ public final class ContainerDiagram extends AbstractDisposableController {
         renderService.setOnFailed(_ -> LOGGER.error(renderService.getException().getMessage(), renderService.getException()));
 
         var parametersModel = mainModel.getParametersModel();
+        pane.setOnEngineLoaded(() -> ((JSObject) pane.getWebView().getEngine().executeScript("window")).setMember("controller", this));
+        pane.loadShell(HTML_SHELL.replace("%__JS__%", readJs(kind == Kind.SINGLE_LINE ? "sld.js" : "nad.js")));
+        pane.getWebView().addEventFilter(MouseEvent.MOUSE_PRESSED, _ -> contextMenu.hide());
+        pane.getWebView().addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, this::onContextMenuRequested);
         if (kind == Kind.SINGLE_LINE) {
-            pane.setOnEngineLoaded(() -> ((JSObject) pane.getWebView().getEngine().executeScript("window")).setMember("controller", this));
-            pane.loadShell(SLD_HTML_SHELL.replace("%__JS__%", readSldJs()));
-            pane.getWebView().addEventFilter(MouseEvent.MOUSE_PRESSED, _ -> contextMenu.hide());
-            pane.getWebView().addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, this::onContextMenuRequested);
             pane.getToolBar().getItems().add(editMenuButton());
             // remembered across navigation/views (see SceneModel)
             listenerManager.listen(pane.zoomProperty(), (_, _, newValue) -> sceneModel.diagramZoomProperty().set(newValue.doubleValue()));
@@ -251,8 +260,8 @@ public final class ContainerDiagram extends AbstractDisposableController {
         return button;
     }
 
-    private String readSldJs() {
-        try (var stream = getClass().getResourceAsStream("sld.js")) {
+    private String readJs(String name) {
+        try (var stream = getClass().getResourceAsStream(name)) {
             return new String(ByteStreams.toByteArray(Objects.requireNonNull(stream)));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -266,7 +275,7 @@ public final class ContainerDiagram extends AbstractDisposableController {
             @Override
             protected Render compute() throws IOException {
                 SubstationDiagramRenderer.DiagramRender render = SubstationDiagramRenderer.render(rendered, parameters);
-                return new Render(render.svg(), render.metadata());
+                return new Render(render.svg(), render.metadata(), Map.of());
             }
         };
     }
@@ -277,7 +286,8 @@ public final class ContainerDiagram extends AbstractDisposableController {
         return new AbstractNetworkTask<>(mainModel, rendered.getNetwork()) {
             @Override
             protected Render compute() throws IOException {
-                return new Render(NetworkAreaDiagramRenderer.render(rendered, renderedDepth, parameters), null);
+                NetworkAreaDiagramRenderer.DiagramRender render = NetworkAreaDiagramRenderer.render(rendered, renderedDepth, parameters);
+                return new Render(render.svg(), null, render.equipmentIds());
             }
         };
     }
@@ -359,6 +369,7 @@ public final class ContainerDiagram extends AbstractDisposableController {
         } else {
             renderService.cancel();
             sldMetadata = null;
+            nadEquipmentIds = Map.of();
             pane.showNoSelection();
         }
     }
@@ -455,6 +466,9 @@ public final class ContainerDiagram extends AbstractDisposableController {
      */
     @SuppressWarnings("unused") // used by JS
     public boolean onEquipmentContextMenu(String id) {
+        if (kind == Kind.AREA) {
+            return showContextMenu(areaContextMenuItems(id));
+        }
         GraphMetadata.NodeMetadata node = sldMetadata == null ? null : sldMetadata.getNodeMetadata(id);
         Identifiable<?> equipment = equipment(id);
         if (equipment == null) {
@@ -481,12 +495,91 @@ public final class ContainerDiagram extends AbstractDisposableController {
             items.add(new SeparatorMenuItem());
         }
         items.addAll(edits);
+        return showContextMenu(items);
+    }
+
+    private boolean showContextMenu(List<MenuItem> items) {
         if (items.isEmpty()) {
             return false;
         }
         contextMenu.getItems().setAll(items);
         contextMenu.show(pane.getWebView(), contextMenuX, contextMenuY);
         return true;
+    }
+
+    // a voltage level: its single line diagram, centering this diagram on it, an area diagram of it in a new window;
+    // other equipment: its row in the equipment tables, then for each voltage level it connects, its single line
+    // diagram and centering this diagram on it
+    private List<MenuItem> areaContextMenuItems(String id) {
+        String equipmentId = nadEquipmentIds.get(id);
+        Identifiable<?> equipment = equipmentId == null ? null : container.getNetwork().getIdentifiable(equipmentId);
+        if (equipment == null) {
+            return List.of();
+        }
+        List<MenuItem> items = new ArrayList<>();
+        if (EquipmentDetails.supports(equipment)) {
+            items.add(menuItem(Messages.get("detail.open.tooltip"), () -> EquipmentDetails.open(sceneModel, equipment)));
+        }
+        if (equipment instanceof VoltageLevel voltageLevel) {
+            items.add(menuItem(Messages.get("substations.diagram.area.singleLine"),
+                    () -> navigateFromArea(voltageLevel, ContainerNavigationState.ContainerTab.SINGLE_LINE, null)));
+            if (voltageLevel != container) {
+                items.add(menuItem(Messages.get("substations.diagram.area.center", voltageLevel.getNameOrId()), () -> center(voltageLevel)));
+            }
+            sceneModel.getSeparateWindows().ifPresent(windows -> items.add(menuItem(Messages.get("separateWindows.open"),
+                    () -> open(windows, false, Kind.AREA, voltageLevel))));
+        } else {
+            List<VoltageLevel> voltageLevels = voltageLevelsOf(equipment);
+            if (!voltageLevels.isEmpty()) {
+                items.add(menuItem(Messages.get("substations.diagram.equipment.showInTable"),
+                        () -> navigateFromArea(voltageLevels.getFirst(), equipmentTab(equipment), equipment)));
+            }
+            voltageLevels.forEach(voltageLevel -> items.add(menuItem(Messages.get("substations.diagram.equipment.goTo", voltageLevel.getNameOrId()),
+                    () -> navigateFromArea(voltageLevel, ContainerNavigationState.ContainerTab.SINGLE_LINE, null))));
+            voltageLevels.stream().filter(voltageLevel -> voltageLevel != container).forEach(voltageLevel -> items.add(
+                    menuItem(Messages.get("substations.diagram.area.center", voltageLevel.getNameOrId()), () -> center(voltageLevel))));
+        }
+        List<MenuItem> edits = EditMenus.items(sceneModel, () -> pane.getWebView().getScene().getWindow(), equipment.getParentNetwork(), equipment);
+        if (!items.isEmpty() && !edits.isEmpty()) {
+            items.add(new SeparatorMenuItem());
+        }
+        items.addAll(edits);
+        return items;
+    }
+
+    private static MenuItem menuItem(String text, Runnable action) {
+        MenuItem item = new MenuItem(text);
+        item.setOnAction(_ -> action.run());
+        return item;
+    }
+
+    // a branch's sides, a three windings transformer's legs, an HVDC line's converter stations, an injection's own
+    private static List<VoltageLevel> voltageLevelsOf(Identifiable<?> equipment) {
+        Stream<Terminal> terminals = switch (equipment) {
+            case Branch<?> branch -> Stream.of(branch.getTerminal1(), branch.getTerminal2());
+            case ThreeWindingsTransformer transformer -> transformer.getLegStream().map(ThreeWindingsTransformer.Leg::getTerminal);
+            case HvdcLine hvdcLine -> Stream.of(hvdcLine.getConverterStation1().getTerminal(), hvdcLine.getConverterStation2().getTerminal());
+            case Injection<?> injection -> Stream.of(injection.getTerminal());
+            default -> Stream.empty();
+        };
+        return terminals.map(Terminal::getVoltageLevel).distinct().toList();
+    }
+
+    // in a separate window, this diagram shows target; in the main window, through navigation so that Back returns here
+    private void center(VoltageLevel target) {
+        if (sceneModel.isSeparate()) {
+            setContainer(target);
+            sceneModel.getDetailWindows().ifPresent(windows -> windows.retarget(this, kind + "/" + target.getId()));
+            return;
+        }
+        navigateFromArea(target, ContainerNavigationState.ContainerTab.AREA, null);
+    }
+
+    private void navigateFromArea(Container<?> target, ContainerNavigationState.ContainerTab tab, Identifiable<?> equipment) {
+        // not necessarily in history yet, see showEquipment
+        sceneModel.record(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(container,
+                ContainerNavigationState.ContainerTab.AREA)));
+        sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(target, tab, equipment)));
     }
 
     /**
@@ -504,7 +597,7 @@ public final class ContainerDiagram extends AbstractDisposableController {
         }
     }
 
-    // the WebView, its own context menu disabled, doesn't dispatch contextmenu events to the page: sld.js finds the
+    // the WebView, its own context menu disabled, doesn't dispatch contextmenu events to the page: the script finds the
     // equipment under the pointer, given in CSS pixels of the viewport (the WebView's zoom scales them)
     private void onContextMenuRequested(ContextMenuEvent event) {
         contextMenuX = event.getScreenX();
@@ -556,6 +649,8 @@ public final class ContainerDiagram extends AbstractDisposableController {
             case BusbarSection _ -> ContainerNavigationState.ContainerTab.BUSBAR_SECTIONS;
             case Switch _ -> ContainerNavigationState.ContainerTab.SWITCHES;
             case Line _ -> ContainerNavigationState.ContainerTab.LINES;
+            case TieLine _ -> ContainerNavigationState.ContainerTab.TIE_LINES;
+            case HvdcLine _ -> ContainerNavigationState.ContainerTab.HVDC_LINES;
             case BoundaryLine _ -> ContainerNavigationState.ContainerTab.BOUNDARY_LINES;
             case Ground _ -> ContainerNavigationState.ContainerTab.GROUNDS;
             case null, default -> ContainerNavigationState.ContainerTab.SINGLE_LINE;

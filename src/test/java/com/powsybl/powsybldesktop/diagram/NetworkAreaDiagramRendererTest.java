@@ -13,12 +13,17 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.test.FourSubstationsNodeBreakerFactory;
 import com.powsybl.nad.NadParameters;
 import com.powsybl.nad.layout.LayoutFactory;
+import com.powsybl.nad.svg.metadata.DiagramMetadata;
+import com.powsybl.nad.svg.metadata.EdgeMetadata;
+import com.powsybl.nad.svg.metadata.InjectionMetadata;
 import com.powsybl.powsybldesktop.parameters.DesktopNadParameters;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -35,7 +40,7 @@ class NetworkAreaDiagramRendererTest {
         Network network = FourSubstationsNodeBreakerFactory.create();
         VoltageLevel s2vl1 = network.getVoltageLevel("S2VL1");
 
-        String svg = NetworkAreaDiagramRenderer.render(s2vl1, 1, new NadParameters());
+        String svg = NetworkAreaDiagramRenderer.render(s2vl1, 1, new NadParameters()).svg();
 
         assertFalse(svg.isBlank());
         assertTrue(svg.contains("<svg"));
@@ -55,7 +60,7 @@ class NetworkAreaDiagramRendererTest {
         DesktopNadParameters parameters = new DesktopNadParameters().setLayoutAlgorithm(DesktopNadParameters.LayoutAlgorithm.GEOGRAPHICAL);
         LayoutFactory layoutFactory = parameters.getLayoutFactory();
 
-        String svg = NetworkAreaDiagramRenderer.render(network.getSubstation("S2"), 2, parameters);
+        String svg = NetworkAreaDiagramRenderer.render(network.getSubstation("S2"), 2, parameters).svg();
 
         assertTrue(svg.contains("<svg"));
         assertSame(layoutFactory, parameters.getLayoutFactory());
@@ -66,9 +71,36 @@ class NetworkAreaDiagramRendererTest {
         Network network = FourSubstationsNodeBreakerFactory.create();
         VoltageLevel s2vl1 = network.getVoltageLevel("S2VL1");
 
-        String depth1 = NetworkAreaDiagramRenderer.render(s2vl1, 1, new NadParameters());
-        String depth3 = NetworkAreaDiagramRenderer.render(s2vl1, 3, new NadParameters());
+        String depth1 = NetworkAreaDiagramRenderer.render(s2vl1, 1, new NadParameters()).svg();
+        String depth3 = NetworkAreaDiagramRenderer.render(s2vl1, 3, new NadParameters()).svg();
 
         assertTrue(depth3.length() > depth1.length());
+    }
+
+    @Test
+    void mapsDrawnElementsToTheirEquipment() throws IOException {
+        Network network = FourSubstationsNodeBreakerFactory.create();
+        NadParameters parameters = new NadParameters();
+        parameters.getLayoutParameters().setInjectionsAdded(true);
+
+        NetworkAreaDiagramRenderer.DiagramRender render = NetworkAreaDiagramRenderer.render(network.getVoltageLevel("S1VL2"), 1, parameters);
+
+        DiagramMetadata metadata = render.metadata();
+        Map<String, String> ids = render.equipmentIds();
+        String vlNode = metadata.getNodesMetadata().stream().filter(node -> node.getEquipmentId().equals("S1VL2")).findFirst().orElseThrow().getSvgId();
+        // a voltage level is drawn as its circle, its buses and its label
+        metadata.getBusNodesMetadata().stream().filter(bus -> bus.getVlNodeId().equals(vlNode))
+                .forEach(bus -> assertEquals("S1VL2", ids.get(bus.getSvgId())));
+        metadata.getTextNodesMetadata().stream().filter(text -> text.getVlNodeId().equals(vlNode))
+                .forEach(text -> assertEquals("S1VL2", ids.get(text.getSvgId())));
+        // a branch's values are drawn apart from the branch
+        EdgeMetadata transformer = metadata.getEdgesMetadata().stream().filter(edge -> edge.getEquipmentId().equals("TWT")).findFirst().orElseThrow();
+        assertEquals("TWT", ids.get(transformer.getSvgId()));
+        assertEquals("TWT", ids.get(transformer.getEdgeInfo1().getSvgId()));
+        InjectionMetadata load = metadata.getInjectionsMetadata().stream().filter(injection -> injection.getEquipmentId().equals("LD2")).findFirst().orElseThrow();
+        assertEquals("LD2", ids.get(load.getSvgId()));
+        assertEquals("LD2", ids.get(load.getEdgeInfoMetadata().getSvgId()));
+        // in the SVG under the same ids
+        assertTrue(render.svg().contains("id=\"" + transformer.getSvgId() + "\""));
     }
 }

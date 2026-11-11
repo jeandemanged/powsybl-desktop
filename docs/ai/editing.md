@@ -151,6 +151,7 @@ the study's cached violations, never checks limits in a cell: see
 - What can be created or removed for an object comes from `EditMenus.items(sceneModel, owner, network, context)` (a
   "New" submenu, a "Topology" submenu, the removal), the same in the substations tree (its "+" button and context
   menu), the SLD (its toolbar "+" button for the shown container, and its context menu on equipment, or on the
+  background for the shown container), the NAD context menu (on a voltage level, branch or injection, or on the
   background for the shown container), the map context menu (after, on a substation, its and its voltage levels'
   single line diagrams, and "new substation here") and the table row context menus. Menu edits are disabled while the
   network is busy.
@@ -183,6 +184,7 @@ subclass and a `Kind` entry in `EquipmentDetails`. Entry points:
 - in the SLD: a feeder click (unless the feeder leads to another voltage level, which the click keeps navigating to),
   a click on a busbar section or on a transformer drawn inside the diagram, and a right-click on any equipment
   (details, HVDC line details for a converter station, go to / show in table);
+- in the NAD: a right-click on a voltage level, branch or injection (details, single line diagrams, centering);
 - on the map, a click on a line, tie line or boundary line (a click on a substation opens its single line diagram in
   the "Diagrams" window).
 
