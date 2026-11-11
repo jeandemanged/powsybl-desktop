@@ -68,7 +68,7 @@ resources package. Tables, editors and detail views: [editing.md](editing.md); d
   - Shared NAD/SLD parameter labels live in `parameters.diagram.*` (`sharedLabel`/`sharedTooltip` in
     `AbstractDiagramParametersController`).
 - Other keys: `<area>.<sub>.<name>`, area = the view or feature (`main.*`, `networks.*`, `transformers.*`,
-  `detail.*`, `edit.*`, `parameters.*`, `loadflow.param.*`, `securityAnalysis.param.*`, ...), only for text specific
+  `detail.*`, `edit.*`, `parameters.*`, `loadflow.param.*`, `securityAnalysis.param.*`, `sensitivityAnalysis.param.*`, ...), only for text specific
   to that area.
 - FXML `%key` text is resolved once at load; language switching works by reloading the shell (see
   [architecture.md](architecture.md#entry-point-and-lifecycle)). Strings built in Java at runtime should be

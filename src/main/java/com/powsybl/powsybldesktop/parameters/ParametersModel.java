@@ -9,7 +9,9 @@ package com.powsybl.powsybldesktop.parameters;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.powsybl.loadflow.LoadFlowParameters;
+import com.powsybl.powsybldesktop.sensitivity.SensitivityAnalysisMode;
 import com.powsybl.security.SecurityAnalysisParameters;
+import com.powsybl.sensitivity.SensitivityAnalysisParameters;
 import javafx.beans.property.LongProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyLongProperty;
@@ -28,6 +30,8 @@ import java.util.stream.Collectors;
 public class ParametersModel {
     private final ObjectProperty<LoadFlowParameters> loadFlowParameters = new SimpleObjectProperty<>();
     private final ObjectProperty<SecurityAnalysisParameters> securityAnalysisParameters = new SimpleObjectProperty<>();
+    private final ObjectProperty<SensitivityAnalysisParameters> sensitivityAnalysisParameters = new SimpleObjectProperty<>();
+    private final ObjectProperty<SensitivityAnalysisMode> sensitivityAnalysisMode = new SimpleObjectProperty<>();
     private final ObjectProperty<DesktopSldParameters> sldParameters = new SimpleObjectProperty<>();
     private final ObjectProperty<DesktopNadParameters> nadParameters = new SimpleObjectProperty<>();
     private final ObjectProperty<GuiParameters> guiParameters = new SimpleObjectProperty<>();
@@ -49,25 +53,31 @@ public class ParametersModel {
         ApplicationParameters defaults = ApplicationParameters.createDefault();
         loadFlowParameters.setValue(defaults.loadFlow());
         securityAnalysisParameters.setValue(defaults.securityAnalysis());
-        syncSecurityAnalysisLoadFlowParameters();
-        // SecurityAnalysisParameters embeds a LoadFlowParameters, but this app has a single authoritative
-        // LoadFlowParameters instance (loadFlowParameters above); keep it wired into whichever
-        // SecurityAnalysisParameters is current rather than letting the two diverge (e.g. after importing a
-        // security analysis JSON that carries its own, stale load flow section).
-        loadFlowParameters.addListener((_, _, _) -> syncSecurityAnalysisLoadFlowParameters());
-        securityAnalysisParameters.addListener((_, _, _) -> syncSecurityAnalysisLoadFlowParameters());
+        sensitivityAnalysisParameters.setValue(defaults.sensitivityAnalysis());
+        sensitivityAnalysisMode.setValue(defaults.sensitivityAnalysisMode());
+        syncEmbeddedLoadFlowParameters();
+        // Security and sensitivity analysis parameters embed a LoadFlowParameters, but this app has a single
+        // authoritative LoadFlowParameters instance (loadFlowParameters above); keep it wired into whichever
+        // parameters are current rather than letting them diverge (e.g. after importing a security analysis JSON
+        // that carries its own, stale load flow section).
+        loadFlowParameters.addListener((_, _, _) -> syncEmbeddedLoadFlowParameters());
+        securityAnalysisParameters.addListener((_, _, _) -> syncEmbeddedLoadFlowParameters());
+        sensitivityAnalysisParameters.addListener((_, _, _) -> syncEmbeddedLoadFlowParameters());
         sldParameters.setValue(defaults.sld());
         nadParameters.setValue(defaults.nad());
         guiParameters.setValue(defaults.gui());
         loadFlowParameters.addListener((_, _, _) -> parametersChanged());
         securityAnalysisParameters.addListener((_, _, _) -> parametersChanged());
+        sensitivityAnalysisParameters.addListener((_, _, _) -> parametersChanged());
+        sensitivityAnalysisMode.addListener((_, _, _) -> parametersChanged());
         sldParameters.addListener((_, _, _) -> parametersChanged());
         nadParameters.addListener((_, _, _) -> parametersChanged());
         guiParameters.addListener((_, _, _) -> parametersChanged());
     }
 
-    private void syncSecurityAnalysisLoadFlowParameters() {
+    private void syncEmbeddedLoadFlowParameters() {
         securityAnalysisParameters.getValue().setLoadFlowParameters(loadFlowParameters.getValue());
+        sensitivityAnalysisParameters.getValue().setLoadFlowParameters(loadFlowParameters.getValue());
     }
 
     public void setLoadFlowParameters(LoadFlowParameters loadFlowParameters) {
@@ -81,6 +91,14 @@ public class ParametersModel {
 
     public ObjectProperty<SecurityAnalysisParameters> securityAnalysisParametersProperty() {
         return securityAnalysisParameters;
+    }
+
+    public ObjectProperty<SensitivityAnalysisParameters> sensitivityAnalysisParametersProperty() {
+        return sensitivityAnalysisParameters;
+    }
+
+    public ObjectProperty<SensitivityAnalysisMode> sensitivityAnalysisModeProperty() {
+        return sensitivityAnalysisMode;
     }
 
     public ObjectProperty<DesktopSldParameters> sldParametersProperty() {
@@ -138,7 +156,7 @@ public class ParametersModel {
     public ApplicationParameters getParameters() {
         return new ApplicationParameters(Map.copyOf(networkImportParameters), Map.copyOf(networkExportParameters),
                 sldParameters.getValue(), nadParameters.getValue(), loadFlowParameters.getValue(), securityAnalysisParameters.getValue(),
-                guiParameters.getValue());
+                sensitivityAnalysisParameters.getValue(), sensitivityAnalysisMode.getValue(), guiParameters.getValue());
     }
 
     public void setParameters(ApplicationParameters parameters) {
@@ -148,6 +166,8 @@ public class ParametersModel {
         networkExportParameters.clear();
         networkExportParameters.putAll(copy(parameters.networkExport()));
         securityAnalysisParameters.setValue(parameters.securityAnalysis());
+        sensitivityAnalysisParameters.setValue(parameters.sensitivityAnalysis());
+        sensitivityAnalysisMode.setValue(parameters.sensitivityAnalysisMode());
         loadFlowParameters.setValue(parameters.loadFlow());
         sldParameters.setValue(parameters.sld());
         nadParameters.setValue(parameters.nad());

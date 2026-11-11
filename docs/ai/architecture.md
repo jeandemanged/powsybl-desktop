@@ -58,7 +58,7 @@ used, so tests of `core` start the toolkit with `Platform.startup`.
 | `ui/map` | Map view: `MapController`, `map.js` + Leaflet |
 | `ui/contingency` | Contingency lists editor (`ContingenciesController` and its inline forms) |
 | `ui/limitscaling` | Limit scalings editor (`LimitScalingsController`, `LimitScalingFormController`) |
-| `ui/parameters` | Parameters view and its tabs (`AbstractDiagramParametersController`, `ParameterFormBuilder` for importer/exporter parameters) |
+| `ui/parameters` | Parameters view and its tabs (`AbstractDiagramParametersController`, also the base of the GUI and sensitivity analysis tabs; `ParameterFormBuilder` for importer/exporter parameters) |
 | `ui/notification` | Overlay popup and history panel (`NotificationOverlay`, `NotificationView`, `NotificationsController`) |
 | `ui/report` | Report viewer (`ReportsController`, `ReportNodeViewController`, `ReportNodeTreeCell`) |
 | `ui/logs`, `ui/memory`, `ui/about` | Logs view, small secondary windows |

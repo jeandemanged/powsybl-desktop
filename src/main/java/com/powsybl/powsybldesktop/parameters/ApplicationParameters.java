@@ -10,7 +10,10 @@ package com.powsybl.powsybldesktop.parameters;
 import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
+import com.powsybl.openloadflow.sensi.OpenSensitivityAnalysisParameters;
+import com.powsybl.powsybldesktop.sensitivity.SensitivityAnalysisMode;
 import com.powsybl.security.SecurityAnalysisParameters;
+import com.powsybl.sensitivity.SensitivityAnalysisParameters;
 import com.powsybl.sld.layout.LayoutParameters;
 import com.powsybl.sld.svg.SvgParameters;
 
@@ -30,11 +33,14 @@ public record ApplicationParameters(Map<String, Properties> networkImport,
                                     DesktopNadParameters nad,
                                     LoadFlowParameters loadFlow,
                                     SecurityAnalysisParameters securityAnalysis,
+                                    SensitivityAnalysisParameters sensitivityAnalysis,
+                                    SensitivityAnalysisMode sensitivityAnalysisMode,
                                     GuiParameters gui) {
 
     public static ApplicationParameters createDefault() {
         return new ApplicationParameters(Map.of(), Map.of(), defaultSldParameters(), new DesktopNadParameters(),
-                defaultLoadFlowParameters(), defaultSecurityAnalysisParameters(), new GuiParameters());
+                defaultLoadFlowParameters(), defaultSecurityAnalysisParameters(), defaultSensitivityAnalysisParameters(),
+                SensitivityAnalysisMode.LOAD_FLOW, new GuiParameters());
     }
 
     public static LoadFlowParameters defaultLoadFlowParameters() {
@@ -46,6 +52,12 @@ public record ApplicationParameters(Map<String, Properties> networkImport,
     public static SecurityAnalysisParameters defaultSecurityAnalysisParameters() {
         SecurityAnalysisParameters parameters = new SecurityAnalysisParameters();
         parameters.addExtension(OpenSecurityAnalysisParameters.class, new OpenSecurityAnalysisParameters());
+        return parameters;
+    }
+
+    public static SensitivityAnalysisParameters defaultSensitivityAnalysisParameters() {
+        SensitivityAnalysisParameters parameters = new SensitivityAnalysisParameters();
+        parameters.addExtension(OpenSensitivityAnalysisParameters.class, new OpenSensitivityAnalysisParameters());
         return parameters;
     }
 

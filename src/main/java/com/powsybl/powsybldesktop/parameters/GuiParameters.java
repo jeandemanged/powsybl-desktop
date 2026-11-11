@@ -48,6 +48,7 @@ public class GuiParameters {
         ADMITTANCE(6),
         RHO(6),
         LIMIT_SCALING(2),
+        SENSITIVITY(5),
         // latitude and longitude, in degrees
         COORDINATE(6);
 

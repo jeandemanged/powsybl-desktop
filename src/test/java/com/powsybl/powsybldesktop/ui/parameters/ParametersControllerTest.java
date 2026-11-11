@@ -77,7 +77,7 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void hostsParametersTabsInOrder() {
         List<Tab> tabs = tabPane.getTabs();
-        assertEquals(7, tabs.size());
+        assertEquals(8, tabs.size());
         assertEquals("User Interface", tabs.getFirst().getText());
         assertEquals("Network Import", tabs.get(1).getText());
         assertEquals("Network Export", tabs.get(2).getText());
@@ -85,6 +85,7 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals("Network Area Diagram", tabs.get(4).getText());
         assertEquals("Load Flow", tabs.get(5).getText());
         assertEquals("Security Analysis", tabs.get(6).getText());
+        assertEquals("Sensitivity Analysis", tabs.get(7).getText());
         assertEquals(tabs.stream().map(Tab::getText).toList(), ParametersController.tabTitles());
     }
 
@@ -160,6 +161,8 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
     void embeddedControllersShareMainModelParameters() {
         assertSame(mainModel.getParametersModel().loadFlowParametersProperty().get(),
                 mainModel.getParametersModel().securityAnalysisParametersProperty().get().getLoadFlowParameters());
+        assertSame(mainModel.getParametersModel().loadFlowParametersProperty().get(),
+                mainModel.getParametersModel().sensitivityAnalysisParametersProperty().get().getLoadFlowParameters());
     }
 
     @Test

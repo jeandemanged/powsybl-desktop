@@ -353,7 +353,7 @@ public class SecurityAnalysisParametersController extends AbstractDisposableCont
     }
 
     // the imported parameters' own embedded LoadFlowParameters is immediately overridden by MainModel with the
-    // app's single authoritative instance - see MainModel.syncSecurityAnalysisLoadFlowParameters()
+    // app's single authoritative instance - see ParametersModel.syncEmbeddedLoadFlowParameters()
     public void importFrom(Path path) {
         SecurityAnalysisParameters parameters;
         try {

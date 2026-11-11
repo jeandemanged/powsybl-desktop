@@ -37,8 +37,8 @@ import java.util.Objects;
  * Tab host for the app's parameter screens: network import/export parameters per format
  * ({@link NetworkFormatParametersController}), single line and network area diagram parameters
  * ({@link SldParametersController}, {@link NadParametersController}), load flow parameters (existing
- * {@link LoadFlowParametersController}, embedded unchanged), security analysis parameters
- * ({@link SecurityAnalysisParametersController}) and the app's own {@link GuiParameters}
+ * {@link LoadFlowParametersController}, embedded unchanged), security and sensitivity analysis parameters
+ * ({@link SecurityAnalysisParametersController}, {@link SensitivityAnalysisParametersController}) and the app's own {@link GuiParameters}
  * ({@link GuiParametersController}). Its toolbar saves all of them to the configuration file restored on startup
  * ({@link ParametersConfigFile}), resets them to defaults, or imports/exports them from/to any JSON file.
  *
@@ -51,7 +51,7 @@ public class ParametersController extends AbstractDisposableController {
     // in the order of parameters-view.fxml's tabs, for the main toolbar's menu
     private static final List<String> TAB_TITLE_KEYS = List.of("parameters.tab.gui", "parameters.tab.networkImport",
             "parameters.tab.networkExport", "desktop.common.singleLineDiagram", "desktop.common.networkAreaDiagram",
-            "desktop.common.loadFlow", "desktop.common.securityAnalysis");
+            "desktop.common.loadFlow", "desktop.common.securityAnalysis", "desktop.common.sensitivityAnalysis");
 
     @FXML
     private Button saveButton;
@@ -72,6 +72,8 @@ public class ParametersController extends AbstractDisposableController {
     @FXML
     private SecurityAnalysisParametersController securityAnalysisEmbeddedController;
     @FXML
+    private SensitivityAnalysisParametersController sensitivityAnalysisEmbeddedController;
+    @FXML
     private GuiParametersController guiEmbeddedController;
 
     private MainModel mainModel;
@@ -91,6 +93,8 @@ public class ParametersController extends AbstractDisposableController {
         securityAnalysisEmbeddedController.setSecurityAnalysisParametersProperty(mainModel.getParametersModel().securityAnalysisParametersProperty());
         securityAnalysisEmbeddedController.setOnChange(mainModel.getParametersModel()::parametersChanged);
         securityAnalysisEmbeddedController.setOnImportFailed((path, e) -> importFailed(Instant.now(), path, e));
+        sensitivityAnalysisEmbeddedController.setParametersModel(mainModel.getParametersModel());
+        sensitivityAnalysisEmbeddedController.setOnImportFailed((path, e) -> importFailed(Instant.now(), path, e));
         guiEmbeddedController.setParametersModel(mainModel.getParametersModel());
         listenerManager.listen(mainModel.getParametersModel().parametersRevisionProperty(), (_, _, _) -> updateSaveButton());
         setConfigPath(configPath);
@@ -205,6 +209,7 @@ public class ParametersController extends AbstractDisposableController {
         nadEmbeddedController.dispose();
         loadFlowEmbeddedController.dispose();
         securityAnalysisEmbeddedController.dispose();
+        sensitivityAnalysisEmbeddedController.dispose();
         guiEmbeddedController.dispose();
         super.dispose();
     }

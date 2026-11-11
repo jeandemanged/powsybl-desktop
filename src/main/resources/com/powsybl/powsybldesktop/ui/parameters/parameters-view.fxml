@@ -92,6 +92,11 @@
                     <fx:include fx:id="securityAnalysisEmbedded" source="sa-parameters.fxml"/>
                 </content>
             </Tab>
+            <Tab text="%desktop.common.sensitivityAnalysis">
+                <content>
+                    <fx:include fx:id="sensitivityAnalysisEmbedded" source="sensi-parameters.fxml"/>
+                </content>
+            </Tab>
         </tabs>
     </TabPane>
 </VBox>

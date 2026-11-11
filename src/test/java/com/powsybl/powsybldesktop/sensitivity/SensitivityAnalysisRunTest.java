@@ -82,7 +82,7 @@ class SensitivityAnalysisRunTest {
         SensitivityAnalysisParameters parameters = new SensitivityAnalysisParameters().setFlowFlowSensitivityValueThreshold(0.01);
         parameters.addExtension(OpenSensitivityAnalysisParameters.class, new OpenSensitivityAnalysisParameters().setThreadCount(3));
 
-        SensitivityAnalysisParameters copy = SensitivityAnalysisRun.copyParameters(parameters);
+        SensitivityAnalysisParameters copy = SensitivityAnalysisRun.copyParameters(parameters, SensitivityAnalysisMode.LOAD_FLOW);
         parameters.getLoadFlowParameters().setDc(true);
         parameters.setFlowFlowSensitivityValueThreshold(0.5);
         parameters.getExtension(OpenSensitivityAnalysisParameters.class).setThreadCount(5);
@@ -91,5 +91,18 @@ class SensitivityAnalysisRunTest {
         assertFalse(copy.getLoadFlowParameters().isDc());
         assertEquals(0.01, copy.getFlowFlowSensitivityValueThreshold());
         assertEquals(3, copy.getExtension(OpenSensitivityAnalysisParameters.class).getThreadCount());
+    }
+
+    @Test
+    void copiedParametersAreAcOrDcAsTheModeSays() {
+        SensitivityAnalysisParameters parameters = new SensitivityAnalysisParameters();
+        parameters.getLoadFlowParameters().setDc(true);
+
+        assertTrue(SensitivityAnalysisRun.copyParameters(parameters, SensitivityAnalysisMode.LOAD_FLOW).getLoadFlowParameters().isDc());
+        assertFalse(SensitivityAnalysisRun.copyParameters(parameters, SensitivityAnalysisMode.AC).getLoadFlowParameters().isDc());
+        assertTrue(parameters.getLoadFlowParameters().isDc());
+        parameters.getLoadFlowParameters().setDc(false);
+        assertTrue(SensitivityAnalysisRun.copyParameters(parameters, SensitivityAnalysisMode.DC).getLoadFlowParameters().isDc());
+        assertFalse(parameters.getLoadFlowParameters().isDc());
     }
 }

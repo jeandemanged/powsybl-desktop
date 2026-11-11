@@ -108,9 +108,10 @@ public final class SensitivityAnalysisRun {
     }
 
     /**
-     * A copy of {@code parameters}, so that a run doesn't see the parameters window's in-place edits made meanwhile.
+     * A copy of {@code parameters}, so that a run doesn't see the parameters window's in-place edits made meanwhile,
+     * AC or DC as {@code mode} says.
      */
-    public static SensitivityAnalysisParameters copyParameters(SensitivityAnalysisParameters parameters) {
+    public static SensitivityAnalysisParameters copyParameters(SensitivityAnalysisParameters parameters, SensitivityAnalysisMode mode) {
         byte[] json;
         try {
             json = JsonSensitivityAnalysisParameters.createObjectMapper().writeValueAsBytes(parameters);
@@ -119,6 +120,7 @@ public final class SensitivityAnalysisRun {
         }
         SensitivityAnalysisParameters copy = JsonSensitivityAnalysisParameters.read(new ByteArrayInputStream(json));
         copy.setLoadFlowParameters(parameters.getLoadFlowParameters().copy());
+        copy.getLoadFlowParameters().setDc(mode.isDc(parameters.getLoadFlowParameters()));
         return copy;
     }
 }

@@ -16,6 +16,8 @@ import com.powsybl.nad.svg.EdgeInfoParameters;
 import com.powsybl.nad.svg.SvgParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
+import com.powsybl.openloadflow.sensi.OpenSensitivityAnalysisParameters;
+import com.powsybl.powsybldesktop.sensitivity.SensitivityAnalysisMode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -39,7 +41,8 @@ class ApplicationParametersJsonTest {
         iidmImport.setProperty("iidm.import.xml.throw-exception-if-extension-not-found", "true");
         ApplicationParameters defaults = ApplicationParameters.createDefault();
         ApplicationParameters parameters = new ApplicationParameters(Map.of("IIDM", iidmImport), Map.of("IIDM", new Properties()),
-                defaults.sld(), defaults.nad(), defaults.loadFlow(), defaults.securityAnalysis(), defaults.gui());
+                defaults.sld(), defaults.nad(), defaults.loadFlow(), defaults.securityAnalysis(),
+                defaults.sensitivityAnalysis(), SensitivityAnalysisMode.DC, defaults.gui());
 
         parameters.sld().setSubstationLayoutChoice(DesktopSldParameters.SubstationLayoutChoice.VERTICAL)
                 .setComponentLibraryChoice(DesktopSldParameters.ComponentLibraryChoice.FLAT_DESIGN)
@@ -64,6 +67,8 @@ class ApplicationParametersJsonTest {
         OpenLoadFlowParameters.get(parameters.loadFlow()).setMaxNewtonRaphsonIterations(33);
         parameters.securityAnalysis().getIncreasedViolationsParameters().setFlowProportionalThreshold(0.3);
         parameters.securityAnalysis().getExtension(OpenSecurityAnalysisParameters.class).setThreadCount(3);
+        parameters.sensitivityAnalysis().setFlowFlowSensitivityValueThreshold(0.01);
+        parameters.sensitivityAnalysis().getExtension(OpenSensitivityAnalysisParameters.class).setThreadCount(4);
 
         parameters.gui().setMapBasemap(Basemap.OPEN_STREET_MAP);
         parameters.gui().setMapHiddenBaseVoltages(Set.of("vl300to500", "vl0to30"));
@@ -108,6 +113,9 @@ class ApplicationParametersJsonTest {
         assertEquals(33, OpenLoadFlowParameters.get(read.loadFlow()).getMaxNewtonRaphsonIterations());
         assertEquals(0.3, read.securityAnalysis().getIncreasedViolationsParameters().getFlowProportionalThreshold());
         assertEquals(3, read.securityAnalysis().getExtension(OpenSecurityAnalysisParameters.class).getThreadCount());
+        assertEquals(0.01, read.sensitivityAnalysis().getFlowFlowSensitivityValueThreshold());
+        assertEquals(4, read.sensitivityAnalysis().getExtension(OpenSensitivityAnalysisParameters.class).getThreadCount());
+        assertEquals(SensitivityAnalysisMode.DC, read.sensitivityAnalysisMode());
         assertEquals(Basemap.OPEN_STREET_MAP, read.gui().getMapBasemap());
         assertEquals(Set.of("vl300to500", "vl0to30"), read.gui().getMapHiddenBaseVoltages());
         assertEquals(Set.of(MapViolationLayer.BASE_CASE_VOLTAGE), read.gui().getMapShownViolations());
@@ -130,6 +138,7 @@ class ApplicationParametersJsonTest {
         ObjectNode json = ApplicationParametersJson.toJson(customParameters());
         assertFalse(json.get("networkExport").has("IIDM"));
         assertFalse(json.get("securityAnalysis").has("load-flow-parameters"));
+        assertFalse(json.get("sensitivityAnalysis").has("load-flow-parameters"));
     }
 
     @Test
@@ -152,6 +161,10 @@ class ApplicationParametersJsonTest {
         ObjectNode unknownEnum = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
         ((ObjectNode) unknownEnum.get("singleLineDiagram")).put("styleProvider", "UNKNOWN");
         assertThrows(PowsyblException.class, () -> ApplicationParametersJson.fromJson(unknownEnum));
+
+        ObjectNode unknownMode = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
+        unknownMode.put("sensitivityAnalysisMode", "HYBRID");
+        assertThrows(PowsyblException.class, () -> ApplicationParametersJson.fromJson(unknownMode));
 
         ObjectNode hiddenBaseVoltagesNotArray = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
         ((ObjectNode) hiddenBaseVoltagesNotArray.get("gui").get("map")).put("hiddenBaseVoltages", "vl300to500");

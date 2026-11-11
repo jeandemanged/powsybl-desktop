@@ -24,8 +24,12 @@ import com.powsybl.nad.svg.EdgeInfoParameters;
 import com.powsybl.nad.svg.LabelProviderParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
+import com.powsybl.openloadflow.sensi.OpenSensitivityAnalysisParameters;
+import com.powsybl.powsybldesktop.sensitivity.SensitivityAnalysisMode;
 import com.powsybl.security.SecurityAnalysisParameters;
 import com.powsybl.security.json.JsonSecurityAnalysisParameters;
+import com.powsybl.sensitivity.SensitivityAnalysisParameters;
+import com.powsybl.sensitivity.json.JsonSensitivityAnalysisParameters;
 import com.powsybl.sld.layout.LayoutParameters;
 import com.powsybl.sld.layout.PositionVoltageLevelLayoutFactoryParameters;
 
@@ -52,8 +56,8 @@ import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 /**
- * Reads/writes {@link ApplicationParameters} as a single JSON document. Load flow and security analysis sections use
- * PowSyBl's own JSON serialization; the diagram and GUI sections are written field by field, each field declared once
+ * Reads/writes {@link ApplicationParameters} as a single JSON document. Load flow, security and sensitivity analysis
+ * sections use PowSyBl's own JSON serialization; the diagram and GUI sections are written field by field, each field declared once
  * through a {@link Binder} that either writes it or reads it back, so both directions can't drift apart.
  * Reading is all-or-nothing: any malformed section or wrongly typed field fails the whole read. Missing fields
  * keep their default value, so a file written by an older version still loads.
@@ -77,6 +81,8 @@ public final class ApplicationParametersJson {
         nad(new Writer(root.putObject("networkAreaDiagram")), parameters.nad());
         root.set("loadFlow", loadFlowToJson(parameters.loadFlow()));
         root.set("securityAnalysis", securityAnalysisToJson(parameters.securityAnalysis()));
+        root.set("sensitivityAnalysis", sensitivityAnalysisToJson(parameters.sensitivityAnalysis()));
+        root.put("sensitivityAnalysisMode", parameters.sensitivityAnalysisMode().name());
         gui(new Writer(root.putObject("gui")), parameters.gui());
         return root;
     }
@@ -98,6 +104,8 @@ public final class ApplicationParametersJson {
                 nad,
                 root.has("loadFlow") ? loadFlowFromJson(root.get("loadFlow")) : defaults.loadFlow(),
                 root.has("securityAnalysis") ? securityAnalysisFromJson(root.get("securityAnalysis")) : defaults.securityAnalysis(),
+                root.has("sensitivityAnalysis") ? sensitivityAnalysisFromJson(root.get("sensitivityAnalysis")) : defaults.sensitivityAnalysis(),
+                root.has("sensitivityAnalysisMode") ? sensitivityAnalysisModeFromJson(root.get("sensitivityAnalysisMode")) : defaults.sensitivityAnalysisMode(),
                 gui);
     }
 
@@ -215,6 +223,37 @@ public final class ApplicationParametersJson {
             parameters.addExtension(OpenSecurityAnalysisParameters.class, new OpenSecurityAnalysisParameters());
         }
         return parameters;
+    }
+
+    // as for the security analysis, without the embedded load flow parameters
+    private static JsonNode sensitivityAnalysisToJson(SensitivityAnalysisParameters parameters) {
+        try {
+            ObjectNode node = (ObjectNode) MAPPER.readTree(JsonSensitivityAnalysisParameters.createObjectMapper().writeValueAsBytes(parameters));
+            node.remove("load-flow-parameters");
+            return node;
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private static SensitivityAnalysisParameters sensitivityAnalysisFromJson(JsonNode node) {
+        requireObject(node, "sensitivityAnalysis");
+        SensitivityAnalysisParameters parameters = JsonSensitivityAnalysisParameters.read(new ByteArrayInputStream(bytes(node)));
+        if (parameters.getExtension(OpenSensitivityAnalysisParameters.class) == null) {
+            parameters.addExtension(OpenSensitivityAnalysisParameters.class, new OpenSensitivityAnalysisParameters());
+        }
+        return parameters;
+    }
+
+    private static SensitivityAnalysisMode sensitivityAnalysisModeFromJson(JsonNode node) {
+        if (!node.isTextual()) {
+            throw invalid("sensitivityAnalysisMode");
+        }
+        try {
+            return SensitivityAnalysisMode.valueOf(node.textValue());
+        } catch (IllegalArgumentException _) {
+            throw invalid("sensitivityAnalysisMode");
+        }
     }
 
     private static JsonNode parse(ByteArrayOutputStream out) {
