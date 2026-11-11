@@ -19,7 +19,7 @@ The **Lines** table lists the AC lines of the selected network. Open it with **T
 | **I** | Solved Values |  | Current at each side (A). |
 | **Loading** | Solved Values |  | Loading against the limits, see [Loading column](index.md#loading-column). |
 
-The **Parameters** group is hidden by default. In the Substations view tab, the **Substation** and **Voltage Level** links stay, as the other side can be elsewhere.
+The **Parameters** group is hidden by default. Only the **Name** and **Loading** columns can be sorted. In the Substations view tab, the **Substation** and **Voltage Level** links stay, as the other side can be elsewhere.
 
 ## Creation and removal
 

@@ -1,7 +1,7 @@
 # Load Flow
 
 The **Load Flow** tab sets the parameters of the load flow, run by **Run** > **Load Flow** (see
-[Load flow results](../results/loadflow_results.md)), and also used by the security analysis. The load flow is
+[Load flow results](../results/loadflow_results.md)), and also used by the security and sensitivity analyses. The load flow is
 PowSyBl [Open Load Flow](https://powsybl.readthedocs.io/projects/powsybl-open-loadflow/en/latest/).
 
 ![The Load Flow tab](../../_generated/images/parameters-load-flow.png)

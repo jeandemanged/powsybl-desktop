@@ -23,7 +23,7 @@ A link to the voltage level's single line diagram. No symbol.
 
 ### Extensions
 
-The extensions that can be added: Short Circuit, Slack Terminal, Observability Areas, Dynamic Model.
+The extensions that can be added: Short Circuit, Dynamic Model. Slack Terminal and Observability Areas are shown when present but can't be added.
 
 ### Properties and Aliases
 

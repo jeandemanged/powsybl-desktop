@@ -29,6 +29,8 @@ The checkbox in front of a list tells whether the security analysis uses it. See
 The analysis runs with the parameters of the [Parameters](../views/parameters/index.md) view. When it ends, a
 notification offers **View results** and **View report**.
 
+![After the security analysis](../_generated/images/quickstart-sa-done.png)
+
 ## Read the results
 
 Click **View results**, or open **Results** > **Security Analysis Results**. The **Contingencies** tab has one row per

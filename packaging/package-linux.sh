@@ -8,8 +8,8 @@
 # Builds a self-contained Linux app-image (jlink + jpackage) for PowSyBl Desktop.
 #
 # Usage:
-#   ./packaging/package-linux.sh <path-to-javafx-jmods-27/jmods> [--skip-build]
-#   JAVAFX_JMODS=/opt/javafx-jmods-27/jmods ./packaging/package-linux.sh
+#   ./packaging/package-linux.sh <path-to-javafx-jmods-27> [--skip-build]
+#   JAVAFX_JMODS=/opt/javafx-jmods-27 ./packaging/package-linux.sh
 #
 # JavaFX jmods (distinct from the jars on Maven Central) must be downloaded separately from
 # https://gluonhq.com/products/javafx/ or https://jdk.java.net/javafx27/ .

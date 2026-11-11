@@ -17,13 +17,13 @@ var ZOOM_ANIMATION_MS = 180;
 var ZOOM_STEP = 0.25;
 var WHEEL_PIXELS_PER_ZOOM_LEVEL = 30;
 
+// the world as Leaflet's Web Mercator projection shows it, up to its max latitude
+var WORLD_BOUNDS = L.latLngBounds([-85.0511287798, -180], [85.0511287798, 180]);
+
 // Animations off: the WebView doesn't reliably finish Leaflet's CSS transitions, and an interrupted one
 // leaves stale frames on screen. Zooming is animated by animateZoom instead, hence Leaflet's own wheel, double
 // click and zoom buttons handling off, and zoomSnap 0 for its intermediate zoom levels. With any3d off, Leaflet
 // ignores zoomSnap and rounds every zoom to a whole level, hence _limitZoom, as Leaflet's with any3d on.
-// the world as Leaflet's Web Mercator projection shows it, up to its max latitude
-var WORLD_BOUNDS = L.latLngBounds([-85.0511287798, -180], [85.0511287798, 180]);
-
 var FractionalZoomMap = L.Map.extend({
     _limitZoom: function (zoom) {
         var snap = this.options.zoomSnap;

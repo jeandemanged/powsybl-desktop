@@ -38,7 +38,7 @@ The few exceptions are:
 
 ### Easy to try
 
-PowSyBl Desktop is distributed as a self-contained application for Windows, Linux and macOS, with its own Java runtime:
+PowSyBl Desktop is distributed as a self-contained application for Windows, Linux and macOS (Apple Silicon), with its own Java runtime:
 download, extract and run. Nothing else needs to be installed.
 
 ## Use cases
@@ -81,7 +81,11 @@ application yet, and could come in future versions:
 
 - **Remedial action optimization** with [OpenRAO](https://powsybl.readthedocs.io/projects/openrao/en/stable/):
   finding the topological and setpoint actions that solve the constraints found by a security analysis.
-- **Remedial actions in security analysis**: operator strategies applied after a contingency.
-- **Dynamic simulation**, with [PowSyBl Dynawo](https://powsybl.readthedocs.io/projects/powsybl-dynawo/en/latest/):
-  time-domain simulation of the network's behavior after an event.
+- **Remedial actions in security analysis**: operator strategies applied after a contingency, and two-pass security
+  analysis.
+- **Dynamic simulation** and **dynamic security analysis**, with
+  [PowSyBl Dynawo](https://powsybl.readthedocs.io/projects/powsybl-dynawo/en/latest/): time-domain simulation of the
+  network's behavior after an event.
 - **Short-circuit analysis** and **flow decomposition**.
+- **Optimal power flow** and **multi-variant simulation** (PowSyBl Metrix).
+- **Grid features**: network reduction, scaling, load flow validation, network variants and time series.

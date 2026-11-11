@@ -3,7 +3,7 @@
 Paths `…/X.java` are relative to `src/main/java/com/powsybl/powsybldesktop/`.
 
 `…/ui/window/SeparateWindows.java` (owned by `MainController`, reached by views through
-`SceneModel.getSeparateWindows()`) shows views in a fixed context, with no menu, toolbar nor history, as tabs of named
+`SceneModel.getSeparateWindows()`, empty in a separate window, and `getDetailWindows()`, present in both) shows views in a fixed context, with no menu, toolbar nor history, as tabs of named
 windows ("Window N", the lowest free N; renamed by double-clicking the name left of the tab strip or from the Windows
 menu, blank and taken names rejected).
 
@@ -26,7 +26,8 @@ create a `Stage` for a view elsewhere (`ArchitectureTest` allows only the shell 
 
 ## Opening a view in a window
 
-- One view per key: whole-network views (tables, map, contingencies, limit scalings) are keyed by `NavigationType`, container
+- One view per key: whole-network views (tables, map, contingencies, limit scalings, sensitivity factors, results views) are keyed by
+  `NavigationType`, container
   diagrams and equipment tabs by kind and container id, detail views by equipment id, logs/reports/parameters (not
   network-bound) by name. Opening an open key brings its window to front and selects its tab instead.
 - An "open in new window" split button (`separateWindows.addOpenButton`, its menu listing the windows to open the view

@@ -5,11 +5,12 @@ Paths `…/X.java` are relative to `src/main/java/com/powsybl/powsybldesktop/`.
 ## Rules
 
 1. **Never run slow PowSyBl work on the JavaFX Application Thread** (network import/export, load flow, security
-   analysis, violations computation, diagram rendering, search index build, map snapshot). Use a JavaFX `Service`
+   and sensitivity analysis, violations computation, diagram rendering, search index build, map snapshot). Use a JavaFX `Service`
    creating a `Task`.
 2. **UI and model updates happen on the FX thread** — in `setOnSucceeded` / `setOnFailed` / `setOnCancelled`
    handlers, or via `Platform.runLater` from threads that aren't a `Task` (`MapController`'s tile pool,
-   `AbstractNetworkTask`'s release, the security analysis' cancel path in `MainController.onSecurityAnalysis`).
+   `AbstractNetworkTask`'s release, the security and sensitivity analyses' cancel paths in `MainController.onSecurityAnalysis` and
+   `onSensitivityAnalysis`).
    `MainModel`, `NetworkStudy` and the sub-models are not thread-safe and are FX-thread only. `Platform.runLater` is
    also used on the FX thread to defer work until after the current event or layout pass.
 3. **IIDM is not thread-safe.** Any background job that reads or writes a *loaded* network is an
@@ -21,12 +22,14 @@ Paths `…/X.java` are relative to `src/main/java/com/powsybl/powsybldesktop/`.
 4. **Capture inputs on the FX thread** in `createTask()` (current container, parameter copies) and pass them into the
    task. Parameter objects edited in place by the parameters view must be copied first:
    `LoadFlowParameters.copy()`, `SecurityAnalysisRun.copyParameters(SecurityAnalysisParameters)`,
+   `SensitivityAnalysisRun.copyParameters(SensitivityAnalysisParameters, SensitivityAnalysisMode)`,
    `ApplicationParametersJson.copy(...)` for SLD/NAD.
 5. Plain `Task`s are only for work not touching a loaded network: network import (`NetworksController.runImport`,
    `runImports`, calling `NetworkIO.importNetwork`), sample networks (`loadSample`) and study loading
-   (`StudyCommands`), whose networks aren't loaded yet (no study to mark busy). Saving a study writes several root
-   networks at once, so instead of an `AbstractNetworkTask` it marks each of them busy with `markBusy` before
-   starting and releases them in its handlers (it can't be cancelled); format detection of dropped files; the search box's Lucene query.
+   (`StudyCommands`), whose networks aren't loaded yet (no study to mark busy); format detection of dropped files;
+   the search box's Lucene query. Saving a study writes several root networks at once, so instead of an
+   `AbstractNetworkTask` it marks each of them busy with `markBusy` before starting and releases them in its handlers
+   (it can't be cancelled).
 
 ## The busy lock
 
@@ -41,7 +44,8 @@ Paths `…/X.java` are relative to `src/main/java/com/powsybl/powsybldesktop/`.
   - Structural edits (creations, removals, position edits) are refused by `NetworkChanges.apply` with a
     `main.networkBusy` error notification; the menus offering them (`EditMenus`, `TableEditActions`, the map's) are
     disabled.
-  - Starting a LF/SA is refused by `MainController.refuseIfBusy` (`main.networkBusy`); diagram switch clicks by
+  - Starting a load flow, security or sensitivity analysis is refused by `MainController.refuseIfBusy`
+    (`main.networkBusy`); saving or loading a study by `StudyCommands.refuseIfBusy`; diagram switch clicks by
     `ContainerDiagram.onSwitchClick`.
   - The networks view disables merge/detach and its network fields (id, name, case date, forecast).
 - `EditLockTest` verifies every table view's editors are disabled while busy and enabled after.
@@ -63,10 +67,10 @@ setOnCancelled → replace with cancelled notification
 study.trackComputation(service) → service.start()
 ```
 
-Cancellable PowSyBl calls: `LoadFlow.run()`/`SecurityAnalysis.run()` block on `CompletableFuture.join()`, which
+Cancellable PowSyBl calls: `LoadFlow.run()`/`SecurityAnalysis.run()`/`SensitivityAnalysis.run()` block on `CompletableFuture.join()`, which
 ignores interruption, so the code uses `runAsync(...)` + `Futures.await(future)`, which cancels the future on
 `InterruptedException`. Follow the same approach for other `runAsync`-capable PowSyBl APIs. Keep the computation
-itself in a toolkit-free class (`LoadFlowRun`, `SecurityAnalysisRun`, `NetworkIO`) tested with plain JUnit; the
+itself in a toolkit-free class (`LoadFlowRun`, `SecurityAnalysisRun`, `SensitivityAnalysisRun`, `NetworkIO`) tested with plain JUnit; the
 controller only wires it to the `Service`, the notifications and the study.
 
 **Latest-wins rendering** — `ContainerDiagram.renderService`: a long-lived `Service` field restarted on each change

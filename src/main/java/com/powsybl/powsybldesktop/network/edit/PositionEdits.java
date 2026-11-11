@@ -35,7 +35,8 @@ import java.util.stream.Stream;
  * route is that of its two boundary lines, each from its substation to the tie line's middle. A voltage level may have
  * no substation, its end then having no position.
  * <p>
- * The edits don't check the network busy lock: callers run them through {@link NetworkEdits#apply}.
+ * The edits don't check the network busy lock: callers run them through
+ * {@link com.powsybl.powsybldesktop.core.NetworkChanges#apply}.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */

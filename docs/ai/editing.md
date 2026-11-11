@@ -96,15 +96,17 @@ the study's cached violations, never checks limits in a cell: see
   `configureEditableBooleanColumn`, `configureChoiceColumn`, `configureSingleSlotChoiceColumn`,
   `configureNullableEditable*`, `configureMultiSided*`, `configureDetailNameColumn`, `configureSpinnerIntColumn`, ...)
   and, in detail views, `DetailTables.editableColumn`. They handle:
-  - validation errors: a `PowsyblException` (or `IllegalArgumentException`, e.g. unparsable text; a
-    `NumberFormatException` gets `desktop.common.editError.invalidNumber`) from the setter is caught, the value shown
-    again, with a ControlsFX popup + red flash;
+  - validation errors: a `PowsyblException` from the setter (for field editors, `CellFields.apply`, also an
+    `IllegalArgumentException`, e.g. unparsable text; a `NumberFormatException` gets
+    `desktop.common.editError.invalidNumber`) is caught, the value shown again, with a ControlsFX popup + red flash;
   - success feedback: green flash, then the network update (above);
-  - both flashes keyed by row (`CellFields.KeyedFlash`), not held on a cell: a table rebuilds its cells on any change
-    of its items (e.g. the refresh after `mainModel.setUpdate`), which can rebind a cell to another row before the
-    flash fades. For the same reason the focus, with what is being typed, follows its row through a rebuild. Never
-    call `TableView.refresh()` after `getItems().setAll(...)`: the latter already rebuilds the cells, the former
-    recreates them;
+  - both flashes keyed by row (`CellFields.KeyedFlash`), not held on a cell: a table rebuilds its cells when its items
+    change, or recreates them (`TableView.refresh()`, e.g. after `mainModel.setUpdate`), which can rebind a cell to
+    another row before the flash fades. For the same reason the focus of a text field (`CellTextField`, `IntStepper`),
+    with what is being typed, follows its row through a rebuild; choice boxes don't keep it. Never call
+    `TableView.refresh()` after `getItems().setAll(...)`: the latter already rebuilds the cells, the former recreates
+    them. Structural edits are the one exception: `MainModel.setStructureChange` publishes the change (tables
+    `setAll`) then calls `setUpdate()` (editable tables `refresh()`);
   - the busy lock: editor cells are disabled when the table isn't editable (`disableUnlessTableEditable`).
 - Buttons in cells that stay usable while the network is busy (info, copy) carry the
   `CopyButtons.NON_EDITING_BUTTON` style class; `EditLockTest` treats any other enabled control in a cell as an editor.
@@ -117,7 +119,8 @@ the study's cached violations, never checks limits in a cell: see
 ## Creation dialogs and edit menus
 
 - A creation dialog is a `ui/form/CreationForm` (the `DetailForm` grid, but fields holding values read on OK:
-  `text`, `id` (unique among the network's objects), `number`, `integer`, `check`, `choice`, `dateTime`, `custom`,
+  `text`, `id` (unique among the network's objects), `number`, `integer`, `check`, `choice`, `searchableChoice`,
+  `dateTime`, `custom`,
   rows shown or hidden with `visibleWhen`) shown by `CreateDialog.show` / `showThenDetails` (which then opens the
   created object's detail view, where everything the form doesn't ask for is set, unless unchecked: the choice is
   remembered, `GuiParameters.openDetailsAfterCreation`). The dialog widens to the form's minimum width, so an editor
@@ -134,7 +137,7 @@ the study's cached violations, never checks limits in a cell: see
   breaker). Orders are never refused: `FeederOrders` brings one out of the section's range back to its nearest end and,
   when it is taken, moves every following feeder of the voltage level up (moved back if the creation fails). A voltage
   level with busbar sections both with and without a `BusbarSectionPosition` is taken as unsectioned: powsybl-core
-  (7.4) throws an NPE ranging orders by section there, so `FeederOrders.apply` hides the target busbar section's
+  (7.4.2) throws an NPE ranging orders by section there, so `FeederOrders.apply` hides the target busbar section's
   position while the modification runs (no open disconnectors to its parallel busbars then).
 - A voltage level is chosen with a `VoltageLevelChoice` (connection sections; busbar section, switch and bus dialogs
   opened from tables): a searchable choice, narrowed by a searchable substation choice above it ("no substation"
@@ -143,7 +146,7 @@ the study's cached violations, never checks limits in a cell: see
   items are replaced with `setItems(new list)`, never `getItems().setAll`, which fails in its cells once its popup has
   been shown. Test such chains by clicking through the popups: `setValue` alone doesn't reproduce either.
 - Dates with time are a `…/ui/controls/DateTimePicker.java` (JavaFX has no date-time picker: a `DatePicker`, hour and
-  minute spinners, a time zone choice; dates shown as `31 Oct 2026` whatever the locale), reporting user edits only
+  minute spinners, a whole-hour UTC offset choice; dates shown as `31 Oct 2026` whatever the locale), reporting user edits only
   through `setOnEdit` - `setValue` shows a value without reporting it (the networks view's case date, the new network
   dialog).
 - New lines default their second side to `Branches.otherEnd`: another substation's voltage level of the
@@ -153,7 +156,7 @@ the study's cached violations, never checks limits in a cell: see
   menu), the SLD (its toolbar "+" button for the shown container, and its context menu on equipment, or on the
   background for the shown container), the NAD context menu (on a voltage level, branch or injection, or on the
   background for the shown container), the map context menu (after, on a substation, its and its voltage levels'
-  single line diagrams, and "new substation here") and the table row context menus. Menu edits are disabled while the
+  single line diagrams, "new substation here", and its position edits) and the table row context menus. Menu edits are disabled while the
   network is busy.
 - A context menu whose items depend on the selection is installed with `EditMenus.installContextMenu(control, items)`,
   which builds them on the right-click: a `ContextMenu` doesn't show while empty, so filling it in its `onShowing`
@@ -253,4 +256,5 @@ usually needs:
 - **Creation and removal**: a `network/edit` builder with plain JUnit tests, its dialog in `ui/network/edit`, its
   `EditMenus` entry; check what `Removals` takes along.
 - **Elsewhere**: terminal choices (`TerminalPickerDialog`), contingency element types
-  (`DefaultContingencyListFormController`), `README.md`'s feature list.
+  (`DefaultContingencyListFormController`), sensitivity function and variable candidates (`SensitivityElements`, checked
+  by `SensitivityElementsTest`), `README.md`'s feature list.

@@ -65,7 +65,8 @@ the network. Their look is set in the **Single Line Diagram** and **Network Area
 - Click a feeder:
   - leading to another voltage level (line, transformer...): the diagram of that voltage level is shown, with the
     feeder you came through briefly outlined in green;
-  - otherwise: the [Equipment details](../equipment/details/index.md) of the equipment open.
+  - otherwise: the [Equipment details](../equipment/details/index.md) of the equipment open or, for an equipment
+    without detail view, its row in the tab listing its kind.
 - Click a busbar section, or a transformer drawn inside the diagram, to open its details.
 - Right-click an equipment for **Details**, **HVDC line details** (converter stations), **Go to** the voltage level at
   the other end or **Show in table**, then what can be created on it and its removal.

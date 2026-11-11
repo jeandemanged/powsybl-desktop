@@ -30,11 +30,13 @@ Lifecycle
 Threading
 7. No slow PowSyBl call on the FX thread. Background network reads/writes are `AbstractNetworkTask`s created in
    `Service.createTask()`; model/UI updates happen in the service's FX-thread handlers. [threading](threading.md)
-8. Inputs to background work are captured (and parameters copied) on the FX thread.
+8. Inputs to background work are captured (and parameters copied) on the FX thread. [threading](threading.md#rules)
 9. The UI does not edit a busy network: every editor is disabled or refused while busy.
    [threading](threading.md#the-busy-lock)
-10. LF/SA run on the root network, never a subnetwork. [domain](domain-and-persistence.md#networks-and-subnetworks)
+10. Load flow, security and sensitivity analysis run on the root network, never a subnetwork.
+    [domain](domain-and-persistence.md#networks-and-subnetworks)
 11. Violation indications read the study's cached violations, never check limits on the fly.
+    [domain](domain-and-persistence.md#networks-and-subnetworks)
 
 UI resources
 12. `fx:id` ↔ `@FXML` field, `onAction="#m"` ↔ method, `fx:controller` ↔ class stay consistent; `fx:include` controllers
@@ -56,8 +58,9 @@ Build
     [build-and-testing](build-and-testing.md#packaging)
 19. `ArchitectureTest` passes: a new package goes into a layer, code using JavaFX UI goes under `ui`, and a forbidden
     dependency is fixed, never exempted. [architecture](architecture.md#enforced-layering)
-20. New table views are added to `EditLockTest`; new views get a controller test (and an `*EmptyStateTest` for table
-    views). [build-and-testing](build-and-testing.md#conventions)
+20. New table views, read-only results views included, are added to `EditLockTest`; new views get a controller test
+    (and an `*EmptyStateTest` for table views other than the read-only results views).
+    [build-and-testing](build-and-testing.md#conventions)
 21. `README.md` stays in sync with the features: a user-visible feature added, removed or changed updates "What it
     can do" (and drops the matching item from "What it cannot do yet"); new logic of the app's own rather than
     PowSyBl's is added to the intro's list of exceptions; a new import/export format is listed only if its converter
@@ -86,17 +89,17 @@ Build
   `onNetworkObjectTableEvent`), while `NavigationEvent.describe()` is an exhaustive `switch`. Both must be extended for
   a new view; only the switch is compiler-checked.
 - **Table controllers have several shapes**: `AbstractEquipmentTableController` (and `AbstractBusesController`),
-  `AbstractNetworkObjectTableController`, and six controllers extending `AbstractDisposableController` directly that
+  `AbstractNetworkObjectTableController`, and the controllers extending `AbstractDisposableController` directly that
   re-implement parts (e.g. the busy-lock binding) - see [editing](editing.md#equipment-tables). Prefer the abstract base
   for a new flat equipment table.
 - **Model injection** differs per controller (`setSceneModel`, `setMainModel`, `setModels`, constructor) - see
   [architecture](architecture.md#controller-lifecycle).
-- **Dialogs**: modal dialogs are built in code (static `show` helpers), secondary windows are FXML; there is no
-  single dialog abstraction. Follow the form matching your need (see ui-conventions).
-- **Contingency list refresh** is explicit (`refreshInstantiatedTable()`) rather than listener-based, because
-  `ListenerManager` cannot detach a single listener.
-- **File I/O on the FX thread**: contingency list and parameters JSON import/export run synchronously in event
-  handlers (small files), unlike network import/export which run in services.
-- **Network import uses a plain `Task`** rather than `AbstractNetworkTask` — intentional, since the network is not
-  loaded yet (see [threading](threading.md#rules)).
+- **Dialogs**: modal dialogs are built in code (mostly static `show` helpers; `RemovalDialog.confirmThenRemove` and the
+  `ElementPickerDialog` subclass differ), secondary windows are FXML; there is no single dialog abstraction. Follow the form
+  matching your need (see ui-conventions).
+- **File I/O on the FX thread**: contingency list, limit scalings, sensitivity factors and parameters JSON
+  import/export run synchronously in event handlers (small files), unlike network import/export which run in services.
+- **Network import and study loading use a plain `Task`** rather than `AbstractNetworkTask` — intentional, since the
+  networks are not loaded yet; **study saving** marks its networks busy with `markBusy` instead, writing several at
+  once (see [threading](threading.md#rules), rule 5).
 - **One inline style remains**: `ui/about/about-view.fxml` (monospace license text), against invariant 14.

@@ -41,7 +41,7 @@ import java.util.Set;
  * concurrently on background threads.
  * <p>
  * The offline basemap is drawn here too, below the network: the country outlines bundled as
- * {@code countries.geojson} (Natural Earth 1:50m admin-0 countries, public domain, see docs/ai/ui-conventions.md
+ * {@code countries.geojson} (Natural Earth 1:50m admin-0 countries, public domain, see docs/ai/diagrams-and-map.md#basemap
  * for how it was generated). It also tells the country of a place, see {@link #countryAt}. Its sea is the map container's background color, set by map.js.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}

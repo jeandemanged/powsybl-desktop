@@ -73,7 +73,8 @@ when one looks wrong, snapshot it rather than reason from the source (see
 
 - The map does not draw the network in JavaScript: tiles are rendered in Java (`MapTileRenderer`) on a thread pool
   from an immutable `MapNetworkData` snapshot (built off the FX thread by `MapController.networkDataService`); Leaflet
-  only displays tiles. Results come back with `Platform.runLater`.
+  only displays tiles. Results come back with `Platform.runLater`. The loading pane only shows when a snapshot
+  rebuild takes over 300 ms (`loadingPaneDelay`), so quick refreshes don't flash it.
 - Hover and clicks are hit-tested in Java (`MapNetworkData.hitTest`): a few pixels of tolerance around substation
   markers and line strokes, substations winning over lines.
 - The map shows the selected network's root network with all its subnetworks, in any window (see
@@ -95,10 +96,11 @@ when one looks wrong, snapshot it rather than reason from the source (see
   along or against the points), computed per end from that end's P (entering the line: pointing away from the end)
   and that side's loading from the cached `NetworkViolations` (`getLoading(id, side)`: the worst violated limit, else
   the most loaded of current, active and apparent power limits, never recomputed): 1 to 4 chevrons, one per started
-  25 %, capped at 4 (overloaded lines included), a single one without limits. `LinePosition` doesn't guarantee its
+  25 %, capped at 4 (overloaded lines included), a single one without limits, none where P is 0 or unknown (no load
+  flow). `LinePosition` doesn't guarantee its
   order: which route end is side 1 is found from both substations' positions (only the substation end's for a route
   ending at a boundary point, whose chevrons follow `Boundary.getP()` and the substation side's loading), never assumed: a substation without position, both at the
-  same position, or a tie leaves the line without chevrons. `MapTileRenderer` draws overloaded lines' red highlights
+  same position, or route ends as near one substation as the other leaves the line without chevrons. `MapTileRenderer` draws overloaded lines' red highlights
   below all lines, then the lines, then the chevrons near each end of lines long enough on screen for both ends' four.
   Chevrons have a fixed pixel size up to zoom 10, then grow by 1.25 per level (at most 2.5 times, `chevronSize`), so they
   don't look lost along long lines when zoomed far in; their offset from the line end grows with them.
@@ -111,7 +113,7 @@ time - not checked in: the `unpack-leaflet` execution of `maven-dependency-plugi
 `leaflet.js`/`leaflet.css` into `target/classes/…/ui/map/`, where `MapController` reads them as classpath resources.
 - Its `<includes>` and `<outputDirectory>` must stay on a single line with no surrounding whitespace: an indented value
   silently matches nothing, the unpack "succeeds" with zero files. `MapControllerEmptyStateTest` asserts both
-  resources resolve, since the view still renders without them.
+  resources resolve, so a broken unpack fails at one obvious test rather than as NPEs in every map test (below).
 - An IDE building on its own (IntelliJ) never runs that execution: after it rebuilds its output, map tests fail with
   an NPE in `MapController.readResource`. `mvn generate-resources` alone doesn't recover, since the plugin's marker in
   `target/dependency-maven-plugin-markers` says "already unpacked": delete that folder (or `mvn clean`) first.
@@ -127,9 +129,10 @@ substation/line position extensions are WGS84 latitude/longitude degrees and are
 - **Leaflet's animations off** (`zoomAnimation`, `fadeAnimation`, `markerZoomAnimation`, `animate: false`): the
   WebView doesn't reliably finish CSS transitions, and an interrupted one leaves stale frames. Smooth zooming is
   driven frame by frame instead (`animateZoom`, `setZoomAround(..., {animate: false})`), as is the search highlight's
-  pulse; Leaflet's own wheel, double-click and zoom buttons handling is replaced. `keepTilesOnViewReset` keeps the
-  previous level's tiles until replaced (each non-animated zoom resets the view, which blanked the map), pruned
-  `PRUNE_DELAY_MS` after their replacements load.
+  pulse; Leaflet's own wheel, double-click and zoom buttons handling is replaced. `keepTilesOnViewReset` (both tile
+  layers) keeps the previous level's tiles until replaced (each non-animated zoom resets the view, which blanked the
+  map); the network layer prunes them `PRUNE_DELAY_MS` after all their replacements loaded
+  (`NetworkTileLayer._pruneTiles`), the OSM layer with Leaflet's default pruning.
 - **`mix-blend-mode: normal` on tiles** (a `<style>` after `leaflet.css`, in `MapController`'s HTML shell): Leaflet
   1.9's `plus-lighter` makes WebKit put every tile in its own transparency layer, and Prism's hardware pipeline runs
   out of offscreen textures (`IllegalArgumentException: Texture must be non-null` on every repaint). Only reproduces on
@@ -145,17 +148,19 @@ substation/line position extensions are WGS84 latitude/longitude degrees and are
 Position edits (`SubstationPosition`, `LinePosition`, both immutable) go through `network/edit/PositionEdits`, run
 by `NetworkChanges.apply`: moving a substation moves the route ends at its old position, and a tie line's route is
 its two boundary lines'. A voltage level may have no substation: reach a position through
-`PositionEdits.substationCoordinate(VoltageLevel)`, never `getSubstation().get()`. Map edits are disabled while the
-network is busy.
+`PositionEdits.substationCoordinate(VoltageLevel)`, never `getSubstation().get()`. While the network is busy, the
+map's context-menu edits are disabled; placing a substation by click, "straight routes" and applying an ongoing move or
+route edit are refused by `NetworkChanges.apply`.
 
 ### Basemap
 
 - The offline basemap, `map/countries.geojson`, is Natural Earth 1:50m admin-0 countries — public domain, no
   attribution required (https://www.naturalearthdata.com/about/terms-of-use/). Every feature's only property is
-  `{"country": <ISO 3166 alpha-2>}` and every code must be a powsybl `Country` constant: loading fails otherwise.
+  `{"country": <ISO 3166 alpha-2>}`, a powsybl `Country` constant, except its 3 territories without code, whose
+  properties are empty (`{}`, no key): any other code, an empty one included, fails loading.
 - `MapTileRenderer.countryAt` reads the country of a place from that basemap, whichever basemap is shown; "New
   substation here" proposes it, falling back to the network's only country (at sea, or in a territory without code).
 - To regenerate it: take `geojson/ne_50m_admin_0_countries.geojson` of https://github.com/nvkelso/natural-earth-vector
   (5.2.0-pre), keep the features in order, round every coordinate to 2 decimals (about 1 km) and drop consecutive
-  duplicate points, reduce the properties to `{"country": ISO_A2_EH}` (empty for its 3 `-99` territories: Somaliland,
-  N. Cyprus, Siachen Glacier), and write compact JSON.
+  duplicate points, reduce the properties to `{"country": ISO_A2_EH}` (dropped, leaving `{}`, for its 3 `-99` territories:
+  Somaliland, N. Cyprus, Siachen Glacier), and write compact JSON.

@@ -33,7 +33,7 @@ The limits of the boundary lines, side by side. See [Edit operational limits](in
 
 ### Extensions
 
-The extensions that can be added: Operating Status, CGMES Boundary Node, Dynamic Model.
+The extensions that can be added: Operating Status, Dynamic Model. CGMES Boundary Node is shown when present but can't be added.
 
 ### Properties and Aliases
 

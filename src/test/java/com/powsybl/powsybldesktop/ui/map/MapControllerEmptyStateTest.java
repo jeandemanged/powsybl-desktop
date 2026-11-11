@@ -57,8 +57,8 @@ class MapControllerEmptyStateTest extends AbstractHeadlessApplicationTest {
     }
 
     // leaflet.js/leaflet.css aren't checked in: they're unpacked from the org.webjars:leaflet artifact by
-    // pom.xml's unpack-leaflet execution. Without this, breaking that wiring leaves the view silently
-    // blank rather than failing the build - the test above still passes with the resources missing.
+    // pom.xml's unpack-leaflet execution. Breaking that wiring then fails here, plainly, rather than as an NPE in
+    // MapController.readResource from every map test.
     @Test
     void leafletResourcesAreOnTheClasspath() {
         assertNotNull(MapController.class.getResource("leaflet.js"));

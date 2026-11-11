@@ -20,7 +20,7 @@ The **HVDC Lines** table lists the HVDC lines of the selected network, each join
 | **Q** | Solved Values |  | Reactive power at each side (MVar). |
 | **I** | Solved Values |  | Current at each side (A). |
 
-The **Parameters** group is hidden by default. Only the **Name** column can be sorted.
+The **Parameters** group is hidden by default. Only the **Name** column can be sorted. In the Substations view tab, the **Substation** and **Voltage Level** links stay, as the other side can be elsewhere.
 
 ## Creation and removal
 

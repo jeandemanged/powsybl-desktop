@@ -65,11 +65,10 @@ import java.util.stream.Stream;
  * form beneath it) and a right table of the {@link Contingency} instances that {@code ListOfContingencyLists}
  * aggregate resolves to, with a validity indicator computed via {@link ContingencyList#getValidContingencies}.
  * <p>
- * All mutations to a network's contingency-list collection go through this controller's own methods (add/remove/
- * form edits), so the right-pane table is refreshed by explicitly calling {@link #refreshInstantiatedTable()} after
- * each one rather than via a {@code ListChangeListener} - {@link com.powsybl.powsybldesktop.utils.ListenerManager}
- * has no way to detach a single listener when switching networks, so listening directly on each network's list
- * would leak a stale listener per network visited.
+ * The right-pane table is refreshed by listening to each visited network's contingency-list collection and to each
+ * list's enabled flag, so no mutation site has to refresh it. {@link com.powsybl.powsybldesktop.utils.ListenerManager}
+ * has no way to detach a single listener when switching networks, so a stale listener stays per network visited:
+ * harmless, since {@link #refreshInstantiatedTable()} always reads the current network's lists.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */

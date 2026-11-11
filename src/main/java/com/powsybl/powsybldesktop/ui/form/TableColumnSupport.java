@@ -301,11 +301,13 @@ public final class TableColumnSupport {
     public static <S> void configureNullableEditableBooleanColumn(TableColumn<S, Boolean> column, Function<S, Boolean> getter,
                                                              BiConsumer<S, Boolean> setter) {
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(getter.apply(cellData.getValue())));
+        CellFields.KeyedFlash flash = new CellFields.KeyedFlash();
         column.setCellFactory(_ -> new TableCell<S, Boolean>() {
             @Override
             protected void updateItem(Boolean value, boolean empty) {
                 super.updateItem(value, empty);
-                if (empty) {
+                S row = CellFields.rowOf(this, empty);
+                if (row == null) {
                     setGraphic(null);
                     setText(null);
                 } else if (value == null) {
@@ -313,8 +315,9 @@ public final class TableColumnSupport {
                     setText("-");
                 } else {
                     setText(null);
-                    setGraphic(booleanCheckBox(this, value, checked -> setter.accept(getTableRow().getItem(), checked)));
+                    setGraphic(booleanCheckBox(this, row, flash, value, checked -> setter.accept(row, checked)));
                 }
+                flash.show(this, row);
             }
         });
         disableUnlessTableEditable(column);
@@ -821,20 +824,18 @@ public final class TableColumnSupport {
                                                                  BiConsumer<TapChanger<?, ?, ?, ?>, Boolean> setter) {
         column.setSortable(false);
         column.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue()));
+        CellFields.KeyedFlash flash = new CellFields.KeyedFlash();
         column.setCellFactory(_ -> new TableCell<S, S>() {
             @Override
             protected void updateItem(S item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setGraphic(null);
-                    return;
-                }
-                List<Node> nodes = tapChangersGetter.apply(item).stream()
+                S row = empty ? null : item;
+                setGraphic(row == null ? null : sidedBox(tapChangersGetter.apply(row).stream()
                         .<Node>map(opt -> tapChangerFieldEnabled(opt)
-                                ? booleanCheckBox(this, getter.apply(opt.get()), checked -> setter.accept(opt.get(), checked))
+                                ? booleanCheckBox(this, row, flash, getter.apply(opt.get()), checked -> setter.accept(opt.get(), checked))
                                 : new Label())
-                        .toList();
-                setGraphic(sidedBox(nodes, Pos.CENTER));
+                        .toList(), Pos.CENTER));
+                flash.show(this, row);
             }
         });
         disableUnlessTableEditable(column);
@@ -1094,19 +1095,22 @@ public final class TableColumnSupport {
         return checkBox;
     }
 
-    // Shared by every editable boolean column so its checkbox renders identically to connectedCheckBox's.
-    private static CheckBox booleanCheckBox(TableCell<?, ?> cell, boolean selected, Consumer<Boolean> onChange) {
+    // Shared by every editable boolean column so its checkbox renders identically to connectedCheckBox's. The flash is
+    // keyed by row: fireEditApplied leads to a mainModel.setUpdate() refreshing this table, which can rebind the cell.
+    private static CheckBox booleanCheckBox(TableCell<?, ?> cell, Object row, CellFields.KeyedFlash flash, boolean selected,
+                                            Consumer<Boolean> onChange) {
         CheckBox checkBox = new CheckBox();
         checkBox.setSelected(selected);
         checkBox.setOnAction(_ -> {
             boolean newValue = checkBox.isSelected();
             try {
                 onChange.accept(newValue);
-                flashEditSuccess(cell);
+                flash.flash(cell, row, EDIT_SUCCESS_STYLE_CLASS);
                 fireEditApplied(cell);
             } catch (PowsyblException e) {
                 checkBox.setSelected(!newValue);
-                notifyEditError(cell, e);
+                showEditErrorPopup(cell, e);
+                flash.flash(cell, row, EDIT_ERROR_STYLE_CLASS);
             }
         });
         return checkBox;

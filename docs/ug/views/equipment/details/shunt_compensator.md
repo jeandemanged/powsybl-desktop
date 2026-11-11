@@ -18,7 +18,7 @@ See [Connection](index.md#connection-section).
 
 | Field | Editor | Meaning |
 |---|---|---|
-| **Type** | Read-only | **Capacitor** or **Reactor**. |
+| **Type** | Read-only | **Capacitor** or **Reactor**; `?` for a non-linear model mixing positive and negative susceptances. |
 | **Model Type** | Read-only | **Linear** or **Non-Linear**. |
 | **Section Count** | Text field | Number of sections in service. |
 | **Maximum Section Count** | Text field (linear model) | Read-only for a non-linear model. |

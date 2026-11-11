@@ -46,6 +46,6 @@ voltage: SmallGrid lies in Great Britain.
 
 Drag to pan and use the mouse wheel to zoom; hovering a substation or a line shows its name, and clicking a substation
 opens its single-line diagram. The boxes at the top right filter the voltage ranges and the limit violations shown,
-used in the next tutorials. See [Map](../views/diagrams/map.md).
+and **Show flows** draws the flows on the lines, used in the next tutorials. See [Map](../views/diagrams/map.md).
 
 Next, [run a load flow](loadflow.md) on this network.

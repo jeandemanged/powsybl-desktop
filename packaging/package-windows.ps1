@@ -11,7 +11,7 @@ SPDX-License-Identifier: MPL-2.0
   Builds a self-contained Windows app-image (jlink + jpackage) for PowSyBl Desktop.
 
 .PARAMETER JavafxJmods
-  Path to the extracted JavaFX Windows jmods directory (e.g. javafx-jmods-27\jmods),
+  Path to the extracted JavaFX Windows jmods directory (e.g. javafx-jmods-27, the folder holding the .jmod files),
   downloaded separately from https://gluonhq.com/products/javafx/ or https://jdk.java.net/javafx27/ .
   Falls back to the JAVAFX_JMODS environment variable if not passed.
 
@@ -19,7 +19,7 @@ SPDX-License-Identifier: MPL-2.0
   Skip "mvn clean package" and reuse the existing target/app-libs.
 
 .EXAMPLE
-  ./packaging/package-windows.ps1 -JavafxJmods C:\tools\javafx-jmods-27\jmods
+  ./packaging/package-windows.ps1 -JavafxJmods C:\tools\javafx-jmods-27
 #>
 param(
     [string]$JavafxJmods = $env:JAVAFX_JMODS,
@@ -31,7 +31,7 @@ $repoRoot = Resolve-Path "$PSScriptRoot\.."
 Set-Location $repoRoot
 
 if (-not $JavafxJmods) {
-    throw "Pass -JavafxJmods <path to javafx-jmods-27\jmods> or set the JAVAFX_JMODS environment variable."
+    throw "Pass -JavafxJmods <path to javafx-jmods-27> or set the JAVAFX_JMODS environment variable."
 }
 if (-not (Test-Path $JavafxJmods)) {
     throw "JavaFX jmods directory not found: $JavafxJmods"

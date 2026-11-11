@@ -25,7 +25,7 @@ The defaults of the [Map](../diagrams/map.md) boxes, kept in sync with them.
 | **Base case voltage violations** | Check box | Show the base case voltage violations. |
 | **Contingency flow violations** | Check box | Show the flow violations after contingencies. |
 | **Contingency voltage violations** | Check box | Show the voltage violations after contingencies. |
-| **Show flows** | Check box | Draw the flow arrows on lines. |
+| **Show flows** | Check box | Draw flow chevrons on the lines and highlight the overloaded ones. |
 
 ## Network Area Diagram
 

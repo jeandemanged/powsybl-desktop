@@ -7,8 +7,9 @@ if you were pointed here, read it in full before changing anything.
 
 PowSyBl Desktop is a JavaFX 27 / Java 25 desktop client (Maven, classpath application, not modular) for
 [PowSyBl](https://www.powsybl.org/): load power networks, browse them through equipment tables and
-single-line / network-area diagrams and a map, create, edit and remove equipment, run load flow and security
-analysis, and inspect violations, reports, logs and notifications. It is a thin UI over PowSyBl libraries: most
+single-line / network-area diagrams and a map, create, edit and remove equipment, run load flow, security
+and sensitivity analysis (with contingencies, limit scalings and sensitivity factors), save and load studies, and
+inspect violations, reports, logs and notifications. It is a thin UI over PowSyBl libraries: most
 behavior questions are really questions about PowSyBl itself.
 
 ## Before you change code

@@ -1,12 +1,14 @@
 # Contingencies
 
 The Contingencies view defines the contingency lists of the selected network: the losses of equipment simulated by a
-[security analysis](../results/security_analysis_results.md). Open it with **Inputs** > **Contingencies** in the main toolbar.
+[security analysis](../results/security_analysis_results.md) or a
+[sensitivity analysis](../results/sensitivity_analysis_results.md). Open it with **Inputs** > **Contingencies** in the main toolbar.
 
 ## Content
 
 The contingency lists belong to the network selected in the [Networks](../network/networks.md) view (to its root network, for a
-subnetwork of a merged network). They are kept for the session only: export them to a file to reuse them.
+subnetwork of a merged network). They are kept for the session only: export them to a file, or save them in a
+[study](../../general/index.md#studies), to reuse them.
 
 The view has three parts:
 
@@ -65,7 +67,7 @@ the list keeps its last valid criteria.
 ### Enable or disable a list
 
 Tick or untick the checkbox in front of the list. Only the enabled lists appear in **Instantiated Contingencies** and
-are used by **Run** > **Security Analysis**.
+are used by **Run** > **Security Analysis** and **Run** > **Sensitivity Analysis**.
 
 ### Remove a list
 

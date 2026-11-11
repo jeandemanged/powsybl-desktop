@@ -30,7 +30,8 @@ On the right, the details of the selected network:
 Below them, three tabs:
 
 - **Statistics**: the number of buses in the bus/breaker and bus/branch views (with how many are in the main connected
-  component), subnetworks, substations, voltage levels, lines, tie lines, transformers, generators, batteries, loads,
+  component), subnetworks, substations, voltage levels, lines, tie lines, two- and three-winding
+  transformers, generators, batteries, loads,
   compensators, switches, busbar sections, boundary lines (paired and unpaired), HVDC lines and converter stations,
   grounds and overload management systems. Only non-zero counts are listed.
 - **Extensions**: the IIDM extensions of the network, as in the [Equipment details](../equipment/details/index.md).
@@ -109,4 +110,4 @@ These fields are disabled while a computation runs on the network.
 ### Close networks
 
 - **Close** closes the selected networks, **Close all** every loaded network, after confirmation. Unsaved changes are
-  lost: export a network first to keep them.
+  lost: export a network or save a [study](../../general/index.md#studies) first to keep them.

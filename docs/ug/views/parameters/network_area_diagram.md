@@ -2,7 +2,7 @@
 
 The **Network Area Diagram** tab sets how the network area diagrams of the [Substations](../diagrams/substations.md)
 view are laid out and drawn. Choices show the PowSyBl names of the values. Any change redraws the open network area diagrams; number fields refuse values that aren't numbers. These are the parameters of PowSyBl's
-[network area diagram](https://powsybl.readthedocs.io/projects/powsybl-diagram/en/latest/).
+[network area diagram](https://powsybl.readthedocs.io/projects/powsybl-diagram/latest/network_area_diagrams/index.html).
 
 ![The Network Area Diagram tab](../../_generated/images/parameters-network-area-diagram.png)
 

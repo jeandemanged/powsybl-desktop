@@ -1,14 +1,14 @@
 # Reports
 
 The Reports view shows the detailed reports of the operations run in the application: network imports and exports,
-load flows and security analyses. Open it with **Diagnostics** > **Reports** in the main toolbar, or with **View report** in
+load flows, security analyses and sensitivity analyses. Open it with **Diagnostics** > **Reports** in the main toolbar, or with **View report** in
 the notification of a finished operation, which opens that operation's report. Like the logs and parameters views, it
 can also be opened in a separate window (see [General usage](../../general/index.md)).
 
 ## Content
 
 - Left, the list of reports, oldest first, each with its date and time and its title: **Network Import**,
-  **Network Export**, **Load Flow Report** or **Security Analysis Report**. "No reports yet" is shown while the list
+  **Network Export**, **Load Flow Report**, **Security Analysis Report** or **Sensitivity Analysis Report**. "No reports yet" is shown while the list
   is empty. When the view is opened, the latest report is selected.
 - Right, the selected report as a tree of messages, fully expanded. A colored marker in front of each message gives
   its severity (TRACE, DEBUG, INFO, DETAIL, WARN or ERROR).
@@ -17,7 +17,7 @@ can also be opened in a separate window (see [General usage](../../general/index
 ![The report of a security analysis](../../_generated/images/reports.png)
 
 The messages come from PowSyBl (importers, exporters, Open Load Flow...) and their level of detail depends on it. The
-reports are kept for the session only.
+reports are not saved between sessions, unless saved in a [study](../../general/index.md#studies).
 
 ## What you can do
 

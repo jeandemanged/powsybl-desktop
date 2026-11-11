@@ -51,12 +51,12 @@ The archive is a portable app-image, not an installer: nothing is installed syst
 
 ## Getting started
 
-Start the application, then either load one of the sample networks (_Sample Networks_ in the networks toolbar),
-open a network file (from the file chooser or by drag and drop), or create a new empty network. Run a load flow from
-the toolbar, and browse the results in the equipment tables, diagrams and violations view.
+Start the application, then either load one of the sample networks (_Sample Networks_ in the import menu of the
+Networks view), open a network file (from the file chooser or by drag and drop), or create a new empty network. Run a
+load flow from the toolbar, and browse the results in the equipment tables, diagrams and violations view.
 
 The user's guide, with step-by-step load flow, security analysis and sensitivity analysis tutorials, is in the
-application under _Help > User's Guide_. Its sources are in [`docs/ug`](docs/ug).
+application under _Help > User's Guide (PDF)_ or _(HTML)_. Its sources are in [`docs/ug`](docs/ug).
 
 ## What it can do
 
@@ -73,17 +73,19 @@ application under _Help > User's Guide_. Its sources are in [`docs/ug`](docs/ug)
   operational limits (editable) and IIDM extensions (editable).
 - **Network editing**: create and remove substations, voltage levels and equipment, and edit the topology, through
   PowSyBl network modifications.
-- **Map**: substations and lines drawn on a basemap from the network's geographical positions; substation positions
-  and line routes can be edited from the map.
+- **Map**: substations and lines drawn on a basemap from the network's geographical positions, with flow chevrons,
+  overloaded lines and limit violation bubbles; substation positions and line routes can be edited from the map.
 - **Search**: fuzzy search by id or name across the network's equipment.
 - **Simulation**: AC and DC load flow (OpenLoadFlow) with its full parameters, security analysis with editable
   contingency lists (JSON import/export), and AC or DC sensitivity analysis with editable factor matrices and variable
-  sets (GLSK), checked against what OpenLoadFlow computes; load flow, security and sensitivity analysis results and
-  limit violations views.
+  sets (GLSK), checked against what OpenLoadFlow computes; limit scalings (current, active and apparent power limits
+  scaled for the base-case violations and the security analysis); load flow, security and sensitivity analysis results
+  and limit violations views.
 - **Reports, logs and notifications** for every operation; parameters saved to a per-user configuration file;
   English and French UI.
-- **Studies**: save the parameters, chosen networks with their contingency lists, sensitivity factors and load flow,
-  security and sensitivity analysis results, reports and logs to a single `.psbx` file, and load it back.
+- **Studies**: save the parameters, chosen networks with their contingency lists, limit scalings, sensitivity factors
+  and load flow, security and sensitivity analysis results, reports and logs to a single `.psbx` file, and load it
+  back.
 
 ## What it cannot do yet
 
@@ -92,11 +94,10 @@ PowSyBl offers much more than what the PowSyBl Desktop application currently exp
 The following PowSyBl features are not supported yet in PowSyBl Desktop and are candidates for future work:
 
 - **Other simulations**: [short-circuit analysis](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/simulation/shortcircuit/index.html),
+  [flow decomposition](https://powsybl.readthedocs.io/projects/entsoe/en/latest/flow_decomposition/index.html),
   [dynamic simulation](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/simulation/dynamic/index.html) and
   [dynamic security analysis](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/simulation/dynamic_security/index.html).
-- **Security analysis features**: operator strategies and remedial actions,
-  [limit scalings](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/simulation/security/limit-scalings.html),
-  two-pass security analysis.
+- **Security analysis features**: operator strategies and remedial actions, two-pass security analysis.
 - **Optimization**: optimal power flow ([powsybl-optimizer](https://powsybl.readthedocs.io/projects/powsybl-optimizer)),
   remedial actions optimization ([OpenRAO](https://powsybl.readthedocs.io/projects/openrao)), multi-variant
   simulation ([powsybl-metrix](https://powsybl.readthedocs.io/projects/powsybl-metrix)).
@@ -140,10 +141,10 @@ exclusion.
   the same as the JavaFX jars pulled from Maven Central, and jmods aren't published to Maven at
   all. Download from [gluonhq.com/products/javafx](https://gluonhq.com/products/javafx/) or
   [jdk.java.net/javafx27](https://jdk.java.net/javafx27/), matching this project's JavaFX version
-  (`27` in `pom.xml`) and your platform:
+  (`27.0.1` in `pom.xml`; the `27` jmods work with it) and your platform:
   - Windows: `windows-x64`
   - Linux: `linux-x64` or `linux-aarch64`
-  - macOS: `macos-aarch64` (Apple Silicon only; Intel Macs aren't supported)
+  - macOS: `osx-aarch64` (Apple Silicon only; Intel Macs aren't supported)
 
   Extract the zip; it unpacks straight into a `javafx-jmods-27/` folder containing the `.jmod`
   files themselves (no nested `jmods` subfolder) — pass that extracted folder's path to the
@@ -211,7 +212,7 @@ If you need to debug the pipeline or adapt it, here's the same sequence run manu
 paths shown; swap `;` → `:` and backslashes → forward slashes on Linux/macOS):
 
 ```
-mvn -o clean package -DskipTests
+mvn clean package -DskipTests
 # -> target/app-libs/powsybl-desktop-<version>.jar + all runtime dependency jars (no javafx-*.jar)
 
 jdeps --multi-release 25 --ignore-missing-deps --print-module-deps ^
@@ -219,7 +220,7 @@ jdeps --multi-release 25 --ignore-missing-deps --print-module-deps ^
 # -> comma-separated list of JDK platform modules actually used (java.base, java.desktop, ...)
 
 jlink --module-path "<jdk>/jmods;<javafx-jmods-dir>" ^
-      --add-modules <jdeps output>,javafx.controls,javafx.fxml,javafx.swing,javafx.web ^
+      --add-modules <jdeps output>,jdk.zipfs,javafx.controls,javafx.fxml,javafx.swing,javafx.web ^
       --output target/runtime --strip-debug --no-header-files --no-man-pages --compress=zip-6
 
 mkdir target\app-libs\user-guide

@@ -16,7 +16,7 @@ A link to the voltage level. No symbol.
 |---|---|---|
 | **Kind** | Read-only | `BREAKER`, `DISCONNECTOR` or `LOAD_BREAK_SWITCH`. |
 | **Open** | Check box | Whether the switch is open. |
-| **Retained** | Check box | Whether the switch is kept in the bus/breaker view. |
+| **Retained** | Check box | Whether the switch is kept in the bus/breaker view. Node/breaker voltage levels only. |
 | **Node 1**, **Node 2** | Read-only | Node/breaker voltage level: the nodes it connects. |
 | **Bus 1 (Bus/Breaker View)**, **Bus 2 (Bus/Breaker View)** | Read-only | Bus/breaker voltage level: the buses it connects. |
 

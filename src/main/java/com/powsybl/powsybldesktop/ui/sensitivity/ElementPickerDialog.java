@@ -23,6 +23,7 @@ import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
 import javafx.stage.Window;
 import javafx.util.StringConverter;
 
@@ -46,6 +47,7 @@ final class ElementPickerDialog extends Dialog<List<String>> {
 
     ElementPickerDialog(Window owner, String title, List<SensitivityElements.Candidate> candidates, Set<String> excludedIds) {
         initOwner(owner);
+        initModality(Modality.WINDOW_MODAL);
         setTitle(title);
         setResizable(true);
         candidates.stream().filter(candidate -> !excludedIds.contains(candidate.id()))

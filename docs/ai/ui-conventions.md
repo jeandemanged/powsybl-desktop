@@ -59,7 +59,7 @@ resources package. Tables, editors and detail views: [editing.md](editing.md); d
 - One concept, one key: a term means the same thing in every view, so it has a single key in `desktop.common.*`
   instead of one copy per view. Before adding a key, search the bundle for the same English text and reuse it.
   - `desktop.common.equipment.<kind>` / `<kind>.plural` — equipment type names (Title Case in English), used for
-    toolbar buttons, info panels, search, column headers and dialog headers alike.
+    toolbar menu entries, info panels, search, column headers and dialog headers alike.
   - `desktop.common.column.*` — column headers shared by several tables.
   - `desktop.common.action.*` — generic buttons/menu items (add, remove, import, export, clear all, cancel...).
   - `desktop.common.computationStatus.*`, `regulationMode.*`, `columnGroup.*`, `editError.*`,
@@ -83,8 +83,10 @@ resources package. Tables, editors and detail views: [editing.md](editing.md); d
   title from `Messages`, content set on the `DialogPane`, `ButtonType.CLOSE` (or a result converter),
   `showAndWait()`. Package-private when used from its own package (`…/ui/network/tables/GeographicalTagsDialog.java`,
   the simplest; `…/ui/network/DropImportDialog.java`, returning a result via `setResultConverter`), public when shared
-  (`CreateDialog`, `RemovalDialog`, `TerminalPickerDialog`, which embeds the search box FXML). Edits inside these
-  dialogs write to the IIDM object directly and use the same error/flash helpers as tables.
+  (`CreateDialog`, `TerminalPickerDialog`, which embeds the search box FXML). Edits inside these dialogs write to the
+  IIDM object directly and use the same error/flash helpers as tables. Exceptions: `…/ui/form/RemovalDialog.java`
+  exposes `confirmThenRemove` (an `Alert`, then the removal), and `…/ui/sensitivity/ElementPickerDialog.java` is a
+  `Dialog` subclass (same owner and modality) so that its test can reach its controls.
 - **FXML secondary windows** opened by `MainController`: memory (`onMemory`): load with `Messages.bundle()`, add
   `styles.css` to the root, `initOwner(main window)`, set the app icon (`logo.png`), dispose the controller in
   `setOnHidden`, and close it in `MainController.dispose()`. About (`onAbout`) is an FXML content inside a `Dialog`.

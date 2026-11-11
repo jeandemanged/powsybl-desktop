@@ -19,7 +19,7 @@ update them. When a subnetwork is selected, only the violations of its own equip
 What is checked:
 
 - **Flows**: the current, active power and apparent power limits (permanent and temporary) of the selected
-  operational limits group of each side of the lines, tie lines, two- and three-winding transformers, and of the
+  operational limits groups of each side of the lines, tie lines, two- and three-winding transformers, and of the
   boundary lines not paired in a tie line. Limits are edited in the limits tab of the [Equipment details](../equipment/details/index.md).
   They are scaled by the enabled [limit scalings](../inputs/limit_scalings.md) of the base case, except the boundary lines'
   ones: the **Permanent Limit** and the loading are then the scaled ones.

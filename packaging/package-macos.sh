@@ -8,11 +8,11 @@
 # Builds a self-contained macOS app-image (jlink + jpackage) for PowSyBl Desktop.
 #
 # Usage:
-#   ./packaging/package-macos.sh <path-to-javafx-jmods-27/jmods> [--skip-build]
-#   JAVAFX_JMODS=/opt/javafx-jmods-27/jmods ./packaging/package-macos.sh
+#   ./packaging/package-macos.sh <path-to-javafx-jmods-27> [--skip-build]
+#   JAVAFX_JMODS=/opt/javafx-jmods-27 ./packaging/package-macos.sh
 #
 # JavaFX jmods (distinct from the jars on Maven Central) must be downloaded separately from
-# https://gluonhq.com/products/javafx/ or https://jdk.java.net/javafx27/ - pick the mac-aarch64
+# https://gluonhq.com/products/javafx/ or https://jdk.java.net/javafx27/ - pick the osx-aarch64
 # build (Apple Silicon only; Intel Macs aren't supported).
 set -euo pipefail
 

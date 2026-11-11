@@ -106,8 +106,8 @@ root's `styles.css` and logo), and the window title is `MainModel.APP_TITLE`.
   parameters config file, shows `SplashScreen`, then loads `main-view.fxml` on the FX thread with a controller
   factory that injects the `MainModel` into `MainController`. `styles.css` is added to the scene.
 - `…/MainController.java` owns the shell (menu bar, toolbar, `BorderPane`) and is the only class that swaps the
-  center view. It also hosts the toolbar actions for load flow / security analysis, violations computation and
-  search index building.
+  center view. It also hosts the toolbar's **Run** actions (load flow, security and sensitivity analysis), violations
+  computation and search index building, and delegates **File** > save/load study to `ui/study/StudyCommands`.
 - Language change (`onLanguageChange` → `reloadShell`) rebuilds `main-view.fxml` with a fresh bundle, keeps the
   same `MainModel`, disposes the old `MainController`, and re-fires the current `NavigationEvent` so the center view
   is reloaded too. Separate windows stay open and are relocalized (see [windows.md](windows.md#language-reload)).
@@ -155,7 +155,7 @@ Rules:
   `selectReport`, ...); the view is reloaded only when the controller class changes:
   - `ensureSceneView(ControllerClass, "path/view.fxml", type)` for whole-network views keyed by `NavigationType`
     (tables, map, contingencies...), which also gives them the "open in new window" button;
-  - `ensureController` for the others: substations (its own window buttons), and the single-instance views (logs,
+  - `ensureController` for the others: networks, substations (its own window buttons), and the single-instance views (logs,
     reports, parameters), which open in a separate window through their own `detachLogs`/`detachReports`/
     `detachParameters`;
   - the grounds, areas, overload management systems and voltage angle limits tables are listed in
@@ -171,8 +171,10 @@ Rules:
 **Adding a center view**: add a `NavigationType` constant; add its label case to the exhaustive switch in
 `NavigationEvent.describe()` (and a selection branch if it has a state); add a `NavigationState` implementation if the
 view has restorable selection; add a branch in `MainController.onNavigationEvent` (or `onNetworkObjectTableEvent`),
-choosing `ensureSceneView` or `ensureController` as above; add a public `onX()` action in `MainController` and a
-button/menu item in `main-view.fxml`; add the label keys in both bundles (`main.toolbar.*`, or the existing
+choosing `ensureSceneView` or `ensureController` as above; add a public `onX()` action in `MainController` and its
+toolbar entry: a `MenuItem` of the **Run**, **Results** or **Tables** menu button in `main-view.fxml`, or, for an input
+or diagnostics view, a `MenuView` in the matching `initLastUsedViewButton` list (which also wires drag to open, see
+[windows.md](windows.md)); add the label keys in both bundles (`main.toolbar.*`, or the existing
 `desktop.common.equipment.<kind>.plural` for a table).
 
 ## Controller lifecycle
@@ -185,15 +187,17 @@ button/menu item in `main-view.fxml`; add the label keys in both bundles (`main.
 - Model injection is a setter called right after FXML load:
   - `setSceneModel(SceneModel)` for views implementing `SceneView` (tables, substations, map, contingencies,
     reports, ...);
-  - `setMainModel(MainModel)` for `ParametersController` and the notification controllers;
+  - `setMainModel(MainModel)` for `ParametersController` and `NotificationsController` (`NotificationOverlay` takes
+    its owner window and dismiss callback through its constructor);
   - `setModels(LogsModel, ParametersModel)` for `LogsViewController`;
   - `NetworksController` takes the main window's `setSceneModel(SceneModel)` without being a `SceneView`;
   - `MainController` itself gets `MainModel` through its constructor via a controller factory.
   Not being a `SceneView` doesn't keep a view out of separate windows: parameters and logs open there too.
 - `@FXML private void initialize()` configures controls that don't need the model; work depending on the model
   happens in the model setter.
-- `ListenerManager` cannot detach a single listener; when a controller needs to switch the list it observes, it
-  refreshes explicitly instead (see the class javadoc of `ui/contingency/ContingenciesController.java`).
+- `ListenerManager` cannot detach a single listener: a controller listening to a list that changes with the selected
+  network leaks one listener per network visited. That is acceptable only when a stale callback is a no-op, as in
+  `ui/contingency/ContingenciesController.java` (whose refresh always reads the current network's lists).
 
 ## Notifications
 
@@ -212,7 +216,8 @@ Canonical example: `MainController.onLoadFlow` and `NetworksController.runImport
 
 ## Reports and logs
 
-- PowSyBl `ReportNode`s are created by the toolkit-free runs (`LoadFlowRun`, `SecurityAnalysisRun`, `NetworkIO`) with
+- PowSyBl `ReportNode`s are created by the toolkit-free runs (`LoadFlowRun`, `SecurityAnalysisRun`,
+  `SensitivityAnalysisRun`, `NetworkIO`) with
   `ReportNode.newRootReportNode().withAllResourceBundlesFromClasspath().withMessageTemplate("desktop.xxx").withTimestamp()`,
   templates defined in `reports.properties` and `reports_fr.properties` (registered by
   `reports/PowsyblDesktopReportResourceBundle.java` via `@AutoService`). Controllers pass completed reports to

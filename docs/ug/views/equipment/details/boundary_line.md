@@ -52,11 +52,11 @@ Only for a boundary line with generation. See [Edit reactive limits](index.md#ed
 
 ### Limits
 
-The operational limits groups of each side. See [Edit operational limits](index.md#edit-operational-limits).
+The operational limits groups of its side. See [Edit operational limits](index.md#edit-operational-limits).
 
 ### Extensions
 
-The extensions that can be added: Operating Status, Line Position, CGMES Boundary Node, Connectable Position, Reference Priorities, Observability, Measurements, Dynamic Model.
+The extensions that can be added: Operating Status, Line Position, Connectable Position, Reference Priorities, Observability, Measurements, Dynamic Model. CGMES Boundary Node is shown when present but can't be added.
 
 ### Properties and Aliases
 

@@ -6,7 +6,7 @@ The details of a battery. Open it from the info button of the [Batteries](../tab
 
 ## Header
 
-A link to the voltage level, and the battery symbol with the solved values and the connection check box. On the right, the P/Q capability chart: the reactive limits, the target operating point and the solved one.
+A link to the voltage level, and the battery symbol with the solved values and the connection check box. On the right of the **Main** tab, the P/Q capability chart: the reactive limits, the target operating point and the solved one.
 
 ## Main tab
 
@@ -28,7 +28,7 @@ See [Connection](index.md#connection-section).
 
 ### Voltage Regulation
 
-See [Voltage Regulation](index.md#voltage-regulation-section). Modes **Voltage** and **Reactive Power**.
+See [Voltage Regulation](index.md#voltage-regulation-section). Modes **Voltage** and **Reactive Power**; **Reactive Power** needs a remote regulated terminal.
 
 ## Other tabs
 

@@ -74,14 +74,15 @@ Maven cache may contain unrelated versions.
   `OlfSensitivityFactorSupport` mirrors its rules (Open Load Flow 2.4.0, AC and DC, variable sets), and
   `OlfSensitivityFactorSupportTest` runs Open Load Flow on every kind of factor: update both on an upgrade.
   The matrices and variable sets live in `NetworkStudy.getSensitivityFactorMatrices()` /
-  `getSensitivityVariableSets()`, edited by `ui/sensitivity/SensitivityFactorsController` (Sensitivity Factors
-  toolbar button): elements are picked among `SensitivityElements.candidates`, and a matrix or variable set
+  `getSensitivityVariableSets()`, edited by `ui/sensitivity/SensitivityFactorsController` (**Inputs** >
+  **Sensitivity Factors** in the toolbar): elements are picked among `SensitivityElements.candidates`, and a matrix or variable set
   `SensitivityAnalysisRun.problems` finds fault with is marked and tells why. `SensitivityElements.isEligible`
   mirrors Open Load Flow 2.4.0's lookups and PowSyBl's `SensitivityFactor.resolveBusId` (a bus voltage function's id
   is a bus view bus or what `IdBasedBusRef` resolves to one); `SensitivityElementsTest` runs Open Load Flow on every
   kind of element of three networks to check it. Unknown branch parameter and pilot point variables, merely skipped
   by Open Load Flow, are refused too. `MainController.onSensitivityAnalysis` runs the matrices against the enabled
-  contingency lists, after refusing with every reason (`SensitivityAnalysisRun.problems`: unsupported kinds,
+  contingency lists, after refusing when the study has no matrices, or with every reason
+  (`SensitivityAnalysisRun.problems`: unsupported kinds,
   ineligible elements, unknown variable sets or contingency, invalid variable set members) rather than letting Open
   Load Flow fail on the first one. A failed base case throws; failed contingencies
   only have a `FAILURE` state status (partial success notification).
@@ -161,7 +162,8 @@ Maven cache may contain unrelated versions.
   load flow instance), the sensitivity analysis' `SensitivityAnalysisMode` (same as load flow / AC / DC, applied
   only to the run's parameters copy by `SensitivityAnalysisRun.copyParameters`), SLD (`DesktopSldParameters`), NAD (`DesktopNadParameters`), per-format network import/export
   `Properties` (only user-edited values), and the app's own view settings, `…/parameters/GuiParameters.java` (map
-  basemap and hidden base voltages, logs level filter and sort order, reports severity filter, whether creation
+  basemap, hidden base voltages, shown violation layers and whether flows are shown, the network area diagram's
+  keeping positions when centering, logs level filter and sort order, reports severity filter, whether creation
   dialogs then open the created object's details, whether exiting with networks loaded asks for confirmation
   (`MainController.confirmExit`, used by both File > Exit and the main window's close request), decimals).
 - They are **edited in place** by the parameter tabs (two-way binding, no DTO). After an edit, a form calls its
@@ -211,7 +213,7 @@ between runs, except in study files.
 ## Studies
 
 File > Save Study / Load Study write and read the app's state as one zip file, `.psbx`
-(`…/study/StudyArchive.java`, layout in its javadoc): a `manifest.json` (format version, networks in order with the
+(`…/study/StudyArchive.java`, layout in its javadoc): a `manifest.json` (format version, app version, networks in order with the
 selected one, their contingency lists' and limit scalings' enabled flags and whether their sensitivity analysis
 result is DC, report count, `null` when reports are not saved), then one file per part, each written by an existing
 serializer — `ApplicationParametersJson`, binary IIDM (`NetworkSerDe`, subnetworks included), `ContingencyListsIO`,

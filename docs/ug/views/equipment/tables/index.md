@@ -12,7 +12,8 @@ voltage level.
 ### Rows and columns
 
 - When a subnetwork is selected in the [Networks](../../network/networks.md) view, a table lists the objects of that subnetwork only.
-- Rows are sorted by name (or id) at opening. Click a column header to sort by that column, click again to reverse the
+- Rows are sorted by name (or id) at opening, except areas (by area type, then name) and voltage angle limits (by
+  id). Click a column header to sort by that column, click again to reverse the
   order; missing values (shown as `-`) always come last.
 - Numbers are shown with the decimal places set in the [Parameters](../../parameters/index.md) view.
 - Values that change with a load flow (**P**, **Q**, **I**, voltages, angles, **Loading**, ...) are the values held by
@@ -24,6 +25,7 @@ Common columns:
 
 | Column | Meaning |
 |---|---|
+| **Country** | Country code of the object's substation, `-` when none. |
 | **Substation**, **Voltage Level** | Where the object is connected, as links (one per side for multi-sided objects). |
 | **Name** | The name, or the id when the object has no name, after an info button and a copy button. |
 | **Connected** | Whether each terminal is connected: a check box per side. |
@@ -60,7 +62,8 @@ When an object has several violations, the most severe one is shown (shortest ac
 highest percentage); otherwise, the highest loading over its sides and limits. The info button before the bar opens
 the list of all the object's violations and limits, as in the [Violations](../../results/violations.md) view.
 
-Loadings and violations are computed when the network is loaded and after each load flow, not after edits: see
+Loadings and violations are computed when the network is loaded, after each load flow and when the limit
+scalings change, not after edits: see
 [Violations](../../results/violations.md).
 
 ### Voltage Range column

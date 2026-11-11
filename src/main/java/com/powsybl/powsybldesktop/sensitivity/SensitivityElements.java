@@ -22,6 +22,7 @@ import com.powsybl.iidm.network.VscConverterStation;
 import com.powsybl.iidm.network.extensions.ControlZone;
 import com.powsybl.iidm.network.extensions.HvdcAngleDroopActivePowerControl;
 import com.powsybl.iidm.network.extensions.SecondaryVoltageControl;
+import com.powsybl.iidm.network.regulation.VoltageRegulation;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.sensitivity.SensitivityFunctionType;
 import com.powsybl.sensitivity.SensitivityVariableSet;
@@ -214,7 +215,8 @@ public final class SensitivityElements {
     }
 
     private static boolean isRegulating(RatioTapChanger tapChanger) {
-        return tapChanger != null && tapChanger.isRegulating() && tapChanger.getRegulationTerminal() != null;
+        VoltageRegulation regulation = tapChanger == null ? null : tapChanger.getVoltageRegulation();
+        return regulation != null && regulation.isRegulating() && regulation.getTerminal() != null;
     }
 
     private static boolean isInAcEmulation(HvdcLine hvdcLine) {

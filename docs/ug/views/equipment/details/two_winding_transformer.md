@@ -42,7 +42,7 @@ The operational limits groups of each side. See [Edit operational limits](index.
 
 ### Extensions
 
-The extensions that can be added: Phase Angle Clock, To Be Estimated, Fortescue, CGMES Tap Changers, Discrete Measurements, Connectable Position, Measurements, Operating Status, Observability, Dynamic Model.
+The extensions that can be added: Phase Angle Clock, To Be Estimated, Fortescue, Discrete Measurements, Connectable Position, Measurements, Operating Status, Observability, Dynamic Model. CGMES Tap Changers is shown when present but can't be added.
 
 ### Properties and Aliases
 

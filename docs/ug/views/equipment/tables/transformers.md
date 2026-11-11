@@ -32,7 +32,7 @@ The **Transformers** table lists the two- and three-winding transformers of the 
 
 Side-dependent cells hold one value per side: two for a two-winding transformer, three for a three-winding one. Parameters, **Rated S** and tap changers hold one value for a two-winding transformer, one per leg for a three-winding one. The regulation columns are empty for a tap changer without load tap changing capabilities.
 
-The **Parameters**, **Ratio Tap Changers** and **Phase Tap Changers** groups are hidden by default. The tap changers are fully described, steps included, in the [Equipment details](../details/index.md).
+The **Parameters**, **Ratio Tap Changers** and **Phase Tap Changers** groups are hidden by default. The tap changers are fully described, steps included, in the [Equipment details](../details/index.md). Only the **Substation**, **Name** and **Loading** columns can be sorted. In the Substations view tab, the **Substation** and **Voltage Level** links stay, as another side can be in another voltage level.
 
 ## Creation and removal
 

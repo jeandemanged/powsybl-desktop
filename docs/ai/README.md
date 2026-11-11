@@ -21,7 +21,7 @@ changes, change it there and in the invariant, nowhere else.
 | [editing.md](editing.md) | Structural edits (`NetworkChanges`), equipment tables, editing cells, creation dialogs and edit menus, equipment detail views, adding an equipment kind |
 | [diagrams-and-map.md](diagrams-and-map.md) | WebView diagrams and `sld.js`, the Map view (Java tiles, Leaflet in a WebView and its rendering workarounds), position edits, basemap |
 | [threading.md](threading.md) | Background work with `Service`/`AbstractNetworkTask`, the network busy lock, FX-thread rules, cancellation |
-| [domain-and-persistence.md](domain-and-persistence.md) | PowSyBl usage and versions, networks/subnetworks, violations, load flow and security analysis, contingencies, search, parameters and config file, persistence |
+| [domain-and-persistence.md](domain-and-persistence.md) | PowSyBl usage and versions, networks/subnetworks, violations, load flow, security and sensitivity analysis, contingencies, limit scalings, search, parameters and config file, persistence, studies |
 | [build-and-testing.md](build-and-testing.md) | Maven build, checkstyle, headless TestFX tests, test conventions, debugging rendering, CI, packaging, licenses |
 | [invariants.md](invariants.md) | Rules every change must preserve, review checklist, known inconsistencies |
 
@@ -40,7 +40,11 @@ changes, change it there and in the invariant, nowhere else.
 | Add or change UI text | ui-conventions (Internationalization) |
 | Change domain logic / PowSyBl calls | domain-and-persistence, threading |
 | Add or change a parameter | domain-and-persistence (Parameters), ui-conventions |
-| Change persistence (config file, preferences, import/export) | domain-and-persistence |
+| Change persistence (config file, preferences, import/export, study files) | domain-and-persistence |
+| Change limit scalings | domain-and-persistence (Limit scalings) |
+| Change sensitivity factors, analysis or results | domain-and-persistence (Computations), editing (Equipment tables) for the results table |
+| Change study save/load or the `.psbx` format | domain-and-persistence (Studies), threading |
+| Add a toolbar entry (Inputs, Run, Results, Tables, Diagnostics) | architecture (Navigation), windows |
 | Add a long-running / background operation | threading, architecture (Notifications) |
 | Write or update tests | build-and-testing |
 | Fix a visual / rendering bug | build-and-testing (Debugging rendering), diagrams-and-map for WebView views |

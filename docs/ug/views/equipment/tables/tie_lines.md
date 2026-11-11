@@ -23,7 +23,7 @@ The **Tie Lines** table lists the tie lines of the selected network: lines made 
 | **V Magnitude (Boundary)** | Solved Values at Boundary |  | Voltage at the boundary point (kV). |
 | **V Angle (Boundary)** | Solved Values at Boundary |  | Voltage angle at the boundary point (°). |
 
-The **Parameters** and **Solved Values at Boundary** groups are hidden by default. The boundary values are read on the boundary line of side 1.
+The **Parameters** and **Solved Values at Boundary** groups are hidden by default. The boundary values are read on the boundary line of side 1. Columns with one value per side can't be sorted. In the Substations view tab, the **Substation** and **Voltage Level** links stay, as the other side can be elsewhere.
 
 ## Creation and removal
 

@@ -17,8 +17,8 @@ Please keep them up to date with your developments.
   - macOS: [MacTeX](https://www.tug.org/mactex/);
   - Windows: [MiKTeX](https://miktex.org/), set to install missing packages on the fly, and a Perl distribution
     such as [Strawberry Perl](https://strawberryperl.com/), which `latexmk` needs.
-- **`make`** on Linux and macOS; on Windows, `make.bat` takes its place (`make html` runs it from `cmd` or
-  PowerShell).
+- **`make`** on Linux and macOS; on Windows, `make.bat` takes its place (`make html` from `cmd`,
+  `.\make html` from PowerShell).
 
 ## Build the documentation
 

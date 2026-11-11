@@ -99,8 +99,10 @@ controller factory supplying `new MainController(mainModel)`.
 
 - `XControllerTest` for behavior; `XControllerEmptyStateTest` for table views, asserting the view renders with no
   network selected (`new MainModel()` without networks). Follow this pair for new views. Detail views are covered
-  together by `EquipmentDetailViewsTest`.
-- Add every new table FXML to `EditLockTest.VIEWS`; it fails if any editor stays enabled while the network is busy.
+  together by `EquipmentDetailViewsTest`. The read-only results views (security and sensitivity analysis results),
+  empty until a computation has run, have no `*EmptyStateTest`.
+- Add every new table FXML to `EditLockTest.VIEWS`, read-only results views included (they guard against an editor
+  added later); it fails if any editor stays enabled while the network is busy.
 - Pure logic is tested with plain JUnit, no toolkit: e.g. `SubstationDiagramRendererTest`, `ContingencyListsIOTest`,
   `ApplicationParametersJsonTest`, `NetworkSearchTest`, `LoadFlowConvergenceTest`, `InjectionsTest`. Prefer factoring
   logic into such a class when it is non-trivial.
@@ -181,9 +183,10 @@ and some have HTTPS certificate chains `curl` can't verify.
 - The `copy-dependencies` execution excludes `org.openjfx` on purpose (JavaFX is jlinked as modules; having the jars
   on the classpath too breaks startup) — do not remove that exclusion.
 - Hence `jdeps` can't see which JavaFX modules the app uses: the scripts list them by hand
-  (`javafx.controls,javafx.fxml,javafx.swing,javafx.web`). Code using another JavaFX module (e.g. `javafx.media`) must
-  add it to all three scripts and to the README's manual sequence, or the packaged app fails at runtime while tests
-  and `javafx:run` pass.
+  (`javafx.controls,javafx.fxml,javafx.swing,javafx.web`), plus `jdk.zipfs`, a service jdeps can't see either, which
+  study files go through (`study/StudyArchive`). Code using another JavaFX module (e.g. `javafx.media`) or such a
+  service must add it to all three scripts and to the README's manual sequence, or the packaged app fails at runtime
+  while tests and `javafx:run` pass.
 - Don't add `-Xmx` through `--java-options`: the Memory window owns that line of the launcher `.cfg`
   (`memory/MaxHeapConfig`). It must stay in the `.cfg`: a `-XX:VMOptionsFile` pointing to a per-user file stops the
   JVM from starting while that file doesn't exist.

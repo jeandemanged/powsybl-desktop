@@ -11,7 +11,7 @@ its own page:
 
 | Tab | What it sets |
 |---|---|
-| [User Interface](user_interface.md) | The application itself: decimal places, map, logs, reports, network editing and exit confirmation. |
+| [User Interface](user_interface.md) | The application itself: decimal places, map, network area diagrams, logs, reports, network editing and exit confirmation. |
 | [Network Import](network_import.md) | The parameters of each network import format. |
 | [Network Export](network_export.md) | The parameters of each network export format. |
 | [Single Line Diagram](single_line_diagram.md) | How single line diagrams are laid out and drawn. |

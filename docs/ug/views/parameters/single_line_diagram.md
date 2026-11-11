@@ -2,7 +2,7 @@
 
 The **Single Line Diagram** tab sets how the single line diagrams of the [Substations](../diagrams/substations.md) view
 are laid out and drawn. Choices show the PowSyBl names of the values. Any change redraws the open single line diagrams; number fields refuse values that aren't numbers. These are the parameters of PowSyBl's
-[single line diagram](https://powsybl.readthedocs.io/projects/powsybl-diagram/en/latest/).
+[single line diagram](https://powsybl.readthedocs.io/projects/powsybl-diagram/latest/single_line_diagrams/index.html).
 
 ![The Single Line Diagram tab](../../_generated/images/parameters-single-line-diagram.png)
 

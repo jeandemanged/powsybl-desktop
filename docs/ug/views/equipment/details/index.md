@@ -4,9 +4,13 @@ An equipment detail view shows, and lets you edit, every attribute of one equipm
 those the [Equipment tables](../tables/index.md) don't show. Detail views open in a separate window, as a tab of the latest
 window opened (or of a new window if none is open), from:
 
-- the **Details** button (information icon) next to the name in every equipment table;
+- the **Details** button (information icon) next to the name in the equipment tables (all but **Buses** and
+  **Voltage Angle Limits**);
 - the single line diagram: a click on a feeder that doesn't lead to another voltage level, on a busbar section or on a
   transformer drawn inside the diagram, or **Details** / **HVDC line details** in an equipment's right-click menu (see
+  [Substations](../../diagrams/substations.md));
+- the network area diagram: a click on a line, a transformer, an HVDC line or an injection, or **Details** in an
+  equipment's right-click menu (see
   [Substations](../../diagrams/substations.md));
 - the **Details of the substation or voltage level** button of the diagram toolbars;
 - the [Map](../../diagrams/map.md): a click on a line, tie line or boundary line;
@@ -25,7 +29,8 @@ switches, substations, voltage levels, grounds, areas and overload management sy
 
 - The title gives the equipment kind and name, for instance **Generator GEN_1**.
 - Links to the equipment's voltage levels (to the substation for a substation) open it in the
-  [Substations](../../diagrams/substations.md) view, on the tab listing this kind of equipment with its row selected.
+  [Substations](../../diagrams/substations.md) view, on the tab listing this kind of equipment with its row selected;
+  for substations, voltage levels, areas and overload management systems, on the single line diagram tab.
 - **Remove** removes the equipment, after a confirmation listing what is removed with it.
 - For connectable equipment, a symbol drawn as in the single line diagrams, colored by base voltage (grey when
   disconnected). Each end shows its solved P, Q and I, the bus voltage and angle, and a checkbox to connect or
@@ -59,9 +64,9 @@ Depending on the equipment kind:
   **Phase Tap Changer**: positions, **Regulation** and the table of **Steps**.
 - **Limits** (lines, tie lines, transformers, boundary lines): for each side, the operational limits groups, and in
   each group the current, active power and apparent power limits: permanent limit and temporary limits (**Name**,
-  **Acceptable Duration**, **Value**, **Fictitious**), with the side's present value. When enabled
+  **Value**, **Acceptable Duration**, **Fictitious**), with the side's present value. When enabled
   [limit scalings](../../inputs/limit_scalings.md) scale a selected group's limits in the base case, a read-only **Scaled Value**
-  column shows the scaled limits next to the original ones.
+  column shows the scaled limits next to the original ones (not for boundary lines: see the tie line instead).
 
   ![The Limits tab of a line](../../../_generated/images/details-line-limits.png)
 
@@ -100,7 +105,8 @@ terminal (text fields).
 | **Defined** | Read-only | Whether the equipment has a voltage regulation. The delete button next to it (**Remove the voltage regulation**) removes it. |
 | **Regulating** | Check box | Whether the regulation is active. |
 | **Regulation Mode** | Choice box | **Voltage**, **Reactive Power** or **Voltage per Reactive Power**, depending on the equipment. |
-| **Target Value**, **Target Deadband**, **Slope** | Text field | In kV or MVar, depending on the mode. |
+| **Target Value**, **Target Deadband** | Text field | In kV or MVar, depending on the mode. |
+| **Slope** | Text field | In kV/MVar. |
 | **Regulated Terminal** | Link | **Local**, or a link to the voltage level of the remote regulated terminal. The pencil button (**Choose the regulated terminal**) opens a terminal picker; **Regulate locally** comes back to the local terminal. |
 | **Regulated Bus Voltage** | Read-only | Solved voltage of the regulated bus (kV). |
 
@@ -169,9 +175,9 @@ overload_management_system
 ### Edit operational limits
 
 - Add a group with **Group id** and **Add group**; remove one with **Remove group**.
-- Check **Selected** to make a group the one in use for its side.
+- Check **Selected** to add a group to those in use for its side, uncheck it to deselect the group.
 - **Add limits** adds current, active power or apparent power limits to a group; **Remove limits** removes them.
-- Edit the limits in place: the permanent limit value, and each temporary limit's name, value, acceptable duration
+- Edit the limits in place: the permanent limit name and value, and each temporary limit's name, value, acceptable duration
   and fictitious flag; **Add temporary limit** and **Remove temporary limit** change the temporary limits. The permanent limit can't be removed alone: remove the limits instead.
 
 These limits are the ones checked for the [Violations](../../results/violations.md) and by the security analysis.
