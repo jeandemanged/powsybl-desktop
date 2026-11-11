@@ -604,10 +604,15 @@ public class SubstationsController extends AbstractDisposableController implemen
 
     /**
      * Reveals the container for a match from the search box: the match itself if it's a substation/voltage level,
-     * or its voltage level if it's a generator (the substations tree doesn't display generators as separate rows).
+     * or its voltage level if it's a generator (the substations tree doesn't display generators as separate rows),
+     * whose single line diagram then outlines the matched equipment.
      */
     private void onSearchMatch(Identifiable<?> match) {
-        selectContainerInTree(NetworkSearch.containerOf(match));
+        Container<?> container = NetworkSearch.containerOf(match);
+        selectContainerInTree(container);
+        if (match != container) {
+            singleLineDiagram.highlight(container, match);
+        }
     }
 
     private void initializeTreeViews() {

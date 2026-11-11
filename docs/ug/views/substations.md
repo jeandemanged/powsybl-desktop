@@ -47,7 +47,8 @@ the network. Their look is set in the **Single Line Diagram** and **Network Area
 - **Expand all** and **Collapse all** expand or collapse every group and substation.
 - Click a substation or voltage level to show its diagrams and equipment. Each selection is recorded in the
   navigation history (see [General usage](../general/index.md)).
-- Type in the search box to find any equipment: the tree selects its substation or voltage level.
+- Type in the search box to find any equipment: the tree selects its substation or voltage level, and its single line
+  diagram briefly outlines the equipment.
 
 ### Create and remove network objects
 
@@ -62,7 +63,8 @@ the network. Their look is set in the **Single Line Diagram** and **Network Area
 
 - Click a switch to open or close it. The diagram is redrawn with the new topology.
 - Click a feeder:
-  - leading to another voltage level (line, transformer...): the diagram of that voltage level is shown;
+  - leading to another voltage level (line, transformer...): the diagram of that voltage level is shown, with the
+    feeder you came through briefly outlined in green;
   - otherwise: the [Equipment details](details.md) of the equipment open.
 - Click a busbar section, or a transformer drawn inside the diagram, to open its details.
 - Right-click an equipment for **Details**, **HVDC line details** (converter stations), **Go to** the voltage level at

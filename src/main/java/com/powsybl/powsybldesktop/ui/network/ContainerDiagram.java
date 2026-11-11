@@ -10,6 +10,7 @@ package com.powsybl.powsybldesktop.ui.network;
 import com.google.common.io.ByteStreams;
 import com.powsybl.iidm.network.Battery;
 import com.powsybl.iidm.network.BoundaryLine;
+import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.BusbarSection;
 import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Generator;
@@ -23,7 +24,9 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.ShuntCompensator;
 import com.powsybl.iidm.network.StaticVarCompensator;
 import com.powsybl.iidm.network.Switch;
+import com.powsybl.iidm.network.Terminal;
 import com.powsybl.iidm.network.ThreeWindingsTransformer;
+import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.VscConverterStation;
@@ -50,6 +53,7 @@ import com.powsybl.sld.svg.GraphMetadata;
 import javafx.animation.PauseTransition;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
+import javafx.concurrent.Worker;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Orientation;
 import javafx.scene.Parent;
@@ -74,11 +78,14 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
@@ -116,6 +123,9 @@ public final class ContainerDiagram extends AbstractDisposableController {
     private record Render(String svg, GraphMetadata metadata) {
     }
 
+    private record Highlight(Container<?> container, Predicate<GraphMetadata.NodeMetadata> nodes) {
+    }
+
     private final Kind kind;
     private final DiagramPaneController pane;
     private final ContextMenu contextMenu = new ContextMenu();
@@ -135,6 +145,8 @@ public final class ContainerDiagram extends AbstractDisposableController {
     // last area diagram depth actually rendered with; the slider fires continuously while dragging
     private int depth;
     private Map<GuiParameters.Quantity, Integer> decimals;
+    // outlined once its container's diagram is shown, see highlight; dropped by the next render whatever it shows
+    private Highlight pendingHighlight;
 
     // Everything a render reads is captured on the FX thread in createTask.
     private final Service<Render> renderService = new Service<>() {
@@ -161,6 +173,11 @@ public final class ContainerDiagram extends AbstractDisposableController {
         renderService.setOnSucceeded(_ -> {
             sldMetadata = renderService.getValue().metadata();
             pane.showDiagram(renderService.getValue().svg());
+            Highlight highlight = pendingHighlight;
+            pendingHighlight = null;
+            if (highlight != null && highlight.container() == container) {
+                applyHighlight(highlight);
+            }
         });
         renderService.setOnFailed(_ -> LOGGER.error(renderService.getException().getMessage(), renderService.getException()));
 
@@ -346,6 +363,57 @@ public final class ContainerDiagram extends AbstractDisposableController {
         }
     }
 
+    /**
+     * Briefly outlines {@code equipment} in {@code target}'s single line diagram (see sld.js): now if that diagram is
+     * the one shown, else once it is. A bus is outlined through its busbar sections, or its configured buses.
+     */
+    public void highlight(Container<?> target, Identifiable<?> equipment) {
+        Set<String> ids = new HashSet<>();
+        ids.add(equipment.getId());
+        switch (equipment) {
+            case Bus bus when bus.getVoltageLevel().getTopologyKind() == TopologyKind.BUS_BREAKER -> {
+                VoltageLevel.BusView busView = bus.getVoltageLevel().getBusView();
+                bus.getVoltageLevel().getBusBreakerView().getBusStream()
+                        .filter(configured -> busView.getMergedBus(configured.getId()) instanceof Bus merged && merged.getId().equals(bus.getId()))
+                        .forEach(configured -> ids.add(configured.getId()));
+            }
+            case Bus bus -> bus.getConnectedTerminalStream().map(Terminal::getConnectable).filter(BusbarSection.class::isInstance)
+                    .forEach(busbarSection -> ids.add(busbarSection.getId()));
+            // drawn as its tie line
+            case BoundaryLine boundaryLine -> boundaryLine.getTieLine().ifPresent(tieLine -> ids.add(tieLine.getId()));
+            default -> { }
+        }
+        // a converter station's node has its HVDC line's equipment id, its own id being the node's
+        highlight(new Highlight(target, node -> ids.contains(node.getEquipmentId()) || ids.contains(node.getUnescapedId())));
+    }
+
+    private void highlight(Highlight highlight) {
+        if (kind != Kind.SINGLE_LINE) {
+            return;
+        }
+        if (highlight.container() == container && !stale && !renderService.isRunning() && sldMetadata != null) {
+            applyHighlight(highlight);
+        } else {
+            pendingHighlight = highlight;
+        }
+    }
+
+    // on the classpath, JSObject resolves to JDK 25's jdk.jsobject, deprecated for removal, rather than JavaFX's own copy
+    @SuppressWarnings("removal")
+    private void applyHighlight(Highlight highlight) {
+        // the page not loaded yet, the diagram is only injected once it is (see DiagramPaneController.showDiagram)
+        if (sldMetadata == null || pane.getWebView().getEngine().getLoadWorker().getState() != Worker.State.SUCCEEDED) {
+            return;
+        }
+        Object[] ids = sldMetadata.getNodeMetadata().stream()
+                .filter(highlight.nodes())
+                .map(GraphMetadata.NodeMetadata::getId)
+                .toArray();
+        if (ids.length > 0) {
+            ((JSObject) pane.getWebView().getEngine().executeScript("window")).call("highlightNodes", ids);
+        }
+    }
+
     @SuppressWarnings("unused") // used by JS
     public void onFeederTopBottomClick(String id) {
         GraphMetadata.NodeMetadata node = sldMetadata == null ? null : sldMetadata.getNodeMetadata(id);
@@ -453,6 +521,12 @@ public final class ContainerDiagram extends AbstractDisposableController {
 
     private void showEquipment(GraphMetadata.NodeMetadata node, Identifiable<?> equipment) {
         Network network = container.getNetwork();
+        if (node.getNextVId() != null) {
+            // the same feeder at the other end, so that the user sees where they come from
+            String equipmentId = node.getEquipmentId();
+            highlight(new Highlight(network.getVoltageLevel(node.getNextVId()),
+                    other -> equipmentId.equals(other.getEquipmentId()) && other.getNextVId() != null));
+        }
         // a diagram leading to another stays in its own scene: in a separate window, this one shows it instead
         if (node.getNextVId() != null && sceneModel.isSeparate()) {
             VoltageLevel target = network.getVoltageLevel(node.getNextVId());

@@ -123,6 +123,71 @@ class ContainerDiagramTest extends AbstractHeadlessApplicationTest {
         assertFalse(details.isDisabled());
     }
 
+    // SceneModel.main: nothing answers the navigation here, the diagram is moved to the other end as SubstationsController does
+    @Test
+    void followingALineOutlinesItsCellAtTheOtherEnd() throws Exception {
+        WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() ->
+                pane.getWebView().getEngine().executeScript("typeof highlightNodes === 'function'")).get().equals(Boolean.TRUE));
+        interact(() -> {
+            diagram.setShowing(true);
+            diagram.setContainer(network.getVoltageLevel("VL1"));
+        });
+        WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() ->
+                pane.getWebView().getEngine().executeScript("document.getElementById('idL1_45_2_45_1_95_ONE') != null")).get().equals(Boolean.TRUE));
+
+        // kept long enough to be seen here, whatever the load
+        WaitForAsyncUtils.asyncFx(() -> pane.getWebView().getEngine().executeScript("HIGHLIGHT_MS = 600000")).get();
+        interact(() -> {
+            diagram.onFeederTopBottomClick("idL1_45_2_45_1_95_ONE");
+            diagram.setContainer(network.getVoltageLevel("VL2"));
+        });
+
+        WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() ->
+                pane.getWebView().getEngine().executeScript("document.querySelector('.sld-highlight') != null")).get().equals(Boolean.TRUE));
+        assertEquals(Boolean.TRUE, WaitForAsyncUtils.asyncFx(() -> pane.getWebView().getEngine().executeScript("""
+                (function () {
+                    var outlines = document.querySelectorAll('.sld-highlight');
+                    return outlines.length === 1 && outlines[0].parentNode.classList.contains('sld-extern-cell')
+                        && outlines[0].parentNode.querySelector('#idL1_45_2_45_1_95_TWO') != null;
+                })()""")).get());
+    }
+
+    @Test
+    void aGeneratorIsOutlinedWithItsCell() throws Exception {
+        showWithLongHighlights("VL1");
+        interact(() -> diagram.highlight(network.getVoltageLevel("VL1"), network.getGenerator("B1-G")));
+        assertEquals("sld-extern-cell", outlinedClass());
+    }
+
+    // a bus breaker voltage level's diagram draws its configured buses
+    @Test
+    void aBusIsOutlinedThroughItsConfiguredBuses() throws Exception {
+        showWithLongHighlights("VL1");
+        interact(() -> diagram.highlight(network.getVoltageLevel("VL1"), network.getVoltageLevel("VL1").getBusView().getBuses().iterator().next()));
+        assertEquals("sld-busbar-section", outlinedClass());
+    }
+
+    private void showWithLongHighlights(String voltageLevelId) throws Exception {
+        WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() ->
+                pane.getWebView().getEngine().executeScript("typeof highlightNodes === 'function'")).get().equals(Boolean.TRUE));
+        WaitForAsyncUtils.asyncFx(() -> pane.getWebView().getEngine().executeScript("HIGHLIGHT_MS = 600000")).get();
+        interact(() -> {
+            diagram.setShowing(true);
+            diagram.setContainer(network.getVoltageLevel(voltageLevelId));
+        });
+        WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() ->
+                pane.getWebView().getEngine().executeScript("document.querySelector('.sld-voltage-level') != null")).get().equals(Boolean.TRUE));
+    }
+
+    // the class of the one outlined element
+    private String outlinedClass() throws Exception {
+        return (String) WaitForAsyncUtils.asyncFx(() -> pane.getWebView().getEngine().executeScript("""
+                (function () {
+                    var outlines = document.querySelectorAll('.sld-highlight');
+                    return outlines.length === 1 ? outlines[0].parentNode.getAttribute('class').split(' ')[0] : 'outlines: ' + outlines.length;
+                })()""")).get();
+    }
+
     @SuppressWarnings("removal")
     private static double number(JSObject object, String member) {
         return ((Number) object.getMember(member)).doubleValue();

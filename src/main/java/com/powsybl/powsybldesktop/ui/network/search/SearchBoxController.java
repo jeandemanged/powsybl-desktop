@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Reusable search box: debounces text input, queries the {@link MainModel}'s shared, per-network
@@ -40,7 +41,8 @@ import java.util.stream.Collectors;
  * {@link MainModel#searchIndexStateProperty()}), and re-runs whatever query is currently active whenever
  * {@link MainModel#updateProperty()} fires - the index's bus entries are refreshed in place by
  * {@code MainController} on every such change, which a query in progress would otherwise not notice since it
- * doesn't affect {@link MainModel#searchIndexStateProperty()}. When a query has no precise match, {@link NetworkSearchIndex}
+ * doesn't affect {@link MainModel#searchIndexStateProperty()}. Such a refresh keeps the current match and doesn't
+ * reveal it again. When a query has no precise match, {@link NetworkSearchIndex}
  * falls back to fuzzy/typo-tolerant matching and flags the result {@link NetworkSearchIndex.Result#approximate()};
  * this is surfaced by appending an "(Approximate match)"-style hint to the status label. Included via
  * {@code fx:include} in the substations, generators, shunt compensators, static var compensators, loads, lines,
@@ -81,10 +83,14 @@ public class SearchBoxController {
     private List<Identifiable<?>> matches = List.of();
     private boolean approximateMatches;
     private int matchIndex = -1;
+    // whether the pending search's result is revealed (onMatchSelected), false for a mere refresh after a network
+    // update: revealing again would move the view back to the match, e.g. away from a diagram where a switch was
+    // just clicked
+    private boolean revealResult;
 
     @FXML
     private void initialize() {
-        searchDebounce.setOnFinished(_ -> runSearch(searchField.getText()));
+        searchDebounce.setOnFinished(_ -> runSearch(searchField.getText(), true));
         searchField.textProperty().addListener((_, _, _) -> searchDebounce.playFromStart());
         // resolved here, on the FX thread, since resolving reads the network (see NetworkSearchIndex.Candidates)
         searchService.setOnSucceeded(_ -> onSearchResult(searchService.getValue().resolve()));
@@ -208,7 +214,7 @@ public class SearchBoxController {
             onNoMatch.run();
         } else {
             // re-runs whatever query is currently typed, now that the index is ready (or reflects a failed build)
-            runSearch(searchField.getText());
+            runSearch(searchField.getText(), true);
         }
     }
 
@@ -217,14 +223,16 @@ public class SearchBoxController {
     private void refreshIfSearching() {
         String query = searchField.getText();
         if (query != null && !query.isBlank()) {
-            runSearch(query);
+            runSearch(query, false);
         }
     }
 
-    private void runSearch(String query) {
+    private void runSearch(String query, boolean reveal) {
         if (isIndexBuilding()) {
             return;
         }
+        // a refresh superseding a search still running keeps that search's reveal
+        revealResult = reveal || revealResult && searchService.isRunning();
         if (query == null || query.isBlank()) {
             searchService.cancel();
             onSearchResult(new NetworkSearchIndex.Result(List.of(), false));
@@ -242,13 +250,16 @@ public class SearchBoxController {
     }
 
     private void onSearchResult(NetworkSearchIndex.Result result) {
+        // by id: a topology change replaces bus objects
+        String currentId = matchIndex < 0 ? null : matches.get(matchIndex).getId();
         matches = result.matches();
         approximateMatches = result.approximate();
-        matchIndex = matches.isEmpty() ? -1 : 0;
+        int kept = revealResult ? -1 : IntStream.range(0, matches.size()).filter(i -> matches.get(i).getId().equals(currentId)).findFirst().orElse(-1);
+        matchIndex = matches.isEmpty() ? -1 : Math.max(kept, 0);
         updateStatus();
         if (matches.isEmpty()) {
             onNoMatch.run();
-        } else {
+        } else if (revealResult) {
             onMatchSelected.accept(matches.get(matchIndex));
         }
     }

@@ -64,4 +64,6 @@ Easy to get wrong:
 - Keep the knowledge base current: a change to documented behavior updates the matching `docs/ai` document in the
   same change.
 - Keep the user's guide current: a user-visible change updates the matching page of `docs/ug` (Sphinx, MyST Markdown;
-  see `docs/ug/README.md`) in the same change, using the UI's exact English labels.
+  see `docs/ug/README.md`) in the same change, using the UI's exact English labels. The guide describes what users
+  can do, not bug fixes: a fix restoring the behavior users expect anyway leaves it unchanged (its reason, if not
+  obvious, goes in `docs/ai`).

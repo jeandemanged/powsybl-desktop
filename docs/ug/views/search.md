@@ -55,7 +55,8 @@ is made.
 ### What selecting a match does
 
 - **Substations view**: the tree selects the match's substation or voltage level (the voltage level of an equipment),
-  showing its diagrams and equipment tabs.
+  showing its diagrams and equipment tabs. The single line diagram briefly outlines the matched equipment (a bus
+  through its busbar sections).
 - **Map**: the map zooms to the match and marks it: a line, tie line or boundary line is fitted whole and marked in
   its middle, any other equipment is shown at its substation, with some neighbouring substations around. A match
   without position on the map leaves the view unchanged.

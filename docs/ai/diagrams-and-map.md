@@ -30,6 +30,16 @@ when one looks wrong, snapshot it rather than reason from the source (see
   up the element's ancestors). Busbars, a thin line, get a wider transparent line in their group to catch the
   pointer, added again on every injected diagram; SVG exports use the rendered string, not the page.
 - What clicks open (details, other voltage levels): see [editing.md](editing.md#equipment-detail-views).
+- `ContainerDiagram.highlight(container, equipment)` outlines equipment in green for 4 s, fading out over the last
+  one: right away if that container's diagram is shown and rendered, else at its next render (any render drops a
+  pending highlight). Used for the substations view's search matches, and when following a feeder to its other end's
+  voltage level (click or **Go to**, main or separate window), where the same equipment's feeder is outlined so the
+  user sees where they come from. Nodes are found in the `GraphMetadata`, then `sld.js`'s `highlightNodes` outlines
+  them by SVG id. Ids drawn differently from the equipment: a converter station's node has its HVDC line's equipment
+  id (matched by `getUnescapedId`, only set for those), a paired boundary line is drawn as its tie line, a bus view bus
+  as its busbar sections (node breaker) or configured buses (bus breaker). The outline is a rect appended to a
+  feeder's `sld-extern-cell` (whole column down to the busbars) when it's the cell's only feeder, else to the node
+  itself; it doesn't survive a re-render.
 
 ## Map view
 

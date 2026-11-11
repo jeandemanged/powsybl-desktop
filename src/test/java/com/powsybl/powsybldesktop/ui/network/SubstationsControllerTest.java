@@ -20,6 +20,7 @@ import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.network.edit.NetworkEdits;
+import com.powsybl.powsybldesktop.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -30,6 +31,7 @@ import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
@@ -139,6 +141,26 @@ class SubstationsControllerTest extends AbstractHeadlessApplicationTest {
         } catch (TimeoutException e) {
             throw new AssertionError(e);
         }
+    }
+
+    // e.g. a switch clicked in the diagram of another container than the match's
+    @Test
+    void aNetworkUpdateDoesNotRevealTheSearchMatchAgain() throws TimeoutException {
+        VoltageLevel vl1 = network.getVoltageLevel("VL1");
+        VoltageLevel vl9 = network.getVoltageLevel("VL9");
+        interact(() -> mainModel.setSearchIndex(network, NetworkSearchIndex.build(network)));
+        TextField searchField = lookup(".text-field").match(node -> node.isVisible() && ((TextField) node).getPromptText() != null).queryAs(TextField.class);
+        interact(() -> searchField.setText("VL9"));
+        WaitForAsyncUtils.waitFor(30, TimeUnit.SECONDS, () -> treeView().getSelectionModel().getSelectedItem() != null
+                && treeView().getSelectionModel().getSelectedItem().getValue() == vl9);
+
+        select(vl1);
+        interact(() -> mainModel.setUpdate(vl1));
+        // the refreshed search runs in the background
+        WaitForAsyncUtils.sleep(1, TimeUnit.SECONDS);
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertEquals(vl1, treeView().getSelectionModel().getSelectedItem().getValue());
     }
 
     @Test

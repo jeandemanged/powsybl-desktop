@@ -83,7 +83,9 @@ Maven cache may contain unrelated versions.
   fields (`AbstractEquipmentDetailController.updateSearchIndexes`) call it on every index of the root network.
 - `…/search/NetworkSearch.java`: `Kind` enum, `kindOf`, `containerOf`, `hasMatchingEquipment`. Add a new
   searchable equipment kind here and in `NetworkSearchIndex`, not per view.
-- Views use `SearchBoxController` with their own set of `Kind`s.
+- Views use `SearchBoxController` with their own set of `Kind`s. It re-runs the typed query on every
+  `updateProperty()` (refreshed bus entries), keeping the current match without revealing it: revealing would move
+  the view back to the match on any edit, e.g. a switch clicked in another container's diagram.
 
 ## Parameters
 
