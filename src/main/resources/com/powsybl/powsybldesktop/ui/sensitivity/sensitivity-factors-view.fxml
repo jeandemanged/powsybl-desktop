@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.StackPane?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<BorderPane prefHeight="600.0" prefWidth="1000.0" xmlns="http://javafx.com/javafx/17.0.12"
+            xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.ui.sensitivity.SensitivityFactorsController">
+    <top>
+        <ToolBar>
+            <items>
+                <MenuButton fx:id="addMenuButton" mnemonicParsing="false" text="%desktop.common.action.add">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2p-plus" iconSize="16"/>
+                    </graphic>
+                </MenuButton>
+                <Button fx:id="removeButton" mnemonicParsing="false">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2m-minus" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%desktop.common.action.remove"/>
+                    </tooltip>
+                </Button>
+                <Separator orientation="VERTICAL"/>
+                <MenuButton fx:id="importMenuButton" mnemonicParsing="false" text="%desktop.common.action.import">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2u-upload" iconSize="16"/>
+                    </graphic>
+                </MenuButton>
+                <MenuButton fx:id="exportMenuButton" mnemonicParsing="false" text="%desktop.common.action.export">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2d-download" iconSize="16"/>
+                    </graphic>
+                </MenuButton>
+            </items>
+        </ToolBar>
+    </top>
+    <center>
+        <SplitPane dividerPositions="0.3">
+            <items>
+                <TabPane fx:id="tabPane" tabClosingPolicy="UNAVAILABLE">
+                    <tabs>
+                        <Tab fx:id="matricesTab">
+                            <content>
+                                <ListView fx:id="matricesListView"/>
+                            </content>
+                        </Tab>
+                        <Tab fx:id="variableSetsTab">
+                            <content>
+                                <ListView fx:id="variableSetsListView"/>
+                            </content>
+                        </Tab>
+                    </tabs>
+                </TabPane>
+                <ScrollPane fitToWidth="true">
+                    <content>
+                        <StackPane fx:id="formHost"/>
+                    </content>
+                </ScrollPane>
+            </items>
+        </SplitPane>
+    </center>
+</BorderPane>

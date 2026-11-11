@@ -11,6 +11,7 @@ import com.powsybl.commons.report.ReportNode;
 import com.powsybl.contingency.Contingency;
 import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.network.VariantMultiThreadAccess;
 import com.powsybl.powsybldesktop.utils.Futures;
@@ -27,11 +28,11 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 /**
  * A sensitivity analysis run: {@link #prepare} on the FX thread, {@link #compute} in the background, then
@@ -71,25 +72,39 @@ public final class SensitivityAnalysisRun {
     }
 
     /**
-     * Why Open Load Flow would fail on {@code matrices} in AC or {@code dc}, one line per failing matrix: empty when
-     * they can run. The equipment itself is not checked.
+     * Why Open Load Flow would fail on, or skip, {@code matrices} and the variable sets they use, with
+     * {@code loadFlowParameters} (AC or DC, HVDC AC emulation) and the contingencies of {@code contingencyIds}: one line
+     * per matrix or variable set, empty when they can run.
      */
-    public static List<String> problems(List<SensitivityFactorMatrix> matrices, List<SensitivityVariableSet> variableSets, boolean dc) {
-        Set<String> variableSetIds = variableSets.stream().map(SensitivityVariableSet::getId).collect(Collectors.toSet());
+    public static List<String> problems(Network network, List<SensitivityFactorMatrix> matrices, List<SensitivityVariableSet> variableSets,
+                                        List<String> contingencyIds, LoadFlowParameters loadFlowParameters) {
         List<String> problems = new ArrayList<>();
+        Set<String> usedVariableSetIds = new HashSet<>();
         for (SensitivityFactorMatrix matrix : matrices) {
-            List<String> reasons = new ArrayList<>(OlfSensitivityFactorSupport.unsupportedReasons(matrix, dc));
+            addProblems(problems, matrix.name(), problems(network, matrix, variableSets, contingencyIds, loadFlowParameters));
             if (matrix.variableSet()) {
-                List<String> unknown = matrix.variableIds().stream().filter(id -> !variableSetIds.contains(id)).toList();
-                if (!unknown.isEmpty()) {
-                    reasons.add(Messages.get("sensitivity.unknownVariableSets", String.join(", ", unknown)));
-                }
-            }
-            if (!reasons.isEmpty()) {
-                problems.add(Messages.get("sensitivity.matrixProblems", matrix.name(), String.join(" ", reasons)));
+                usedVariableSetIds.addAll(matrix.variableIds());
             }
         }
+        variableSets.stream().filter(set -> usedVariableSetIds.contains(set.getId()))
+                .forEach(set -> addProblems(problems, set.getId(), SensitivityElements.problems(network, set)));
         return problems;
+    }
+
+    /**
+     * Why Open Load Flow would fail on, or skip, {@code matrix}: the kinds of its factors, then its elements.
+     */
+    public static List<String> problems(Network network, SensitivityFactorMatrix matrix, List<SensitivityVariableSet> variableSets,
+                                        List<String> contingencyIds, LoadFlowParameters loadFlowParameters) {
+        List<String> reasons = new ArrayList<>(OlfSensitivityFactorSupport.unsupportedReasons(matrix, loadFlowParameters.isDc()));
+        reasons.addAll(SensitivityElements.problems(network, matrix, variableSets, contingencyIds, loadFlowParameters.isHvdcAcEmulation()));
+        return reasons;
+    }
+
+    private static void addProblems(List<String> problems, String name, List<String> reasons) {
+        if (!reasons.isEmpty()) {
+            problems.add(Messages.get("sensitivity.matrixProblems", name, String.join(" ", reasons)));
+        }
     }
 
     /**

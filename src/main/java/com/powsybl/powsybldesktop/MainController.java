@@ -7,12 +7,14 @@
  */
 package com.powsybl.powsybldesktop;
 
+import com.powsybl.contingency.Contingency;
 import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.contingency.list.ListOfContingencyLists;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.loadflow.LoadFlowResult;
+import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.core.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkStructureChange;
@@ -73,6 +75,7 @@ import com.powsybl.powsybldesktop.ui.notification.NotificationOverlay;
 import com.powsybl.powsybldesktop.ui.notification.NotificationsController;
 import com.powsybl.powsybldesktop.ui.parameters.ParametersController;
 import com.powsybl.powsybldesktop.ui.report.ReportsController;
+import com.powsybl.powsybldesktop.ui.sensitivity.SensitivityFactorsController;
 import com.powsybl.powsybldesktop.ui.study.StudyCommands;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.ui.window.SceneView;
@@ -173,6 +176,8 @@ public class MainController extends AbstractDisposableController {
     @FXML
     private Button limitScalingsButton;
     @FXML
+    private Button sensitivityFactorsButton;
+    @FXML
     private SplitMenuButton parametersButton;
     @FXML
     private Button logsButton;
@@ -189,6 +194,7 @@ public class MainController extends AbstractDisposableController {
     private static final String MAP_FXML = "ui/map/map-view.fxml";
     private static final String CONTINGENCIES_FXML = "ui/contingency/contingencies-view.fxml";
     private static final String LIMIT_SCALINGS_FXML = "ui/limitscaling/limit-scalings-view.fxml";
+    private static final String SENSITIVITY_FACTORS_FXML = "ui/sensitivity/sensitivity-factors-view.fxml";
 
     private final MainModel mainModel;
     private final SeparateWindows separateWindows;
@@ -615,11 +621,12 @@ public class MainController extends AbstractDisposableController {
         boolean dc = parameters.getLoadFlowParameters().isDc();
         List<SensitivityFactorMatrix> matrices = List.copyOf(study.getSensitivityFactorMatrices());
         List<SensitivityVariableSet> variableSets = List.copyOf(study.getSensitivityVariableSets());
-        if (!checkSensitivityFactors(matrices, variableSets, dc)) {
+        ContingencyList contingencyList = enabledContingencies(network);
+        if (!checkSensitivityFactors(network, matrices, variableSets, contingencyList, parameters.getLoadFlowParameters())) {
             return;
         }
 
-        SensitivityAnalysisRun run = SensitivityAnalysisRun.prepare(network, matrices, variableSets, enabledContingencies(network), parameters);
+        SensitivityAnalysisRun run = SensitivityAnalysisRun.prepare(network, matrices, variableSets, contingencyList, parameters);
         Service<SensitivityAnalysisResultAndReport> sensitivityAnalysisService = new Service<>() {
             @Override
             protected Task<SensitivityAnalysisResultAndReport> createTask() {
@@ -666,12 +673,15 @@ public class MainController extends AbstractDisposableController {
     }
 
     // a single factor Open Load Flow doesn't support fails the whole analysis: refused beforehand, with every reason
-    private boolean checkSensitivityFactors(List<SensitivityFactorMatrix> matrices, List<SensitivityVariableSet> variableSets, boolean dc) {
+    private boolean checkSensitivityFactors(Network network, List<SensitivityFactorMatrix> matrices, List<SensitivityVariableSet> variableSets,
+                                            ContingencyList contingencyList, LoadFlowParameters loadFlowParameters) {
+        boolean dc = loadFlowParameters.isDc();
         String message;
         if (matrices.isEmpty()) {
-            message = Messages.get("main.sensitivityAnalysis.noFactors");
+            message = Messages.get("main.sensitivityAnalysis.noFactors", Messages.get("main.toolbar.sensitivityFactors"));
         } else {
-            List<String> problems = SensitivityAnalysisRun.problems(matrices, variableSets, dc);
+            List<String> contingencyIds = ContingencyNames.deduplicate(contingencyList.getContingencies(network)).stream().map(Contingency::getId).toList();
+            List<String> problems = SensitivityAnalysisRun.problems(network, matrices, variableSets, contingencyIds, loadFlowParameters);
             if (problems.isEmpty()) {
                 return true;
             }
@@ -937,6 +947,8 @@ public class MainController extends AbstractDisposableController {
                 () -> detachSceneView(CONTINGENCIES_FXML, NavigationType.CONTINGENCIES));
         separateWindows.addDragToOpen(limitScalingsButton, NavigationType.LIMIT_SCALINGS.name(),
                 () -> detachSceneView(LIMIT_SCALINGS_FXML, NavigationType.LIMIT_SCALINGS));
+        separateWindows.addDragToOpen(sensitivityFactorsButton, NavigationType.SENSITIVITY_FACTORS.name(),
+                () -> detachSceneView(SENSITIVITY_FACTORS_FXML, NavigationType.SENSITIVITY_FACTORS));
         separateWindows.addDragToOpen(parametersButton, PARAMETERS_WINDOW, this::detachParameters);
         initParametersMenu();
         separateWindows.addDragToOpen(logsButton, LOGS_WINDOW, this::detachLogs);
@@ -1120,6 +1132,8 @@ public class MainController extends AbstractDisposableController {
             ensureSceneView(ContingenciesController.class, CONTINGENCIES_FXML, NavigationType.CONTINGENCIES);
         } else if (newValue.navigationType() == NavigationType.LIMIT_SCALINGS) {
             ensureSceneView(LimitScalingsController.class, LIMIT_SCALINGS_FXML, NavigationType.LIMIT_SCALINGS);
+        } else if (newValue.navigationType() == NavigationType.SENSITIVITY_FACTORS) {
+            ensureSceneView(SensitivityFactorsController.class, SENSITIVITY_FACTORS_FXML, NavigationType.SENSITIVITY_FACTORS);
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SUBSTATIONS) {
             SubstationsTableController controller = ensureSceneView(SubstationsTableController.class,
                     "ui/network/tables/substations-view.fxml", NavigationType.NETWORK_TABLE_SUBSTATIONS);
@@ -1327,6 +1341,10 @@ public class MainController extends AbstractDisposableController {
 
     public void onLimitScalings() {
         mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LIMIT_SCALINGS, NetworkNavigationState.create(mainModel.getNetwork())));
+    }
+
+    public void onSensitivityFactors() {
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SENSITIVITY_FACTORS, NetworkNavigationState.create(mainModel.getNetwork())));
     }
 
     public void onParameters() {

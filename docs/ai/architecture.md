@@ -35,7 +35,7 @@ used, so tests of `core` start the toolkit with `Platform.startup`.
 | `map` | `MapNetworkData` snapshot, `MapTileRenderer` |
 | `contingency` | `ContingencyListsIO` (JSON I/O), `ContingencyNames`, `ContingencyListKind`, the editor's row models |
 | `limitscaling` | Limit scalings: `LimitScalings` (limits computer for violation detection, JSON I/O, content comparison), `OlfLimitScalingSupport` (what Open Load Flow's security analysis does with a scaling), `AffectedLimits` (the editor's preview), `CriterionKind`, `LimitScalingTexts` |
-| `loadflow`, `security`, `sensitivity` | The runs (`LoadFlowRun`, `SecurityAnalysisRun`, `SensitivityAnalysisRun`: report, cancellation, OpenLoadFlow's variant switch, parameter copy, pre-contingency monitor), result/report records, `LoadFlowConvergence`; sensitivity factor matrices, their JSON and Open Load Flow's support of them |
+| `loadflow`, `security`, `sensitivity` | The runs (`LoadFlowRun`, `SecurityAnalysisRun`, `SensitivityAnalysisRun`: report, cancellation, OpenLoadFlow's variant switch, parameter copy, pre-contingency monitor), result/report records, `LoadFlowConvergence`; sensitivity factor matrices, their JSON, Open Load Flow's support of them and the elements it accepts (`SensitivityElements`), result rows, type names |
 | `violations` | `NetworkViolations` (flow and voltage limit violations of the network's state), `FlowViolation`, `VoltageViolation` (also built from a security analysis' violations), `Loading`, `VoltageRange`, `ViolationTexts` (how violations read in the views) |
 | `parameters` | `ParametersModel`, `ApplicationParameters` record, `GuiParameters` (with the map's `Basemap`, ...), `DesktopSldParameters`/`DesktopNadParameters` (PowSyBl's diagram parameters plus desktop-only fields), `ApplicationParametersJson`, `ParametersConfigFile` |
 | `notification` | `Notification` record, `NotificationAction`, `NotificationStatus`, `NotificationsModel` |
@@ -58,6 +58,7 @@ used, so tests of `core` start the toolkit with `Platform.startup`.
 | `ui/map` | Map view: `MapController`, `map.js` + Leaflet |
 | `ui/contingency` | Contingency lists editor (`ContingenciesController` and its inline forms) |
 | `ui/limitscaling` | Limit scalings editor (`LimitScalingsController`, `LimitScalingFormController`) |
+| `ui/sensitivity` | Sensitivity factors editor (`SensitivityFactorsController`: matrices and variable sets with their forms, `ElementPickerDialog`) |
 | `ui/parameters` | Parameters view and its tabs (`AbstractDiagramParametersController`, also the base of the GUI and sensitivity analysis tabs; `ParameterFormBuilder` for importer/exporter parameters) |
 | `ui/notification` | Overlay popup and history panel (`NotificationOverlay`, `NotificationView`, `NotificationsController`) |
 | `ui/report` | Report viewer (`ReportsController`, `ReportNodeViewController`, `ReportNodeTreeCell`) |
@@ -77,7 +78,7 @@ uses only the layers below it (from top to bottom):
 | Shell | the root package: `Launcher`, `MainApplication`, `MainController`, `SplashScreen` |
 | UI | `ui..` |
 | State | `core`, `navigation`, `logs`, `study` |
-| Domain | `network..` (`network.edit` included), `search`, `diagram`, `map`, `contingency`, `limitscaling`, `loadflow`, `security`, `violations`, `memory`, `parameters`, `notification` |
+| Domain | `network..` (`network.edit` included), `search`, `diagram`, `map`, `contingency`, `limitscaling`, `loadflow`, `security`, `sensitivity`, `violations`, `memory`, `parameters`, `notification` |
 | Base | `utils`, `util`, `reports` |
 
 Every class must be in a layer: a new top-level package fails the test until it is added to one. The test also checks

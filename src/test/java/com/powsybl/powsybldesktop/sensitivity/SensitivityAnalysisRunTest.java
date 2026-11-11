@@ -12,6 +12,7 @@ import com.powsybl.contingency.ContingencyContext;
 import com.powsybl.contingency.list.DefaultContingencyList;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.test.EurostagTutorialExample1Factory;
+import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.openloadflow.sensi.OpenSensitivityAnalysisParameters;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.sensitivity.SensitivityAnalysisParameters;
@@ -79,17 +80,25 @@ class SensitivityAnalysisRunTest {
     }
 
     @Test
-    void problemsTellEachFailingMatrixWithItsReasons() {
+    void problemsTellEachFailingMatrixAndVariableSetWithTheirReasons() {
+        Network network = EurostagTutorialExample1Factory.create();
         SensitivityFactorMatrix voltages = new SensitivityFactorMatrix("voltages", SensitivityFunctionType.BUS_VOLTAGE,
-                List.of("NGEN"), SensitivityVariableType.BUS_TARGET_VOLTAGE, List.of("GEN"), false, ContingencyContext.none());
+                List.of("VLGEN_0"), SensitivityVariableType.BUS_TARGET_VOLTAGE, List.of("GEN"), false, ContingencyContext.none());
         SensitivityFactorMatrix unknownSet = new SensitivityFactorMatrix("unknown", SensitivityFunctionType.BRANCH_ACTIVE_POWER_1,
-                List.of("NHV1_NHV2_1"), SensitivityVariableType.INJECTION_ACTIVE_POWER, List.of("GLSK", "OTHER"), true, ContingencyContext.none());
+                List.of("NHV1_NHV2_1"), SensitivityVariableType.INJECTION_ACTIVE_POWER, List.of("GLSK", "OTHER"), true,
+                ContingencyContext.specificContingency("NHV1_NHV2_2"));
+        SensitivityVariableSet wrongSet = new SensitivityVariableSet("GLSK", List.of(new WeightedSensitivityVariable("NHV1_NHV2_1", 1)));
+        LoadFlowParameters ac = new LoadFlowParameters();
 
-        assertEquals(List.of(), SensitivityAnalysisRun.problems(List.of(LINES_TO_GENERATOR, LINE_TO_SET, voltages), List.of(GLSK), false));
+        assertEquals(List.of(), SensitivityAnalysisRun.problems(network, List.of(LINES_TO_GENERATOR, LINE_TO_SET, voltages), List.of(GLSK),
+                List.of(), ac));
         assertEquals(List.of("voltages: " + Messages.get("sensitivity.olf.dcFunction") + " " + Messages.get("sensitivity.olf.dcVariable")),
-                SensitivityAnalysisRun.problems(List.of(LINES_TO_GENERATOR, voltages), List.of(), true));
-        assertEquals(List.of("unknown: " + Messages.get("sensitivity.unknownVariableSets", "OTHER")),
-                SensitivityAnalysisRun.problems(List.of(unknownSet), List.of(GLSK), false));
+                SensitivityAnalysisRun.problems(network, List.of(LINES_TO_GENERATOR, voltages), List.of(), List.of(), new LoadFlowParameters().setDc(true)));
+        assertEquals(List.of("unknown: " + Messages.get("sensitivity.check.variableSets", "OTHER") + " " + Messages.get("sensitivity.check.contingency", "NHV1_NHV2_2"),
+                        "GLSK: " + Messages.get("sensitivity.check.variableSetVariables", "NHV1_NHV2_1")),
+                SensitivityAnalysisRun.problems(network, List.of(unknownSet), List.of(wrongSet), List.of(), ac));
+        assertEquals(List.of(), SensitivityAnalysisRun.problems(network, List.of(unknownSet), List.of(GLSK, new SensitivityVariableSet("OTHER", List.of())),
+                List.of("NHV1_NHV2_2"), ac));
     }
 
     @Test

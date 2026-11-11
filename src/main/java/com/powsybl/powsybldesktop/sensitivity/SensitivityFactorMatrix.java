@@ -45,4 +45,20 @@ public record SensitivityFactorMatrix(String name, SensitivityFunctionType funct
     public int factorCount() {
         return functionIds.size() * variableIds.size();
     }
+
+    public SensitivityFactorMatrix withName(String name) {
+        return new SensitivityFactorMatrix(name, functionType, functionIds, variableType, variableIds, variableSet, contingencyContext);
+    }
+
+    public SensitivityFactorMatrix withFunctions(SensitivityFunctionType functionType, List<String> functionIds) {
+        return new SensitivityFactorMatrix(name, functionType, functionIds, variableType, variableIds, variableSet, contingencyContext);
+    }
+
+    public SensitivityFactorMatrix withVariables(SensitivityVariableType variableType, List<String> variableIds, boolean variableSet) {
+        return new SensitivityFactorMatrix(name, functionType, functionIds, variableType, variableIds, variableSet, contingencyContext);
+    }
+
+    public SensitivityFactorMatrix withContingencyContext(ContingencyContext contingencyContext) {
+        return new SensitivityFactorMatrix(name, functionType, functionIds, variableType, variableIds, variableSet, contingencyContext);
+    }
 }

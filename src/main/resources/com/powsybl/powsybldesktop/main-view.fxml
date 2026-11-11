@@ -91,6 +91,11 @@
                                 <FontIcon iconLiteral="mdi2t-tune-vertical" iconSize="16" />
                             </graphic>
                         </Button>
+                        <Button fx:id="sensitivityFactorsButton" mnemonicParsing="false" onAction="#onSensitivityFactors" text="%main.toolbar.sensitivityFactors">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2m-matrix" iconSize="16" />
+                            </graphic>
+                        </Button>
                         <MenuButton mnemonicParsing="false" text="%main.toolbar.tables">
                             <graphic>
                                 <FontIcon iconLiteral="mdi2t-table-multiple" iconSize="16" />

@@ -74,9 +74,16 @@ Maven cache may contain unrelated versions.
   `OlfSensitivityFactorSupport` mirrors its rules (Open Load Flow 2.4.0, AC and DC, variable sets), and
   `OlfSensitivityFactorSupportTest` runs Open Load Flow on every kind of factor: update both on an upgrade.
   The matrices and variable sets live in `NetworkStudy.getSensitivityFactorMatrices()` /
-  `getSensitivityVariableSets()`. `MainController.onSensitivityAnalysis` runs them against the enabled contingency
-  lists, after refusing with every reason (`SensitivityAnalysisRun.problems`: unsupported kinds, unknown variable
-  sets) rather than letting Open Load Flow fail on the first one. A failed base case throws; failed contingencies
+  `getSensitivityVariableSets()`, edited by `ui/sensitivity/SensitivityFactorsController` (Sensitivity Factors
+  toolbar button): elements are picked among `SensitivityElements.candidates`, and a matrix or variable set
+  `SensitivityAnalysisRun.problems` finds fault with is marked and tells why. `SensitivityElements.isEligible`
+  mirrors Open Load Flow 2.4.0's lookups and PowSyBl's `SensitivityFactor.resolveBusId` (a bus voltage function's id
+  is a bus view bus or what `IdBasedBusRef` resolves to one); `SensitivityElementsTest` runs Open Load Flow on every
+  kind of element of three networks to check it. Unknown branch parameter and pilot point variables, merely skipped
+  by Open Load Flow, are refused too. `MainController.onSensitivityAnalysis` runs the matrices against the enabled
+  contingency lists, after refusing with every reason (`SensitivityAnalysisRun.problems`: unsupported kinds,
+  ineligible elements, unknown variable sets or contingency, invalid variable set members) rather than letting Open
+  Load Flow fail on the first one. A failed base case throws; failed contingencies
   only have a `FAILURE` state status (partial success notification).
 - The Sensitivity Analysis Results view (`ui/network/tables/SensitivityAnalysisResultsController`) shows one state at
   a time, optionally one matrix, through `SensitivityResultRows`: a state's factors as their contingency context
