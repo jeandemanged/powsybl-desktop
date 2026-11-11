@@ -432,6 +432,8 @@ public final class ApplicationParametersJson {
             violations.bool(layer.getJsonName(), () -> p.getMapShownViolations().contains(layer), v -> p.setMapViolationsShown(layer, v));
         }
         map.bool("showFlows", p::isMapShowFlows, p::setMapShowFlows);
+        Binder networkAreaDiagram = b.child("networkAreaDiagram");
+        networkAreaDiagram.bool("keepPositionsWhenCentering", p::isNadKeepPositionsWhenCentering, p::setNadKeepPositionsWhenCentering);
         Binder logs = b.child("logs");
         logs.enumeration("minLevel", GuiParameters.LogLevel.class, p::getLogsMinLevel, p::setLogsMinLevel);
         logs.bool("newestOnTop", p::isLogsNewestOnTop, p::setLogsNewestOnTop);

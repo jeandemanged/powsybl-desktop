@@ -184,7 +184,8 @@ subclass and a `Kind` entry in `EquipmentDetails`. Entry points:
 - in the SLD: a feeder click (unless the feeder leads to another voltage level, which the click keeps navigating to),
   a click on a busbar section or on a transformer drawn inside the diagram, and a right-click on any equipment
   (details, HVDC line details for a converter station, go to / show in table);
-- in the NAD: a right-click on a voltage level, branch or injection (details, single line diagrams, centering);
+- in the NAD: a click on a branch (unless drawn as a half line, which centers beyond it) or an injection, and a
+  right-click on a voltage level, branch or injection (details, single line diagrams, centering);
 - on the map, a click on a line, tie line or boundary line (a click on a substation opens its single line diagram in
   the "Diagrams" window).
 

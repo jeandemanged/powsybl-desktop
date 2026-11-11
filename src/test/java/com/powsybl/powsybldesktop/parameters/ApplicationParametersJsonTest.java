@@ -69,6 +69,7 @@ class ApplicationParametersJsonTest {
         parameters.gui().setMapHiddenBaseVoltages(Set.of("vl300to500", "vl0to30"));
         parameters.gui().setMapShownViolations(Set.of(MapViolationLayer.BASE_CASE_VOLTAGE));
         parameters.gui().setMapShowFlows(false);
+        parameters.gui().setNadKeepPositionsWhenCentering(false);
         parameters.gui().setLogsMinLevel(GuiParameters.LogLevel.WARN);
         parameters.gui().setLogsNewestOnTop(false);
         parameters.gui().setReportsMinSeverity("DETAIL");
@@ -95,6 +96,7 @@ class ApplicationParametersJsonTest {
         assertEquals(3, read.sld().getLayoutParameters().getVoltageLevelPadding().right());
         assertEquals(DesktopNadParameters.StyleChoice.NOMINAL_VOLTAGE, read.nad().getStyleChoice());
         assertEquals(42, read.nad().getAtlas2Parameters().getMaxSteps());
+        assertFalse(read.gui().isNadKeepPositionsWhenCentering());
         assertFalse(read.nad().getAtlas2Parameters().isAttractToCenterEnabled());
         assertEquals(0.25, read.nad().getOverlapPreventionParameters().getRepulsionZoneRatio());
         assertEquals(EdgeInfoEnum.CURRENT, read.nad().getLabelParameters().getEdgeInfoParameters().infoSideInternal());

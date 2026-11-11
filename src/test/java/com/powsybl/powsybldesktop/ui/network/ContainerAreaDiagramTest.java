@@ -39,10 +39,12 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The network area diagram's right-click menus (nad.js).
+ * The network area diagram's clicks, right-click menus and center ring (nad.js).
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -80,7 +82,7 @@ class ContainerAreaDiagramTest extends AbstractHeadlessApplicationTest {
     @Test
     void rightClickOnALineOffersItsVoltageLevels() throws Exception {
         DiagramMetadata metadata = showAreaDiagramOf("S2VL1");
-        String line = metadata.getEdgesMetadata().stream().filter(edge -> edge.getEquipmentId().equals("LINE_S2S3")).findFirst().orElseThrow().getSvgId();
+        String line = edgeId(metadata, "LINE_S2S3");
 
         List<String> items = rightClick("document.getElementById('" + line + "').querySelector('.nad-edge-path')");
 
@@ -92,7 +94,7 @@ class ContainerAreaDiagramTest extends AbstractHeadlessApplicationTest {
     @Test
     void centeringOnAVoltageLevelNavigatesToItsAreaDiagram() throws Exception {
         DiagramMetadata metadata = showAreaDiagramOf("S2VL1");
-        String voltageLevel = metadata.getNodesMetadata().stream().filter(node -> node.getEquipmentId().equals("S3VL1")).findFirst().orElseThrow().getSvgId();
+        String voltageLevel = nodeId(metadata, "S3VL1");
 
         List<String> items = rightClick("document.getElementById('" + voltageLevel + "')");
         assertEquals(List.of(Messages.get("detail.open.tooltip"), Messages.get("substations.diagram.area.singleLine"),
@@ -109,7 +111,93 @@ class ContainerAreaDiagramTest extends AbstractHeadlessApplicationTest {
         assertEquals(ContainerNavigationState.ContainerTab.AREA, previous.getTab());
     }
 
-    // the metadata of the shown diagram: the ids an area diagram gives its elements depend on what it draws, not on its layout
+    @Test
+    void clickingAVoltageLevelCentersTheDiagramOnIt() throws Exception {
+        DiagramMetadata metadata = showAreaDiagramOf("S2VL1");
+
+        click(nodeId(metadata, "S3VL1"));
+
+        assertCenteredOn("S3VL1");
+        // the shown center isn't clickable
+        assertFalse(diagram.isClickableEquipment(nodeId(metadata, "S2VL1")));
+    }
+
+    // S4VL1 is one step beyond the depth: its line from S3VL1 is drawn as a half line
+    @Test
+    void clickingAHalfLineCentersTheDiagramOnTheVoltageLevelItLeadsTo() throws Exception {
+        DiagramMetadata metadata = showAreaDiagramOf("S2VL1");
+
+        click(edgeId(metadata, "LINE_S3S4"));
+
+        assertCenteredOn("S4VL1");
+    }
+
+    @Test
+    void thePointerShowsAFingerOverWhatCanBeClicked() throws Exception {
+        DiagramMetadata metadata = showAreaDiagramOf("S2VL1");
+
+        assertEquals("pointer", cursorOver(nodeId(metadata, "S3VL1")));
+        assertEquals("pointer", cursorOver(edgeId(metadata, "LINE_S2S3")));
+        assertEquals("pointer", cursorOver(edgeId(metadata, "LINE_S3S4")));
+        // the shown center
+        assertEquals("", cursorOver(nodeId(metadata, "S2VL1")));
+    }
+
+    private String cursorOver(String id) throws Exception {
+        return (String) WaitForAsyncUtils.asyncFx(() -> pane.getWebView().getEngine().executeScript(
+                "document.getElementById('" + id + "').dispatchEvent(new MouseEvent('mouseover', {bubbles: true})); document.body.style.cursor")).get();
+    }
+
+    // its details, which open in a separate window, not available here
+    @Test
+    void aLineIsClickable() throws Exception {
+        DiagramMetadata metadata = showAreaDiagramOf("S2VL1");
+
+        assertTrue(diagram.isClickableEquipment(edgeId(metadata, "LINE_S2S3")));
+    }
+
+    @Test
+    void aRingMovesFromThePreviousCenterToTheNewOne() throws Exception {
+        showAreaDiagramOf("S2VL1");
+        // kept long enough to be seen here, whatever the load
+        WaitForAsyncUtils.asyncFx(() -> pane.getWebView().getEngine().executeScript("HIGHLIGHT_MS = 600000")).get();
+
+        interact(() -> diagram.setContainer(network.getVoltageLevel("S3VL1")));
+
+        String newCenter = "document.getElementById('" + nodeId(metadataOf("S3VL1"), "S3VL1") + "')";
+        WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() -> pane.getWebView().getEngine().executeScript("""
+                (function () {
+                    var rings = document.querySelectorAll('.nad-center-ring');
+                    var node = %s;
+                    if (rings.length !== 1 || !node) {
+                        return false;
+                    }
+                    var ring = rings[0].getBoundingClientRect();
+                    var circle = node.getBoundingClientRect();
+                    return Math.abs(ring.left + ring.width / 2 - circle.left - circle.width / 2) < 1
+                        && Math.abs(ring.top + ring.height / 2 - circle.top - circle.height / 2) < 1;
+                })()""".formatted(newCenter))).get().equals(Boolean.TRUE));
+    }
+
+    private void click(String id) {
+        interact(() -> pane.getWebView().getEngine().executeScript(
+                "document.getElementById('" + id + "').dispatchEvent(new MouseEvent('click', {bubbles: true}))"));
+    }
+
+    private void assertCenteredOn(String voltageLevelId) {
+        ContainerNavigationState state = (ContainerNavigationState) mainModel.getNavigationHistory().currentEventProperty().get().state();
+        assertSame(network.getVoltageLevel(voltageLevelId), state.getContainer());
+        assertEquals(ContainerNavigationState.ContainerTab.AREA, state.getTab());
+    }
+
+    private static String nodeId(DiagramMetadata metadata, String equipmentId) {
+        return metadata.getNodesMetadata().stream().filter(node -> node.getEquipmentId().equals(equipmentId)).findFirst().orElseThrow().getSvgId();
+    }
+
+    private static String edgeId(DiagramMetadata metadata, String equipmentId) {
+        return metadata.getEdgesMetadata().stream().filter(edge -> edge.getEquipmentId().equals(equipmentId)).findFirst().orElseThrow().getSvgId();
+    }
+
     private DiagramMetadata showAreaDiagramOf(String voltageLevelId) throws Exception {
         // the page (nad.js) loaded first: a diagram injected meanwhile would land in the page it replaces
         WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() ->
@@ -120,6 +208,12 @@ class ContainerAreaDiagramTest extends AbstractHeadlessApplicationTest {
         });
         WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() ->
                 pane.getWebView().getEngine().executeScript("document.querySelector('.nad-vl-nodes') != null")).get().equals(Boolean.TRUE));
+        return metadataOf(voltageLevelId);
+    }
+
+    // of the diagram centered on voltageLevelId: the ids an area diagram gives its elements depend on what it draws, not
+    // on its layout
+    private DiagramMetadata metadataOf(String voltageLevelId) throws IOException {
         return NetworkAreaDiagramRenderer.render(network.getVoltageLevel(voltageLevelId), mainModel.getDiagramAreaDepth(),
                 ApplicationParametersJson.copy(mainModel.getParametersModel().nadParametersProperty().getValue())).metadata();
     }

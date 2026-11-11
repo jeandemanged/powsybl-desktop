@@ -1,7 +1,7 @@
 # User Interface
 
-The **User Interface** tab sets the application itself: how numbers are displayed, what the map shows, how logs and
-reports are filtered, and a few behaviors.
+The **User Interface** tab sets the application itself: how numbers are displayed, what the map shows, how network
+area diagrams behave, how logs and reports are filtered, and a few behaviors.
 
 ![The User Interface tab](../../_generated/images/parameters-user-interface.png)
 
@@ -25,6 +25,12 @@ The defaults of the [Map](../diagrams/map.md) boxes, kept in sync with them.
 | **Contingency flow violations** | Check box | Show the flow violations after contingencies. |
 | **Contingency voltage violations** | Check box | Show the voltage violations after contingencies. |
 | **Show flows** | Check box | Draw the flow arrows on lines. |
+
+## Network Area Diagram
+
+| Field | Editor | Description |
+|---|---|---|
+| **Keep positions when centering** | Check box | When a [network area diagram](../diagrams/substations.md#use-the-network-area-diagram) is centered on another voltage level, the voltage levels shown before and after stay where they were; only the others are laid out. Force layouts only. |
 
 ## Logs
 

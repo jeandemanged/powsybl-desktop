@@ -73,6 +73,7 @@ public class GuiParameters {
     private String reportsMinSeverity = REPORT_SEVERITIES.getFirst();
     private boolean openDetailsAfterCreation = true;
     private boolean confirmExit = true;
+    private boolean nadKeepPositionsWhenCentering = true;
     private final Map<Quantity, Integer> decimals = new EnumMap<>(Quantity.class);
 
     public GuiParameters() {
@@ -171,6 +172,18 @@ public class GuiParameters {
 
     public void setConfirmExit(boolean confirmExit) {
         this.confirmExit = confirmExit;
+    }
+
+    /**
+     * Whether a network area diagram centered on another voltage level keeps the voltage levels shown before and after
+     * where they were, laying out only the others (force layouts).
+     */
+    public boolean isNadKeepPositionsWhenCentering() {
+        return nadKeepPositionsWhenCentering;
+    }
+
+    public void setNadKeepPositionsWhenCentering(boolean nadKeepPositionsWhenCentering) {
+        this.nadKeepPositionsWhenCentering = nadKeepPositionsWhenCentering;
     }
 
     public int getDecimals(Quantity quantity) {

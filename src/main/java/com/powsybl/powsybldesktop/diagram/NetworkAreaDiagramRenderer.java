@@ -15,10 +15,13 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.nad.NadParameters;
 import com.powsybl.nad.NetworkAreaDiagram;
 import com.powsybl.nad.build.iidm.VoltageLevelFilter;
+import com.powsybl.nad.layout.FixedLayoutFactory;
 import com.powsybl.nad.layout.GeographicalLayoutFactory;
 import com.powsybl.nad.layout.LayoutFactory;
 import com.powsybl.nad.svg.metadata.DiagramMetadata;
 import com.powsybl.nad.svg.metadata.EdgeInfoMetadata;
+import com.powsybl.nad.svg.metadata.EdgeMetadata;
+import com.powsybl.nad.svg.metadata.NodeMetadata;
 import com.powsybl.powsybldesktop.parameters.DesktopNadParameters;
 
 import java.io.IOException;
@@ -29,6 +32,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Area-diagram rendering, extracted out of {@link SubstationsController} so it can be unit-tested
@@ -45,11 +50,21 @@ public final class NetworkAreaDiagramRenderer {
      * @param equipmentIds the equipment drawn by each SVG element that has one: voltage level circles, their buses and
      *                     labels give the voltage level (a boundary node's, its boundary line), branches, injections and
      *                     their values (arrows and labels, drawn in a group of their own) the branch or injection
+     * @param hiddenEndIds the voltage level outside the diagram at the end of each branch drawn as a half line, by the
+     *                     SVG ids of the branch and its values
      */
-    public record DiagramRender(String svg, DiagramMetadata metadata, Map<String, String> equipmentIds) {
+    public record DiagramRender(String svg, DiagramMetadata metadata, Map<String, String> equipmentIds, Map<String, String> hiddenEndIds) {
     }
 
     public static DiagramRender render(Container<?> container, int depth, NadParameters nadParameters) throws IOException {
+        return render(container, depth, nadParameters, null);
+    }
+
+    /**
+     * @param pinned a previous render, whose voltage levels (and their labels) this one keeps where they were, laying
+     *               out the others around them; ignored by the geographical layout, whose positions don't move anyway
+     */
+    public static DiagramRender render(Container<?> container, int depth, NadParameters nadParameters, DiagramMetadata pinned) throws IOException {
         Network network = container.getNetwork();
         List<String> voltageLevelIds = voltageLevelIdsOf(container);
         Predicate<VoltageLevel> filter = VoltageLevelFilter.createVoltageLevelsDepthFilter(network, voltageLevelIds, depth);
@@ -61,6 +76,8 @@ public final class NetworkAreaDiagramRenderer {
         if (nadParameters instanceof DesktopNadParameters desktopParameters
                 && desktopParameters.getLayoutAlgorithm() == DesktopNadParameters.LayoutAlgorithm.GEOGRAPHICAL) {
             nadParameters.setLayoutFactory(new GeographicalLayoutFactory(network));
+        } else if (pinned != null) {
+            nadParameters.setLayoutFactory(new FixedLayoutFactory(pinned.getFixedPositions(), pinned.getFixedTextPositions(), layoutFactory));
         }
         try (StringWriter svgWriter = new StringWriter();
              StringWriter metadataWriter = new StringWriter()) {
@@ -68,7 +85,7 @@ public final class NetworkAreaDiagramRenderer {
             svgWriter.flush();
             metadataWriter.flush();
             DiagramMetadata metadata = DiagramMetadata.parseJson(new StringReader(metadataWriter.toString()));
-            return new DiagramRender(svgWriter.toString(), metadata, equipmentIds(metadata));
+            return new DiagramRender(svgWriter.toString(), metadata, equipmentIds(metadata), hiddenEndIds(metadata));
         } finally {
             nadParameters.setLayoutFactory(layoutFactory);
         }
@@ -94,13 +111,29 @@ public final class NetworkAreaDiagramRenderer {
         return ids;
     }
 
+    private static Map<String, String> hiddenEndIds(DiagramMetadata metadata) {
+        Map<String, String> voltageLevels = metadata.getNodesMetadata().stream()
+                .collect(Collectors.toMap(NodeMetadata::getSvgId, NodeMetadata::getEquipmentId));
+        Map<String, String> ids = new HashMap<>();
+        for (EdgeMetadata edge : metadata.getEdgesMetadata()) {
+            String hiddenNode = edge.isInvisibleSide1() ? edge.getNode1SvgId() : edge.isInvisibleSide2() ? edge.getNode2SvgId() : null;
+            if (hiddenNode != null) {
+                String voltageLevel = voltageLevels.get(hiddenNode);
+                Stream.concat(Stream.of(edge.getSvgId()), Stream.of(edge.getEdgeInfo1(), edge.getEdgeInfo2(), edge.getEdgeInfoMiddle())
+                                .filter(Objects::nonNull).map(EdgeInfoMetadata::getSvgId))
+                        .forEach(id -> ids.put(id, voltageLevel));
+            }
+        }
+        return ids;
+    }
+
     private static void putInfo(Map<String, String> ids, EdgeInfoMetadata info, String equipmentId) {
         if (info != null) {
             ids.put(info.getSvgId(), equipmentId);
         }
     }
 
-    private static List<String> voltageLevelIdsOf(Container<?> container) {
+    public static List<String> voltageLevelIdsOf(Container<?> container) {
         if (container instanceof VoltageLevel voltageLevel) {
             return List.of(voltageLevel.getId());
         }

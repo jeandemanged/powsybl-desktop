@@ -30,8 +30,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 /**
- * Parameters-view tab form for {@link GuiParameters}: the decimal places of every displayed quantity, and the
- * settings the map, logs and reports views also edit from their own toolbars - see {@link AbstractDiagramParametersController} for the shared shape.
+ * Parameters-view tab form for {@link GuiParameters}: the decimal places of every displayed quantity, the settings the
+ * map, logs and reports views also edit from their own toolbars, and the application's own diagram behaviors - see {@link AbstractDiagramParametersController} for the shared shape.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -39,6 +39,7 @@ public class GuiParametersController extends AbstractDiagramParametersController
 
     private static final String CAT_GENERAL = "general";
     private static final String CAT_MAP = "map";
+    private static final String CAT_NETWORK_AREA_DIAGRAM = "networkAreaDiagram";
     private static final String CAT_LOGS = "logs";
     private static final String CAT_REPORTS = "reports";
     private static final String CAT_DECIMALS = "decimals";
@@ -51,6 +52,7 @@ public class GuiParametersController extends AbstractDiagramParametersController
         Map<String, String> titles = new LinkedHashMap<>();
         titles.put(CAT_DECIMALS, Messages.get("parameters.gui.category.decimals"));
         titles.put(CAT_MAP, Messages.get("main.toolbar.map"));
+        titles.put(CAT_NETWORK_AREA_DIAGRAM, Messages.get("desktop.common.networkAreaDiagram"));
         titles.put(CAT_LOGS, Messages.get("main.toolbar.logs"));
         titles.put(CAT_REPORTS, Messages.get("main.toolbar.reports"));
         titles.put(CAT_NETWORK_EDITING, Messages.get("parameters.gui.category.networkEditing"));
@@ -80,6 +82,8 @@ public class GuiParametersController extends AbstractDiagramParametersController
                     p -> p.getMapShownViolations().contains(layer), (p, shown) -> p.setMapViolationsShown(layer, shown));
         }
         addBooleanField(CAT_MAP, Messages.get("map.showFlows"), null, GuiParameters::isMapShowFlows, GuiParameters::setMapShowFlows);
+        addBooleanField(CAT_NETWORK_AREA_DIAGRAM, label("keepPositionsWhenCentering"), Messages.get("parameters.gui.param.keepPositionsWhenCentering.tooltip"),
+                GuiParameters::isNadKeepPositionsWhenCentering, GuiParameters::setNadKeepPositionsWhenCentering);
         addChoiceField(CAT_LOGS, label("logsMinLevel"), List.of(GuiParameters.LogLevel.values()),
                 level -> Messages.get("logs.filter." + level.name().toLowerCase(Locale.ROOT)),
                 GuiParameters::getLogsMinLevel, GuiParameters::setLogsMinLevel);

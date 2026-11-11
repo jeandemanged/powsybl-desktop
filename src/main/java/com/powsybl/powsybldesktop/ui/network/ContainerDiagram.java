@@ -34,6 +34,8 @@ import com.powsybl.iidm.network.TopologyKind;
 import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.VscConverterStation;
+import com.powsybl.nad.svg.metadata.DiagramMetadata;
+import com.powsybl.nad.svg.metadata.NodeMetadata;
 import com.powsybl.powsybldesktop.core.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.diagram.NetworkAreaDiagramRenderer;
@@ -91,6 +93,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -101,8 +104,11 @@ import java.util.stream.Stream;
  * tabs and by separate diagram windows. A feeder click on an equipment with a detail view (see {@link EquipmentDetails})
  * opens it instead, unless the feeder leads to another voltage level (lines, transformers...); a click on a transformer
  * drawn inside the diagram opens its detail view; a right-click on any equipment offers its detail view and where the
- * click leads. In the network area diagram, a right-click on a voltage level, branch or injection offers its detail
- * view, its single line diagram or those of the voltage levels it connects, and centering the area diagram on them.
+ * click leads. In the network area diagram, a click on a voltage level centers the diagram on it, on a branch drawn as a
+ * half line on the voltage level outside the diagram at its end, on other equipment opens its detail view; a
+ * right-click on a voltage level, branch or injection offers its detail view, its single line diagram or those of the
+ * voltage levels it connects, and centering the area diagram on them. Once centered on another container, the area
+ * diagram moves a ring from the previous center to the new one (see nad.js).
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -125,8 +131,8 @@ public final class ContainerDiagram extends AbstractDisposableController {
                 </html>
             """;
 
-    // metadata for a single line diagram, areaEquipmentIds for an area diagram (see NetworkAreaDiagramRenderer.DiagramRender)
-    private record Render(String svg, GraphMetadata metadata, Map<String, String> areaEquipmentIds) {
+    // metadata for a single line diagram, area for an area diagram
+    private record Render(String svg, GraphMetadata metadata, NetworkAreaDiagramRenderer.DiagramRender area) {
     }
 
     private record Highlight(Container<?> container, Predicate<GraphMetadata.NodeMetadata> nodes) {
@@ -148,8 +154,13 @@ public final class ContainerDiagram extends AbstractDisposableController {
     private boolean stale = true;
     // of the displayed single line diagram, to map an SVG node id back to equipment (see the sld.js callbacks)
     private GraphMetadata sldMetadata;
-    // of the displayed area diagram, the equipment drawn by each SVG element drawing one (see the nad.js callbacks)
-    private Map<String, String> nadEquipmentIds = Map.of();
+    // the displayed area diagram, to map an SVG element id back to equipment (see the nad.js callbacks)
+    private NetworkAreaDiagramRenderer.DiagramRender nadRender;
+    // the area diagram shown when the container last changed: the next render keeps its voltage levels in place (see
+    // GuiParameters.isNadKeepPositionsWhenCentering), any other change of what is shown lays it out afresh
+    private DiagramMetadata pinnedLayout;
+    // the container shown before the last change, the area diagram's next render moving from its center to the new one
+    private Container<?> previousCenter;
     // last area diagram depth actually rendered with; the slider fires continuously while dragging
     private int depth;
     private Map<GuiParameters.Quantity, Integer> decimals;
@@ -161,7 +172,7 @@ public final class ContainerDiagram extends AbstractDisposableController {
         @Override
         protected Task<Render> createTask() {
             Container<?> rendered = container;
-            return kind == Kind.SINGLE_LINE ? singleLineTask(rendered) : areaTask(rendered, depth);
+            return kind == Kind.SINGLE_LINE ? singleLineTask(rendered) : areaTask(rendered, depth, pinnedLayout);
         }
     };
 
@@ -180,8 +191,14 @@ public final class ContainerDiagram extends AbstractDisposableController {
         pane.getToolBar().getItems().addAll(new Separator(Orientation.VERTICAL), detailsButton);
         renderService.setOnSucceeded(_ -> {
             sldMetadata = renderService.getValue().metadata();
-            nadEquipmentIds = renderService.getValue().areaEquipmentIds();
+            nadRender = renderService.getValue().area();
             pane.showDiagram(renderService.getValue().svg());
+            pinnedLayout = null;
+            Container<?> from = previousCenter;
+            previousCenter = null;
+            if (nadRender != null && from != null) {
+                animateCenter(from);
+            }
             Highlight highlight = pendingHighlight;
             pendingHighlight = null;
             if (highlight != null && highlight.container() == container) {
@@ -275,19 +292,20 @@ public final class ContainerDiagram extends AbstractDisposableController {
             @Override
             protected Render compute() throws IOException {
                 SubstationDiagramRenderer.DiagramRender render = SubstationDiagramRenderer.render(rendered, parameters);
-                return new Render(render.svg(), render.metadata(), Map.of());
+                return new Render(render.svg(), render.metadata(), null);
             }
         };
     }
 
-    private Task<Render> areaTask(Container<?> rendered, int renderedDepth) {
+    private Task<Render> areaTask(Container<?> rendered, int renderedDepth, DiagramMetadata pinned) {
         DesktopNadParameters parameters = ApplicationParametersJson.copy(mainModel.getParametersModel().nadParametersProperty().getValue());
         applyDecimals(parameters.getSvgParameters(), mainModel.getParametersModel().getGuiParameters());
+        DiagramMetadata kept = mainModel.getParametersModel().getGuiParameters().isNadKeepPositionsWhenCentering() ? pinned : null;
         return new AbstractNetworkTask<>(mainModel, rendered.getNetwork()) {
             @Override
             protected Render compute() throws IOException {
-                NetworkAreaDiagramRenderer.DiagramRender render = NetworkAreaDiagramRenderer.render(rendered, renderedDepth, parameters);
-                return new Render(render.svg(), null, render.equipmentIds());
+                NetworkAreaDiagramRenderer.DiagramRender render = NetworkAreaDiagramRenderer.render(rendered, renderedDepth, parameters, kept);
+                return new Render(render.svg(), null, render);
             }
         };
     }
@@ -339,9 +357,16 @@ public final class ContainerDiagram extends AbstractDisposableController {
 
     public void setContainer(Container<?> container) {
         if (container != this.container) {
+            if (kind == Kind.AREA && this.container != null && container != null) {
+                previousCenter = this.container;
+                pinnedLayout = nadRender == null ? null : nadRender.metadata();
+            } else {
+                previousCenter = null;
+                pinnedLayout = null;
+            }
             this.container = container;
             detailsButton.setDisable(!EquipmentDetails.supports(container));
-            refresh();
+            invalidate();
         }
     }
 
@@ -356,6 +381,11 @@ public final class ContainerDiagram extends AbstractDisposableController {
     }
 
     private void refresh() {
+        pinnedLayout = null;
+        invalidate();
+    }
+
+    private void invalidate() {
         stale = true;
         if (showing) {
             render();
@@ -369,7 +399,7 @@ public final class ContainerDiagram extends AbstractDisposableController {
         } else {
             renderService.cancel();
             sldMetadata = null;
-            nadEquipmentIds = Map.of();
+            nadRender = null;
             pane.showNoSelection();
         }
     }
@@ -425,6 +455,29 @@ public final class ContainerDiagram extends AbstractDisposableController {
         }
     }
 
+    // on the classpath, JSObject resolves to JDK 25's jdk.jsobject, deprecated for removal, rather than JavaFX's own copy
+    @SuppressWarnings("removal")
+    private void animateCenter(Container<?> from) {
+        // the page not loaded yet, the diagram is only injected once it is (see DiagramPaneController.showDiagram)
+        if (pane.getWebView().getEngine().getLoadWorker().getState() != Worker.State.SUCCEEDED) {
+            return;
+        }
+        Map<String, String> drawnVoltageLevels = nadRender.metadata().getNodesMetadata().stream()
+                .filter(node -> !node.isInvisible())
+                .collect(Collectors.toMap(NodeMetadata::getEquipmentId, NodeMetadata::getSvgId, (first, _) -> first));
+        List<String> to = NetworkAreaDiagramRenderer.voltageLevelIdsOf(container).stream().map(drawnVoltageLevels::get).filter(Objects::nonNull).toList();
+        if (to.isEmpty()) {
+            return;
+        }
+        // null when the previous center isn't drawn: the new one is just outlined
+        String fromId = NetworkAreaDiagramRenderer.voltageLevelIdsOf(from).stream().map(drawnVoltageLevels::get).filter(Objects::nonNull)
+                .findFirst().orElse(null);
+        List<Object> arguments = new ArrayList<>();
+        arguments.add(fromId);
+        arguments.addAll(to);
+        ((JSObject) pane.getWebView().getEngine().executeScript("window")).call("animateCenter", arguments.toArray());
+    }
+
     @SuppressWarnings("unused") // used by JS
     public void onFeederTopBottomClick(String id) {
         GraphMetadata.NodeMetadata node = sldMetadata == null ? null : sldMetadata.getNodeMetadata(id);
@@ -441,20 +494,52 @@ public final class ContainerDiagram extends AbstractDisposableController {
 
     /**
      * Whether {@code id} is the node of a busbar section, or of a transformer drawn inside the diagram (not as a
-     * feeder, see onFeederTopBottomClick), JS otherwise trying the element's parents.
+     * feeder, see onFeederTopBottomClick), JS otherwise trying the element's parents. In an area diagram, whether a
+     * click on {@code id} does something (see areaClickAction).
      */
     @SuppressWarnings("unused") // used by JS
     public boolean isClickableEquipment(String id) {
+        if (kind == Kind.AREA) {
+            return areaClickAction(id) != null;
+        }
         Identifiable<?> equipment = equipment(id);
         return equipment instanceof BusbarSection || equipment instanceof TwoWindingsTransformer || equipment instanceof ThreeWindingsTransformer;
     }
 
     /**
-     * Opens the detail view of a {@link #isClickableEquipment} node's equipment.
+     * Opens the detail view of a {@link #isClickableEquipment} node's equipment; in an area diagram, runs the click's
+     * areaClickAction.
      */
     @SuppressWarnings("unused") // used by JS
     public void onEquipmentClick(String id) {
+        if (kind == Kind.AREA) {
+            Runnable action = areaClickAction(id);
+            if (action != null) {
+                action.run();
+            }
+            return;
+        }
         EquipmentDetails.open(sceneModel, equipment(id));
+    }
+
+    // what a click on an area diagram's element does, null if nothing: centering on a voltage level other than the
+    // shown one, or on the voltage level outside the diagram a half line leads to, else opening the equipment's details
+    private Runnable areaClickAction(String id) {
+        String hiddenEnd = nadRender == null || id == null ? null : nadRender.hiddenEndIds().get(id);
+        if (hiddenEnd != null && container.getNetwork().getVoltageLevel(hiddenEnd) instanceof VoltageLevel voltageLevel) {
+            return () -> center(voltageLevel);
+        }
+        return switch (areaEquipment(id)) {
+            case VoltageLevel voltageLevel when voltageLevel != container -> () -> center(voltageLevel);
+            case VoltageLevel _ -> null;
+            case Identifiable<?> equipment when EquipmentDetails.supports(equipment) -> () -> EquipmentDetails.open(sceneModel, equipment);
+            case null, default -> null;
+        };
+    }
+
+    private Identifiable<?> areaEquipment(String id) {
+        String equipmentId = nadRender == null || id == null ? null : nadRender.equipmentIds().get(id);
+        return equipmentId == null ? null : container.getNetwork().getIdentifiable(equipmentId);
     }
 
     /**
@@ -511,8 +596,7 @@ public final class ContainerDiagram extends AbstractDisposableController {
     // other equipment: its row in the equipment tables, then for each voltage level it connects, its single line
     // diagram and centering this diagram on it
     private List<MenuItem> areaContextMenuItems(String id) {
-        String equipmentId = nadEquipmentIds.get(id);
-        Identifiable<?> equipment = equipmentId == null ? null : container.getNetwork().getIdentifiable(equipmentId);
+        Identifiable<?> equipment = areaEquipment(id);
         if (equipment == null) {
             return List.of();
         }

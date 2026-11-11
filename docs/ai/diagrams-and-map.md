@@ -12,7 +12,8 @@ when one looks wrong, snapshot it rather than reason from the source (see
   `ContainerDiagram`, `// called from map.js` in `MapController`). Keep the scripts and these method names in sync:
   - `ui/network/sld.js` → `…/ui/network/ContainerDiagram.java`: `isClickableEquipment`, `onEquipmentClick`,
     `onEquipmentContextMenu`, `onBackgroundContextMenu`, `onSwitchClick`, `onFeederTopBottomClick`;
-  - `ui/network/nad.js` → the same `ContainerDiagram` (area kind): `onEquipmentContextMenu`, `onBackgroundContextMenu`;
+  - `ui/network/nad.js` → the same `ContainerDiagram` (area kind, each callback branching on it): `isClickableEquipment`,
+    `onEquipmentClick`, `onEquipmentContextMenu`, `onBackgroundContextMenu`;
   - `ui/map/map.js` → `…/ui/map/MapController.java`: `requestTile`, `cancelTile`, `onTileLoad`, `hitTest`,
     `onMapClick`, `onMapContextMenu`, `onViewChanged`, `onPlace`, `onEditChanged`, `onEditContextMenu`, `openLink`.
 - Java → JS is `webEngine.executeScript(...)` calling the scripts' global functions.
@@ -39,6 +40,20 @@ when one looks wrong, snapshot it rather than reason from the source (see
   label's id. Edges get a wider transparent copy of each `nad-edge-path` to catch the pointer, like busbars in
   `sld.js`. Centering on a voltage level navigates the main window (recording the current area diagram first, so Back
   returns to it) or, in a separate window, retargets that diagram, as following a feeder does in the SLD.
+- NAD clicks (`ContainerDiagram.areaClickAction`, also deciding the pointer cursor like `sld.js`'s `clickAction`): a
+  voltage level other than the shown one centers on it; a branch drawn as a half line (`DiagramRender.hiddenEndIds`,
+  from the edge metadata's invisible side) centers on the voltage level beyond the depth it leads to, which wins over
+  its details; other equipment with a detail view opens it.
+- Whenever the NAD's container changes (clicks, menus, navigation, Back), the next render keeps the previous diagram's
+  voltage levels and labels in place (`FixedLayoutFactory` around the force layout, positions keyed by equipment id,
+  those not drawn any more ignored) when `GuiParameters.isNadKeepPositionsWhenCentering` (default on: an application
+  behavior, not a PowSyBl NAD parameter, so it lives with the GUI parameters, under `gui.networkAreaDiagram`); any other
+  re-render (depth, parameters, network update) lays it out afresh, so pins don't accumulate. The geographical layout
+  ignores pins. That render then calls `nad.js`'s `animateCenter`: a ring travels from the previous center's voltage
+  level (if drawn, else none) to the new one's, scrolling the page along (a no-op when fitted), then outlines the new
+  center (each voltage level of a substation) for `HIGHLIGHT_MS`, fading like the SLD's highlight. The rings are HTML
+  divs in `svgContainer`, in page coordinates, so the next injected diagram removes them; the `MutationObserver`
+  widening edges only reacts to an injected `svg`, not to them.
 - `ContainerDiagram.highlight(container, equipment)` outlines equipment in green for 4 s, fading out over the last
   one: right away if that container's diagram is shown and rendered, else at its next render (any render drops a
   pending highlight). Used for the substations view's search matches, and when following a feeder to its other end's

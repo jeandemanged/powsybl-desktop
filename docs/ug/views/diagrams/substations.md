@@ -78,6 +78,14 @@ the network. Their look is set in the **Single Line Diagram** and **Network Area
 
 - The network area diagram shows the voltage levels of the selected container and their neighbours.
 - Set the **Depth** slider (1 to 6): how many steps of neighbouring voltage levels are included.
+- Click a voltage level to center the diagram on it. Click a line drawn only halfway, leading to a voltage level
+  beyond the depth, to center the diagram on that voltage level. Click another line, a transformer, an HVDC line or an
+  injection to open its [Equipment details](../equipment/details/index.md). The pointer turns into a hand over what
+  can be clicked.
+- Once the diagram is centered on another voltage level, a green ring moves from the previous center to the new one,
+  the view scrolling along when zoomed in, and outlines it for a few seconds. With the force layouts, the voltage
+  levels shown before and after stay where they were, unless **Keep positions when centering** is unticked in the
+  [User Interface](../parameters/user_interface.md) parameters.
 - Right-click a voltage level (its circle or its label) for **Details**, **Open single line diagram**, **Center the
   diagram on** it and, in the main window, **Open in new window**, then what can be created in it and its removal.
 - Right-click a line, transformer, HVDC line or, when drawn, an injection (or its values) for **Details**, **Show in
