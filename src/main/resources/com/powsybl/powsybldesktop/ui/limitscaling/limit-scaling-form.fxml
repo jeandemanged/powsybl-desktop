@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ChoiceBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox spacing="8" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.powsybl.powsybldesktop.ui.limitscaling.LimitScalingFormController">
+    <padding>
+        <Insets bottom="6.0" left="6.0" right="6.0" top="6.0"/>
+    </padding>
+    <children>
+        <Label fx:id="olfLabel" styleClass="alert-label" wrapText="true"/>
+        <HBox alignment="CENTER_LEFT" spacing="8">
+            <children>
+                <Label text="%limitScalings.column.limitType"/>
+                <ChoiceBox fx:id="limitTypeChoiceBox"/>
+                <Label text="%limitScalings.column.value"/>
+                <TextField fx:id="valueField" prefColumnCount="6"/>
+                <CheckBox fx:id="monitoringOnlyCheckBox" mnemonicParsing="false" text="%limitScalings.column.monitoringOnly">
+                    <tooltip>
+                        <Tooltip text="%limitScalings.monitoringOnly.tooltip" wrapText="true" maxWidth="400"/>
+                    </tooltip>
+                </CheckBox>
+            </children>
+        </HBox>
+        <HBox alignment="CENTER_LEFT" spacing="8">
+            <children>
+                <Label text="%limitScalings.column.context"/>
+                <ChoiceBox fx:id="contextChoiceBox"/>
+                <ComboBox fx:id="contingencyComboBox" editable="true" prefWidth="250"/>
+            </children>
+        </HBox>
+        <Label styleClass="section-title" text="%limitScalings.column.equipment"/>
+        <Label text="%limitScalings.criteria.hint" wrapText="true"/>
+        <HBox spacing="4">
+            <children>
+                <MenuButton fx:id="addCriterionMenuButton" mnemonicParsing="false" text="%desktop.common.action.add">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2p-plus" iconSize="14"/>
+                    </graphic>
+                </MenuButton>
+                <Button fx:id="removeCriterionButton" mnemonicParsing="false" onAction="#onRemoveCriterion">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2m-minus" iconSize="14"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%desktop.common.action.remove"/>
+                    </tooltip>
+                </Button>
+            </children>
+        </HBox>
+        <ListView fx:id="criteriaListView" prefHeight="90"/>
+        <VBox fx:id="criterionEditor" spacing="8"/>
+        <Label styleClass="section-title" text="%limitScalings.column.durations"/>
+        <CheckBox fx:id="allDurationsCheckBox" mnemonicParsing="false" text="%limitScalings.durations.all"/>
+        <VBox fx:id="durationsBox" spacing="6">
+            <children>
+                <CheckBox fx:id="permanentCheckBox" mnemonicParsing="false" text="%limitScalings.durations.permanent"/>
+                <HBox alignment="CENTER_LEFT" spacing="8">
+                    <children>
+                        <Label text="%limitScalings.durations.temporaryLimits"/>
+                        <ChoiceBox fx:id="temporaryChoiceBox"/>
+                        <TextField fx:id="durationField" prefColumnCount="6" promptText="s"/>
+                    </children>
+                </HBox>
+                <HBox fx:id="durationIntervalBox" alignment="CENTER_LEFT" spacing="4">
+                    <children>
+                        <Label text="%limitScalings.durations.lowBound"/>
+                        <TextField fx:id="durationLowField" prefColumnCount="6"/>
+                        <CheckBox fx:id="durationLowClosedCheckBox" mnemonicParsing="false" text="%contingencies.criterion.voltage.inclusive"/>
+                        <Label text="%limitScalings.durations.highBound"/>
+                        <TextField fx:id="durationHighField" prefColumnCount="6"/>
+                        <CheckBox fx:id="durationHighClosedCheckBox" mnemonicParsing="false" text="%contingencies.criterion.voltage.inclusive"/>
+                    </children>
+                </HBox>
+            </children>
+        </VBox>
+        <Label styleClass="section-title" text="%limitScalings.column.limitsGroups"/>
+        <HBox fx:id="limitsGroupsBox" alignment="CENTER_LEFT" spacing="8"/>
+    </children>
+</VBox>

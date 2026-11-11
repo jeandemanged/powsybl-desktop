@@ -1,0 +1,221 @@
+/**
+ * Copyright (c) 2026, Artelys (https://www.artelys.com)
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * SPDX-License-Identifier: MPL-2.0
+ */
+package com.powsybl.powsybldesktop.ui.network;
+
+import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
+import com.powsybl.iidm.network.Network;
+import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.ui.diagram.DiagramPaneController;
+import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
+import com.powsybl.powsybldesktop.ui.window.SceneModel;
+import com.powsybl.powsybldesktop.utils.Messages;
+import javafx.event.Event;
+import javafx.fxml.FXMLLoader;
+import javafx.geometry.Point2D;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
+import javafx.scene.input.ContextMenuEvent;
+import javafx.stage.Stage;
+import javafx.stage.Window;
+import netscape.javascript.JSObject;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.testfx.util.WaitForAsyncUtils;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
+ */
+class ContainerDiagramTest extends AbstractHeadlessApplicationTest {
+
+    // generous: the WebView loads and renders slowly while the suite runs a test JVM per core
+    private static final long TIMEOUT_SECONDS = 60;
+
+    private final Network network = IeeeCdfNetworkFactory.create14();
+    private DiagramPaneController pane;
+    private ContainerDiagram diagram;
+
+    @Override
+    public void start(Stage stage) throws IOException {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/powsybl/powsybldesktop/ui/diagram/diagram-pane.fxml"), Messages.bundle());
+        Parent root = loader.load();
+        pane = loader.getController();
+        MainModel mainModel = new MainModel();
+        mainModel.addNetwork(network);
+        mainModel.setNetwork(network);
+        diagram = new ContainerDiagram(ContainerDiagram.Kind.SINGLE_LINE, pane, SceneModel.main(mainModel));
+        stage.setScene(new Scene(root, 900, 700));
+        stage.show();
+    }
+
+    @AfterEach
+    void tearDown() {
+        interact(() -> {
+            Window.getWindows().stream().filter(ContextMenu.class::isInstance).toList().forEach(Window::hide);
+            diagram.dispose();
+        });
+    }
+
+    // the WebView, its own context menu disabled, doesn't dispatch contextmenu events to the page: ContainerDiagram
+    // handles the JavaFX event and asks sld.js which equipment is under the pointer
+    // on the classpath, JSObject resolves to JDK 25's jdk.jsobject, deprecated for removal, rather than JavaFX's own copy
+    @SuppressWarnings("removal")
+    @Test
+    void rightClickOnAGeneratorOffersItsDetails() throws TimeoutException {
+        // the single line diagram's page (sld.js) loaded first: a diagram injected meanwhile would land in the page it replaces
+        WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() ->
+                pane.getWebView().getEngine().executeScript("typeof equipmentContextMenuAt === 'function'")).get().equals(Boolean.TRUE));
+        interact(() -> {
+            diagram.setShowing(true);
+            diagram.setContainer(network.getVoltageLevel("VL1"));
+        });
+        String generatorShape = "document.querySelector('.sld-generator path, .sld-generator circle')";
+        WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() ->
+                pane.getWebView().getEngine().executeScript(generatorShape + " != null")).get().equals(Boolean.TRUE));
+
+        interact(() -> {
+            JSObject rect = (JSObject) pane.getWebView().getEngine().executeScript(generatorShape + ".getBoundingClientRect()");
+            double zoom = pane.getWebView().getZoom();
+            double x = (number(rect, "left") + number(rect, "width") / 2) * zoom;
+            double y = (number(rect, "top") + number(rect, "height") / 2) * zoom;
+            // the event's coordinates are the scene's
+            Point2D scene = pane.getWebView().localToScene(x, y);
+            Point2D screen = pane.getWebView().localToScreen(x, y);
+            Event.fireEvent(pane.getWebView(), new ContextMenuEvent(ContextMenuEvent.CONTEXT_MENU_REQUESTED, scene.getX(), scene.getY(),
+                    screen.getX(), screen.getY(), false, null));
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        ContextMenu menu = Window.getWindows().stream()
+                .filter(window -> window instanceof ContextMenu && window.isShowing())
+                .map(ContextMenu.class::cast)
+                .findFirst().orElseThrow(() -> new AssertionError("No context menu"));
+        // then, after a separator, its topology edits and its removal
+        assertEquals(Arrays.asList(Messages.get("detail.open.tooltip"), Messages.get("substations.diagram.equipment.showInTable"), null,
+                        Messages.get("edit.menu.topology"), null, Messages.get("edit.menu.remove", "Generator \"B1-G\"")),
+                menu.getItems().stream().map(MenuItem::getText).toList());
+    }
+
+    @Test
+    void toolbarDetailsButtonIsEnabledForAShownVoltageLevel() {
+        Button details = (Button) pane.getToolBar().getItems().stream()
+                .filter(item -> item instanceof Button button && button.getTooltip() != null
+                        && Messages.get("substations.diagram.details").equals(button.getTooltip().getText()))
+                .findFirst().orElseThrow();
+        assertTrue(details.isDisabled());
+        interact(() -> diagram.setContainer(network.getVoltageLevel("VL1")));
+        assertFalse(details.isDisabled());
+    }
+
+    // SceneModel.main: nothing answers the navigation here, the diagram is moved to the other end as SubstationsController does
+    @Test
+    void followingALineOutlinesItsCellAtTheOtherEnd() throws Exception {
+        WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() ->
+                pane.getWebView().getEngine().executeScript("typeof highlightNodes === 'function'")).get().equals(Boolean.TRUE));
+        interact(() -> {
+            diagram.setShowing(true);
+            diagram.setContainer(network.getVoltageLevel("VL1"));
+        });
+        WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() ->
+                pane.getWebView().getEngine().executeScript("document.getElementById('idL1_45_2_45_1_95_ONE') != null")).get().equals(Boolean.TRUE));
+
+        // kept long enough to be seen here, whatever the load
+        WaitForAsyncUtils.asyncFx(() -> pane.getWebView().getEngine().executeScript("HIGHLIGHT_MS = 600000")).get();
+        interact(() -> {
+            diagram.onFeederTopBottomClick("idL1_45_2_45_1_95_ONE");
+            diagram.setContainer(network.getVoltageLevel("VL2"));
+        });
+
+        WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() ->
+                pane.getWebView().getEngine().executeScript("document.querySelector('.sld-highlight') != null")).get().equals(Boolean.TRUE));
+        assertEquals(Boolean.TRUE, WaitForAsyncUtils.asyncFx(() -> pane.getWebView().getEngine().executeScript("""
+                (function () {
+                    var outlines = document.querySelectorAll('.sld-highlight');
+                    return outlines.length === 1 && outlines[0].parentNode.classList.contains('sld-extern-cell')
+                        && outlines[0].parentNode.querySelector('#idL1_45_2_45_1_95_TWO') != null;
+                })()""")).get());
+    }
+
+    @Test
+    void aGeneratorIsOutlinedWithItsCell() throws Exception {
+        showWithLongHighlights("VL1");
+        interact(() -> diagram.highlight(network.getVoltageLevel("VL1"), network.getGenerator("B1-G")));
+        assertEquals("sld-extern-cell", outlinedClass());
+    }
+
+    // a bus breaker voltage level's diagram draws its configured buses
+    @Test
+    void aBusIsOutlinedThroughItsConfiguredBuses() throws Exception {
+        showWithLongHighlights("VL1");
+        interact(() -> diagram.highlight(network.getVoltageLevel("VL1"), network.getVoltageLevel("VL1").getBusView().getBuses().iterator().next()));
+        assertEquals("sld-busbar-section", outlinedClass());
+    }
+
+    private void showWithLongHighlights(String voltageLevelId) throws Exception {
+        WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() ->
+                pane.getWebView().getEngine().executeScript("typeof highlightNodes === 'function'")).get().equals(Boolean.TRUE));
+        WaitForAsyncUtils.asyncFx(() -> pane.getWebView().getEngine().executeScript("HIGHLIGHT_MS = 600000")).get();
+        interact(() -> {
+            diagram.setShowing(true);
+            diagram.setContainer(network.getVoltageLevel(voltageLevelId));
+        });
+        WaitForAsyncUtils.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS, () -> WaitForAsyncUtils.asyncFx(() ->
+                pane.getWebView().getEngine().executeScript("document.querySelector('.sld-voltage-level') != null")).get().equals(Boolean.TRUE));
+    }
+
+    // between its two windings, drawn unfilled: only their strokes would catch the pointer
+    @Test
+    void aTransformerIsClickableInsideItsWindings() throws Exception {
+        showWithLongHighlights("VL4");
+        assertEquals(Boolean.TRUE, WaitForAsyncUtils.asyncFx(() -> pane.getWebView().getEngine().executeScript("""
+                (function () {
+                    var transformer = document.querySelector('.sld-two-wt');
+                    transformer.scrollIntoView({block: 'center', inline: 'center'});
+                    var rect = transformer.getBoundingClientRect();
+                    return clickAction(document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)) != null;
+                })()""")).get());
+    }
+
+    // inside its rectangle, drawn unfilled, away from its diagonals: only their strokes would catch the pointer
+    @Test
+    void aLoadIsClickableInsideItsSymbol() throws Exception {
+        showWithLongHighlights("VL4");
+        assertEquals(Boolean.TRUE, WaitForAsyncUtils.asyncFx(() -> pane.getWebView().getEngine().executeScript("""
+                (function () {
+                    var symbol = document.querySelector('.sld-load > rect:last-of-type');
+                    symbol.scrollIntoView({block: 'center', inline: 'center'});
+                    var rect = symbol.getBoundingClientRect();
+                    return clickAction(document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 5)) != null;
+                })()""")).get());
+    }
+
+    // the class of the one outlined element
+    private String outlinedClass() throws Exception {
+        return (String) WaitForAsyncUtils.asyncFx(() -> pane.getWebView().getEngine().executeScript("""
+                (function () {
+                    var outlines = document.querySelectorAll('.sld-highlight');
+                    return outlines.length === 1 ? outlines[0].parentNode.getAttribute('class').split(' ')[0] : 'outlines: ' + outlines.length;
+                })()""")).get();
+    }
+
+    @SuppressWarnings("removal")
+    private static double number(JSObject object, String member) {
+        return ((Number) object.getMember(member)).doubleValue();
+    }
+}

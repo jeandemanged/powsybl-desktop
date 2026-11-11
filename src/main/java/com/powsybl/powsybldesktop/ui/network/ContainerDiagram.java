@@ -1,0 +1,766 @@
+/**
+ * Copyright (c) 2026, Artelys (https://www.artelys.com)
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * SPDX-License-Identifier: MPL-2.0
+ */
+package com.powsybl.powsybldesktop.ui.network;
+
+import com.google.common.io.ByteStreams;
+import com.powsybl.iidm.network.Battery;
+import com.powsybl.iidm.network.BoundaryLine;
+import com.powsybl.iidm.network.Branch;
+import com.powsybl.iidm.network.Bus;
+import com.powsybl.iidm.network.BusbarSection;
+import com.powsybl.iidm.network.Container;
+import com.powsybl.iidm.network.Generator;
+import com.powsybl.iidm.network.Ground;
+import com.powsybl.iidm.network.HvdcConverterStation;
+import com.powsybl.iidm.network.HvdcLine;
+import com.powsybl.iidm.network.Identifiable;
+import com.powsybl.iidm.network.Injection;
+import com.powsybl.iidm.network.LccConverterStation;
+import com.powsybl.iidm.network.Line;
+import com.powsybl.iidm.network.Load;
+import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.ShuntCompensator;
+import com.powsybl.iidm.network.StaticVarCompensator;
+import com.powsybl.iidm.network.Switch;
+import com.powsybl.iidm.network.Terminal;
+import com.powsybl.iidm.network.ThreeWindingsTransformer;
+import com.powsybl.iidm.network.TieLine;
+import com.powsybl.iidm.network.TopologyKind;
+import com.powsybl.iidm.network.TwoWindingsTransformer;
+import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.iidm.network.VscConverterStation;
+import com.powsybl.nad.svg.metadata.DiagramMetadata;
+import com.powsybl.nad.svg.metadata.NodeMetadata;
+import com.powsybl.powsybldesktop.core.AbstractNetworkTask;
+import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.diagram.NetworkAreaDiagramRenderer;
+import com.powsybl.powsybldesktop.diagram.SubstationDiagramRenderer;
+import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
+import com.powsybl.powsybldesktop.navigation.NavigationEvent;
+import com.powsybl.powsybldesktop.navigation.NavigationType;
+import com.powsybl.powsybldesktop.notification.Notification;
+import com.powsybl.powsybldesktop.parameters.ApplicationParametersJson;
+import com.powsybl.powsybldesktop.parameters.DesktopNadParameters;
+import com.powsybl.powsybldesktop.parameters.DesktopSldParameters;
+import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.powsybldesktop.ui.AbstractDisposableController;
+import com.powsybl.powsybldesktop.ui.diagram.DiagramPaneController;
+import com.powsybl.powsybldesktop.ui.network.detail.EquipmentDetails;
+import com.powsybl.powsybldesktop.ui.network.edit.EditMenus;
+import com.powsybl.powsybldesktop.ui.window.SceneModel;
+import com.powsybl.powsybldesktop.ui.window.SeparateWindows;
+import com.powsybl.powsybldesktop.utils.Messages;
+import com.powsybl.sld.svg.GraphMetadata;
+import javafx.animation.PauseTransition;
+import javafx.concurrent.Service;
+import javafx.concurrent.Task;
+import javafx.concurrent.Worker;
+import javafx.fxml.FXMLLoader;
+import javafx.geometry.Orientation;
+import javafx.scene.Parent;
+import javafx.scene.control.Button;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.Label;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.Separator;
+import javafx.scene.control.SeparatorMenuItem;
+import javafx.scene.control.Slider;
+import javafx.scene.control.Tooltip;
+import javafx.scene.input.ContextMenuEvent;
+import javafx.scene.input.MouseEvent;
+import javafx.util.Duration;
+import netscape.javascript.JSObject;
+import org.kordamp.ikonli.javafx.FontIcon;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/**
+ * The single line or network area diagram of one container, shown in a {@link DiagramPaneController}: rendered off
+ * the FX thread (latest wins), again on every network update, diagram parameters or decimals change - lazily, only
+ * while showing. The single line diagram is interactive: a switch click toggles the switch, a feeder click navigates
+ * to the feeder's equipment (see {@link SceneModel#navigate}). Used by {@link SubstationsController}'s two diagram
+ * tabs and by separate diagram windows. A feeder click on an equipment with a detail view (see {@link EquipmentDetails})
+ * opens it instead, unless the feeder leads to another voltage level (lines, transformers...); a click on a transformer
+ * drawn inside the diagram opens its detail view; a right-click on any equipment offers its detail view and where the
+ * click leads. In the network area diagram, a click on a voltage level centers the diagram on it, on a branch drawn as a
+ * half line on the voltage level outside the diagram at its end, on other equipment opens its detail view; a
+ * right-click on a voltage level, branch or injection offers its detail view, its single line diagram or those of the
+ * voltage levels it connects, and centering the area diagram on them. Once centered on another container, the area
+ * diagram moves a ring from the previous center to the new one (see nad.js).
+ *
+ * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
+ */
+public final class ContainerDiagram extends AbstractDisposableController {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ContainerDiagram.class);
+
+    public enum Kind {
+        SINGLE_LINE,
+        AREA
+    }
+
+    // with sld.js or nad.js, which call back this controller (window.controller)
+    private static final String HTML_SHELL = """
+                <html>
+                    <script type="text/javascript">%__JS__%</script>
+                    <body style='margin: 0'>
+                        <div id="svgContainer"></div>
+                    </body>
+                </html>
+            """;
+
+    // metadata for a single line diagram, area for an area diagram
+    private record Render(String svg, GraphMetadata metadata, NetworkAreaDiagramRenderer.DiagramRender area) {
+    }
+
+    private record Highlight(Container<?> container, Predicate<GraphMetadata.NodeMetadata> nodes) {
+    }
+
+    private final Kind kind;
+    private final DiagramPaneController pane;
+    private final ContextMenu contextMenu = new ContextMenu();
+    // opens the shown substation's or voltage level's detail view
+    private final Button detailsButton = new Button();
+    // screen location of the last context menu request, where the equipment context menu shows
+    private double contextMenuX;
+    private double contextMenuY;
+    private final SceneModel sceneModel;
+    private final MainModel mainModel;
+    private Container<?> container;
+    private boolean showing;
+    // set whenever what the diagram shows changes, cleared once its render is requested
+    private boolean stale = true;
+    // of the displayed single line diagram, to map an SVG node id back to equipment (see the sld.js callbacks)
+    private GraphMetadata sldMetadata;
+    // the displayed area diagram, to map an SVG element id back to equipment (see the nad.js callbacks)
+    private NetworkAreaDiagramRenderer.DiagramRender nadRender;
+    // the area diagram shown when the container last changed: the next render keeps its voltage levels in place (see
+    // GuiParameters.isNadKeepPositionsWhenCentering), any other change of what is shown lays it out afresh
+    private DiagramMetadata pinnedLayout;
+    // the container shown before the last change, the area diagram's next render moving from its center to the new one
+    private Container<?> previousCenter;
+    // last area diagram depth actually rendered with; the slider fires continuously while dragging
+    private int depth;
+    private Map<GuiParameters.Quantity, Integer> decimals;
+    // outlined once its container's diagram is shown, see highlight; dropped by the next render whatever it shows
+    private Highlight pendingHighlight;
+
+    // Everything a render reads is captured on the FX thread in createTask.
+    private final Service<Render> renderService = new Service<>() {
+        @Override
+        protected Task<Render> createTask() {
+            Container<?> rendered = container;
+            return kind == Kind.SINGLE_LINE ? singleLineTask(rendered) : areaTask(rendered, depth, pinnedLayout);
+        }
+    };
+
+    // on the classpath, JSObject resolves to JDK 25's jdk.jsobject, deprecated for removal, rather than JavaFX's own copy
+    @SuppressWarnings("removal")
+    public ContainerDiagram(Kind kind, DiagramPaneController pane, SceneModel sceneModel) {
+        this.kind = Objects.requireNonNull(kind);
+        this.pane = Objects.requireNonNull(pane);
+        this.sceneModel = Objects.requireNonNull(sceneModel);
+        this.mainModel = sceneModel.getMainModel();
+        pane.setDiagramFileNameSupplier(() -> container == null ? null : container.getNameOrId());
+        detailsButton.setGraphic(new FontIcon("mdi2i-information-outline"));
+        detailsButton.setTooltip(new Tooltip(Messages.get("substations.diagram.details")));
+        detailsButton.setDisable(true);
+        detailsButton.setOnAction(_ -> EquipmentDetails.open(sceneModel, container));
+        pane.getToolBar().getItems().addAll(new Separator(Orientation.VERTICAL), detailsButton);
+        renderService.setOnSucceeded(_ -> {
+            sldMetadata = renderService.getValue().metadata();
+            nadRender = renderService.getValue().area();
+            pane.showDiagram(renderService.getValue().svg());
+            pinnedLayout = null;
+            Container<?> from = previousCenter;
+            previousCenter = null;
+            if (nadRender != null && from != null) {
+                animateCenter(from);
+            }
+            Highlight highlight = pendingHighlight;
+            pendingHighlight = null;
+            if (highlight != null && highlight.container() == container) {
+                applyHighlight(highlight);
+            }
+        });
+        renderService.setOnFailed(_ -> LOGGER.error(renderService.getException().getMessage(), renderService.getException()));
+
+        var parametersModel = mainModel.getParametersModel();
+        pane.setOnEngineLoaded(() -> ((JSObject) pane.getWebView().getEngine().executeScript("window")).setMember("controller", this));
+        pane.setOnInjected(() -> pane.getWebView().getEngine().executeScript("diagramInjected()"));
+        pane.loadShell(HTML_SHELL.replace("%__JS__%", readJs(kind == Kind.SINGLE_LINE ? "sld.js" : "nad.js")));
+        pane.getWebView().addEventFilter(MouseEvent.MOUSE_PRESSED, _ -> contextMenu.hide());
+        pane.getWebView().addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, this::onContextMenuRequested);
+        if (kind == Kind.SINGLE_LINE) {
+            pane.getToolBar().getItems().add(editMenuButton());
+            // remembered across navigation/views (see SceneModel)
+            listenerManager.listen(pane.zoomProperty(), (_, _, newValue) -> sceneModel.diagramZoomProperty().set(newValue.doubleValue()));
+            listenerManager.listen(pane.fitToScreenProperty(), (_, _, newValue) -> sceneModel.diagramFitToScreenProperty().set(newValue));
+            pane.restoreZoom(sceneModel.diagramZoomProperty().get(), sceneModel.diagramFitToScreenProperty().get());
+            listenerManager.listen(parametersModel.sldParametersRevisionProperty(), (_, _, _) -> refresh());
+        } else {
+            depth = sceneModel.diagramAreaDepthProperty().get();
+            addDepthControl();
+            listenerManager.listen(parametersModel.nadParametersRevisionProperty(), (_, _, _) -> refresh());
+        }
+        listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> refresh());
+        // GUI parameters also hold e.g. the map basemap: only a decimals change is worth re-rendering
+        decimals = parametersModel.getGuiParameters().getDecimals();
+        listenerManager.listen(parametersModel.guiParametersRevisionProperty(), (_, _, _) -> {
+            Map<GuiParameters.Quantity, Integer> newDecimals = parametersModel.getGuiParameters().getDecimals();
+            if (!newDecimals.equals(decimals)) {
+                decimals = newDecimals;
+                refresh();
+            }
+        });
+    }
+
+    /**
+     * Opens {@code container}'s diagram in a separate window: as a tab of the latest window created if
+     * {@code inLatestWindow}, else in a new window.
+     */
+    public static void open(SeparateWindows separateWindows, boolean inLatestWindow, Kind kind, Container<?> container) {
+        String titleKey = kind == Kind.SINGLE_LINE ? "desktop.common.singleLineDiagram" : "desktop.common.networkAreaDiagram";
+        // the diagram navigates within its window (see showEquipment): its title, and its rebuild on a language
+        // change, follow what it shows
+        AtomicReference<ContainerDiagram> shown = new AtomicReference<>();
+        Supplier<Container<?>> current = () -> shown.get() == null ? container : shown.get().getContainer();
+        Supplier<String> title = () -> Messages.get(titleKey) + " - " + current.get().getNameOrId();
+        Function<SceneModel, SeparateWindows.View> viewFactory = scene -> {
+            FXMLLoader loader = new FXMLLoader(DiagramPaneController.class.getResource("diagram-pane.fxml"), Messages.bundle());
+            try {
+                Parent root = loader.load();
+                ContainerDiagram diagram = new ContainerDiagram(kind, loader.getController(), scene);
+                diagram.setContainer(current.get());
+                shown.set(diagram);
+                diagram.setShowing(true);
+                return new SeparateWindows.View(root, diagram);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        };
+        String key = kind + "/" + container.getId();
+        if (inLatestWindow) {
+            separateWindows.openInLatestWindow(key, title, viewFactory);
+        } else {
+            separateWindows.open(key, title, viewFactory);
+        }
+    }
+
+    // what can be created in the shown container, as from a right-click outside any equipment
+    private MenuButton editMenuButton() {
+        MenuButton button = new MenuButton(null, new FontIcon("mdi2p-plus"));
+        button.setTooltip(new Tooltip(Messages.get("edit.menu.tooltip")));
+        button.setOnShowing(_ -> button.getItems().setAll(container == null ? List.of()
+                : EditMenus.items(sceneModel, () -> pane.getWebView().getScene().getWindow(), container.getParentNetwork(), container)));
+        return button;
+    }
+
+    private String readJs(String name) {
+        try (var stream = getClass().getResourceAsStream(name)) {
+            return new String(ByteStreams.toByteArray(Objects.requireNonNull(stream)));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private Task<Render> singleLineTask(Container<?> rendered) {
+        DesktopSldParameters parameters = ApplicationParametersJson.copy(mainModel.getParametersModel().sldParametersProperty().getValue());
+        applyDecimals(parameters.getSvgParameters(), mainModel.getParametersModel().getGuiParameters());
+        return new AbstractNetworkTask<>(mainModel, rendered.getNetwork()) {
+            @Override
+            protected Render compute() throws IOException {
+                SubstationDiagramRenderer.DiagramRender render = SubstationDiagramRenderer.render(rendered, parameters);
+                return new Render(render.svg(), render.metadata(), null);
+            }
+        };
+    }
+
+    private Task<Render> areaTask(Container<?> rendered, int renderedDepth, DiagramMetadata pinned) {
+        DesktopNadParameters parameters = ApplicationParametersJson.copy(mainModel.getParametersModel().nadParametersProperty().getValue());
+        applyDecimals(parameters.getSvgParameters(), mainModel.getParametersModel().getGuiParameters());
+        DiagramMetadata kept = mainModel.getParametersModel().getGuiParameters().isNadKeepPositionsWhenCentering() ? pinned : null;
+        return new AbstractNetworkTask<>(mainModel, rendered.getNetwork()) {
+            @Override
+            protected Render compute() throws IOException {
+                NetworkAreaDiagramRenderer.DiagramRender render = NetworkAreaDiagramRenderer.render(rendered, renderedDepth, parameters, kept);
+                return new Render(render.svg(), null, render);
+            }
+        };
+    }
+
+    private static void applyDecimals(com.powsybl.sld.svg.SvgParameters svgParameters, GuiParameters gui) {
+        svgParameters.setVoltageValuePrecision(gui.getDecimals(GuiParameters.Quantity.VOLTAGE));
+        svgParameters.setPowerValuePrecision(gui.getDecimals(GuiParameters.Quantity.POWER));
+        svgParameters.setAngleValuePrecision(gui.getDecimals(GuiParameters.Quantity.ANGLE));
+        svgParameters.setCurrentValuePrecision(gui.getDecimals(GuiParameters.Quantity.CURRENT));
+        svgParameters.setPercentageValuePrecision(gui.getDecimals(GuiParameters.Quantity.PERCENTAGE));
+    }
+
+    private static void applyDecimals(com.powsybl.nad.svg.SvgParameters svgParameters, GuiParameters gui) {
+        svgParameters.setVoltageValuePrecision(gui.getDecimals(GuiParameters.Quantity.VOLTAGE));
+        svgParameters.setPowerValuePrecision(gui.getDecimals(GuiParameters.Quantity.POWER));
+        svgParameters.setAngleValuePrecision(gui.getDecimals(GuiParameters.Quantity.ANGLE));
+        svgParameters.setCurrentValuePrecision(gui.getDecimals(GuiParameters.Quantity.CURRENT));
+        svgParameters.setPercentageValuePrecision(gui.getDecimals(GuiParameters.Quantity.PERCENTAGE));
+    }
+
+    // diagram-pane.fxml only declares the controls common to both diagrams
+    private void addDepthControl() {
+        Slider depthSlider = new Slider(1, 6, depth);
+        depthSlider.setBlockIncrement(1);
+        depthSlider.setMajorTickUnit(1);
+        depthSlider.setMinorTickCount(0);
+        depthSlider.setSnapToTicks(true);
+        depthSlider.setShowTickLabels(true);
+        depthSlider.setPrefWidth(120);
+        depthSlider.setTooltip(new Tooltip(Messages.get("substations.diagram.depth")));
+        // debounced: dragging the slider across several depths would otherwise start a render per depth, each
+        // running to completion in the background even once superseded (see AbstractNetworkTask)
+        PauseTransition depthDebounce = new PauseTransition(Duration.millis(300));
+        depthDebounce.setOnFinished(_ -> refresh());
+        depthSlider.valueProperty().addListener((_, _, newValue) -> {
+            int newDepth = newValue.intValue();
+            if (newDepth != depth) {
+                depth = newDepth;
+                sceneModel.diagramAreaDepthProperty().set(newDepth);
+                depthDebounce.playFromStart();
+            }
+        });
+        pane.getToolBar().getItems().addAll(new Separator(Orientation.VERTICAL), new Label(Messages.get("substations.diagram.depth")), depthSlider);
+    }
+
+    public Container<?> getContainer() {
+        return container;
+    }
+
+    public void setContainer(Container<?> container) {
+        if (container != this.container) {
+            if (kind == Kind.AREA && this.container != null && container != null) {
+                previousCenter = this.container;
+                pinnedLayout = nadRender == null ? null : nadRender.metadata();
+            } else {
+                previousCenter = null;
+                pinnedLayout = null;
+            }
+            this.container = container;
+            detailsButton.setDisable(!EquipmentDetails.supports(container));
+            invalidate();
+        }
+    }
+
+    /**
+     * Whether the diagram is visible: a hidden one is only re-rendered once shown again.
+     */
+    public void setShowing(boolean showing) {
+        this.showing = showing;
+        if (showing && stale) {
+            render();
+        }
+    }
+
+    private void refresh() {
+        pinnedLayout = null;
+        invalidate();
+    }
+
+    private void invalidate() {
+        stale = true;
+        if (showing) {
+            render();
+        }
+    }
+
+    private void render() {
+        stale = false;
+        if (container != null) {
+            renderService.restart();
+        } else {
+            renderService.cancel();
+            sldMetadata = null;
+            nadRender = null;
+            pane.showNoSelection();
+        }
+    }
+
+    /**
+     * Briefly outlines {@code equipment} in {@code target}'s single line diagram (see sld.js): now if that diagram is
+     * the one shown, else once it is. A bus is outlined through its busbar sections, or its configured buses.
+     */
+    public void highlight(Container<?> target, Identifiable<?> equipment) {
+        Set<String> ids = new HashSet<>();
+        ids.add(equipment.getId());
+        switch (equipment) {
+            case Bus bus when bus.getVoltageLevel().getTopologyKind() == TopologyKind.BUS_BREAKER -> {
+                VoltageLevel.BusView busView = bus.getVoltageLevel().getBusView();
+                bus.getVoltageLevel().getBusBreakerView().getBusStream()
+                        .filter(configured -> busView.getMergedBus(configured.getId()) instanceof Bus merged && merged.getId().equals(bus.getId()))
+                        .forEach(configured -> ids.add(configured.getId()));
+            }
+            case Bus bus -> bus.getConnectedTerminalStream().map(Terminal::getConnectable).filter(BusbarSection.class::isInstance)
+                    .forEach(busbarSection -> ids.add(busbarSection.getId()));
+            // drawn as its tie line
+            case BoundaryLine boundaryLine -> boundaryLine.getTieLine().ifPresent(tieLine -> ids.add(tieLine.getId()));
+            default -> { }
+        }
+        // a converter station's node has its HVDC line's equipment id, its own id being the node's
+        highlight(new Highlight(target, node -> ids.contains(node.getEquipmentId()) || ids.contains(node.getUnescapedId())));
+    }
+
+    private void highlight(Highlight highlight) {
+        if (kind != Kind.SINGLE_LINE) {
+            return;
+        }
+        if (highlight.container() == container && !stale && !renderService.isRunning() && sldMetadata != null) {
+            applyHighlight(highlight);
+        } else {
+            pendingHighlight = highlight;
+        }
+    }
+
+    // on the classpath, JSObject resolves to JDK 25's jdk.jsobject, deprecated for removal, rather than JavaFX's own copy
+    @SuppressWarnings("removal")
+    private void applyHighlight(Highlight highlight) {
+        // the page not loaded yet, the diagram is only injected once it is (see DiagramPaneController.showDiagram)
+        if (sldMetadata == null || pane.getWebView().getEngine().getLoadWorker().getState() != Worker.State.SUCCEEDED) {
+            return;
+        }
+        Object[] ids = sldMetadata.getNodeMetadata().stream()
+                .filter(highlight.nodes())
+                .map(GraphMetadata.NodeMetadata::getId)
+                .toArray();
+        if (ids.length > 0) {
+            ((JSObject) pane.getWebView().getEngine().executeScript("window")).call("highlightNodes", ids);
+        }
+    }
+
+    // on the classpath, JSObject resolves to JDK 25's jdk.jsobject, deprecated for removal, rather than JavaFX's own copy
+    @SuppressWarnings("removal")
+    private void animateCenter(Container<?> from) {
+        // the page not loaded yet, the diagram is only injected once it is (see DiagramPaneController.showDiagram)
+        if (pane.getWebView().getEngine().getLoadWorker().getState() != Worker.State.SUCCEEDED) {
+            return;
+        }
+        Map<String, String> drawnVoltageLevels = nadRender.metadata().getNodesMetadata().stream()
+                .filter(node -> !node.isInvisible())
+                .collect(Collectors.toMap(NodeMetadata::getEquipmentId, NodeMetadata::getSvgId, (first, _) -> first));
+        List<String> to = NetworkAreaDiagramRenderer.voltageLevelIdsOf(container).stream().map(drawnVoltageLevels::get).filter(Objects::nonNull).toList();
+        if (to.isEmpty()) {
+            return;
+        }
+        // null when the previous center isn't drawn: the new one is just outlined
+        String fromId = NetworkAreaDiagramRenderer.voltageLevelIdsOf(from).stream().map(drawnVoltageLevels::get).filter(Objects::nonNull)
+                .findFirst().orElse(null);
+        List<Object> arguments = new ArrayList<>();
+        arguments.add(fromId);
+        arguments.addAll(to);
+        ((JSObject) pane.getWebView().getEngine().executeScript("window")).call("animateCenter", arguments.toArray());
+    }
+
+    @SuppressWarnings("unused") // used by JS
+    public void onFeederTopBottomClick(String id) {
+        GraphMetadata.NodeMetadata node = sldMetadata == null ? null : sldMetadata.getNodeMetadata(id);
+        if (node == null) {
+            return;
+        }
+        Identifiable<?> equipment = container.getNetwork().getIdentifiable(node.getEquipmentId());
+        if (node.getNextVId() == null && EquipmentDetails.supports(equipment)) {
+            EquipmentDetails.open(sceneModel, equipment);
+        } else {
+            showEquipment(node, equipment);
+        }
+    }
+
+    /**
+     * Whether {@code id} is the node of a busbar section, or of a transformer drawn inside the diagram (not as a
+     * feeder, see onFeederTopBottomClick), JS otherwise trying the element's parents. In an area diagram, whether a
+     * click on {@code id} does something (see areaClickAction).
+     */
+    @SuppressWarnings("unused") // used by JS
+    public boolean isClickableEquipment(String id) {
+        if (kind == Kind.AREA) {
+            return areaClickAction(id) != null;
+        }
+        Identifiable<?> equipment = equipment(id);
+        return equipment instanceof BusbarSection || equipment instanceof TwoWindingsTransformer || equipment instanceof ThreeWindingsTransformer;
+    }
+
+    /**
+     * Opens the detail view of a {@link #isClickableEquipment} node's equipment; in an area diagram, runs the click's
+     * areaClickAction.
+     */
+    @SuppressWarnings("unused") // used by JS
+    public void onEquipmentClick(String id) {
+        if (kind == Kind.AREA) {
+            Runnable action = areaClickAction(id);
+            if (action != null) {
+                action.run();
+            }
+            return;
+        }
+        EquipmentDetails.open(sceneModel, equipment(id));
+    }
+
+    // what a click on an area diagram's element does, null if nothing: centering on a voltage level other than the
+    // shown one, or on the voltage level outside the diagram a half line leads to, else opening the equipment's details
+    private Runnable areaClickAction(String id) {
+        String hiddenEnd = nadRender == null || id == null ? null : nadRender.hiddenEndIds().get(id);
+        if (hiddenEnd != null && container.getNetwork().getVoltageLevel(hiddenEnd) instanceof VoltageLevel voltageLevel) {
+            return () -> center(voltageLevel);
+        }
+        return switch (areaEquipment(id)) {
+            case VoltageLevel voltageLevel when voltageLevel != container -> () -> center(voltageLevel);
+            case VoltageLevel _ -> null;
+            case Identifiable<?> equipment when EquipmentDetails.supports(equipment) -> () -> EquipmentDetails.open(sceneModel, equipment);
+            case null, default -> null;
+        };
+    }
+
+    private Identifiable<?> areaEquipment(String id) {
+        String equipmentId = nadRender == null || id == null ? null : nadRender.equipmentIds().get(id);
+        return equipmentId == null ? null : container.getNetwork().getIdentifiable(equipmentId);
+    }
+
+    /**
+     * Offers the equipment's detail view (and its HVDC line's, for a converter station), where the equipment leads (a
+     * feeder's other end voltage level, or its row in the equipment tables), then what can be created on it (on a
+     * busbar section or bus) and its removal, at the right-click location.
+     *
+     * @return whether {@code id} is an equipment's node, JS otherwise trying the clicked element's parents
+     */
+    @SuppressWarnings("unused") // used by JS
+    public boolean onEquipmentContextMenu(String id) {
+        if (kind == Kind.AREA) {
+            return showContextMenu(areaContextMenuItems(id));
+        }
+        GraphMetadata.NodeMetadata node = sldMetadata == null ? null : sldMetadata.getNodeMetadata(id);
+        Identifiable<?> equipment = equipment(id);
+        if (equipment == null) {
+            return false;
+        }
+        List<MenuItem> items = new ArrayList<>();
+        if (EquipmentDetails.supports(equipment)) {
+            MenuItem detailsItem = new MenuItem(Messages.get("detail.open.tooltip"));
+            detailsItem.setOnAction(_ -> EquipmentDetails.open(sceneModel, equipment));
+            items.add(detailsItem);
+            if (equipment instanceof HvdcConverterStation<?> station && station.getHvdcLine() != null) {
+                MenuItem hvdcItem = new MenuItem(Messages.get("substations.diagram.equipment.hvdcLineDetails"));
+                hvdcItem.setOnAction(_ -> EquipmentDetails.open(sceneModel, station.getHvdcLine()));
+                items.add(hvdcItem);
+            }
+            MenuItem showItem = new MenuItem(node.getNextVId() != null
+                    ? Messages.get("substations.diagram.equipment.goTo", container.getNetwork().getVoltageLevel(node.getNextVId()).getNameOrId())
+                    : Messages.get("substations.diagram.equipment.showInTable"));
+            showItem.setOnAction(_ -> showEquipment(node, equipment));
+            items.add(showItem);
+        }
+        List<MenuItem> edits = EditMenus.items(sceneModel, () -> pane.getWebView().getScene().getWindow(), equipment.getParentNetwork(), equipment);
+        if (!items.isEmpty() && !edits.isEmpty()) {
+            items.add(new SeparatorMenuItem());
+        }
+        items.addAll(edits);
+        return showContextMenu(items);
+    }
+
+    private boolean showContextMenu(List<MenuItem> items) {
+        if (items.isEmpty()) {
+            return false;
+        }
+        contextMenu.getItems().setAll(items);
+        contextMenu.show(pane.getWebView(), contextMenuX, contextMenuY);
+        return true;
+    }
+
+    // a voltage level: its single line diagram, centering this diagram on it, an area diagram of it in a new window;
+    // other equipment: its row in the equipment tables, then for each voltage level it connects, its single line
+    // diagram and centering this diagram on it
+    private List<MenuItem> areaContextMenuItems(String id) {
+        Identifiable<?> equipment = areaEquipment(id);
+        if (equipment == null) {
+            return List.of();
+        }
+        List<MenuItem> items = new ArrayList<>();
+        if (EquipmentDetails.supports(equipment)) {
+            items.add(menuItem(Messages.get("detail.open.tooltip"), () -> EquipmentDetails.open(sceneModel, equipment)));
+        }
+        if (equipment instanceof VoltageLevel voltageLevel) {
+            items.add(menuItem(Messages.get("substations.diagram.area.singleLine"),
+                    () -> navigateFromArea(voltageLevel, ContainerNavigationState.ContainerTab.SINGLE_LINE, null)));
+            if (voltageLevel != container) {
+                items.add(menuItem(Messages.get("substations.diagram.area.center", voltageLevel.getNameOrId()), () -> center(voltageLevel)));
+            }
+            sceneModel.getSeparateWindows().ifPresent(windows -> items.add(menuItem(Messages.get("separateWindows.open"),
+                    () -> open(windows, false, Kind.AREA, voltageLevel))));
+        } else {
+            List<VoltageLevel> voltageLevels = voltageLevelsOf(equipment);
+            if (!voltageLevels.isEmpty()) {
+                items.add(menuItem(Messages.get("substations.diagram.equipment.showInTable"),
+                        () -> navigateFromArea(voltageLevels.getFirst(), equipmentTab(equipment), equipment)));
+            }
+            voltageLevels.forEach(voltageLevel -> items.add(menuItem(Messages.get("substations.diagram.equipment.goTo", voltageLevel.getNameOrId()),
+                    () -> navigateFromArea(voltageLevel, ContainerNavigationState.ContainerTab.SINGLE_LINE, null))));
+            voltageLevels.stream().filter(voltageLevel -> voltageLevel != container).forEach(voltageLevel -> items.add(
+                    menuItem(Messages.get("substations.diagram.area.center", voltageLevel.getNameOrId()), () -> center(voltageLevel))));
+        }
+        List<MenuItem> edits = EditMenus.items(sceneModel, () -> pane.getWebView().getScene().getWindow(), equipment.getParentNetwork(), equipment);
+        if (!items.isEmpty() && !edits.isEmpty()) {
+            items.add(new SeparatorMenuItem());
+        }
+        items.addAll(edits);
+        return items;
+    }
+
+    private static MenuItem menuItem(String text, Runnable action) {
+        MenuItem item = new MenuItem(text);
+        item.setOnAction(_ -> action.run());
+        return item;
+    }
+
+    // a branch's sides, a three windings transformer's legs, an HVDC line's converter stations, an injection's own
+    private static List<VoltageLevel> voltageLevelsOf(Identifiable<?> equipment) {
+        Stream<Terminal> terminals = switch (equipment) {
+            case Branch<?> branch -> Stream.of(branch.getTerminal1(), branch.getTerminal2());
+            case ThreeWindingsTransformer transformer -> transformer.getLegStream().map(ThreeWindingsTransformer.Leg::getTerminal);
+            case HvdcLine hvdcLine -> Stream.of(hvdcLine.getConverterStation1().getTerminal(), hvdcLine.getConverterStation2().getTerminal());
+            case Injection<?> injection -> Stream.of(injection.getTerminal());
+            default -> Stream.empty();
+        };
+        return terminals.map(Terminal::getVoltageLevel).distinct().toList();
+    }
+
+    // in a separate window, this diagram shows target; in the main window, through navigation so that Back returns here
+    private void center(VoltageLevel target) {
+        if (sceneModel.isSeparate()) {
+            setContainer(target);
+            sceneModel.getDetailWindows().ifPresent(windows -> windows.retarget(this, kind + "/" + target.getId()));
+            return;
+        }
+        navigateFromArea(target, ContainerNavigationState.ContainerTab.AREA, null);
+    }
+
+    private void navigateFromArea(Container<?> target, ContainerNavigationState.ContainerTab tab, Identifiable<?> equipment) {
+        // not necessarily in history yet, see showEquipment
+        sceneModel.record(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(container,
+                ContainerNavigationState.ContainerTab.AREA)));
+        sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(target, tab, equipment)));
+    }
+
+    /**
+     * Offers what can be created in the shown voltage level or substation, on a right-click outside any equipment.
+     */
+    @SuppressWarnings("unused") // used by JS
+    public void onBackgroundContextMenu() {
+        if (container == null) {
+            return;
+        }
+        List<MenuItem> items = EditMenus.items(sceneModel, () -> pane.getWebView().getScene().getWindow(), container.getParentNetwork(), container);
+        if (!items.isEmpty()) {
+            contextMenu.getItems().setAll(items);
+            contextMenu.show(pane.getWebView(), contextMenuX, contextMenuY);
+        }
+    }
+
+    // the WebView, its own context menu disabled, doesn't dispatch contextmenu events to the page: the script finds the
+    // equipment under the pointer, given in CSS pixels of the viewport (the WebView's zoom scales them)
+    private void onContextMenuRequested(ContextMenuEvent event) {
+        contextMenuX = event.getScreenX();
+        contextMenuY = event.getScreenY();
+        double zoom = pane.getWebView().getZoom();
+        pane.getWebView().getEngine().executeScript("equipmentContextMenuAt(" + event.getX() / zoom + ", " + event.getY() / zoom + ")");
+        event.consume();
+    }
+
+    private Identifiable<?> equipment(String id) {
+        GraphMetadata.NodeMetadata node = sldMetadata == null || id == null || id.isEmpty() ? null : sldMetadata.getNodeMetadata(id);
+        return node == null || node.getEquipmentId() == null ? null : container.getNetwork().getIdentifiable(node.getEquipmentId());
+    }
+
+    private void showEquipment(GraphMetadata.NodeMetadata node, Identifiable<?> equipment) {
+        Network network = container.getNetwork();
+        if (node.getNextVId() != null) {
+            // the same feeder at the other end, so that the user sees where they come from
+            String equipmentId = node.getEquipmentId();
+            highlight(new Highlight(network.getVoltageLevel(node.getNextVId()),
+                    other -> equipmentId.equals(other.getEquipmentId()) && other.getNextVId() != null));
+        }
+        // a diagram leading to another stays in its own scene: in a separate window, this one shows it instead
+        if (node.getNextVId() != null && sceneModel.isSeparate()) {
+            VoltageLevel target = network.getVoltageLevel(node.getNextVId());
+            setContainer(target);
+            sceneModel.getDetailWindows().ifPresent(windows -> windows.retarget(this, kind + "/" + target.getId()));
+            return;
+        }
+        Container<?> target = node.getNextVId() != null ? network.getVoltageLevel(node.getNextVId()) : container;
+        ContainerNavigationState.ContainerTab tab = node.getNextVId() != null ? ContainerNavigationState.ContainerTab.SINGLE_LINE : equipmentTab(equipment);
+        // this state isn't guaranteed to already be in history (e.g. reached via search, which doesn't record one):
+        // record it so navigating back from the equipment lands back on this diagram
+        sceneModel.record(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(container)));
+        sceneModel.navigate(NavigationEvent.create(NavigationType.SUBSTATIONS, ContainerNavigationState.create(target, tab,
+                tab == ContainerNavigationState.ContainerTab.SINGLE_LINE ? null : equipment)));
+    }
+
+    private static ContainerNavigationState.ContainerTab equipmentTab(Identifiable<?> equipment) {
+        return switch (equipment) {
+            case Generator _ -> ContainerNavigationState.ContainerTab.GENERATORS;
+            case Battery _ -> ContainerNavigationState.ContainerTab.BATTERIES;
+            case Load _ -> ContainerNavigationState.ContainerTab.LOADS;
+            case ShuntCompensator _ -> ContainerNavigationState.ContainerTab.SHUNT_COMPENSATORS;
+            case StaticVarCompensator _ -> ContainerNavigationState.ContainerTab.STATIC_VAR_COMPENSATORS;
+            case VscConverterStation _ -> ContainerNavigationState.ContainerTab.VSC_CONVERTER_STATIONS;
+            case LccConverterStation _ -> ContainerNavigationState.ContainerTab.LCC_CONVERTER_STATIONS;
+            case TwoWindingsTransformer _, ThreeWindingsTransformer _ -> ContainerNavigationState.ContainerTab.TRANSFORMERS;
+            case BusbarSection _ -> ContainerNavigationState.ContainerTab.BUSBAR_SECTIONS;
+            case Switch _ -> ContainerNavigationState.ContainerTab.SWITCHES;
+            case Line _ -> ContainerNavigationState.ContainerTab.LINES;
+            case TieLine _ -> ContainerNavigationState.ContainerTab.TIE_LINES;
+            case HvdcLine _ -> ContainerNavigationState.ContainerTab.HVDC_LINES;
+            case BoundaryLine _ -> ContainerNavigationState.ContainerTab.BOUNDARY_LINES;
+            case Ground _ -> ContainerNavigationState.ContainerTab.GROUNDS;
+            case null, default -> ContainerNavigationState.ContainerTab.SINGLE_LINE;
+        };
+    }
+
+    @SuppressWarnings("unused") // used by JS
+    public void onSwitchClick(String id) {
+        Objects.requireNonNull(id);
+        // not while a background job uses the network (see MainModel.markBusy), e.g. this diagram's re-render
+        // after a previous click
+        if (mainModel.isBusy(container.getNetwork())) {
+            mainModel.getNotificationsModel().add(Notification.createError(Instant.now(), "main.networkBusy"));
+            return;
+        }
+        GraphMetadata.NodeMetadata nodeMetadata = Objects.requireNonNull(sldMetadata.getNodeMetadata(id));
+        Switch aSwitch = Objects.requireNonNull(container.getNetwork().getSwitch(nodeMetadata.getEquipmentId()));
+        aSwitch.setOpen(!aSwitch.isOpen());
+        // re-renders through the updateProperty listener
+        mainModel.setUpdate(aSwitch.getVoltageLevel());
+    }
+
+    @Override
+    public void dispose() {
+        renderService.cancel();
+        super.dispose();
+    }
+}
