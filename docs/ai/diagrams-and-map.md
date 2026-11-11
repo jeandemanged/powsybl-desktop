@@ -30,7 +30,9 @@ when one looks wrong, snapshot it rather than reason from the source (see
 - In `sld.js`, `clickAction` is the single answer to what a click on an element does: the click runs it, and the
   pointer cursor shows exactly where it isn't null (feeders, switches, then `ContainerDiagram.isClickableEquipment`
   up the element's ancestors). Busbars, a thin line, get a wider transparent line in their group to catch the
-  pointer, added again on every injected diagram; SVG exports use the rendered string, not the page.
+  pointer, and switches, transformers and feeders (small, drawn unfilled or with holes, so that only their strokes are
+  hit) a transparent padded rect over their symbol, label excluded, first in their group, added again on every
+  injected diagram; SVG exports use the rendered string, not the page.
 - What clicks open (details, other voltage levels): see [editing.md](editing.md#equipment-detail-views).
 - The network area diagram's metadata maps SVG ids to equipment: `NetworkAreaDiagramRenderer.DiagramRender.equipmentIds`
   flattens it into one map, a voltage level for its circle, buses and label (a bus's own equipment id is a bus view
@@ -38,7 +40,7 @@ when one looks wrong, snapshot it rather than reason from the source (see
   are drawn in a separate `nad-edge-infos` group, so their ids are mapped explicitly). `nad.js` walks up from the
   right-clicked element to the first id `ContainerDiagram` resolves; a label is HTML in a `foreignObject` carrying the
   label's id. Edges get a wider transparent copy of each `nad-edge-path` to catch the pointer, like busbars in
-  `sld.js`. Centering on a voltage level navigates the main window (recording the current area diagram first, so Back
+  `sld.js`, and the unfilled winding and injection circles `pointer-events: visible` so that their inside is hit. Centering on a voltage level navigates the main window (recording the current area diagram first, so Back
   returns to it) or, in a separate window, retargets that diagram, as following a feeder does in the SLD.
 - NAD clicks (`ContainerDiagram.areaClickAction`, also deciding the pointer cursor like `sld.js`'s `clickAction`): a
   voltage level other than the shown one centers on it; a branch drawn as a half line (`DiagramRender.hiddenEndIds`,

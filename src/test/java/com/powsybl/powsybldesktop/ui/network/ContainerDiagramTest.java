@@ -179,6 +179,32 @@ class ContainerDiagramTest extends AbstractHeadlessApplicationTest {
                 pane.getWebView().getEngine().executeScript("document.querySelector('.sld-voltage-level') != null")).get().equals(Boolean.TRUE));
     }
 
+    // between its two windings, drawn unfilled: only their strokes would catch the pointer
+    @Test
+    void aTransformerIsClickableInsideItsWindings() throws Exception {
+        showWithLongHighlights("VL4");
+        assertEquals(Boolean.TRUE, WaitForAsyncUtils.asyncFx(() -> pane.getWebView().getEngine().executeScript("""
+                (function () {
+                    var transformer = document.querySelector('.sld-two-wt');
+                    transformer.scrollIntoView({block: 'center', inline: 'center'});
+                    var rect = transformer.getBoundingClientRect();
+                    return clickAction(document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)) != null;
+                })()""")).get());
+    }
+
+    // inside its rectangle, drawn unfilled, away from its diagonals: only their strokes would catch the pointer
+    @Test
+    void aLoadIsClickableInsideItsSymbol() throws Exception {
+        showWithLongHighlights("VL4");
+        assertEquals(Boolean.TRUE, WaitForAsyncUtils.asyncFx(() -> pane.getWebView().getEngine().executeScript("""
+                (function () {
+                    var symbol = document.querySelector('.sld-load > rect:last-of-type');
+                    symbol.scrollIntoView({block: 'center', inline: 'center'});
+                    var rect = symbol.getBoundingClientRect();
+                    return clickAction(document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 5)) != null;
+                })()""")).get());
+    }
+
     // the class of the one outlined element
     private String outlinedClass() throws Exception {
         return (String) WaitForAsyncUtils.asyncFx(() -> pane.getWebView().getEngine().executeScript("""

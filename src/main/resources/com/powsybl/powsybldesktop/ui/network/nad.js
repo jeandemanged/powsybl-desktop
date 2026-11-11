@@ -16,6 +16,11 @@ function widenEdges() {
         hitArea.setAttribute('style', 'fill: none; stroke: transparent; stroke-width: 20px; pointer-events: stroke');
         paths[i].parentNode.insertBefore(hitArea, paths[i].nextSibling);
     }
+    // transformer windings and injection circles are drawn unfilled: their inside catches the pointer too
+    var circles = document.querySelectorAll('.nad-winding, .nad-injections circle');
+    for (var j = 0; j < circles.length; j++) {
+        circles[j].style.pointerEvents = 'visible';
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function () {

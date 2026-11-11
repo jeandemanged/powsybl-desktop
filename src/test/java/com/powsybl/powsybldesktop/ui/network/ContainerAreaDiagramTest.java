@@ -179,6 +179,26 @@ class ContainerAreaDiagramTest extends AbstractHeadlessApplicationTest {
                 })()""".formatted(newCenter))).get().equals(Boolean.TRUE));
     }
 
+    // inside a winding, drawn unfilled, away from the other one and the phase shifter's arrow: only its stroke would
+    // catch the pointer
+    @Test
+    void aTransformerIsClickableInsideItsWindings() throws Exception {
+        DiagramMetadata metadata = showAreaDiagramOf("S1VL2");
+        String transformer = edgeId(metadata, "TWT");
+
+        assertEquals(transformer, WaitForAsyncUtils.asyncFx(() -> pane.getWebView().getEngine().executeScript("""
+                (function () {
+                    var windings = document.getElementById('%s').querySelectorAll('.nad-winding');
+                    windings[0].scrollIntoView({block: 'center', inline: 'center'});
+                    var first = windings[0].getBoundingClientRect();
+                    var second = windings[1].getBoundingClientRect();
+                    var x = (first.left + first.right) / 2;
+                    var y = (first.top + first.bottom) / 2;
+                    return clickableId(document.elementFromPoint(x + (x - (second.left + second.right) / 2) / 2,
+                        y + (y - (second.top + second.bottom) / 2) / 2));
+                })()""".formatted(transformer))).get());
+    }
+
     private void click(String id) {
         interact(() -> pane.getWebView().getEngine().executeScript(
                 "document.getElementById('" + id + "').dispatchEvent(new MouseEvent('click', {bubbles: true}))"));

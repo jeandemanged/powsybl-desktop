@@ -17,8 +17,36 @@ function widenBusbars() {
     }
 }
 
+// Switches, transformers and feeders are small, drawn unfilled or with holes (only their strokes catching the pointer,
+// e.g. an open FlatDesign disconnector, a Convergence winding or load, a FlatDesign load's cross): a transparent rect
+// over each symbol's padded box, first in its group so that the click lookup finds the group as for the symbol
+// itself, catches the pointer for it. A feeder's label, in its group, is left out of the box: a long name would make
+// the space around it clickable.
+var SYMBOL_HIT_PADDING = 3;
+
+function widenSymbols() {
+    var symbols = document.querySelectorAll('.sld-breaker, .sld-disconnector, .sld-load-break-switch, .sld-two-wt, .sld-three-wt, .sld-pst, '
+        + '.sld-top-feeder, .sld-bottom-feeder');
+    for (var i = 0; i < symbols.length; i++) {
+        var labels = symbols[i].querySelectorAll(':scope > text');
+        labels.forEach(function (label) { label.style.display = 'none'; });
+        var box = symbols[i].getBBox();
+        labels.forEach(function (label) { label.style.display = ''; });
+        var hitArea = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        hitArea.setAttribute('x', box.x - SYMBOL_HIT_PADDING);
+        hitArea.setAttribute('y', box.y - SYMBOL_HIT_PADDING);
+        hitArea.setAttribute('width', box.width + 2 * SYMBOL_HIT_PADDING);
+        hitArea.setAttribute('height', box.height + 2 * SYMBOL_HIT_PADDING);
+        hitArea.setAttribute('style', 'fill: transparent; stroke: none; pointer-events: all');
+        symbols[i].insertBefore(hitArea, symbols[i].firstChild);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
-    new MutationObserver(widenBusbars).observe(document.getElementById('svgContainer'), {childList: true});
+    new MutationObserver(function () {
+        widenBusbars();
+        widenSymbols();
+    }).observe(document.getElementById('svgContainer'), {childList: true});
 }, false);
 
 // what a click on target does, or null if nothing: the same lookup sets the pointer cursor, so that it shows exactly
