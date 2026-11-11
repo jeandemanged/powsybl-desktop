@@ -9,7 +9,7 @@ It starts from the network loaded in the [first tutorial](load_network.md), with
 
 ## Define the sensitivity factors
 
-1. Click **Sensitivity Factors** in the main toolbar.
+1. In the main toolbar, click the small arrow of **Inputs**, then **Sensitivity Factors**.
 2. Click **Add**, then **Factor matrix**.
 
 ![Adding a factor matrix](../_generated/images/quickstart-sensi-add-matrix.png)
@@ -40,7 +40,7 @@ Leave **Computed for** on **Pre-contingency and every contingency**. The matrix 
 ![The factor matrix](../_generated/images/quickstart-sensi-matrix.png)
 
 Had the matrix held anything Open Load Flow can't compute, a warning icon would mark it in the list, and the form would
-tell why. See [Sensitivity factors](../views/analysis/sensitivity_factors.md).
+tell why. See [Sensitivity factors](../views/inputs/sensitivity_factors.md).
 
 ## Run the sensitivity analysis
 
@@ -54,7 +54,7 @@ flow, unless its **Calculation Mode** says otherwise. When it ends, a notificati
 
 ## Read the results
 
-Click **View results**, or open **Tables** > **Sensitivity Analysis Results**. The view shows one state at a time,
+Click **View results**, or open **Results** > **Sensitivity Analysis Results**. The view shows one state at a time,
 **Pre-contingency** first, with one row per factor.
 
 ![The pre-contingency sensitivities](../_generated/images/quickstart-sensi-results.png)
@@ -76,7 +76,7 @@ line it loses. Choose **26-30**:
 
 Without line 26-30, line 8-30 carries 92.7 MW, and its sensitivities to the generators change slightly. A contingency
 whose computation failed shows "(failed)" in the list and has no values. See
-[Sensitivity analysis results](../views/analysis/sensitivity_analysis_results.md).
+[Sensitivity analysis results](../views/results/sensitivity_analysis_results.md).
 
 The factor matrices are kept for the session; save them in a [study](../general/index.md#studies), with the results,
 to resume later.

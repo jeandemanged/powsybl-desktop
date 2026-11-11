@@ -1,11 +1,12 @@
-# Reports and logs
+# Diagnostics
 
-Understand what a computation or an import did, and what went wrong.
+The **Diagnostics** button of the main toolbar opens the logs and the reports, to understand what a computation or an
+import did, and what went wrong.
 
 ```{toctree}
 ---
 maxdepth: 2
 ---
-reports
 logs
+reports
 ```

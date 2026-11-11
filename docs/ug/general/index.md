@@ -37,14 +37,12 @@ From left to right:
 | **Networks**                                                 | Open the [Networks](../views/network/networks.md) view.                                                                |
 | **Substations**                                              | Open the [Substations](../views/diagrams/substations.md) view.                                                          |
 | **Map**                                                      | Open the [Map](../views/diagrams/map.md).                                                                               |
-| **Contingencies**                                            | Open the [Contingencies](../views/analysis/contingencies.md) view.                                                      |
-| **Limit Scalings**                                           | Open the [Limit Scalings](../views/analysis/limit_scalings.md) view.                                                    |
-| **Sensitivity Factors**                                      | Open the [Sensitivity Factors](../views/analysis/sensitivity_factors.md) view.                                          |
-| **Tables**                                                   | Open an [equipment table](../views/equipment/tables/index.md) (**Equipment** submenu), or a results table.                     |
+| **Inputs**                                                   | Open the analysis inputs: [Contingencies](../views/inputs/contingencies.md), [Limit Scalings](../views/inputs/limit_scalings.md) or [Sensitivity Factors](../views/inputs/sensitivity_factors.md). The button opens the last one used, shown by its icon and tooltip; its small arrow lists all three. |
 | **Run**                                                      | Run a **Load Flow**, a **Security Analysis** or a **Sensitivity Analysis** on the selected network.            |
-| **Parameters**                                               | Open the [Parameters](../views/parameters/index.md) view; its small arrow opens it at a given tab.                  |
-| **Logs**                                                     | Open the [Logs](../views/diagnostics/logs.md).                                                                             |
-| **Reports**                                                  | Open the [Reports](../views/diagnostics/reports.md).                                                                       |
+| **Results**                                                  | Open the [Load Flow Results](../views/results/loadflow_results.md), [Security Analysis Results](../views/results/security_analysis_results.md), [Sensitivity Analysis Results](../views/results/sensitivity_analysis_results.md) or [Violations](../views/results/violations.md). |
+| **Tables**                                                   | Open an [equipment table](../views/equipment/tables/index.md).                                                 |
+| **Parameters**                                               | Open the [Parameters](../views/parameters/index.md) view; its small arrow opens it at a given tab.             |
+| **Diagnostics**                                              | Open the [Logs](../views/diagnostics/logs.md) or the [Reports](../views/diagnostics/reports.md). Like **Inputs**, the button opens the last one used; its small arrow lists both. |
 | Speech bubble, at the right end                              | Show or hide the [notifications panel](#notifications).                                                        |
 
 The views showing network content all show the network selected in the [Networks](../views/network/networks.md) view.
@@ -66,10 +64,10 @@ single-line diagram next to a table, or on a second screen.
 - In the toolbar of a view, click the **Open in new window** button (the square with an arrow, at the right end):
   the view opens in a new window. The small arrow next to it offers **New window** or the existing windows, to open
   the view as a new tab of one of them instead.
-- The **Map**, **Contingencies**, **Limit Scalings**, **Sensitivity Factors**, **Parameters**, **Logs** and **Reports** buttons of the main toolbar can also be
-  dragged: release the mouse over a separate window to add the view to it as a tab, anywhere else to open it in a new
-  window at that place. The entries of the **Parameters** button's menu can be dragged the same way, opening the
-  Parameters view at that tab.
+- The **Map**, **Inputs**, **Parameters** and **Diagnostics** buttons of the main toolbar can also be dragged: release
+  the mouse over a separate window to add the view to it as a tab, anywhere else to open it in a new window at that
+  place. **Inputs** and **Diagnostics** open the last view used. The entries of their menus can be dragged the same
+  way, as can the entries of the **Parameters** button's menu, opening the Parameters view at that tab.
 - Some views open in a separate window by themselves: the equipment detail views, and the diagrams opened from the
   map, open as a tab of the most recently created window.
 

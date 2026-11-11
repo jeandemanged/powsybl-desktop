@@ -1,6 +1,6 @@
 # Voltage Angle Limits
 
-The **Voltage Angle Limits** table lists the voltage angle limits of the selected network: bounds on the voltage angle difference between two terminals. Open it with **Tables** > **Equipment** > **Voltage Angle Limits**.
+The **Voltage Angle Limits** table lists the voltage angle limits of the selected network: bounds on the voltage angle difference between two terminals. Open it with **Tables** > **Voltage Angle Limits**.
 
 ![The Voltage Angle Limits table of the EurostagTutorialExample1Factory createWithVoltageAngleLimit sample network](../../../_generated/images/table-voltage-angle-limits.png)
 

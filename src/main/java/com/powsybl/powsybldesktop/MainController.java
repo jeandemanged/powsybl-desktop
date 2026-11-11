@@ -91,6 +91,8 @@ import com.powsybl.sensitivity.SensitivityAnalysisResult;
 import com.powsybl.sensitivity.SensitivityVariableSet;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ListChangeListener;
@@ -114,6 +116,7 @@ import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.SplitMenuButton;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.ToggleButton;
+import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.input.MouseButton;
@@ -122,6 +125,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import javafx.util.Pair;
+import org.kordamp.ikonli.javafx.FontIcon;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -171,18 +175,11 @@ public class MainController extends AbstractDisposableController {
     @FXML
     private Button mapButton;
     @FXML
-    private Button contingenciesButton;
-
-    @FXML
-    private Button limitScalingsButton;
-    @FXML
-    private Button sensitivityFactorsButton;
+    private SplitMenuButton inputsButton;
     @FXML
     private SplitMenuButton parametersButton;
     @FXML
-    private Button logsButton;
-    @FXML
-    private Button reportsButton;
+    private SplitMenuButton diagnosticsButton;
     @FXML
     private MenuItem userGuidePdfItem;
     @FXML
@@ -943,16 +940,18 @@ public class MainController extends AbstractDisposableController {
         windowsMenu.setOnShowing(_ -> updateWindowsMenu());
         updateWindowsMenu();
         separateWindows.addDragToOpen(mapButton, NavigationType.MAP.name(), () -> detachSceneView(MAP_FXML, NavigationType.MAP));
-        separateWindows.addDragToOpen(contingenciesButton, NavigationType.CONTINGENCIES.name(),
-                () -> detachSceneView(CONTINGENCIES_FXML, NavigationType.CONTINGENCIES));
-        separateWindows.addDragToOpen(limitScalingsButton, NavigationType.LIMIT_SCALINGS.name(),
-                () -> detachSceneView(LIMIT_SCALINGS_FXML, NavigationType.LIMIT_SCALINGS));
-        separateWindows.addDragToOpen(sensitivityFactorsButton, NavigationType.SENSITIVITY_FACTORS.name(),
-                () -> detachSceneView(SENSITIVITY_FACTORS_FXML, NavigationType.SENSITIVITY_FACTORS));
+        initLastUsedViewButton(inputsButton, List.of(
+                new MenuView(NavigationType.CONTINGENCIES, "main.toolbar.contingencies", "mdi2f-flash-off", NavigationType.CONTINGENCIES.name(),
+                        this::onContingencies, () -> detachSceneView(CONTINGENCIES_FXML, NavigationType.CONTINGENCIES)),
+                new MenuView(NavigationType.LIMIT_SCALINGS, "main.toolbar.limitScalings", "mdi2t-tune-vertical", NavigationType.LIMIT_SCALINGS.name(),
+                        this::onLimitScalings, () -> detachSceneView(LIMIT_SCALINGS_FXML, NavigationType.LIMIT_SCALINGS)),
+                new MenuView(NavigationType.SENSITIVITY_FACTORS, "main.toolbar.sensitivityFactors", "mdi2m-matrix", NavigationType.SENSITIVITY_FACTORS.name(),
+                        this::onSensitivityFactors, () -> detachSceneView(SENSITIVITY_FACTORS_FXML, NavigationType.SENSITIVITY_FACTORS))));
         separateWindows.addDragToOpen(parametersButton, PARAMETERS_WINDOW, this::detachParameters);
         initParametersMenu();
-        separateWindows.addDragToOpen(logsButton, LOGS_WINDOW, this::detachLogs);
-        separateWindows.addDragToOpen(reportsButton, REPORTS_WINDOW, this::detachReports);
+        initLastUsedViewButton(diagnosticsButton, List.of(
+                new MenuView(NavigationType.LOGS, "main.toolbar.logs", "mdi2f-file-alert", LOGS_WINDOW, this::onLogs, this::detachLogs),
+                new MenuView(NavigationType.REPORTS, "main.toolbar.reports", "mdi2f-file-check", REPORTS_WINDOW, this::onReports, this::detachReports)));
 
         FXMLLoader notificationsLoader = new FXMLLoader(getClass().getResource("ui/notification/notifications-view.fxml"), Messages.bundle());
         try {
@@ -1371,6 +1370,46 @@ public class MainController extends AbstractDisposableController {
                 if (separateWindows.controller(PARAMETERS_WINDOW).orElse(null) instanceof ParametersController parameters) {
                     parameters.selectTab(index);
                 }
+            });
+        }
+    }
+
+    private record MenuView(NavigationType type, String labelKey, String iconLiteral, String windowKey, Runnable open, Runnable detach) {
+    }
+
+    /**
+     * Fills a split button's menu with views; the button itself opens, or is dragged to open, the last one used.
+     */
+    private void initLastUsedViewButton(SplitMenuButton button, List<MenuView> views) {
+        ObjectProperty<MenuView> lastUsed = new SimpleObjectProperty<>(views.getFirst());
+        // from the history: a language reload replaces this controller
+        mainModel.getNavigationHistory().getPast().reversed().stream()
+                .flatMap(event -> views.stream().filter(view -> view.type() == event.navigationType()))
+                .findFirst()
+                .ifPresent(lastUsed::set);
+        listenerManager.listen(mainModel.getNavigationHistory().currentEventProperty(), (_, _, event) -> {
+            if (event != null) {
+                views.stream().filter(view -> view.type() == event.navigationType()).findFirst().ifPresent(lastUsed::set);
+            }
+        });
+        Tooltip tooltip = new Tooltip();
+        button.setTooltip(tooltip);
+        lastUsed.subscribe(view -> {
+            button.setGraphic(new FontIcon(view.iconLiteral()));
+            tooltip.setText(Messages.get(view.labelKey()));
+        });
+        button.setOnAction(_ -> lastUsed.get().open().run());
+        separateWindows.addDragToOpen(button, () -> lastUsed.get().windowKey(), () -> lastUsed.get().detach().run());
+        for (MenuView view : views) {
+            // a node to drag, which a plain MenuItem doesn't expose
+            Label label = new Label(Messages.get(view.labelKey()), new FontIcon(view.iconLiteral()));
+            label.setMnemonicParsing(false);
+            CustomMenuItem item = new CustomMenuItem(label);
+            item.setOnAction(_ -> view.open().run());
+            button.getItems().add(item);
+            separateWindows.addDragToOpen(label, view.windowKey(), view.detach(), () -> {
+                button.hide();
+                lastUsed.set(view);
             });
         }
     }

@@ -1,12 +1,12 @@
 # Limit Scalings
 
 The Limit Scalings view scales the operational limits of the selected network: for instance, check the lines against
-90 % of their current limits, or allow 110 % of them after a contingency. Open it with the **Limit Scalings** button
-of the main toolbar.
+90 % of their current limits, or allow 110 % of them after a contingency. Open it with **Inputs** > **Limit
+Scalings** in the main toolbar.
 
 A scaling multiplies the limits it applies to by a factor. It applies both to the limit violations of the network's
-present state (the [Violations](violations.md) view, the **Loading** column of the
-[equipment tables](../equipment/tables/index.md), the [Map](../diagrams/map.md)) and to the [security analysis](security_analysis_results.md).
+present state (the [Violations](../results/violations.md) view, the **Loading** column of the
+[equipment tables](../equipment/tables/index.md), the [Map](../diagrams/map.md)) and to the [security analysis](../results/security_analysis_results.md).
 
 ## Content
 
@@ -108,4 +108,4 @@ Select it, then click the **Remove** button.
   dialog (the information button of a **Loading** cell) and the **Limits** tab of the
   [Equipment details](../equipment/details/index.md) show a **Scaled Value** column next to the limits that are scaled.
 - A security analysis applies the scalings enabled when it is run: run it again after changing them. Its results tell
-  when they are outdated, see [Security Analysis Results](security_analysis_results.md).
+  when they are outdated, see [Security Analysis Results](../results/security_analysis_results.md).

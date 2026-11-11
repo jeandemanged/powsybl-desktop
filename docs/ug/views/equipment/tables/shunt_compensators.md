@@ -1,6 +1,6 @@
 # Shunt Compensators
 
-The **Shunt Compensators** table lists the shunt compensators (capacitor and reactor banks) of the selected network. Open it with **Tables** > **Equipment** > **Shunt Compensators**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
+The **Shunt Compensators** table lists the shunt compensators (capacitor and reactor banks) of the selected network. Open it with **Tables** > **Shunt Compensators**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
 
 ![The Shunt Compensators table of the smallNodeBreakerWithVoltageLimits sample network, after a load flow](../../../_generated/images/table-shunt-compensators.png)
 

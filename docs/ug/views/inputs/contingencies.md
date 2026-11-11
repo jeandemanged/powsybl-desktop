@@ -1,7 +1,7 @@
 # Contingencies
 
 The Contingencies view defines the contingency lists of the selected network: the losses of equipment simulated by a
-[security analysis](security_analysis_results.md). Open it with the **Contingencies** button of the main toolbar.
+[security analysis](../results/security_analysis_results.md). Open it with **Inputs** > **Contingencies** in the main toolbar.
 
 ## Content
 
@@ -80,5 +80,5 @@ Select it, then click the **Remove** button.
 
 ### Run a security analysis
 
-See [Security Analysis Results](security_analysis_results.md) and the
+See [Security Analysis Results](../results/security_analysis_results.md) and the
 [Security analysis tutorial](../../quickstart/security_analysis.md).

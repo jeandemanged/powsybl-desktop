@@ -17,7 +17,7 @@ A link to the voltage level's single line diagram. No symbol.
 | **Substation** | Link | To its [substation's details](substation.md), `-` when none. |
 | **Topology Kind** | Read-only | `NODE_BREAKER` or `BUS_BREAKER`. |
 | **Nominal Voltage** | Text field | kV. |
-| **Low Voltage Limit**, **High Voltage Limit** | Text field | kV, checked for the voltage [violations](../../analysis/violations.md). |
+| **Low Voltage Limit**, **High Voltage Limit** | Text field | kV, checked for the voltage [violations](../../results/violations.md). |
 
 ## Other tabs
 

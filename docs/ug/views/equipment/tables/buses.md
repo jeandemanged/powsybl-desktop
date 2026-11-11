@@ -5,7 +5,7 @@ Two tables list the buses of the selected network, each in one topology view:
 - **Buses (Bus/Branch View)**: the electrical nodes, everything connected by closed switches merged into one bus. They are the buses a load flow computes.
 - **Buses (Bus/Breaker View)**: the buses of bus/breaker voltage levels as defined, and the buses computed from the nodes of node/breaker voltage levels.
 
-Open them with **Tables** > **Equipment** > **Buses (Bus/Branch View)** or **Buses (Bus/Breaker View)**. Both are also tabs of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
+Open them with **Tables** > **Buses (Bus/Branch View)** or **Buses (Bus/Breaker View)**. Both are also tabs of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
 
 ![The Buses (Bus/Branch View) table of the smallNodeBreakerWithVoltageLimits sample network, after a load flow](../../../_generated/images/table-buses-bus-branch-view.png)
 

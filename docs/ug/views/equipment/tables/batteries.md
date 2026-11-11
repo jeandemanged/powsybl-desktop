@@ -1,6 +1,6 @@
 # Batteries
 
-The **Batteries** table lists the batteries of the selected network. Open it with **Tables** > **Equipment** > **Batteries**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
+The **Batteries** table lists the batteries of the selected network. Open it with **Tables** > **Batteries**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
 
 ![The Batteries table of the Battery sample network, after a load flow](../../../_generated/images/table-batteries.png)
 

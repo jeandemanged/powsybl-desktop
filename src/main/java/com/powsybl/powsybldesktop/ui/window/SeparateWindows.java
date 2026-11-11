@@ -695,7 +695,16 @@ public final class SeparateWindows {
      * {@code dropped} once the view is open or moved where released.
      */
     public void addDragToOpen(Node node, String key, Runnable open, Runnable dropped) {
-        new DragToOpen(node, Objects.requireNonNull(key), open, dropped);
+        Objects.requireNonNull(key);
+        new DragToOpen(node, () -> key, open, dropped);
+    }
+
+    /**
+     * Same as {@link #addDragToOpen(ButtonBase, String, Runnable)} for a button whose view changes (e.g. a split
+     * button opening the last view used of its menu): {@code key} is read when the drag ends.
+     */
+    public void addDragToOpen(ButtonBase button, Supplier<String> key, Runnable open) {
+        new DragToOpen(button, key, open, () -> { });
     }
 
     /**
@@ -707,7 +716,7 @@ public final class SeparateWindows {
 
     private final class DragToOpen {
         private final Node button;
-        private final String key;
+        private final Supplier<String> key;
         private final Runnable open;
         private final Runnable dropped;
         private final Label hint = new Label();
@@ -718,7 +727,7 @@ public final class SeparateWindows {
         private Scene scene;
         private Point2D pressed;
 
-        private DragToOpen(Node button, String key, Runnable open, Runnable dropped) {
+        private DragToOpen(Node button, Supplier<String> key, Runnable open, Runnable dropped) {
             this.button = button;
             this.key = key;
             this.open = open;
@@ -776,7 +785,7 @@ public final class SeparateWindows {
                     buttonBase.disarm();
                 }
                 event.consume();
-                dropToOpen(key, open, event.getScreenX(), event.getScreenY());
+                dropToOpen(key.get(), open, event.getScreenX(), event.getScreenY());
                 dropped.run();
             }
         }

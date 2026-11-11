@@ -7,7 +7,7 @@ It starts from the network loaded in the [first tutorial](load_network.md).
 
 ## Define the contingencies
 
-1. Click **Contingencies** in the main toolbar.
+1. In the main toolbar, click the small arrow of **Inputs**, then **Contingencies**.
 2. Click **Add**, then **Line Criterion**.
 
 ![Adding a contingency list](../_generated/images/quickstart-sa-add-contingencies.png)
@@ -19,7 +19,7 @@ contingencies the list creates, here one per line of the network.
 ![The contingencies of the list](../_generated/images/quickstart-sa-contingencies.png)
 
 The checkbox in front of a list tells whether the security analysis uses it. See
-[Contingencies](../views/analysis/contingencies.md) for the other kinds of lists and for saving lists to files.
+[Contingencies](../views/inputs/contingencies.md) for the other kinds of lists and for saving lists to files.
 
 ## Run the security analysis
 
@@ -31,7 +31,7 @@ notification offers **View results** and **View report**.
 
 ## Read the results
 
-Click **View results**, or open **Tables** > **Security Analysis Results**. The **Contingencies** tab has one row per
+Click **View results**, or open **Results** > **Security Analysis Results**. The **Contingencies** tab has one row per
 contingency, plus the pre-contingency situation: its status, the number of flow and voltage violations, and the worst
 one.
 
@@ -45,7 +45,7 @@ On SmallGrid, a few line losses overload other lines: the **Pre-contingency Valu
 contingency, the **Value** column the flow after it. Some also bring bus voltages out of their limits, listed in the
 **Voltages** tab: the loss of line 8-9 alone causes 35 voltage violations. Click an equipment to open its voltage
 level in the **Substations** view. See
-[Security analysis results](../views/analysis/security_analysis_results.md).
+[Security analysis results](../views/results/security_analysis_results.md).
 
 ## See the violations on the map
 

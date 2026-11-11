@@ -1,6 +1,6 @@
 # Voltage Levels
 
-The **Voltage Levels** table lists the voltage levels of the selected network. Open it with **Tables** > **Equipment** > **Voltage Levels**.
+The **Voltage Levels** table lists the voltage levels of the selected network. Open it with **Tables** > **Voltage Levels**.
 
 ![The Voltage Levels table of the smallNodeBreakerWithVoltageLimits sample network](../../../_generated/images/table-voltage-levels.png)
 
@@ -13,7 +13,7 @@ The **Voltage Levels** table lists the voltage levels of the selected network. O
 | **Name** |  |  | The name, or the id, after an info button and a copy button, as a link to the voltage level in the [Substations](../../diagrams/substations.md) view. |
 | **Topology Kind** |  |  | `NODE_BREAKER` or `BUS_BREAKER`. |
 | **Nominal Voltage** |  | Yes | kV. |
-| **Low Voltage Limit** |  | Yes | kV. Checked for the voltage [violations](../../analysis/violations.md). |
+| **Low Voltage Limit** |  | Yes | kV. Checked for the voltage [violations](../../results/violations.md). |
 | **High Voltage Limit** |  | Yes | kV. Checked for the voltage violations. |
 
 ## Creation and removal

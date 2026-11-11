@@ -1,7 +1,7 @@
 # Equipment tables
 
 The equipment tables list every object of one kind in the selected network, one row per object, with its main
-attributes and its solved values. Open one from the main toolbar: **Tables** > **Equipment**, then the kind of object.
+attributes and its solved values. Open one from the main toolbar: **Tables**, then the kind of object.
 Most of them also appear as tabs of the [Substations](../../diagrams/substations.md) view, limited there to the selected substation or
 voltage level.
 
@@ -58,10 +58,10 @@ percentage of its permanent limit, with a bar:
 
 When an object has several violations, the most severe one is shown (shortest acceptable duration first, then
 highest percentage); otherwise, the highest loading over its sides and limits. The info button before the bar opens
-the list of all the object's violations and limits, as in the [Violations](../../analysis/violations.md) view.
+the list of all the object's violations and limits, as in the [Violations](../../results/violations.md) view.
 
 Loadings and violations are computed when the network is loaded and after each load flow, not after edits: see
-[Violations](../../analysis/violations.md).
+[Violations](../../results/violations.md).
 
 ### Voltage Range column
 

@@ -1,6 +1,6 @@
 # HVDC Lines
 
-The **HVDC Lines** table lists the HVDC lines of the selected network, each joining two converter stations. Open it with **Tables** > **Equipment** > **HVDC Lines**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
+The **HVDC Lines** table lists the HVDC lines of the selected network, each joining two converter stations. Open it with **Tables** > **HVDC Lines**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
 
 ![The HVDC Lines table of the Metrix Tutorial sample network, after a load flow](../../../_generated/images/table-hvdc-lines.png)
 

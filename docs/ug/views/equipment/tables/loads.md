@@ -1,6 +1,6 @@
 # Loads
 
-The **Loads** table lists the loads of the selected network. Open it with **Tables** > **Equipment** > **Loads**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
+The **Loads** table lists the loads of the selected network. Open it with **Tables** > **Loads**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
 
 ![The Loads table of the smallNodeBreakerWithVoltageLimits sample network, after a load flow](../../../_generated/images/table-loads.png)
 

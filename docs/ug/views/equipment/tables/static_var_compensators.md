@@ -1,6 +1,6 @@
 # Static Var Compensators
 
-The **Static Var Compensators** table lists the static var compensators of the selected network. Open it with **Tables** > **Equipment** > **Static Var Compensators**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
+The **Static Var Compensators** table lists the static var compensators of the selected network. Open it with **Tables** > **Static Var Compensators**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
 
 ![The Static Var Compensators table of the Four Substations Node Breaker sample network, after a load flow](../../../_generated/images/table-static-var-compensators.png)
 

@@ -20,13 +20,13 @@ When it ends, a notification gives the outcome and two links: **View results** a
 
 ## Check the convergence
 
-Click **View results**, or open **Tables** > **Load Flow Results**. The table has one row per network component
+Click **View results**, or open **Results** > **Load Flow Results**. The table has one row per network component
 computed: the status of the computation, the number of iterations, the reference and slack buses, and the active
 power mismatch distributed over the network.
 
 ![Load flow results](../_generated/images/quickstart-loadflow-components.png)
 
-On SmallGrid, the single component converges in a few iterations. See [Load flow results](../views/analysis/loadflow_results.md)
+On SmallGrid, the single component converges in a few iterations. See [Load flow results](../views/results/loadflow_results.md)
 for the meaning of each column, and [Reports](../views/diagnostics/reports.md) for the detailed log of the computation.
 
 ## Look at flows and voltages in a diagram
@@ -40,19 +40,19 @@ Each feeder shows its active and reactive power flows, its current and its loadi
 magnitude and angle. Clicking a feeder at the other end of a line opens the voltage level on the other side. See
 [Substations](../views/diagrams/substations.md) for everything diagrams can do.
 
-The computed values are also in the equipment tables: **Tables** > **Equipment** > **Lines** for flows,
+The computed values are also in the equipment tables: **Tables** > **Lines** for flows,
 **Buses (Bus/Branch View)** for voltages.
 
 ## Look at the limit violations
 
-Open **Tables** > **Violations**. The **Flows** tab lists the branches loaded beyond their limits, and the
+Open **Results** > **Violations**. The **Flows** tab lists the branches loaded beyond their limits, and the
 **Voltages** tab the buses out of their voltage limits.
 
 ![Limit violations after the load flow](../_generated/images/quickstart-loadflow-violations.png)
 
 On SmallGrid, two lines are overloaded. The **Loading** column shows how far beyond its permanent limit each one is,
 and for how long it may stay so (here 1 and 15 minutes). The info button next to the bar opens the details of the
-line's violations, and its limits with the crossed ones highlighted. See [Violations](../views/analysis/violations.md).
+line's violations, and its limits with the crossed ones highlighted. See [Violations](../views/results/violations.md).
 
 The **Voltages** tab is empty: all bus voltages are within the limits of their voltage level.
 

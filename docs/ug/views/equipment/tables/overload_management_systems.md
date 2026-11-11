@@ -1,6 +1,6 @@
 # Overload Management Systems
 
-The **Overload Management Systems** table lists the overload management systems of the selected network: automatons that monitor the current in an element and trip switches or branches when it exceeds a threshold. Open it with **Tables** > **Equipment** > **Overload Management Systems**.
+The **Overload Management Systems** table lists the overload management systems of the selected network: automatons that monitor the current in an element and trip switches or branches when it exceeds a threshold. Open it with **Tables** > **Overload Management Systems**.
 
 ![The Overload Management Systems table, with a system added to the smallNodeBreakerWithVoltageLimits sample network](../../../_generated/images/table-overload-management-systems.png)
 

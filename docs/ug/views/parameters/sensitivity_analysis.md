@@ -1,7 +1,7 @@
 # Sensitivity Analysis
 
 The **Sensitivity Analysis** tab sets the parameters of the sensitivity analysis, run by **Run** > **Sensitivity
-Analysis** (see [Sensitivity analysis results](../analysis/sensitivity_analysis_results.md)). The sensitivity analysis
+Analysis** (see [Sensitivity analysis results](../results/sensitivity_analysis_results.md)). The sensitivity analysis
 runs with the load flow parameters of the [Load Flow](load_flow.md) tab, AC or DC as its **Calculation Mode** says.
 
 ![The Sensitivity Analysis tab](../../_generated/images/parameters-sensitivity-analysis.png)

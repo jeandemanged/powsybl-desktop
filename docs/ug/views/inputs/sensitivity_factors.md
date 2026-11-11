@@ -1,8 +1,8 @@
 # Sensitivity Factors
 
-The Sensitivity Factors view defines what a [sensitivity analysis](sensitivity_analysis_results.md) computes: the
+The Sensitivity Factors view defines what a [sensitivity analysis](../results/sensitivity_analysis_results.md) computes: the
 sensitivity factors of the selected network, grouped in factor matrices, and the variable sets some of them use. Open
-it with the **Sensitivity Factors** button of the main toolbar.
+it with **Inputs** > **Sensitivity Factors** in the main toolbar.
 
 ## Content
 

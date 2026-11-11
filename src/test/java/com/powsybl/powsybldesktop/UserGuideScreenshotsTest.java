@@ -203,7 +203,7 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         screenshot("quickstart-loadflow-results");
         interact(() -> mainModel.getNotificationsModel().clear());
 
-        openTable("main.toolbar.loadflowresult");
+        openResults("main.toolbar.loadflowresult");
         screenshot("quickstart-loadflow-components");
 
         VoltageLevel voltageLevel = network.getVoltageLevelStream()
@@ -217,7 +217,7 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         waitForWebViews();
         screenshot("quickstart-loadflow-sld");
 
-        openTable("main.toolbar.violations");
+        openResults("main.toolbar.violations");
         screenshot("quickstart-loadflow-violations");
 
         openMap();
@@ -258,7 +258,7 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
     }
 
     private void runSecurityAnalysis(Network network) throws TimeoutException {
-        clickOn(shown(Messages.get("main.toolbar.contingencies")), Motion.HORIZONTAL_FIRST);
+        openInput("main.toolbar.contingencies");
         clickOn(shown(Messages.get("desktop.common.action.add")), Motion.HORIZONTAL_FIRST);
         moveTo(shown(Messages.get("contingencies.kind.lineCriterion")), Motion.HORIZONTAL_FIRST);
         screenshot("quickstart-sa-add-contingencies");
@@ -276,7 +276,7 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         interact(controller.notificationsButton::fire);
         interact(() -> mainModel.getNotificationsModel().clear());
 
-        openTable("main.toolbar.securityAnalysisResults");
+        openResults("main.toolbar.securityAnalysisResults");
         screenshot("quickstart-sa-results");
 
         // the tab title ends with its row count
@@ -302,7 +302,7 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
     }
 
     private void runSensitivityAnalysis(Network network) throws TimeoutException {
-        clickOn(shown(Messages.get("main.toolbar.sensitivityFactors")), Motion.HORIZONTAL_FIRST);
+        openInput("main.toolbar.sensitivityFactors");
         clickOn(shown(Messages.get("desktop.common.action.add")), Motion.HORIZONTAL_FIRST);
         moveTo(shown(Messages.get("sensitivityFactors.add.matrix")), Motion.HORIZONTAL_FIRST);
         screenshot("quickstart-sensi-add-matrix");
@@ -328,7 +328,7 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         waitUntil(() -> mainModel.getStudy(network).getSensitivityAnalysisResult() != null && !mainModel.isBusy(network));
         interact(() -> mainModel.getNotificationsModel().clear());
 
-        openTable("main.toolbar.sensitivityAnalysisResults");
+        openResults("main.toolbar.sensitivityAnalysisResults");
         screenshot("quickstart-sensi-results");
         // after the loss of line 26-30, of the line criterion list of the security analysis tutorial
         String line2630 = network.getLineStream().filter(line -> "26-30".equals(line.getNameOrId())).findFirst().orElseThrow().getId();
@@ -797,8 +797,14 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
                 && node.isVisible() && node.getScene() != null && node.getScene().getWindow().isShowing()).query();
     }
 
-    private void openTable(String key) {
-        clickOn(shown(Messages.get("main.toolbar.tables")), Motion.HORIZONTAL_FIRST);
+    private void openInput(String key) {
+        clickOn(lookup("#inputsButton").lookup(".arrow-button").queryAs(Node.class), Motion.HORIZONTAL_FIRST);
+        clickOn(shown(Messages.get(key)), Motion.HORIZONTAL_FIRST);
+        WaitForAsyncUtils.waitForFxEvents();
+    }
+
+    private void openResults(String key) {
+        clickOn(shown(Messages.get("main.toolbar.results")), Motion.HORIZONTAL_FIRST);
         clickOn(shown(Messages.get(key)), Motion.HORIZONTAL_FIRST);
         WaitForAsyncUtils.waitForFxEvents();
     }

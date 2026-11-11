@@ -1,6 +1,6 @@
 # Boundary Lines
 
-The **Boundary Lines** table lists the boundary lines of the selected network: lines connected at one end only, the other end being a boundary point standing for the rest of the grid. Two of them can be paired into a [tie line](tie_lines.md). Open it with **Tables** > **Equipment** > **Boundary Lines**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
+The **Boundary Lines** table lists the boundary lines of the selected network: lines connected at one end only, the other end being a boundary point standing for the rest of the grid. Two of them can be paired into a [tie line](tie_lines.md). Open it with **Tables** > **Boundary Lines**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
 
 ![The Boundary Lines table of the microGridBaseCaseAssembled sample network, after a load flow](../../../_generated/images/table-boundary-lines.png)
 

@@ -1,7 +1,7 @@
 # Security Analysis
 
 The **Security Analysis** tab sets the parameters of the security analysis, run by **Run** > **Security Analysis**
-(see [Security analysis results](../analysis/security_analysis_results.md)). The security analysis always runs with
+(see [Security analysis results](../results/security_analysis_results.md)). The security analysis always runs with
 the load flow parameters of the [Load Flow](load_flow.md) tab.
 
 ![The Security Analysis tab](../../_generated/images/parameters-security-analysis.png)

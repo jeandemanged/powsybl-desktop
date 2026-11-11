@@ -1,6 +1,6 @@
 # Substations
 
-The **Substations** table lists the substations of the selected network. Open it with **Tables** > **Equipment** > **Substations**.
+The **Substations** table lists the substations of the selected network. Open it with **Tables** > **Substations**.
 
 ![The Substations table of the smallNodeBreakerWithVoltageLimits sample network](../../../_generated/images/table-substations.png)
 

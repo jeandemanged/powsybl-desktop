@@ -35,7 +35,7 @@ lines, generators, loads... it contains.
 ![SmallGrid loaded](../_generated/images/quickstart-network-loaded.png)
 
 Every other view now shows this network. From here you can, for instance, browse the substations and their
-single-line diagrams with **Substations**, or list the equipment of a given type from **Tables** > **Equipment**.
+single-line diagrams with **Substations**, or list the equipment of a given type from **Tables**.
 
 ## See the network on the map
 

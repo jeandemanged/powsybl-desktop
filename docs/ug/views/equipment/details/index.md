@@ -60,7 +60,7 @@ Depending on the equipment kind:
 - **Limits** (lines, tie lines, transformers, boundary lines): for each side, the operational limits groups, and in
   each group the current, active power and apparent power limits: permanent limit and temporary limits (**Name**,
   **Acceptable Duration**, **Value**, **Fictitious**), with the side's present value. When enabled
-  [limit scalings](../../analysis/limit_scalings.md) scale a selected group's limits in the base case, a read-only **Scaled Value**
+  [limit scalings](../../inputs/limit_scalings.md) scale a selected group's limits in the base case, a read-only **Scaled Value**
   column shows the scaled limits next to the original ones.
 
   ![The Limits tab of a line](../../../_generated/images/details-line-limits.png)
@@ -151,7 +151,7 @@ overload_management_system
   Every other view is updated.
 - Editing is disabled while a computation (load flow, security analysis, export...) runs on the network.
 - Changing the **Id** keeps the view open on the renamed equipment. Other references to the old id, such as
-  [Contingencies](../../analysis/contingencies.md), are not updated.
+  [Contingencies](../../inputs/contingencies.md), are not updated.
 
 ### Edit reactive limits
 
@@ -174,7 +174,7 @@ overload_management_system
 - Edit the limits in place: the permanent limit value, and each temporary limit's name, value, acceptable duration
   and fictitious flag; **Add temporary limit** and **Remove temporary limit** change the temporary limits. The permanent limit can't be removed alone: remove the limits instead.
 
-These limits are the ones checked for the [Violations](../../analysis/violations.md) and by the security analysis.
+These limits are the ones checked for the [Violations](../../results/violations.md) and by the security analysis.
 
 ### Edit extensions, properties and aliases
 

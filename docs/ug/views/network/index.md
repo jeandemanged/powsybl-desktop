@@ -1,6 +1,7 @@
 # Networks and search
 
-Load, save and organize networks, and find an object in the selected one.
+The **Networks** button of the main toolbar opens the view to load, save and organize networks. The search box finds
+an object in the selected one.
 
 ```{toctree}
 ---

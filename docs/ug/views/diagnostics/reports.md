@@ -1,7 +1,7 @@
 # Reports
 
 The Reports view shows the detailed reports of the operations run in the application: network imports and exports,
-load flows and security analyses. Open it with the **Reports** button of the main toolbar, or with **View report** in
+load flows and security analyses. Open it with **Diagnostics** > **Reports** in the main toolbar, or with **View report** in
 the notification of a finished operation, which opens that operation's report. Like the logs and parameters views, it
 can also be opened in a separate window (see [General usage](../../general/index.md)).
 

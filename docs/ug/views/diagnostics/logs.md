@@ -1,7 +1,7 @@
 # Logs
 
 The Logs view shows the messages logged by the application and the PowSyBl libraries while it runs: progress
-information, warnings and errors. Open it with the **Logs** button of the main toolbar, or with **View logs** in the
+information, warnings and errors. Open it with **Diagnostics** > **Logs** in the main toolbar, or with **View logs** in the
 notification of a failed operation. Like the reports and parameters views, it can also be opened in a separate window
 (see [General usage](../../general/index.md)).
 

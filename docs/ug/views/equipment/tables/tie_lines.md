@@ -1,6 +1,6 @@
 # Tie Lines
 
-The **Tie Lines** table lists the tie lines of the selected network: lines made of two boundary lines joined at their boundary point, typically between two subnetworks. Open it with **Tables** > **Equipment** > **Tie Lines**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
+The **Tie Lines** table lists the tie lines of the selected network: lines made of two boundary lines joined at their boundary point, typically between two subnetworks. Open it with **Tables** > **Tie Lines**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
 
 ![The Tie Lines table of the microGridBaseCaseAssembled sample network, after a load flow](../../../_generated/images/table-tie-lines.png)
 

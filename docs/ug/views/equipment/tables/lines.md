@@ -1,6 +1,6 @@
 # Lines
 
-The **Lines** table lists the AC lines of the selected network. Open it with **Tables** > **Equipment** > **Lines**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
+The **Lines** table lists the AC lines of the selected network. Open it with **Tables** > **Lines**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
 
 ![The Lines table of the smallNodeBreakerWithVoltageLimits sample network, after a load flow](../../../_generated/images/table-lines.png)
 

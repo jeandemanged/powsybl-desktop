@@ -1,7 +1,7 @@
 # Load Flow Results
 
 The Load Flow Results table shows, for each connected and synchronous component of the network, the outcome of the
-last load flow. Open it from the main toolbar with **Tables** > **Load Flow Results**, or with **View results** in the
+last load flow. Open it from the main toolbar with **Results** > **Load Flow Results**, or with **View results** in the
 notification shown at the end of a load flow.
 
 ## Content

@@ -1,7 +1,7 @@
 # Violations
 
 The Violations view lists the limit violations of the selected network: branches loaded beyond their limits and buses
-whose voltage is outside their voltage level's limits. Open it from the main toolbar with **Tables** > **Violations**.
+whose voltage is outside their voltage level's limits. Open it from the main toolbar with **Results** > **Violations**.
 
 ## Content
 
@@ -11,7 +11,7 @@ Violations are checked against the network's present values (the solved values w
 
 - once when a network is loaded (imported, created, merged, ...);
 - again after each load flow;
-- again when the [limit scalings](limit_scalings.md) change.
+- again when the [limit scalings](../inputs/limit_scalings.md) change.
 
 They are **not** recomputed after an edit (of a value, of a limit, a creation or a removal): run a load flow to
 update them. When a subnetwork is selected, only the violations of its own equipment are listed.
@@ -21,7 +21,7 @@ What is checked:
 - **Flows**: the current, active power and apparent power limits (permanent and temporary) of the selected
   operational limits group of each side of the lines, tie lines, two- and three-winding transformers, and of the
   boundary lines not paired in a tie line. Limits are edited in the limits tab of the [Equipment details](../equipment/details/index.md).
-  They are scaled by the enabled [limit scalings](limit_scalings.md) of the base case, except the boundary lines'
+  They are scaled by the enabled [limit scalings](../inputs/limit_scalings.md) of the base case, except the boundary lines'
   ones: the **Permanent Limit** and the loading are then the scaled ones.
 - **Voltages**: each bus of the bus/branch view against the **Low Voltage Limit** and **High Voltage Limit** of its
   voltage level.
@@ -83,7 +83,7 @@ The tab title gives the number of violations, e.g. **Voltages (2)**. One row per
   its **Loading** cell. The **Violations of** dialog lists every violation of the equipment, the one shown in the
   table marked with a star, with its side, limit type, operational limits group, limit name, acceptable duration,
   value, permanent limit and loading. Below the list, the equipment's operational limits are shown with the present
-  values, and, for the limits that enabled [limit scalings](limit_scalings.md) scale, a **Scaled Value** column next
+  values, and, for the limits that enabled [limit scalings](../inputs/limit_scalings.md) scale, a **Scaled Value** column next
   to the original values.
 
   ![The violations and limits of a line](../../_generated/images/violations-dialog.png)

@@ -1,7 +1,7 @@
 # Security Analysis Results
 
 The Security Analysis Results view shows the limit violations found by the last security analysis of the selected
-network, before and after each contingency. Open it with **Tables** > **Security Analysis Results**, or with
+network, before and after each contingency. Open it with **Results** > **Security Analysis Results**, or with
 **View results** in the notification of a finished security analysis.
 
 ## Content
@@ -10,7 +10,7 @@ The view is empty until a security analysis has been run on the network. When a 
 violations of its own equipment are shown. Only flow (current, active power, apparent power) and voltage violations
 are shown.
 
-The security analysis applies the [limit scalings](limit_scalings.md) enabled when it was run. A message above the
+The security analysis applies the [limit scalings](../inputs/limit_scalings.md) enabled when it was run. A message above the
 tabs tells when they have changed since (run the analysis again to update the results), and when Open Load Flow did
 not apply, or only partly, some of them. The **Permanent Limit** and the loadings are then the scaled ones, for each
 state, and the **Limit Scaling** column, giving the factor of the crossed limit, is shown.
@@ -65,8 +65,8 @@ comparison. See [Violations](violations.md), which uses the same columns for the
 
 ### Run a security analysis
 
-1. Define and enable contingency lists in the [Contingencies](contingencies.md) view.
-2. Optionally, define and enable limit scalings in the [Limit Scalings](limit_scalings.md) view.
+1. Define and enable contingency lists in the [Contingencies](../inputs/contingencies.md) view.
+2. Optionally, define and enable limit scalings in the [Limit Scalings](../inputs/limit_scalings.md) view.
 3. Set the parameters in the **Security Analysis** and **Load Flow** tabs of the [Parameters](../parameters/index.md) view.
 4. Click **Run** > **Security Analysis** in the main toolbar.
 

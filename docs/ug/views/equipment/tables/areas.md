@@ -1,6 +1,6 @@
 # Areas
 
-The **Areas** table lists the areas of the selected network: groups of voltage levels, such as control areas or bidding zones, with their interchange. Open it with **Tables** > **Equipment** > **Areas**.
+The **Areas** table lists the areas of the selected network: groups of voltage levels, such as control areas or bidding zones, with their interchange. Open it with **Tables** > **Areas**.
 
 ![The Areas table of the EurostagTutorialExample1Factory createWithTieLinesAndAreas sample network, after a load flow](../../../_generated/images/table-areas.png)
 

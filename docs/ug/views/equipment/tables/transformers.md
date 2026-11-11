@@ -1,6 +1,6 @@
 # Transformers
 
-The **Transformers** table lists the two- and three-winding transformers of the selected network, in one table. Open it with **Tables** > **Equipment** > **Transformers**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
+The **Transformers** table lists the two- and three-winding transformers of the selected network, in one table. Open it with **Tables** > **Transformers**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
 
 ![The Transformers table of the microGridBaseCaseAssembled sample network, after a load flow, with its three-winding transformer](../../../_generated/images/table-transformers.png)
 

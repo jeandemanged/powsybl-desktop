@@ -1,6 +1,6 @@
 # Grounds
 
-The **Grounds** table lists the grounds of the selected network. Open it with **Tables** > **Equipment** > **Grounds**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
+The **Grounds** table lists the grounds of the selected network. Open it with **Tables** > **Grounds**. It is also a tab of the [Substations](../../diagrams/substations.md) view, for the selected substation or voltage level.
 
 ![The Grounds table of the TwoVoltageLevelNetworkFactory createWithGrounds sample network](../../../_generated/images/table-grounds.png)
 
