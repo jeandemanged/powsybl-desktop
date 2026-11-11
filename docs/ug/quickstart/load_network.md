@@ -20,7 +20,7 @@ The main toolbar, at the top, gives access to all the views and computations. Se
 1. In the toolbar of the **Networks** view, click the **Import** button (the arrow pointing up).
 2. Open **Sample Networks**.
 3. Click **smallNodeBreakerWithVoltageLimits (Geographical Layout)**. The *Geographical Layout* variant also contains
-   the positions of the substations, used by the [Map](../views/map.md).
+   the positions of the substations, used by the [Map](../views/diagrams/map.md).
 
 ![The sample networks menu](../_generated/images/quickstart-sample-menu.png)
 
@@ -46,6 +46,6 @@ voltage: SmallGrid lies in Great Britain.
 
 Drag to pan and use the mouse wheel to zoom; hovering a substation or a line shows its name, and clicking a substation
 opens its single-line diagram. The boxes at the top right filter the voltage ranges and the limit violations shown,
-used in the next tutorials. See [Map](../views/map.md).
+used in the next tutorials. See [Map](../views/diagrams/map.md).
 
 Next, [run a load flow](loadflow.md) on this network.

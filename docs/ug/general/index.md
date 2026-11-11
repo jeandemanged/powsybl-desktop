@@ -34,19 +34,19 @@ From left to right:
 | Button                                                       | Action                                                                                                         |
 |--------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
 | Back and forward arrows                                      | Go back to the previous view, or forward again. See [Navigation history](#navigation-history).                 |
-| **Networks**                                                 | Open the [Networks](../views/networks.md) view.                                                                |
-| **Substations**                                              | Open the [Substations](../views/substations.md) view.                                                          |
-| **Map**                                                      | Open the [Map](../views/map.md).                                                                               |
-| **Contingencies**                                            | Open the [Contingencies](../views/contingencies.md) view.                                                      |
-| **Limit Scalings**                                           | Open the [Limit Scalings](../views/limit_scalings.md) view.                                                    |
-| **Tables**                                                   | Open an [equipment table](../views/tables.md) (**Equipment** submenu), or a results table.                     |
+| **Networks**                                                 | Open the [Networks](../views/network/networks.md) view.                                                                |
+| **Substations**                                              | Open the [Substations](../views/diagrams/substations.md) view.                                                          |
+| **Map**                                                      | Open the [Map](../views/diagrams/map.md).                                                                               |
+| **Contingencies**                                            | Open the [Contingencies](../views/analysis/contingencies.md) view.                                                      |
+| **Limit Scalings**                                           | Open the [Limit Scalings](../views/analysis/limit_scalings.md) view.                                                    |
+| **Tables**                                                   | Open an [equipment table](../views/equipment/tables/index.md) (**Equipment** submenu), or a results table.                     |
 | **Run**                                                      | Run a **Load Flow** or a **Security Analysis** on the selected network.                                        |
-| **Parameters**                                               | Open the [Parameters](../views/parameters.md) view.                                                            |
-| **Logs**                                                     | Open the [Logs](../views/logs.md).                                                                             |
-| **Reports**                                                  | Open the [Reports](../views/reports.md).                                                                       |
+| **Parameters**                                               | Open the [Parameters](../views/parameters/index.md) view.                                                            |
+| **Logs**                                                     | Open the [Logs](../views/diagnostics/logs.md).                                                                             |
+| **Reports**                                                  | Open the [Reports](../views/diagnostics/reports.md).                                                                       |
 | Speech bubble, at the right end                              | Show or hide the [notifications panel](#notifications).                                                        |
 
-The views showing network content all show the network selected in the [Networks](../views/networks.md) view.
+The views showing network content all show the network selected in the [Networks](../views/network/networks.md) view.
 
 ## Navigation history
 
@@ -101,7 +101,7 @@ diagram: following a line to the voltage level at its other end stays in the sam
 ### Separate windows and networks
 
 A separate window showing network content keeps showing the network that was selected when it was opened. Selecting
-another network in the [Networks](../views/networks.md) view closes these tabs, after asking for confirmation. The map
+another network in the [Networks](../views/network/networks.md) view closes these tabs, after asking for confirmation. The map
 is the exception: it always follows the selected network.
 
 ## Notifications

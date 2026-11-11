@@ -19,14 +19,14 @@ contingencies the list creates, here one per line of the network.
 ![The contingencies of the list](../_generated/images/quickstart-sa-contingencies.png)
 
 The checkbox in front of a list tells whether the security analysis uses it. See
-[Contingencies](../views/contingencies.md) for the other kinds of lists and for saving lists to files.
+[Contingencies](../views/analysis/contingencies.md) for the other kinds of lists and for saving lists to files.
 
 ## Run the security analysis
 
 1. In the main toolbar, click **Run**.
 2. Click **Security Analysis**.
 
-The analysis runs with the parameters of the [Parameters](../views/parameters.md) view. When it ends, a
+The analysis runs with the parameters of the [Parameters](../views/parameters/index.md) view. When it ends, a
 notification offers **View results** and **View report**.
 
 ## Read the results
@@ -45,7 +45,7 @@ On SmallGrid, a few line losses overload other lines: the **Pre-contingency Valu
 contingency, the **Value** column the flow after it. Some also bring bus voltages out of their limits, listed in the
 **Voltages** tab: the loss of line 8-9 alone causes 35 voltage violations. Click an equipment to open its voltage
 level in the **Substations** view. See
-[Security analysis results](../views/security_analysis_results.md).
+[Security analysis results](../views/analysis/security_analysis_results.md).
 
 ## See the violations on the map
 
@@ -61,4 +61,4 @@ overloads remain, those of the pre-contingency situation in red and those after 
 
 ![The map without contingency voltage violations](../_generated/images/quickstart-sa-map-no-contingency-voltage.png)
 
-The checkboxes are saved with the **User Interface** parameters. See [Map](../views/map.md).
+The checkboxes are saved with the **User Interface** parameters. See [Map](../views/diagrams/map.md).

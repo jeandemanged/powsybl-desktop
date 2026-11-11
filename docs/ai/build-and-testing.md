@@ -139,6 +139,15 @@ notifications popup, placed in the window's corner, is moved to the view's. Move
 `Motion.HORIZONTAL_FIRST`: a diagonal move crosses sibling items and closes the submenu being aimed at. A page of
 `docs/ug` referencing a new image needs that image added to the test.
 
+`equipment` takes one `table-<kind>` screenshot per equipment table page of `docs/ug/views/equipment/tables` and one
+`detail-<kind>` screenshot (plus `detail-<kind>-<tab>` for the kind's own tabs) per page of
+`docs/ug/views/equipment/details`: each sample network (the smallest one holding the kind: small grid,
+microGridBaseCaseAssembled for tie and boundary lines and three-winding transformers, Metrix Tutorial for HVDC...) is
+added to `MainModel` directly, without the menus, and solved by a load flow; `tableScreenshot` crops the main view (or
+the Substations view's tab pane) to the table's columns and filled rows; the detail view is opened from the table row
+and the equipment chosen by smallest id, so that screenshots are stable. No sample has an overload management system:
+the test adds one to the small grid. Each tab of the Parameters view has its `parameters-<tab>` screenshot.
+
 ## CI
 
 `.github/workflows/ci.yml`: on every branch push (no pull request or tag trigger), `mvn -B clean install

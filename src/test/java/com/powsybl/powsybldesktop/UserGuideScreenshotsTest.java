@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop;
 
+import com.powsybl.cgmes.conformity.CgmesConformity1Catalog;
 import com.powsybl.contingency.violations.LimitViolation;
 import com.powsybl.contingency.violations.LimitViolationType;
 import com.powsybl.iidm.network.Generator;
@@ -15,9 +16,15 @@ import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.ThreeSides;
+import com.powsybl.iidm.network.TwoSides;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
+import com.powsybl.iidm.network.test.BatteryNetworkFactory;
+import com.powsybl.iidm.network.test.EurostagTutorialExample1Factory;
+import com.powsybl.iidm.network.test.FourSubstationsNodeBreakerFactory;
+import com.powsybl.iidm.network.test.TwoVoltageLevelNetworkFactory;
+import com.powsybl.iidm.serde.test.MetrixTutorialSixBusesFactory;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
@@ -75,10 +82,13 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -96,6 +106,9 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
     private static final int FLOWS_CLOSE_UP_ZOOM = 12;
     private static final int FLOWS_CLOSE_UP_WIDTH = 520;
     private static final int FLOWS_CLOSE_UP_HEIGHT = 340;
+    private static final int TABLE_MAX_HEIGHT = 560;
+    private static final int TABLE_MIN_WIDTH = 720;
+    private static final int TABLE_MARGIN = 8;
     private static final Path OUTPUT_DIRECTORY = Path.of(System.getProperty("ug.screenshots.dir", "docs/ug/_generated/images"));
 
     private static final int WIDTH = 1680;
@@ -151,7 +164,9 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
                 "map-show-flows-box", "general-main-toolbar", "networks-import-menu", "substations-nad", "substations-lines-tab",
                 "search-box-match", "search-box-approximate", "search-box-not-found", "tables-lines", "tables-column-groups", "violations-dialog",
                 "details-generator", "details-line-limits", "general-separate-window", "sa-results-voltages",
-                "limit-scalings", "parameters-user-interface", "parameters-load-flow", "reports", "logs"), writtenScreenshots);
+                "limit-scalings", "parameters-user-interface", "parameters-network-import", "parameters-network-export",
+                "parameters-single-line-diagram", "parameters-network-area-diagram", "parameters-load-flow", "parameters-security-analysis",
+                "reports", "logs"), writtenScreenshots);
     }
 
     private Network loadSmallGrid() throws TimeoutException {
@@ -339,8 +354,18 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         interact(controller::onParameters);
         WaitForAsyncUtils.waitForFxEvents();
         screenshot("parameters-user-interface");
+        selectTab(root, Messages.get("parameters.tab.networkImport"));
+        screenshot("parameters-network-import");
+        selectTab(root, Messages.get("parameters.tab.networkExport"));
+        screenshot("parameters-network-export");
+        selectTab(root, Messages.get("desktop.common.singleLineDiagram"));
+        screenshot("parameters-single-line-diagram");
+        selectTab(root, Messages.get("desktop.common.networkAreaDiagram"));
+        screenshot("parameters-network-area-diagram");
         selectTab(root, Messages.get("desktop.common.loadFlow"));
         screenshot("parameters-load-flow");
+        selectTab(root, Messages.get("desktop.common.securityAnalysis"));
+        screenshot("parameters-security-analysis");
 
         interact(controller::onReports);
         WaitForAsyncUtils.waitForFxEvents();
@@ -444,6 +469,196 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
             tab.getTabPane().getSelectionModel().select(tab);
         });
         WaitForAsyncUtils.waitForFxEvents();
+    }
+
+    /**
+     * One screenshot per equipment table and per equipment detail view, each on the smallest sample network holding
+     * that kind of equipment, with the detail view's own tabs where it has some.
+     */
+    @Test
+    void equipment() throws TimeoutException, IOException {
+        Files.createDirectories(OUTPUT_DIRECTORY);
+        Network smallGrid = loadSample(UserGuideScreenshotsTest::smallGridWithOverloadManagementSystem);
+        VoltageLevel voltageLevel = smallGrid.getVoltageLevelStream()
+                .max(Comparator.comparingInt(VoltageLevel::getConnectableCount))
+                .orElseThrow();
+        tableScreenshot("table-substations", controller::onSubstationsTable);
+        detailScreenshots("detail-substation", voltageLevel.getSubstation().orElseThrow());
+        tableScreenshot("table-voltage-levels", controller::onVoltageLevelsTable);
+        detailScreenshots("detail-voltage-level", voltageLevel);
+        tableScreenshot("table-busbar-sections", controller::onBusbarSectionsTable);
+        detailScreenshots("detail-busbar-section", first(voltageLevel.getNodeBreakerView().getBusbarSectionStream()));
+        tableScreenshot("table-buses-bus-branch-view", controller::onBusesBusView);
+        tableScreenshot("table-buses-bus-breaker-view", controller::onBusesBusBreakerView);
+        VoltageLevel switchesVoltageLevel = smallGrid.getVoltageLevelStream()
+                .max(Comparator.comparingInt(vl -> vl.getNodeBreakerView().getSwitchCount()))
+                .orElseThrow();
+        tableScreenshot("table-switches", () -> mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SUBSTATIONS,
+                ContainerNavigationState.create(switchesVoltageLevel, ContainerNavigationState.ContainerTab.SWITCHES))));
+        detailScreenshots("detail-switch", first(switchesVoltageLevel.getNodeBreakerView().getSwitchStream()));
+        tableScreenshot("table-generators", controller::onGenerators);
+        detailScreenshots("detail-generator", smallGrid.getGeneratorStream().max(Comparator.comparingDouble(Generator::getMaxP)).orElseThrow(),
+                "detail.tab.reactiveLimits");
+        tableScreenshot("table-loads", controller::onLoads);
+        detailScreenshots("detail-load", first(voltageLevel.getLoadStream()));
+        tableScreenshot("table-lines", controller::onLines);
+        detailScreenshots("detail-line", first(voltageLevel.getLineStream()));
+        tableScreenshot("table-shunt-compensators", controller::onShuntCompensators);
+        detailScreenshots("detail-shunt-compensator", first(smallGrid.getShuntCompensatorStream()), "detail.section.sections");
+        tableScreenshot("table-overload-management-systems", controller::onOverloadManagementSystems);
+        detailScreenshots("detail-overload-management-system", first(smallGrid.getOverloadManagementSystemStream()), "edit.oms.trippings");
+
+        Network microGrid = loadSample(() -> Network.read(CgmesConformity1Catalog.microGridBaseCaseAssembled().dataSource()));
+        tableScreenshot("table-tie-lines", controller::onTieLines);
+        detailScreenshots("detail-tie-line", first(microGrid.getTieLineStream()));
+        tableScreenshot("table-boundary-lines", controller::onBoundaryLines);
+        detailScreenshots("detail-boundary-line", first(microGrid.getBoundaryLineStream()));
+        tableScreenshot("table-transformers", controller::onTransformers);
+        detailScreenshots("detail-two-winding-transformer", first(microGrid.getTwoWindingsTransformerStream()
+                .filter(transformer -> transformer.hasPhaseTapChanger() || transformer.hasRatioTapChanger())), "detail.tab.tapChangers");
+        detailScreenshots("detail-three-winding-transformer", first(microGrid.getThreeWindingsTransformerStream()));
+
+        Network metrix = loadSample(MetrixTutorialSixBusesFactory::create);
+        tableScreenshot("table-hvdc-lines", controller::onHvdcLines);
+        detailScreenshots("detail-hvdc-line", first(metrix.getHvdcLineStream()));
+        tableScreenshot("table-vsc-converter-stations", controller::onVscConverterStations);
+        detailScreenshots("detail-vsc-converter-station", first(metrix.getVscConverterStationStream()));
+
+        Network fourSubstations = loadSample(FourSubstationsNodeBreakerFactory::create);
+        tableScreenshot("table-static-var-compensators", controller::onStaticVarCompensators);
+        detailScreenshots("detail-static-var-compensator", first(fourSubstations.getStaticVarCompensatorStream()));
+        tableScreenshot("table-lcc-converter-stations", controller::onLccConverterStations);
+        detailScreenshots("detail-lcc-converter-station", first(fourSubstations.getLccConverterStationStream()));
+
+        Network batteries = loadSample(BatteryNetworkFactory::create);
+        tableScreenshot("table-batteries", controller::onBatteries);
+        detailScreenshots("detail-battery", first(batteries.getBatteryStream()));
+
+        Network grounds = loadSample(TwoVoltageLevelNetworkFactory::createWithGrounds);
+        tableScreenshot("table-grounds", controller::onGrounds);
+        detailScreenshots("detail-ground", first(grounds.getGroundStream()));
+
+        Network areas = loadSample(EurostagTutorialExample1Factory::createWithTieLinesAndAreas);
+        tableScreenshot("table-areas", controller::onAreas);
+        detailScreenshots("detail-area", first(areas.getAreaStream()), "areas.column.boundaries");
+
+        loadSample(EurostagTutorialExample1Factory::createWithVoltageAngleLimit);
+        tableScreenshot("table-voltage-angle-limits", controller::onVoltageAngleLimits);
+
+        assertEquals(List.of("table-substations", "detail-substation", "table-voltage-levels", "detail-voltage-level",
+                "table-busbar-sections", "detail-busbar-section", "table-buses-bus-branch-view", "table-buses-bus-breaker-view",
+                "table-switches", "detail-switch", "table-generators", "detail-generator", "detail-generator-reactive-limits",
+                "table-loads", "detail-load", "table-lines", "detail-line", "table-shunt-compensators", "detail-shunt-compensator",
+                "detail-shunt-compensator-sections", "table-overload-management-systems", "detail-overload-management-system",
+                "detail-overload-management-system-trippings", "table-tie-lines", "detail-tie-line", "table-boundary-lines",
+                "detail-boundary-line", "table-transformers", "detail-two-winding-transformer",
+                "detail-two-winding-transformer-tap-changers", "detail-three-winding-transformer", "table-hvdc-lines",
+                "detail-hvdc-line", "table-vsc-converter-stations", "detail-vsc-converter-station",
+                "table-static-var-compensators", "detail-static-var-compensator", "table-lcc-converter-stations",
+                "detail-lcc-converter-station", "table-batteries", "detail-battery", "table-grounds", "detail-ground",
+                "table-areas", "detail-area", "detail-area-boundaries", "table-voltage-angle-limits"), writtenScreenshots);
+    }
+
+    // The first by id, for screenshots that don't change from a run to the next
+    private static <T extends Identifiable<?>> T first(Stream<T> equipments) {
+        return equipments.min(Comparator.comparing(Identifiable::getId)).orElseThrow();
+    }
+
+    /**
+     * The equipment's detail view, opened from its row in the shown table, then each given tab, named after the last
+     * part of its title key (e.g. {@code detail.tab.reactiveLimits}: {@code <name>-reactive-limits}).
+     */
+    private void detailScreenshots(String name, Identifiable<?> equipment, String... tabKeys) {
+        openDetails(equipment);
+        Stage detailWindow = separateWindow();
+        screenshotScene(name, detailWindow.getScene());
+        for (String tabKey : tabKeys) {
+            selectTab(detailWindow.getScene().getRoot(), Messages.get(tabKey));
+            String suffix = tabKey.substring(tabKey.lastIndexOf('.') + 1).replaceAll("([A-Z])", "-$1").toLowerCase(Locale.ROOT);
+            screenshotScene(name + "-" + suffix, detailWindow.getScene());
+        }
+        interact(detailWindow::close);
+    }
+
+    // The smallNodeBreakerWithVoltageLimits sample, plus an overload management system, which no sample network has
+    private static Network smallGridWithOverloadManagementSystem() {
+        Network network = Network.read(CgmesConformity1Catalog.smallNodeBreaker().dataSource());
+        network.getVoltageLevelStream().forEach(vl -> {
+            double margin = vl.getNominalV() == 132 ? 0.10 : 0.05;
+            vl.setHighVoltageLimit(vl.getNominalV() * (1 + margin))
+                    .setLowVoltageLimit(vl.getNominalV() * (1 - margin));
+        });
+        Line line = network.getLineStream().sorted(Comparator.comparing(Line::getNameOrId)).findFirst().orElseThrow();
+        line.getTerminal1().getVoltageLevel().getSubstation().orElseThrow().newOverloadManagementSystem()
+                .setId("OMS_" + line.getNameOrId()).setEnabled(true)
+                .setMonitoredElementId(line.getId()).setMonitoredElementSide(ThreeSides.ONE)
+                .newBranchTripping().setKey("TRIP").setBranchToOperateId(line.getId()).setSideToOperate(TwoSides.TWO)
+                .setCurrentLimit(1000).setOpenAction(true).add()
+                .add();
+        return network;
+    }
+
+    // Added and selected, then solved by a load flow, as the tables show solved values
+    private Network loadSample(Supplier<Network> sample) throws TimeoutException {
+        Network network = sample.get();
+        interact(() -> {
+            mainModel.addNetwork(network);
+            mainModel.setNetwork(network);
+        });
+        waitUntil(() -> !mainModel.isBusy(network));
+        interact(controller::onLoadFlow);
+        waitUntil(() -> mainModel.getStudy(network).getLoadFlowResult() != null && !mainModel.isBusy(network));
+        interact(() -> mainModel.getNotificationsModel().clear());
+        return network;
+    }
+
+    /**
+     * The current view (or the tab pane holding the table), from its top left corner to the right end of the table's columns and the bottom of its last
+     * row, at most {@link #TABLE_MAX_HEIGHT} high.
+     */
+    private void tableScreenshot(String name, Runnable open) {
+        interact(open);
+        // a tab of the Substations view is laid out a pulse after it's selected
+        WaitForAsyncUtils.sleep(500, TimeUnit.MILLISECONDS);
+        interact(() -> {
+            root.applyCss();
+            root.layout();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+        TableView<?> table = lookup((Node node) -> node instanceof TableView<?> && shownInScene(node)
+                && node.getScene() == stage.getScene()).query();
+        Node view = controller.borderPane.getCenter();
+        for (Node parent = table.getParent(); parent != null; parent = parent.getParent()) {
+            if (parent instanceof TabPane) {
+                view = parent;
+                break;
+            }
+        }
+        Node croppedView = view;
+        interact(() -> {
+            Bounds viewBounds = croppedView.localToScene(croppedView.getLayoutBounds());
+            Bounds tableBounds = table.localToScene(table.getLayoutBounds());
+            double columnsWidth = table.getVisibleLeafColumns().stream().mapToDouble(TableColumn::getWidth).sum();
+            double rowsBottom = table.lookupAll(".table-row-cell").stream()
+                    .filter(node -> node instanceof TableRow<?> row && row.getItem() != null && row.isVisible())
+                    .mapToDouble(node -> node.localToScene(node.getLayoutBounds()).getMaxY())
+                    .max().orElse(tableBounds.getMinY() + 40);
+            int minX = (int) viewBounds.getMinX();
+            int minY = (int) viewBounds.getMinY();
+            int maxX = (int) Math.min(viewBounds.getMaxX(), Math.max(tableBounds.getMinX() + columnsWidth + TABLE_MARGIN, TABLE_MIN_WIDTH));
+            int maxY = (int) Math.min(Math.min(viewBounds.getMaxY(), tableBounds.getMaxY()), Math.min(rowsBottom + TABLE_MARGIN, minY + TABLE_MAX_HEIGHT));
+            write(name, composite().getSubimage(minX, minY, maxX - minX, maxY - minY));
+        });
+    }
+
+    // The tables of the unselected tabs of the Substations view are visible themselves, inside a hidden tab content
+    private static boolean shownInScene(Node node) {
+        for (Node current = node; current != null; current = current.getParent()) {
+            if (!current.isVisible()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private record BarCase(String situation, Loading loading, VoltageRange range) {

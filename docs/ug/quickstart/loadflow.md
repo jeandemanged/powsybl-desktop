@@ -11,7 +11,7 @@ single-line diagram, and the limit violations, in a table and on the map. It sta
 
 ![The Run menu](../_generated/images/quickstart-loadflow-run.png)
 
-The load flow runs with the parameters of the [Parameters](../views/parameters.md) view; the defaults are fine for
+The load flow runs with the parameters of the [Parameters](../views/parameters/index.md) view; the defaults are fine for
 this tutorial. The computation itself is done by PowSyBl OpenLoadFlow.
 
 When it ends, a notification gives the outcome and two links: **View results** and **View report**.
@@ -26,8 +26,8 @@ power mismatch distributed over the network.
 
 ![Load flow results](../_generated/images/quickstart-loadflow-components.png)
 
-On SmallGrid, the single component converges in a few iterations. See [Load flow results](../views/loadflow_results.md)
-for the meaning of each column, and [Reports](../views/reports.md) for the detailed log of the computation.
+On SmallGrid, the single component converges in a few iterations. See [Load flow results](../views/analysis/loadflow_results.md)
+for the meaning of each column, and [Reports](../views/diagnostics/reports.md) for the detailed log of the computation.
 
 ## Look at flows and voltages in a diagram
 
@@ -38,7 +38,7 @@ for the meaning of each column, and [Reports](../views/reports.md) for the detai
 
 Each feeder shows its active and reactive power flows, its current and its loading, and each bus shows its voltage
 magnitude and angle. Clicking a feeder at the other end of a line opens the voltage level on the other side. See
-[Substations](../views/substations.md) for everything diagrams can do.
+[Substations](../views/diagrams/substations.md) for everything diagrams can do.
 
 The computed values are also in the equipment tables: **Tables** > **Equipment** > **Lines** for flows,
 **Buses (Bus/Branch View)** for voltages.
@@ -52,7 +52,7 @@ Open **Tables** > **Violations**. The **Flows** tab lists the branches loaded be
 
 On SmallGrid, two lines are overloaded. The **Loading** column shows how far beyond its permanent limit each one is,
 and for how long it may stay so (here 1 and 15 minutes). The info button next to the bar opens the details of the
-line's violations, and its limits with the crossed ones highlighted. See [Violations](../views/violations.md).
+line's violations, and its limits with the crossed ones highlighted. See [Violations](../views/analysis/violations.md).
 
 The **Voltages** tab is empty: all bus voltages are within the limits of their voltage level.
 
@@ -60,7 +60,7 @@ The **Voltages** tab is empty: all bus voltages are within the limits of their v
 
 Click **Map** in the main toolbar. A red warning bubble now marks each overloaded line, above its middle. With **Show flows** checked,
 overloaded lines are also highlighted in red all along, and each end of a line gets chevrons pointing the way the
-active power flows there, one to four depending on the loading of that side (see [Map](../views/map.md)).
+active power flows there, one to four depending on the loading of that side (see [Map](../views/diagrams/map.md)).
 
 ![Limit violations on the map](../_generated/images/quickstart-loadflow-map.png)
 
