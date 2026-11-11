@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.powsybl.commons.json.JsonUtil;
 import com.powsybl.contingency.ContingencyContext;
 import com.powsybl.contingency.ContingencyContextType;
+import com.powsybl.sensitivity.SensitivityAnalysisResult;
 import com.powsybl.sensitivity.SensitivityFactor;
 import com.powsybl.sensitivity.SensitivityFunctionType;
 import com.powsybl.sensitivity.SensitivityVariableSet;
@@ -35,7 +36,8 @@ import java.util.Map;
  *     <li>factor matrices: the app's own format, PowSyBl's (a flat list of {@link SensitivityFactor}s) not keeping
  *     how the user grouped the factors;</li>
  *     <li>PowSyBl's factors, for exchanges with other tools: written expanded, read back grouped into matrices;</li>
- *     <li>variable sets: PowSyBl's format, a list of {@link SensitivityVariableSet}s.</li>
+ *     <li>variable sets: PowSyBl's format, a list of {@link SensitivityVariableSet}s;</li>
+ *     <li>results: PowSyBl's format.</li>
  * </ul>
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -119,6 +121,18 @@ public final class SensitivityFactorsIO {
     public static void writeVariableSets(List<SensitivityVariableSet> variableSets, Path path) throws IOException {
         try (OutputStream out = Files.newOutputStream(path)) {
             mapper().writerWithDefaultPrettyPrinter().writeValue(out, variableSets);
+        }
+    }
+
+    public static SensitivityAnalysisResult readResult(Path path) throws IOException {
+        try (InputStream in = Files.newInputStream(path)) {
+            return mapper().readValue(in, SensitivityAnalysisResult.class);
+        }
+    }
+
+    public static void writeResult(SensitivityAnalysisResult result, Path path) throws IOException {
+        try (OutputStream out = Files.newOutputStream(path)) {
+            mapper().writeValue(out, result);
         }
     }
 

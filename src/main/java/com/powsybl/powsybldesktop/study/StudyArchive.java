@@ -29,12 +29,16 @@ import com.powsybl.powsybldesktop.limitscaling.LimitScalings;
 import com.powsybl.powsybldesktop.logs.LogsModel.LogEntry;
 import com.powsybl.powsybldesktop.parameters.ApplicationParameters;
 import com.powsybl.powsybldesktop.parameters.ApplicationParametersJson;
+import com.powsybl.powsybldesktop.sensitivity.SensitivityFactorMatrix;
+import com.powsybl.powsybldesktop.sensitivity.SensitivityFactorsIO;
 import com.powsybl.powsybldesktop.util.PowsyblDesktopVersion;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.security.SecurityAnalysisResult;
 import com.powsybl.security.json.SecurityAnalysisResultDeserializer;
 import com.powsybl.security.json.SecurityAnalysisResultSerializer;
 import com.powsybl.security.limitscaling.LimitScaling;
+import com.powsybl.sensitivity.SensitivityAnalysisResult;
+import com.powsybl.sensitivity.SensitivityVariableSet;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,8 +58,8 @@ import java.util.Map;
  * Writes and reads a {@link Study} as a zip file ({@code .psbx}), through the zip file system so that PowSyBl's own
  * serializers write and read its entries as files:
  * <pre>
- * manifest.json                      format version, networks in order with their selection and contingency lists' and limit
- *                                    scalings' enabled flags, report count
+ * manifest.json                      format version, networks in order with their selection, contingency lists' and limit
+ *                                    scalings' enabled flags and whether their sensitivity analysis result is DC, report count
  * parameters.json                    as the parameters configuration file
  * networks/&lt;i&gt;/network.biidm          binary IIDM, subnetworks included
  * networks/&lt;i&gt;/contingencies.json     a ListOfContingencyLists
@@ -63,6 +67,10 @@ import java.util.Map;
  * networks/&lt;i&gt;/loadflow-result.json
  * networks/&lt;i&gt;/security-analysis-result.json
  * networks/&lt;i&gt;/security-analysis-limit-scalings.json   the LimitScalingList the security analysis was run with
+ * networks/&lt;i&gt;/sensitivity-factors.json          the factor matrices, in the app's format
+ * networks/&lt;i&gt;/sensitivity-variable-sets.json    PowSyBl's
+ * networks/&lt;i&gt;/sensitivity-analysis-result.json  PowSyBl's
+ * networks/&lt;i&gt;/sensitivity-analysis-matrices.json the factor matrices the sensitivity analysis was run with
  * reports/&lt;i&gt;.json
  * logs.json
  * </pre>
@@ -83,6 +91,10 @@ public final class StudyArchive {
     private static final String SECURITY_ANALYSIS_LIMIT_SCALINGS = "security-analysis-limit-scalings.json";
     private static final String LOAD_FLOW_RESULT = "loadflow-result.json";
     private static final String SECURITY_ANALYSIS_RESULT = "security-analysis-result.json";
+    private static final String SENSITIVITY_FACTORS = "sensitivity-factors.json";
+    private static final String SENSITIVITY_VARIABLE_SETS = "sensitivity-variable-sets.json";
+    private static final String SENSITIVITY_ANALYSIS_RESULT = "sensitivity-analysis-result.json";
+    private static final String SENSITIVITY_ANALYSIS_MATRICES = "sensitivity-analysis-matrices.json";
     private static final String LOGS = "logs.json";
     // a study can be written by a later version having added fields
     private static final ObjectMapper MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
@@ -99,7 +111,9 @@ public final class StudyArchive {
     record Manifest(String formatVersion, String appVersion, List<NetworkEntry> networks, Integer reports) {
     }
 
-    record NetworkEntry(String id, boolean selected, List<Boolean> contingencyListsEnabled, List<Boolean> limitScalingsEnabled) {
+    // sensitivityAnalysisDc: null without a sensitivity analysis result
+    record NetworkEntry(String id, boolean selected, List<Boolean> contingencyListsEnabled, List<Boolean> limitScalingsEnabled,
+                        Boolean sensitivityAnalysisDc) {
     }
 
     private record LogLine(long timeStamp, String level, String message) {
@@ -140,7 +154,8 @@ public final class StudyArchive {
     private static List<Step> writeSteps(Study study, Path root) {
         List<Step> steps = new ArrayList<>();
         List<NetworkEntry> entries = study.networks().stream()
-                .map(n -> new NetworkEntry(n.network().getId(), n.selected(), n.contingencyListsEnabled(), n.limitScalingsEnabled()))
+                .map(n -> new NetworkEntry(n.network().getId(), n.selected(), n.contingencyListsEnabled(), n.limitScalingsEnabled(),
+                        n.sensitivityAnalysisResult() == null ? null : n.sensitivityAnalysisDc()))
                 .toList();
         Integer reportCount = study.reports() == null ? null : study.reports().size();
         Manifest manifest = new Manifest(FORMAT_VERSION, new PowsyblDesktopVersion().getMavenProjectVersion(), entries, reportCount);
@@ -164,6 +179,18 @@ public final class StudyArchive {
             if (!studyNetwork.limitScalings().isEmpty()) {
                 steps.add(new Step(Messages.get("study.progress.limitScalings", name),
                         () -> LimitScalings.write(studyNetwork.limitScalings(), folder.resolve(LIMIT_SCALINGS))));
+            }
+            if (!studyNetwork.sensitivityFactorMatrices().isEmpty() || !studyNetwork.sensitivityVariableSets().isEmpty()) {
+                steps.add(new Step(Messages.get("study.progress.sensitivityFactors", name), () -> {
+                    SensitivityFactorsIO.writeMatrices(studyNetwork.sensitivityFactorMatrices(), folder.resolve(SENSITIVITY_FACTORS));
+                    SensitivityFactorsIO.writeVariableSets(studyNetwork.sensitivityVariableSets(), folder.resolve(SENSITIVITY_VARIABLE_SETS));
+                }));
+            }
+            if (studyNetwork.sensitivityAnalysisResult() != null) {
+                steps.add(new Step(Messages.get("study.progress.sensitivityAnalysisResult", name), () -> {
+                    SensitivityFactorsIO.writeResult(studyNetwork.sensitivityAnalysisResult(), folder.resolve(SENSITIVITY_ANALYSIS_RESULT));
+                    SensitivityFactorsIO.writeMatrices(studyNetwork.sensitivityAnalysisMatrices(), folder.resolve(SENSITIVITY_ANALYSIS_MATRICES));
+                }));
             }
             if (studyNetwork.loadFlowResult() != null) {
                 steps.add(new Step(Messages.get("study.progress.loadFlowResult", name),
@@ -213,6 +240,10 @@ public final class StudyArchive {
             List<List<ContingencyList>> contingencyLists = new ArrayList<>(Collections.nCopies(networkCount, List.of()));
             List<List<LimitScaling>> limitScalings = new ArrayList<>(Collections.nCopies(networkCount, List.of()));
             List<List<LimitScaling>> securityAnalysisLimitScalings = new ArrayList<>(Collections.nCopies(networkCount, List.of()));
+            List<List<SensitivityFactorMatrix>> sensitivityFactorMatrices = new ArrayList<>(Collections.nCopies(networkCount, List.of()));
+            List<List<SensitivityVariableSet>> sensitivityVariableSets = new ArrayList<>(Collections.nCopies(networkCount, List.of()));
+            List<List<SensitivityFactorMatrix>> sensitivityAnalysisMatrices = new ArrayList<>(Collections.nCopies(networkCount, List.of()));
+            SensitivityAnalysisResult[] sensitivityAnalysisResults = new SensitivityAnalysisResult[networkCount];
             LoadFlowResult[] loadFlowResults = new LoadFlowResult[networkCount];
             SecurityAnalysisResult[] securityAnalysisResults = new SecurityAnalysisResult[networkCount];
             ReportNode[] reports = new ReportNode[manifest.reports() == null ? 0 : manifest.reports()];
@@ -239,6 +270,21 @@ public final class StudyArchive {
                 if (Files.exists(scalings)) {
                     steps.add(new Step(Messages.get("study.progress.limitScalings", name),
                             () -> limitScalings.set(index, LimitScalings.read(scalings))));
+                }
+                Path sensitivityFactors = folder.resolve(SENSITIVITY_FACTORS);
+                if (Files.exists(sensitivityFactors)) {
+                    steps.add(new Step(Messages.get("study.progress.sensitivityFactors", name), () -> {
+                        sensitivityFactorMatrices.set(index, SensitivityFactorsIO.readMatrices(sensitivityFactors));
+                        sensitivityVariableSets.set(index, SensitivityFactorsIO.readVariableSets(folder.resolve(SENSITIVITY_VARIABLE_SETS)));
+                    }));
+                }
+                Path sensitivityAnalysisResult = folder.resolve(SENSITIVITY_ANALYSIS_RESULT);
+                if (Files.exists(sensitivityAnalysisResult)) {
+                    steps.add(new Step(Messages.get("study.progress.sensitivityAnalysisResult", name), () -> {
+                        sensitivityAnalysisResults[index] = SensitivityFactorsIO.readResult(sensitivityAnalysisResult);
+                        sensitivityAnalysisMatrices.set(index, SensitivityFactorsIO.readMatrices(folder.resolve(SENSITIVITY_ANALYSIS_MATRICES)));
+                        checkSensitivityAnalysisResult(sensitivityAnalysisResults[index], sensitivityAnalysisMatrices.get(index), path);
+                    }));
                 }
                 Path loadFlowResult = folder.resolve(LOAD_FLOW_RESULT);
                 if (Files.exists(loadFlowResult)) {
@@ -280,10 +326,19 @@ public final class StudyArchive {
                         ? entry.limitScalingsEnabled()
                         : Collections.nCopies(scalings.size(), true);
                 studyNetworks.add(new Study.StudyNetwork(networks[i], entry.selected(), lists, enabled, scalings, scalingsEnabled,
-                        loadFlowResults[i], securityAnalysisResults[i], securityAnalysisLimitScalings.get(i)));
+                        sensitivityFactorMatrices.get(i), sensitivityVariableSets.get(i),
+                        loadFlowResults[i], securityAnalysisResults[i], securityAnalysisLimitScalings.get(i),
+                        sensitivityAnalysisResults[i], sensitivityAnalysisMatrices.get(i), Boolean.TRUE.equals(entry.sensitivityAnalysisDc())));
             }
             return new Study(parameters[0], studyNetworks, manifest.reports() == null ? null : List.of(reports),
                     hasLogs ? logs.getFirst() : null);
+        }
+    }
+
+    // the results view maps the result's factors back to the matrices they are the expansion of
+    private static void checkSensitivityAnalysisResult(SensitivityAnalysisResult result, List<SensitivityFactorMatrix> matrices, Path path) throws IOException {
+        if (matrices.stream().mapToInt(SensitivityFactorMatrix::factorCount).sum() != result.getFactors().size()) {
+            throw new IOException("Sensitivity analysis result inconsistent with its factor matrices in " + path);
         }
     }
 

@@ -200,22 +200,25 @@ There is no database. Persistent state is:
 | UI language | Java Preferences API | `…/utils/LanguagePreferences.java` |
 | Last file-chooser directory | Java Preferences API | `…/ui/controls/FileChooserPreferences.java` |
 | Networks | User files, imported/exported through PowSyBl `Importer`/`Exporter` | `NetworksController` (import: plain `Task`; export: `AbstractNetworkTask`), `NetworkIO` |
-| Studies (parameters, networks, contingency lists, results, reports, logs) | User-chosen `.psbx` zip file | `…/study/StudyArchive.java`, see [Studies](#studies) |
-| Contingency lists, limit scalings, parameters, reports, diagrams | User-chosen JSON/text/SVG/PNG files | `ContingencyListsIO`, `LimitScalings`, `ApplicationParametersJson`, `ReportsController`, `DiagramPaneController` |
+| Studies (parameters, networks, contingency lists, limit scalings, sensitivity factors, results, reports, logs) | User-chosen `.psbx` zip file | `…/study/StudyArchive.java`, see [Studies](#studies) |
+| Contingency lists, limit scalings, sensitivity factors, parameters, reports, diagrams | User-chosen JSON/text/SVG/PNG files | `ContingencyListsIO`, `LimitScalings`, `SensitivityFactorsIO`, `ApplicationParametersJson`, `ReportsController`, `DiagramPaneController` |
 
 Use the existing helpers (and `FileChooserPreferences` for any new `FileChooser`) rather than adding new storage.
-Network state (loaded networks, results, contingency lists, limit scalings) is not persisted between runs, except in
-study files.
+Network state (loaded networks, results, contingency lists, limit scalings, sensitivity factors) is not persisted
+between runs, except in study files.
 
 ## Studies
 
 File > Save Study / Load Study write and read the app's state as one zip file, `.psbx`
 (`…/study/StudyArchive.java`, layout in its javadoc): a `manifest.json` (format version, networks in order with the
-selected one and their contingency lists' and limit scalings' enabled flags, report count, `null` when reports are
-not saved), then one file per part, each written by an existing serializer — `ApplicationParametersJson`, binary IIDM
-(`NetworkSerDe`, subnetworks included), `ContingencyListsIO`, `LimitScalings` (the scalings, and the ones the
-security analysis result was computed with), PowSyBl's load flow / security analysis result and `ReportNode` JSON
-serializers — plus the logs as JSON. Entries are written and read through the JDK zip file system (`jdk.zipfs`,
+selected one, their contingency lists' and limit scalings' enabled flags and whether their sensitivity analysis
+result is DC, report count, `null` when reports are not saved), then one file per part, each written by an existing
+serializer — `ApplicationParametersJson`, binary IIDM (`NetworkSerDe`, subnetworks included), `ContingencyListsIO`,
+`LimitScalings` (the scalings, and the ones the security analysis result was computed with), `SensitivityFactorsIO`
+(factor matrices and variable sets, the sensitivity analysis result and the matrices it was computed with, which
+must expand to as many factors as the result has or the read fails), PowSyBl's load flow / security analysis result
+and `ReportNode` JSON serializers — plus the logs as JSON. A reader accepts any 1.x format, ignoring unknown manifest fields
+and files: the sensitivity files were added without changing the format version. Entries are written and read through the JDK zip file system (`jdk.zipfs`,
 listed explicitly in the packaging scripts since jdeps can't see it), so these serializers must go through
 `Files`/`Path`, never `Path.toFile()`. A write goes to a `.tmp` sibling first, moved over the target once complete.
 
