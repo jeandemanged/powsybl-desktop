@@ -137,11 +137,11 @@
                                 <MenuItem mnemonicParsing="false" onAction="#onSecurityAnalysis" text="%desktop.common.securityAnalysis" />
                             </items>
                         </MenuButton>
-                        <Button fx:id="parametersButton" mnemonicParsing="false" onAction="#onParameters" text="%desktop.common.parameters">
+                        <SplitMenuButton fx:id="parametersButton" mnemonicParsing="false" onAction="#onParameters" text="%desktop.common.parameters">
                             <graphic>
                                 <FontIcon iconLiteral="mdi2c-cog" iconSize="16" />
                             </graphic>
-                        </Button>
+                        </SplitMenuButton>
                         <Separator orientation="VERTICAL" />
                         <Button fx:id="logsButton" mnemonicParsing="false" onAction="#onLogs" text="%main.toolbar.logs">
                             <graphic>

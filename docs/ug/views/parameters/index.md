@@ -1,7 +1,7 @@
 # Parameters
 
 The Parameters view gathers every setting of the application: computations, diagrams, network import and export,
-and the user interface itself. Open it with the **Parameters** button of the main toolbar; like the logs and reports
+and the user interface itself. Open it with the **Parameters** button of the main toolbar, or at a given tab from the button's small arrow; like the logs and reports
 views, it can also be opened in a separate window (see [General usage](../../general/index.md)).
 
 ## Content

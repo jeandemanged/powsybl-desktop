@@ -94,11 +94,14 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ContextMenu;
+import javafx.scene.control.CustomMenuItem;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.RadioMenuItem;
 import javafx.scene.control.SeparatorMenuItem;
+import javafx.scene.control.SplitMenuButton;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.image.Image;
@@ -163,7 +166,7 @@ public class MainController extends AbstractDisposableController {
     @FXML
     private Button limitScalingsButton;
     @FXML
-    private Button parametersButton;
+    private SplitMenuButton parametersButton;
     @FXML
     private Button logsButton;
     @FXML
@@ -820,6 +823,7 @@ public class MainController extends AbstractDisposableController {
         separateWindows.addDragToOpen(limitScalingsButton, NavigationType.LIMIT_SCALINGS.name(),
                 () -> detachSceneView(LIMIT_SCALINGS_FXML, NavigationType.LIMIT_SCALINGS));
         separateWindows.addDragToOpen(parametersButton, PARAMETERS_WINDOW, this::detachParameters);
+        initParametersMenu();
         separateWindows.addDragToOpen(logsButton, LOGS_WINDOW, this::detachLogs);
         separateWindows.addDragToOpen(reportsButton, REPORTS_WINDOW, this::detachReports);
 
@@ -1209,6 +1213,30 @@ public class MainController extends AbstractDisposableController {
 
     public void onParameters() {
         mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.PARAMETERS));
+    }
+
+    private void initParametersMenu() {
+        List<String> titles = ParametersController.tabTitles();
+        for (int i = 0; i < titles.size(); i++) {
+            int index = i;
+            // a node to drag, which a plain MenuItem doesn't expose
+            Label label = new Label(titles.get(i));
+            label.setMnemonicParsing(false);
+            CustomMenuItem item = new CustomMenuItem(label);
+            item.setOnAction(_ -> {
+                onParameters();
+                if (currentController instanceof ParametersController parameters) {
+                    parameters.selectTab(index);
+                }
+            });
+            parametersButton.getItems().add(item);
+            separateWindows.addDragToOpen(label, PARAMETERS_WINDOW, this::detachParameters, () -> {
+                parametersButton.hide();
+                if (separateWindows.controller(PARAMETERS_WINDOW).orElse(null) instanceof ParametersController parameters) {
+                    parameters.selectTab(index);
+                }
+            });
+        }
     }
 
     private void detachParameters() {

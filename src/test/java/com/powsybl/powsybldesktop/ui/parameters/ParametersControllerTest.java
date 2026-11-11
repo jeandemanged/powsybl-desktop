@@ -85,6 +85,7 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals("Network Area Diagram", tabs.get(4).getText());
         assertEquals("Load Flow", tabs.get(5).getText());
         assertEquals("Security Analysis", tabs.get(6).getText());
+        assertEquals(tabs.stream().map(Tab::getText).toList(), ParametersController.tabTitles());
     }
 
     @Test

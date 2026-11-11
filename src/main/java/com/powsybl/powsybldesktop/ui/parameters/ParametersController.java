@@ -30,6 +30,7 @@ import java.io.File;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -46,6 +47,11 @@ import java.util.Objects;
 public class ParametersController extends AbstractDisposableController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ParametersController.class);
+
+    // in the order of parameters-view.fxml's tabs, for the main toolbar's menu
+    private static final List<String> TAB_TITLE_KEYS = List.of("parameters.tab.gui", "parameters.tab.networkImport",
+            "parameters.tab.networkExport", "desktop.common.singleLineDiagram", "desktop.common.networkAreaDiagram",
+            "desktop.common.loadFlow", "desktop.common.securityAnalysis");
 
     @FXML
     private Button saveButton;
@@ -88,6 +94,14 @@ public class ParametersController extends AbstractDisposableController {
         guiEmbeddedController.setParametersModel(mainModel.getParametersModel());
         listenerManager.listen(mainModel.getParametersModel().parametersRevisionProperty(), (_, _, _) -> updateSaveButton());
         setConfigPath(configPath);
+    }
+
+    public static List<String> tabTitles() {
+        return TAB_TITLE_KEYS.stream().map(Messages::get).toList();
+    }
+
+    public void selectTab(int index) {
+        tabPane.getSelectionModel().select(index);
     }
 
     void setConfigPath(Path configPath) {

@@ -40,7 +40,11 @@ create a `Stage` for a view elsewhere (`ArchitectureTest` allows only the shell 
 - The main toolbar's map, contingencies, limit scalings, parameters, logs and reports buttons can also be dragged
   (`separateWindows.addDragToOpen(button, key, open)`): released over a separate window, the view opens as a new tab
   of it, elsewhere in a new window at the release point, a hint following the mouse telling which; if the view of `key`
-  is already open, the drag moves it as its tab's would. A plain mouse drag (scene filters), not platform drag and
+  is already open, the drag moves it as its tab's would. The parameters button is a split button whose menu lists the
+  parameters tabs (`ParametersController.tabTitles()`, kept in the FXML's tab order): an entry shows the view at that
+  tab, and dragging it (its `CustomMenuItem` label, through `addDragToOpen(node, key, open, dropped)`) opens or moves
+  the view as the button's drag does, then selects the tab (`SeparateWindows.controller(key)`). A drag pressed on a
+  split button's arrow is ignored, the arrow opening the menu. A plain mouse drag (scene filters), not platform drag and
   drop, whose "forbidden" cursor outside accepting targets would be misleading; tests call `dropToOpen` directly,
   since the headless platform doesn't deliver a drag leaving its window.
 - Detail views, and diagrams opened from the map, open as a tab of the latest window created (`openInLatestWindow`,

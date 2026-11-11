@@ -687,13 +687,29 @@ public final class SeparateWindows {
      * accepting the drop, the platform shows a "forbidden" cursor although releasing there opens a new window.
      */
     public void addDragToOpen(ButtonBase button, String key, Runnable open) {
-        new DragToOpen(button, Objects.requireNonNull(key), open);
+        addDragToOpen(button, key, open, () -> { });
+    }
+
+    /**
+     * Same as {@link #addDragToOpen(ButtonBase, String, Runnable)} for any node (e.g. a menu entry's content), running
+     * {@code dropped} once the view is open or moved where released.
+     */
+    public void addDragToOpen(Node node, String key, Runnable open, Runnable dropped) {
+        new DragToOpen(node, Objects.requireNonNull(key), open, dropped);
+    }
+
+    /**
+     * The controller of the view of {@code key}, if open.
+     */
+    public Optional<DisposableController> controller(String key) {
+        return find(key).map(view -> view.controller);
     }
 
     private final class DragToOpen {
-        private final ButtonBase button;
+        private final Node button;
         private final String key;
         private final Runnable open;
+        private final Runnable dropped;
         private final Label hint = new Label();
         private final Popup popup = new Popup();
         // on the scene rather than the button: the gesture leaves it
@@ -702,22 +718,33 @@ public final class SeparateWindows {
         private Scene scene;
         private Point2D pressed;
 
-        private DragToOpen(ButtonBase button, String key, Runnable open) {
+        private DragToOpen(Node button, String key, Runnable open, Runnable dropped) {
             this.button = button;
             this.key = key;
             this.open = open;
+            this.dropped = dropped;
             hint.getStyleClass().add("drag-to-open-hint");
             // a Popup doesn't inherit its owner's stylesheets
             hint.getStylesheets().add(Objects.requireNonNull(SeparateWindows.class.getResource("/com/powsybl/powsybldesktop/styles.css")).toExternalForm());
             popup.getContent().add(hint);
             button.addEventHandler(MouseEvent.MOUSE_PRESSED, event -> {
-                if (event.getButton() == MouseButton.PRIMARY && button.getScene() != null) {
+                if (event.getButton() == MouseButton.PRIMARY && button.getScene() != null && !onArrow(event)) {
                     pressed = new Point2D(event.getScreenX(), event.getScreenY());
                     scene = button.getScene();
                     scene.addEventFilter(MouseEvent.MOUSE_DRAGGED, dragged);
                     scene.addEventFilter(MouseEvent.MOUSE_RELEASED, released);
                 }
             });
+        }
+
+        // a split menu button's arrow opens its menu
+        private boolean onArrow(MouseEvent event) {
+            for (Node node = event.getPickResult().getIntersectedNode(); node != null && node != button; node = node.getParent()) {
+                if (node.getStyleClass().contains("arrow-button")) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private void dragged(MouseEvent event) {
@@ -745,9 +772,12 @@ public final class SeparateWindows {
             if (popup.isShowing()) {
                 popup.hide();
                 // released away from the button, which would otherwise stay armed
-                button.disarm();
+                if (button instanceof ButtonBase buttonBase) {
+                    buttonBase.disarm();
+                }
                 event.consume();
                 dropToOpen(key, open, event.getScreenX(), event.getScreenY());
+                dropped.run();
             }
         }
     }
