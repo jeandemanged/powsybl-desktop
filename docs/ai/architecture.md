@@ -120,8 +120,8 @@ a subnetwork), an `updateProperty()` timestamp fired after any network mutation 
 display settings, the network change guard, and the sub-models `NavigationHistory`, `ParametersModel`,
 `NotificationsModel`, `LogsModel`.
 
-`…/core/NetworkStudy.java` holds everything per loaded root network: LF/SA results, cached limit violations,
-contingency lists and limit scalings and their enabled flags, running computation and index-build services, search indexes, Map views,
+`…/core/NetworkStudy.java` holds everything per loaded root network: LF/SA/sensitivity results, cached limit violations,
+contingency lists and limit scalings and their enabled flags, sensitivity factor matrices and variable sets, running computation and index-build services, search indexes, Map views,
 busy count. `MainModel.getStudy(n)` resolves a subnetwork to its root and throws if the network is not loaded. Studies
 are created by `addNetwork`/`detachSubnetworks` and disposed (services cancelled, indexes closed) by `removeNetwork`.
 

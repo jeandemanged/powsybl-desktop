@@ -13,6 +13,7 @@ import com.powsybl.contingency.list.DefaultContingencyList;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.test.EurostagTutorialExample1Factory;
 import com.powsybl.openloadflow.sensi.OpenSensitivityAnalysisParameters;
+import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.sensitivity.SensitivityAnalysisParameters;
 import com.powsybl.sensitivity.SensitivityAnalysisResult;
 import com.powsybl.sensitivity.SensitivityFunctionType;
@@ -75,6 +76,20 @@ class SensitivityAnalysisRunTest {
         assertEquals(List.of(GLSK), run.variableSets());
         assertEquals("desktop.sensitivityAnalysis", resultAndReport.reportNode().getMessageKey());
         assertTrue(run.computation().orElseThrow().isDone());
+    }
+
+    @Test
+    void problemsTellEachFailingMatrixWithItsReasons() {
+        SensitivityFactorMatrix voltages = new SensitivityFactorMatrix("voltages", SensitivityFunctionType.BUS_VOLTAGE,
+                List.of("NGEN"), SensitivityVariableType.BUS_TARGET_VOLTAGE, List.of("GEN"), false, ContingencyContext.none());
+        SensitivityFactorMatrix unknownSet = new SensitivityFactorMatrix("unknown", SensitivityFunctionType.BRANCH_ACTIVE_POWER_1,
+                List.of("NHV1_NHV2_1"), SensitivityVariableType.INJECTION_ACTIVE_POWER, List.of("GLSK", "OTHER"), true, ContingencyContext.none());
+
+        assertEquals(List.of(), SensitivityAnalysisRun.problems(List.of(LINES_TO_GENERATOR, LINE_TO_SET, voltages), List.of(GLSK), false));
+        assertEquals(List.of("voltages: " + Messages.get("sensitivity.olf.dcFunction") + " " + Messages.get("sensitivity.olf.dcVariable")),
+                SensitivityAnalysisRun.problems(List.of(LINES_TO_GENERATOR, voltages), List.of(), true));
+        assertEquals(List.of("unknown: " + Messages.get("sensitivity.unknownVariableSets", "OTHER")),
+                SensitivityAnalysisRun.problems(List.of(unknownSet), List.of(GLSK), false));
     }
 
     @Test

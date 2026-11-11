@@ -135,6 +135,7 @@
                             <items>
                                 <MenuItem mnemonicParsing="false" onAction="#onLoadFlow" text="%desktop.common.loadFlow" />
                                 <MenuItem mnemonicParsing="false" onAction="#onSecurityAnalysis" text="%desktop.common.securityAnalysis" />
+                                <MenuItem mnemonicParsing="false" onAction="#onSensitivityAnalysis" text="%desktop.common.sensitivityAnalysis" />
                             </items>
                         </MenuButton>
                         <SplitMenuButton fx:id="parametersButton" mnemonicParsing="false" onAction="#onParameters" text="%desktop.common.parameters">

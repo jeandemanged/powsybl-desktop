@@ -32,6 +32,9 @@ import com.powsybl.powsybldesktop.notification.NotificationAction;
 import com.powsybl.powsybldesktop.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.security.SecurityAnalysisResultAndReport;
 import com.powsybl.powsybldesktop.security.SecurityAnalysisRun;
+import com.powsybl.powsybldesktop.sensitivity.SensitivityAnalysisResultAndReport;
+import com.powsybl.powsybldesktop.sensitivity.SensitivityAnalysisRun;
+import com.powsybl.powsybldesktop.sensitivity.SensitivityFactorMatrix;
 import com.powsybl.powsybldesktop.ui.AbstractDisposableController;
 import com.powsybl.powsybldesktop.ui.DisposableController;
 import com.powsybl.powsybldesktop.ui.contingency.ContingenciesController;
@@ -79,6 +82,9 @@ import com.powsybl.powsybldesktop.utils.UserGuide;
 import com.powsybl.powsybldesktop.violations.NetworkViolations;
 import com.powsybl.security.SecurityAnalysisParameters;
 import com.powsybl.security.limitscaling.LimitScaling;
+import com.powsybl.sensitivity.SensitivityAnalysisParameters;
+import com.powsybl.sensitivity.SensitivityAnalysisResult;
+import com.powsybl.sensitivity.SensitivityVariableSet;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.value.ChangeListener;
@@ -482,10 +488,7 @@ public class MainController extends AbstractDisposableController {
             return;
         }
         SecurityAnalysisParameters parameters = SecurityAnalysisRun.copyParameters(mainModel.getParametersModel().securityAnalysisParametersProperty().getValue());
-        List<ContingencyList> enabledContingencyLists = mainModel.getStudy(network).getContingencyLists().stream()
-                .filter(list -> mainModel.getStudy(network).contingencyListEnabledProperty(list).get())
-                .toList();
-        ContingencyList contingencyList = new ListOfContingencyLists(network.getNameOrId(), enabledContingencyLists);
+        ContingencyList contingencyList = enabledContingencies(network);
         List<LimitScaling> limitScalings = mainModel.getStudy(network).getEnabledLimitScalings();
         if (!confirmLimitScalings(limitScalings)) {
             return;
@@ -539,6 +542,12 @@ public class MainController extends AbstractDisposableController {
         securityAnalysisService.start();
     }
 
+    private ContingencyList enabledContingencies(Network network) {
+        NetworkStudy study = mainModel.getStudy(network);
+        return new ListOfContingencyLists(network.getNameOrId(),
+                study.getContingencyLists().stream().filter(list -> study.contingencyListEnabledProperty(list).get()).toList());
+    }
+
     // Open Load Flow skips the limit scalings it doesn't support with a mere log line: the user decides whether to run
     // without them. One it would fail on is refused.
     private boolean confirmLimitScalings(List<LimitScaling> limitScalings) {
@@ -584,6 +593,108 @@ public class MainController extends AbstractDisposableController {
             return Notification.createError(start, "main.securityAnalysis.preContingencyNotConverged", viewResultsAction, viewReportAction);
         }
         return Notification.createSuccess(start, "main.securityAnalysis.completed", viewResultsAction, viewReportAction);
+    }
+
+    @FXML
+    protected void onSensitivityAnalysis() {
+        Network selectedNetwork = mainModel.getNetwork();
+        if (selectedNetwork == null) {
+            return;
+        }
+        // same rationale as onLoadFlow: never run on a subnetwork, only on its root
+        Network network = selectedNetwork.getNetwork();
+
+        if (refuseIfBusy(network)) {
+            return;
+        }
+        NetworkStudy study = mainModel.getStudy(network);
+        SensitivityAnalysisParameters parameters = SensitivityAnalysisRun.copyParameters(
+                mainModel.getParametersModel().sensitivityAnalysisParametersProperty().getValue(),
+                mainModel.getParametersModel().sensitivityAnalysisModeProperty().getValue());
+        boolean dc = parameters.getLoadFlowParameters().isDc();
+        List<SensitivityFactorMatrix> matrices = List.copyOf(study.getSensitivityFactorMatrices());
+        List<SensitivityVariableSet> variableSets = List.copyOf(study.getSensitivityVariableSets());
+        if (!checkSensitivityFactors(matrices, variableSets, dc)) {
+            return;
+        }
+
+        SensitivityAnalysisRun run = SensitivityAnalysisRun.prepare(network, matrices, variableSets, enabledContingencies(network), parameters);
+        Service<SensitivityAnalysisResultAndReport> sensitivityAnalysisService = new Service<>() {
+            @Override
+            protected Task<SensitivityAnalysisResultAndReport> createTask() {
+                return new AbstractNetworkTask<>(mainModel, network) {
+                    @Override
+                    protected SensitivityAnalysisResultAndReport compute() throws Exception {
+                        return run.compute();
+                    }
+                };
+            }
+        };
+        Notification runningNotification = Notification.createRunning("main.sensitivityAnalysis.running", sensitivityAnalysisService::cancel);
+        mainModel.getNotificationsModel().add(runningNotification);
+
+        sensitivityAnalysisService.setOnSucceeded(event -> {
+            run.restoreVariantAccess();
+            SensitivityAnalysisResultAndReport resultAndReport = (SensitivityAnalysisResultAndReport) event.getSource().getValue();
+            study.setSensitivityAnalysisResult(resultAndReport.sensitivityAnalysisResult(), matrices, dc);
+            mainModel.setUpdate();
+            mainModel.addReport(resultAndReport.reportNode());
+            mainModel.getNotificationsModel().replace(runningNotification,
+                    sensitivityAnalysisOutcome(runningNotification.startTimestamp(), resultAndReport));
+        });
+        sensitivityAnalysisService.setOnFailed(event -> {
+            run.restoreVariantAccess();
+            Throwable exception = event.getSource().getException();
+            LOGGER.error(exception.toString(), exception);
+
+            NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", _ ->
+                    mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS)));
+
+            mainModel.getNotificationsModel().replace(runningNotification,
+                    Notification.createError(runningNotification.startTimestamp(), "main.sensitivityAnalysis.failed", viewLogsAction));
+        });
+        sensitivityAnalysisService.setOnCancelled(_ -> {
+            // a cancelled computation may still be running, until OpenLoadFlow notices
+            run.computation().ifPresentOrElse(future -> future.whenComplete((_, _) -> Platform.runLater(run::restoreVariantAccess)),
+                    run::restoreVariantAccess);
+            mainModel.getNotificationsModel().replace(runningNotification,
+                    Notification.createCancelled(runningNotification.startTimestamp(), "main.sensitivityAnalysis.cancelled"));
+        });
+        study.trackComputation(sensitivityAnalysisService);
+        sensitivityAnalysisService.start();
+    }
+
+    // a single factor Open Load Flow doesn't support fails the whole analysis: refused beforehand, with every reason
+    private boolean checkSensitivityFactors(List<SensitivityFactorMatrix> matrices, List<SensitivityVariableSet> variableSets, boolean dc) {
+        String message;
+        if (matrices.isEmpty()) {
+            message = Messages.get("main.sensitivityAnalysis.noFactors");
+        } else {
+            List<String> problems = SensitivityAnalysisRun.problems(matrices, variableSets, dc);
+            if (problems.isEmpty()) {
+                return true;
+            }
+            message = Messages.get(dc ? "main.sensitivityAnalysis.unsupportedDc" : "main.sensitivityAnalysis.unsupportedAc", String.join("\n", problems));
+        }
+        Alert alert = new Alert(Alert.AlertType.ERROR, message, ButtonType.OK);
+        alert.initOwner(borderPane.getScene().getWindow());
+        alert.setHeaderText(null);
+        alert.showAndWait();
+        return false;
+    }
+
+    // a failed base case throws (the run fails); a failed contingency has no values
+    private Notification sensitivityAnalysisOutcome(Instant start, SensitivityAnalysisResultAndReport resultAndReport) {
+        NotificationAction viewReportAction = new NotificationAction("main.report.viewReport", _ ->
+                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.REPORTS,
+                        ReportNavigationState.create(resultAndReport.reportNode()))));
+        long failed = resultAndReport.sensitivityAnalysisResult().getStateStatuses().stream()
+                .filter(status -> status.getStatus() == SensitivityAnalysisResult.Status.FAILURE)
+                .count();
+        if (failed > 0) {
+            return Notification.createPartialSuccess(start, "main.sensitivityAnalysis.contingenciesFailed", viewReportAction).withMessageArgs(failed);
+        }
+        return Notification.createSuccess(start, "main.sensitivityAnalysis.completed", viewReportAction);
     }
 
     // Builds the search index for a newly-selected network once, in the background - a network already cached

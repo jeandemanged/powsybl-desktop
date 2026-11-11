@@ -14,6 +14,7 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.network.VariantMultiThreadAccess;
 import com.powsybl.powsybldesktop.utils.Futures;
+import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.sensitivity.SensitivityAnalysis;
 import com.powsybl.sensitivity.SensitivityAnalysisParameters;
 import com.powsybl.sensitivity.SensitivityAnalysisResult;
@@ -25,9 +26,12 @@ import com.powsybl.sensitivity.json.JsonSensitivityAnalysisParameters;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 /**
  * A sensitivity analysis run: {@link #prepare} on the FX thread, {@link #compute} in the background, then
@@ -64,6 +68,28 @@ public final class SensitivityAnalysisRun {
     public static SensitivityAnalysisRun prepare(Network network, List<SensitivityFactorMatrix> matrices, List<SensitivityVariableSet> variableSets,
                                                  ContingencyList contingencyList, SensitivityAnalysisParameters parameters) {
         return new SensitivityAnalysisRun(network, matrices, variableSets, contingencyList, parameters);
+    }
+
+    /**
+     * Why Open Load Flow would fail on {@code matrices} in AC or {@code dc}, one line per failing matrix: empty when
+     * they can run. The equipment itself is not checked.
+     */
+    public static List<String> problems(List<SensitivityFactorMatrix> matrices, List<SensitivityVariableSet> variableSets, boolean dc) {
+        Set<String> variableSetIds = variableSets.stream().map(SensitivityVariableSet::getId).collect(Collectors.toSet());
+        List<String> problems = new ArrayList<>();
+        for (SensitivityFactorMatrix matrix : matrices) {
+            List<String> reasons = new ArrayList<>(OlfSensitivityFactorSupport.unsupportedReasons(matrix, dc));
+            if (matrix.variableSet()) {
+                List<String> unknown = matrix.variableIds().stream().filter(id -> !variableSetIds.contains(id)).toList();
+                if (!unknown.isEmpty()) {
+                    reasons.add(Messages.get("sensitivity.unknownVariableSets", String.join(", ", unknown)));
+                }
+            }
+            if (!reasons.isEmpty()) {
+                problems.add(Messages.get("sensitivity.matrixProblems", matrix.name(), String.join(" ", reasons)));
+            }
+        }
+        return problems;
     }
 
     /**

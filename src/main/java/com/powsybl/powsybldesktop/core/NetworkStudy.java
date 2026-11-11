@@ -11,9 +11,12 @@ import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.powsybldesktop.search.NetworkSearchIndex;
+import com.powsybl.powsybldesktop.sensitivity.SensitivityFactorMatrix;
 import com.powsybl.powsybldesktop.violations.NetworkViolations;
 import com.powsybl.security.SecurityAnalysisResult;
 import com.powsybl.security.limitscaling.LimitScaling;
+import com.powsybl.sensitivity.SensitivityAnalysisResult;
+import com.powsybl.sensitivity.SensitivityVariableSet;
 import javafx.beans.Observable;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ReadOnlyBooleanProperty;
@@ -37,7 +40,7 @@ import java.util.Set;
 
 /**
  * Everything the app holds about one loaded root network and its subnetworks: computation results, contingency
- * lists, limit scalings, running background jobs, search indexes and Map views. Created and disposed of by {@link MainModel}.
+ * lists, limit scalings, sensitivity factors and variable sets, running background jobs, search indexes and Map views. Created and disposed of by {@link MainModel}.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -47,6 +50,12 @@ public class NetworkStudy {
     // subnetwork (see MainController.onLoadFlow), and so are violations
     private LoadFlowResult loadFlowResult;
     private SecurityAnalysisResult securityAnalysisResult;
+    private SensitivityAnalysisResult sensitivityAnalysisResult;
+    // the matrices and AC/DC the sensitivity analysis result was computed with, which it doesn't hold
+    private List<SensitivityFactorMatrix> sensitivityAnalysisMatrices = List.of();
+    private boolean sensitivityAnalysisDc;
+    private final ObservableList<SensitivityFactorMatrix> sensitivityFactorMatrices = FXCollections.observableArrayList();
+    private final ObservableList<SensitivityVariableSet> sensitivityVariableSets = FXCollections.observableArrayList();
     private NetworkViolations violations = NetworkViolations.EMPTY;
     private final ObservableList<ContingencyList> contingencyLists = FXCollections.observableArrayList();
     // Whether a sublist is included when contingencies are resolved for a security analysis run, keyed by
@@ -103,6 +112,32 @@ public class NetworkStudy {
 
     public void setSecurityAnalysisResult(SecurityAnalysisResult securityAnalysisResult) {
         this.securityAnalysisResult = Objects.requireNonNull(securityAnalysisResult);
+    }
+
+    public SensitivityAnalysisResult getSensitivityAnalysisResult() {
+        return sensitivityAnalysisResult;
+    }
+
+    public List<SensitivityFactorMatrix> getSensitivityAnalysisMatrices() {
+        return sensitivityAnalysisMatrices;
+    }
+
+    public boolean isSensitivityAnalysisDc() {
+        return sensitivityAnalysisDc;
+    }
+
+    public void setSensitivityAnalysisResult(SensitivityAnalysisResult result, List<SensitivityFactorMatrix> matrices, boolean dc) {
+        this.sensitivityAnalysisResult = Objects.requireNonNull(result);
+        this.sensitivityAnalysisMatrices = List.copyOf(matrices);
+        this.sensitivityAnalysisDc = dc;
+    }
+
+    public ObservableList<SensitivityFactorMatrix> getSensitivityFactorMatrices() {
+        return sensitivityFactorMatrices;
+    }
+
+    public ObservableList<SensitivityVariableSet> getSensitivityVariableSets() {
+        return sensitivityVariableSets;
     }
 
     public NetworkViolations getViolations() {
@@ -171,7 +206,7 @@ public class NetworkStudy {
     }
 
     /**
-     * Tracks a load flow or security analysis run until it ends, for {@link #dispose} to cancel it.
+     * Tracks a load flow, security or sensitivity analysis run until it ends, for {@link #dispose} to cancel it.
      */
     public void trackComputation(Service<?> service) {
         computationServices.add(service);

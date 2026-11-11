@@ -29,9 +29,10 @@ Maven cache may contain unrelated versions.
 - Merging and detaching are done in `NetworksController`; detaching goes through `MainModel.detachSubnetworks`, which
   drops navigation entries, search indexes and map views referring to the detached subnetworks (the subnetwork object is
   left empty by `Subnetwork.detach()`).
-- Load flow and security analysis always run on the **root** network (a subnetwork-scoped run would ignore tie lines
+- Load flow, security and sensitivity analysis always run on the **root** network (a subnetwork-scoped run would ignore tie lines
   to the rest of the merged network) — see the comment in `MainController.onLoadFlow`.
-- Results are stored per root network in `NetworkStudy` (`setLoadFlowResult`, `setSecurityAnalysisResult`). The
+- Results are stored per root network in `NetworkStudy` (`setLoadFlowResult`, `setSecurityAnalysisResult`,
+  `setSensitivityAnalysisResult` with the matrices and AC/DC it was computed with, which the result doesn't hold). The
   network itself carries the solved values (P/Q/I...) written by the load flow; views re-read them on
   `updateProperty()`.
 - Limit violations (`violations/NetworkViolations`: current, active and apparent power limits of branches,
@@ -72,6 +73,11 @@ Maven cache may contain unrelated versions.
   format for variable sets. A single factor of a kind Open Load Flow doesn't compute fails the whole analysis:
   `OlfSensitivityFactorSupport` mirrors its rules (Open Load Flow 2.4.0, AC and DC, variable sets), and
   `OlfSensitivityFactorSupportTest` runs Open Load Flow on every kind of factor: update both on an upgrade.
+  The matrices and variable sets live in `NetworkStudy.getSensitivityFactorMatrices()` /
+  `getSensitivityVariableSets()`. `MainController.onSensitivityAnalysis` runs them against the enabled contingency
+  lists, after refusing with every reason (`SensitivityAnalysisRun.problems`: unsupported kinds, unknown variable
+  sets) rather than letting Open Load Flow fail on the first one. A failed base case throws; failed contingencies
+  only have a `FAILURE` state status (partial success notification).
 - They all produce a `ReportNode` stored with `mainModel.addReport` (see
   [architecture.md](architecture.md#reports-and-logs)).
 
