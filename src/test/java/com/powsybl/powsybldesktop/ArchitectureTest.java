@@ -42,7 +42,7 @@ class ArchitectureTest {
 
     private static final String[] STATE = packages("core..", "navigation..", "logs..", "study..");
     private static final String[] DOMAIN = packages("network..", "search..", "diagram..", "map..", "contingency..", "limitscaling..", "loadflow..",
-            "security..", "violations..", "memory..", "parameters..", "notification..");
+            "security..", "sensitivity..", "violations..", "memory..", "parameters..", "notification..");
     private static final String[] BASE = packages("utils..", "util..", "reports..");
 
     @Test

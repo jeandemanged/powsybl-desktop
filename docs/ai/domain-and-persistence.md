@@ -59,10 +59,20 @@ Maven cache may contain unrelated versions.
   lists of the study, aggregated in a `ListOfContingencyLists` and de-duplicated by `ContingencyNames.deduplicate`. A
   non-converged pre-contingency result is reported as an error. OpenLoadFlow's multi-threaded analysis switches the
   network to thread-local variants while running; `SecurityAnalysisRun.prepare` makes that switch itself beforehand on
-  the FX thread, setting the FX thread's and the task's working variant, and `restoreVariantAccess` undoes it once the
-  computation is over (also after a cancel, once the future completes), so that the FX thread can still read the
-  network meanwhile. The desktop code otherwise never uses variants.
-- Both produce a `ReportNode` stored with `mainModel.addReport` (see
+  the FX thread (`…/network/VariantMultiThreadAccess.java`), setting the FX thread's and the task's working variant,
+  and `restoreVariantAccess` undoes it once the computation is over (also after a cancel, once the future completes),
+  so that the FX thread can still read the network meanwhile. The desktop code otherwise never uses variants.
+- Sensitivity analysis: `…/sensitivity/SensitivityAnalysisRun.java` (`SensitivityAnalysis.runAsync`), the same way:
+  contingencies resolved like the security analysis', variant switch through `VariantMultiThreadAccess` (Open Load
+  Flow's AC sensitivity analysis is multi-threaded when its thread count is above 1). Users define factors as
+  `SensitivityFactorMatrix`es (functions x variables, one contingency context), expanded by
+  `SensitivityFactor.createMatrix`; PowSyBl's flat factor list can't keep that grouping, so
+  `SensitivityFactorsIO` writes the app's own JSON for them, PowSyBl's factors only for import/export (read back
+  grouped exactly: the functions of one kind of factor sharing the same variables make a matrix) and PowSyBl's
+  format for variable sets. A single factor of a kind Open Load Flow doesn't compute fails the whole analysis:
+  `OlfSensitivityFactorSupport` mirrors its rules (Open Load Flow 2.4.0, AC and DC, variable sets), and
+  `OlfSensitivityFactorSupportTest` runs Open Load Flow on every kind of factor: update both on an upgrade.
+- They all produce a `ReportNode` stored with `mainModel.addReport` (see
   [architecture.md](architecture.md#reports-and-logs)).
 
 ## Contingencies

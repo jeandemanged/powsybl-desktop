@@ -15,9 +15,9 @@ import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.iidm.network.BoundaryLineFilter;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
-import com.powsybl.iidm.network.VariantManager;
 import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.limitscaling.OlfLimitScalingSupport;
+import com.powsybl.powsybldesktop.network.VariantMultiThreadAccess;
 import com.powsybl.powsybldesktop.utils.Futures;
 import com.powsybl.security.SecurityAnalysis;
 import com.powsybl.security.SecurityAnalysisParameters;
@@ -38,15 +38,8 @@ import java.util.stream.Stream;
 
 /**
  * A security analysis run: {@link #prepare} on the FX thread, {@link #compute} in the background, then
- * {@link #restoreVariantAccess} on the FX thread once the computation is over.
- * <p>
- * OpenLoadFlow's multi-threaded security analysis switches the network to thread-local variants while running, so that
- * any other thread reading it meanwhile fails ("Variant index not set for current thread"), e.g. the FX thread opening a
- * table. So the switch is made by {@link #prepare}, giving the FX thread (and the computing one) its working variant,
- * and undone by {@link #restoreVariantAccess}: OpenLoadFlow then finds it on and leaves it on. The FX thread may still
- * read the network while OpenLoadFlow's threads build their own networks from it, racing on IIDM's lazily computed
- * caches (e.g. the bus view): running the security analysis on a copy of the network would isolate it fully, at the
- * cost of a copy per run.
+ * {@link #restoreVariantAccess} on the FX thread once the computation is over, multi-thread access to the network's
+ * variants being allowed in between (see {@link VariantMultiThreadAccess}).
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -56,8 +49,7 @@ public final class SecurityAnalysisRun {
     private final ContingencyList contingencyList;
     private final SecurityAnalysisParameters parameters;
     private final List<LimitScaling> limitScalings;
-    private final String variantId;
-    private final boolean variantMultiThreadAccessAllowed;
+    private final VariantMultiThreadAccess variantAccess;
     private volatile CompletableFuture<SecurityAnalysisReport> computation;
 
     private SecurityAnalysisRun(Network network, ContingencyList contingencyList, SecurityAnalysisParameters parameters,
@@ -66,9 +58,7 @@ public final class SecurityAnalysisRun {
         this.contingencyList = contingencyList;
         this.parameters = parameters;
         this.limitScalings = List.copyOf(limitScalings);
-        VariantManager variantManager = network.getVariantManager();
-        variantId = variantManager.getWorkingVariantId();
-        variantMultiThreadAccessAllowed = variantManager.isVariantMultiThreadAccessAllowed();
+        variantAccess = VariantMultiThreadAccess.allow(network);
     }
 
     /**
@@ -77,17 +67,14 @@ public final class SecurityAnalysisRun {
      */
     public static SecurityAnalysisRun prepare(Network network, ContingencyList contingencyList, SecurityAnalysisParameters parameters,
                                               List<LimitScaling> limitScalings) {
-        SecurityAnalysisRun run = new SecurityAnalysisRun(network, contingencyList, parameters, limitScalings);
-        network.getVariantManager().allowVariantMultiThreadAccess(true);
-        network.getVariantManager().setWorkingVariant(run.variantId);
-        return run;
+        return new SecurityAnalysisRun(network, contingencyList, parameters, limitScalings);
     }
 
     /**
      * Runs the security analysis, to be called off the FX thread; interrupting the calling thread cancels it.
      */
     public SecurityAnalysisResultAndReport compute() throws Exception {
-        network.getVariantManager().setWorkingVariant(variantId);
+        variantAccess.setWorkingVariant();
         ReportNode reportNode = ReportNode.newRootReportNode()
                 .withAllResourceBundlesFromClasspath()
                 .withMessageTemplate("desktop.securityAnalysis")
@@ -136,7 +123,7 @@ public final class SecurityAnalysisRun {
     }
 
     public void restoreVariantAccess() {
-        network.getVariantManager().allowVariantMultiThreadAccess(variantMultiThreadAccessAllowed);
+        variantAccess.restore();
     }
 
     /**
