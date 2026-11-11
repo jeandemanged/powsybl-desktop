@@ -51,6 +51,7 @@ import com.powsybl.powsybldesktop.violations.NetworkViolations;
 import com.powsybl.powsybldesktop.violations.ViolationTexts;
 import com.powsybl.powsybldesktop.violations.VoltageViolation;
 import com.powsybl.security.SecurityAnalysisResult;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -80,6 +81,7 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
 import javafx.scene.web.WebView;
+import javafx.util.Duration;
 import javafx.util.StringConverter;
 import netscape.javascript.JSObject;
 import org.kordamp.ikonli.javafx.FontIcon;
@@ -303,6 +305,10 @@ public class MapController extends AbstractDisposableController implements Scene
         }
     };
 
+    // A rebuild triggered by a network change (e.g. a switch toggled) usually completes almost instantly, so the
+    // overlay only shows up when it takes long enough to be noticed instead of flashing on every change.
+    private final PauseTransition loadingPaneDelay = new PauseTransition(Duration.millis(300));
+
     private final ExecutorService tileExecutor = Executors.newFixedThreadPool(TILE_THREADS, runnable -> {
         Thread thread = new Thread(runnable, "map-tile");
         thread.setDaemon(true);
@@ -367,7 +373,7 @@ public class MapController extends AbstractDisposableController implements Scene
         networkDataService.setOnSucceeded(_ -> {
             networkData = networkDataService.getValue();
             displayedNetwork = buildingNetwork;
-            loadingPane.setVisible(false);
+            hideLoadingPane();
             showPositions();
             NetworkStudy.MapView mapView = displayedNetwork == null ? null : mainModel.getStudy(displayedNetwork).getMapView(displayedNetwork);
             try {
@@ -380,8 +386,9 @@ public class MapController extends AbstractDisposableController implements Scene
         });
         networkDataService.setOnFailed(_ -> {
             LOGGER.error(networkDataService.getException().getMessage(), networkDataService.getException());
-            loadingPane.setVisible(false);
+            hideLoadingPane();
         });
+        loadingPaneDelay.setOnFinished(_ -> loadingPane.setVisible(true));
         webView.getEngine().loadContent(html);
 
         // Leaflet computes its container size once, at L.map() init time - which happens as soon as the
@@ -1137,6 +1144,7 @@ public class MapController extends AbstractDisposableController implements Scene
     public void dispose() {
         searchBoxController.dispose();
         networkDataService.cancel();
+        loadingPaneDelay.stop();
         tileExecutor.shutdownNow();
         pendingTiles.clear();
         super.dispose();
@@ -1146,8 +1154,15 @@ public class MapController extends AbstractDisposableController implements Scene
         if (!engineLoaded) {
             return;
         }
-        loadingPane.setVisible(true);
+        if (!loadingPane.isVisible()) {
+            loadingPaneDelay.playFromStart();
+        }
         networkDataService.restart();
+    }
+
+    private void hideLoadingPane() {
+        loadingPaneDelay.stop();
+        loadingPane.setVisible(false);
     }
 
     private String readResource(String name) {
