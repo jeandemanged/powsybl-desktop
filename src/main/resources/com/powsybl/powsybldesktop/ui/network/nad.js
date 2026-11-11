@@ -7,7 +7,6 @@
  */
 
 // Edges are thin lines, hard to point at: a wider transparent copy of each, in its group, catches the pointer for it.
-// Added again whenever ContainerDiagram injects a new diagram.
 function widenEdges() {
     var paths = document.querySelectorAll('.nad-edge-path');
     for (var i = 0; i < paths.length; i++) {
@@ -23,19 +22,11 @@ function widenEdges() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', function () {
-    // only for a new diagram: the center rings are added to the same container
-    new MutationObserver(function (mutations) {
-        var injected = mutations.some(function (mutation) {
-            return Array.prototype.some.call(mutation.addedNodes, function (node) {
-                return node.nodeName.toLowerCase() === 'svg';
-            });
-        });
-        if (injected) {
-            widenEdges();
-        }
-    }).observe(document.getElementById('svgContainer'), {childList: true});
-}, false);
+// called by ContainerDiagram right after it injects a diagram, rather than from a MutationObserver on svgContainer: in
+// the WebView, its callback could run after the next script, or not at all
+function diagramInjected() {
+    widenEdges();
+}
 
 // the first element from target up to the root that ContainerDiagram knows something to do with on a click, or null.
 // A voltage level's label is HTML in a foreignObject, whose id is the label's.

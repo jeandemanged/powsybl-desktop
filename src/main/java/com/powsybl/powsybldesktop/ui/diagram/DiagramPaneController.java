@@ -46,6 +46,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -118,6 +119,7 @@ public class DiagramPaneController {
     // don't re-trigger onZoomPresetSelected()/onFitToScreenToggle() as if the user had acted
     private boolean programmaticZoomChange;
     private Runnable onEngineLoaded;
+    private Runnable onInjected = () -> { };
     private Supplier<String> fileNameSupplier = () -> null;
     private boolean panning;
     private double panStartScreenX;
@@ -186,6 +188,14 @@ public class DiagramPaneController {
     /** Called every time the page finishes loading: the initial shell, {@link #loadShell}, or a future reload. */
     public void setOnEngineLoaded(Runnable onEngineLoaded) {
         this.onEngineLoaded = onEngineLoaded;
+    }
+
+    /**
+     * Called right after each diagram is injected into the page, e.g. to make its elements easier to point at: in the
+     * same FX thread call, so that no other script sees the diagram before.
+     */
+    public void setOnInjected(Runnable onInjected) {
+        this.onInjected = Objects.requireNonNull(onInjected);
     }
 
     /** Supplies the default file name (sanitized) offered by the PNG/SVG save dialogs; may return null. */
@@ -265,6 +275,7 @@ public class DiagramPaneController {
     private void inject(String content) {
         JSObject container = (JSObject) webView.getEngine().executeScript("document.getElementById('svgContainer')");
         container.setMember("innerHTML", content);
+        onInjected.run();
     }
 
     @FXML

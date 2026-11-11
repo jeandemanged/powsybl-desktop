@@ -7,7 +7,7 @@
  */
 
 // A busbar is a thin line, hard to point at: a wider transparent line over each, in its group, catches the pointer
-// for it. Added again whenever ContainerDiagram injects a new diagram.
+// for it.
 function widenBusbars() {
     var lines = document.querySelectorAll('.sld-busbar-section > line');
     for (var i = 0; i < lines.length; i++) {
@@ -42,12 +42,12 @@ function widenSymbols() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', function () {
-    new MutationObserver(function () {
-        widenBusbars();
-        widenSymbols();
-    }).observe(document.getElementById('svgContainer'), {childList: true});
-}, false);
+// called by ContainerDiagram right after it injects a diagram, rather than from a MutationObserver on svgContainer: in
+// the WebView, its callback could run after the next script, or not at all
+function diagramInjected() {
+    widenBusbars();
+    widenSymbols();
+}
 
 // what a click on target does, or null if nothing: the same lookup sets the pointer cursor, so that it shows exactly
 // over what can be clicked

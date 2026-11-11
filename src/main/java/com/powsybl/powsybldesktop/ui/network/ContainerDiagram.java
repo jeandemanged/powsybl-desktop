@@ -209,6 +209,7 @@ public final class ContainerDiagram extends AbstractDisposableController {
 
         var parametersModel = mainModel.getParametersModel();
         pane.setOnEngineLoaded(() -> ((JSObject) pane.getWebView().getEngine().executeScript("window")).setMember("controller", this));
+        pane.setOnInjected(() -> pane.getWebView().getEngine().executeScript("diagramInjected()"));
         pane.loadShell(HTML_SHELL.replace("%__JS__%", readJs(kind == Kind.SINGLE_LINE ? "sld.js" : "nad.js")));
         pane.getWebView().addEventFilter(MouseEvent.MOUSE_PRESSED, _ -> contextMenu.hide());
         pane.getWebView().addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, this::onContextMenuRequested);
