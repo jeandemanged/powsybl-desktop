@@ -39,8 +39,8 @@ The filter and the order of the [Logs](../diagnostics/logs.md) view, kept in syn
 
 | Field | Editor | Description |
 |---|---|---|
-| **Level filter** | Choice: `Show INFO, WARN and ERROR logs`, `Show WARN and ERROR logs`, `Show ERROR logs only` |  |
-| **Sort order** | Choice: `Newest logs on top`, `Newest logs at the bottom` |  |
+| **Level filter** | Choice: `Show INFO, WARN and ERROR logs`, `Show WARN and ERROR logs`, `Show ERROR logs only` | The lowest level of the logs shown. |
+| **Sort order** | Choice: `Newest logs on top`, `Newest logs at the bottom` | Where the newest logs are shown. |
 
 ## Reports
 
@@ -48,7 +48,7 @@ The filter of the [Reports](../diagnostics/reports.md) view, kept in sync with i
 
 | Field | Editor | Description |
 |---|---|---|
-| **Severity filter** | Choice: `Show all severities`, `Show DEBUG and higher severities`, `Show INFO and higher severities`, `Show DETAIL, WARN and ERROR`, `Show WARN and ERROR`, `Show ERROR only` |  |
+| **Severity filter** | Choice: `Show all severities`, `Show DEBUG and higher severities`, `Show INFO and higher severities`, `Show DETAIL, WARN and ERROR`, `Show WARN and ERROR`, `Show ERROR only` | The severities of the report messages shown. |
 
 ## Network Editing
 

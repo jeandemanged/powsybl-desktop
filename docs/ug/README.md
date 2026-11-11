@@ -47,6 +47,14 @@ make latexpdf
 
 Then open `_build/html/index.html` in your browser, or `_build/latex/powsybl-desktop-user-guide.pdf`.
 
+## Heading depth
+
+The PDF has six heading levels (LaTeX's chapter down to subparagraph), and a page's level depends on where its toctree
+sits: a top-level section of `index.md` is a chapter, and every toctree, being under a heading, adds a level. The
+equipment detail pages already use all six (Views > Equipment details > Detail views > Generator > Main tab >
+General): don't add a toctree level above them or a `####` heading in them, or deeper headings collapse to the same
+level in the PDF.
+
 To link to another PowSyBl documentation, add it to `intersphinx_mapping` in `conf.py`, then use for example:
 ~~~Markdown
 - [load flow configuration](inv:powsyblcore:*:*#simulation/loadflow/configuration).

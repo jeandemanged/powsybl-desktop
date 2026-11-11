@@ -13,7 +13,8 @@ network/index
 diagrams/index
 inputs/index
 results/index
-equipment/index
+equipment/tables/index
+equipment/details/index
 parameters/index
 diagnostics/index
 ```

@@ -117,9 +117,16 @@ latex_documents = [
 latex_table_style = ['booktabs']
 
 # pdflatex fails on Unicode characters it has no definition for, such as the arrows of the UI's search buttons or the
-# ohm unit
+# ohm unit.
+# LaTeX only numbers down to subsections by default, which leaves the equipment table and detail pages (subsubsections)
+# unnumbered.
+# Table cells are justified by default (tabulary's J), which stretches the words of narrow columns and hyphenates their
+# headers: ragged right (L) instead, with a minimal width for squeezed columns.
 latex_elements = {
     'preamble': r'''
+\setcounter{secnumdepth}{3}
+\newcolumntype{T}{L}
+\setlength{\tymin}{50pt}
 \sphinxDUC{25B6}{\ensuremath{\blacktriangleright}}
 \sphinxDUC{25C0}{\ensuremath{\blacktriangleleft}}
 \sphinxDUC{03A9}{\ensuremath{\Omega}}
