@@ -34,6 +34,8 @@ import org.testfx.util.WaitForAsyncUtils;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -145,7 +147,7 @@ class ContingenciesControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
-    void selectingAnotherListWithAPendingNameEditKeepsTheNewListSelected() {
+    void selectingAnotherListWithAPendingNameEditKeepsTheNewListSelected() throws TimeoutException {
         ListView<ContingencyList> listView = lookup("#contingencyListsListView").query();
         interact(() -> {
             mainModel.getStudy(network).getContingencyLists().add(ContingencyListKind.LINE_CRITERION.createDefault("first"));
@@ -167,6 +169,10 @@ class ContingenciesControllerTest extends AbstractHeadlessApplicationTest {
 
         // the name field still has focus as its form is torn down for the newly selected list, and commits then
         interact(() -> listView.getSelectionModel().select(1));
+        // the scene only moves focus off a removed node on its next pulse, which interact() doesn't wait for
+        WaitForAsyncUtils.waitFor(5, TimeUnit.SECONDS,
+                () -> "renamed".equals(mainModel.getStudy(network).getContingencyLists().getFirst().getName()));
+        WaitForAsyncUtils.waitForFxEvents();
 
         assertEquals("renamed", mainModel.getStudy(network).getContingencyLists().getFirst().getName());
         assertSame(mainModel.getStudy(network).getContingencyLists().get(1), listView.getSelectionModel().getSelectedItem());
