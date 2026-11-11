@@ -31,6 +31,7 @@ import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.parameters.MapViolationLayer;
+import com.powsybl.powsybldesktop.sensitivity.SensitivityResultRows;
 import com.powsybl.powsybldesktop.ui.form.TableColumnSupport;
 import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -47,7 +48,10 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.SnapshotParameters;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ChoiceBox;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Labeled;
 import javafx.scene.control.Slider;
 import javafx.scene.control.Tab;
@@ -154,6 +158,7 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         Network network = loadSmallGrid();
         runLoadFlow(network);
         runSecurityAnalysis(network);
+        runSensitivityAnalysis(network);
         views(network);
         assertEquals(List.of("quickstart-start", "quickstart-sample-menu", "quickstart-network-loaded", "quickstart-network-map",
                 "quickstart-loadflow-run", "quickstart-loadflow-results", "quickstart-loadflow-components", "quickstart-loadflow-sld",
@@ -161,12 +166,14 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
                 "map-flows-close-up", "quickstart-sa-add-contingencies", "quickstart-sa-contingencies",
                 "quickstart-sa-done", "general-notifications", "quickstart-sa-results", "quickstart-sa-flows-by-contingency",
                 "quickstart-sa-map", "quickstart-sa-map-no-contingency-voltage", "map-violations-box", "map-voltage-ranges-box",
-                "map-show-flows-box", "general-main-toolbar", "networks-import-menu", "substations-nad", "substations-lines-tab",
+                "map-show-flows-box", "quickstart-sensi-add-matrix", "quickstart-sensi-pick-line", "quickstart-sensi-pick-generators",
+                "quickstart-sensi-matrix", "quickstart-sensi-results", "quickstart-sensi-results-contingency",
+                "general-main-toolbar", "networks-import-menu", "substations-nad", "substations-lines-tab",
                 "search-box-match", "search-box-approximate", "search-box-not-found", "tables-lines", "tables-column-groups", "violations-dialog",
                 "details-generator", "details-line-limits", "general-separate-window", "sa-results-voltages",
                 "limit-scalings", "parameters-user-interface", "parameters-network-import", "parameters-network-export",
                 "parameters-single-line-diagram", "parameters-network-area-diagram", "parameters-load-flow", "parameters-security-analysis",
-                "reports", "logs"), writtenScreenshots);
+                "parameters-sensitivity-analysis", "reports", "logs"), writtenScreenshots);
     }
 
     private Network loadSmallGrid() throws TimeoutException {
@@ -294,6 +301,57 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         screenshotNode("map-show-flows-box", lookup("#showFlowsCheckBox").query().getParent());
     }
 
+    private void runSensitivityAnalysis(Network network) throws TimeoutException {
+        clickOn(shown(Messages.get("main.toolbar.sensitivityFactors")), Motion.HORIZONTAL_FIRST);
+        clickOn(shown(Messages.get("desktop.common.action.add")), Motion.HORIZONTAL_FIRST);
+        moveTo(shown(Messages.get("sensitivityFactors.add.matrix")), Motion.HORIZONTAL_FIRST);
+        screenshot("quickstart-sensi-add-matrix");
+        clickOn(shown(Messages.get("sensitivityFactors.add.matrix")), Motion.HORIZONTAL_FIRST);
+        WaitForAsyncUtils.waitForFxEvents();
+        TextField nameField = lookup((Node node) -> node instanceof TextField && node.isVisible()).query();
+        interact(() -> {
+            nameField.setText("Line 8-30");
+            nameField.getOnAction().handle(null);
+        });
+
+        // the functions' Add… button first, the variables' next
+        List<Button> addButtons = lookup((Node node) -> node instanceof Button button && Messages.get("sensitivityFactors.add.elements").equals(button.getText()))
+                .<Button>queryAll().stream().sorted(Comparator.comparingDouble(button -> button.localToScene(0, 0).getY())).toList();
+        clickOn(addButtons.getFirst());
+        pick(List.of("8-30"), "quickstart-sensi-pick-line");
+        clickOn(addButtons.getLast());
+        pick(List.of("Breed", "Sporn", "Glen Lyn", "ClinchRv"), "quickstart-sensi-pick-generators");
+        screenshot("quickstart-sensi-matrix");
+
+        clickOn(shown(Messages.get("main.toolbar.run")), Motion.HORIZONTAL_FIRST);
+        clickOn(shown(Messages.get("desktop.common.sensitivityAnalysis")), Motion.HORIZONTAL_FIRST);
+        waitUntil(() -> mainModel.getStudy(network).getSensitivityAnalysisResult() != null && !mainModel.isBusy(network));
+        interact(() -> mainModel.getNotificationsModel().clear());
+
+        openTable("main.toolbar.sensitivityAnalysisResults");
+        screenshot("quickstart-sensi-results");
+        // after the loss of line 26-30, of the line criterion list of the security analysis tutorial
+        String line2630 = network.getLineStream().filter(line -> "26-30".equals(line.getNameOrId())).findFirst().orElseThrow().getId();
+        ChoiceBox<SensitivityResultRows.State> states = lookup("#stateChoiceBox").query();
+        interact(() -> states.setValue(states.getItems().stream().filter(state -> line2630.equals(state.state().contingencyId())).findFirst().orElseThrow()));
+        screenshot("quickstart-sensi-results-contingency");
+    }
+
+    // in the picker dialog: each search, then its first match checked, then the dialog closed
+    private void pick(List<String> searches, String screenshotName) {
+        WaitForAsyncUtils.waitForFxEvents();
+        Node dialogPane = lookup(".dialog-pane").query();
+        TextField search = from(dialogPane).lookup(".text-field").query();
+        for (String text : searches) {
+            interact(() -> search.setText(text));
+            WaitForAsyncUtils.waitForFxEvents();
+            clickOn(from(dialogPane).lookup(".check-box").<CheckBox>query());
+        }
+        screenshot(screenshotName);
+        interact(() -> ((Button) ((DialogPane) dialogPane).lookupButton(ButtonType.OK)).fire());
+        WaitForAsyncUtils.waitForFxEvents();
+    }
+
     private void views(Network network) throws TimeoutException {
         screenshotNode("general-main-toolbar", controller.borderPane.getTop().lookup(".tool-bar"));
 
@@ -366,6 +424,8 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         screenshot("parameters-load-flow");
         selectTab(root, Messages.get("desktop.common.securityAnalysis"));
         screenshot("parameters-security-analysis");
+        selectTab(root, Messages.get("desktop.common.sensitivityAnalysis"));
+        screenshot("parameters-sensitivity-analysis");
 
         interact(controller::onReports);
         WaitForAsyncUtils.waitForFxEvents();

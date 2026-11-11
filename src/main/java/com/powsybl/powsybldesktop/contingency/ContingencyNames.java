@@ -46,6 +46,15 @@ public final class ContingencyNames {
         });
     }
 
+    /**
+     * The name of a contingency known by its id only, as in a sensitivity analysis result: the network element's of the
+     * same id, as for a contingency of a criterion list, else the id.
+     */
+    public static String displayName(String contingencyId, Network network) {
+        Identifiable<?> identifiable = network == null ? null : network.getIdentifiable(contingencyId);
+        return identifiable == null ? contingencyId : identifiable.getNameOrId();
+    }
+
     // Falls back to the raw id for elements missing from the network, so invalid entries stay identifiable.
     public static String elementsSummary(Contingency contingency, Network network) {
         return contingency.getElements().stream()

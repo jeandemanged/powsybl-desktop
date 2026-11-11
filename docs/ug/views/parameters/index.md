@@ -18,6 +18,7 @@ its own page:
 | [Network Area Diagram](network_area_diagram.md) | How network area diagrams are laid out and drawn. |
 | [Load Flow](load_flow.md) | The load flow parameters (PowSyBl Open Load Flow). |
 | [Security Analysis](security_analysis.md) | The security analysis parameters. |
+| [Sensitivity Analysis](sensitivity_analysis.md) | The sensitivity analysis parameters, and whether it runs in AC or DC. |
 
 Every tab has a list of categories (or of formats, for **Network Import** and **Network Export**) on the left, and
 the fields of the selected one on the right. Hover a field label to read what the parameter does.
@@ -34,6 +35,7 @@ single_line_diagram
 network_area_diagram
 load_flow
 security_analysis
+sensitivity_analysis
 ```
 
 ## What you can do
@@ -41,8 +43,8 @@ security_analysis
 ### Edit parameters
 
 Change a field: the new value applies at once, there is no **OK** or **Apply** button. A displayed single-line or
-network-area diagram is redrawn with the new diagram parameters; the next load flow, security analysis, import or
-export uses the new computation or format parameters.
+network-area diagram is redrawn with the new diagram parameters; the next load flow, security or sensitivity
+analysis, import or export uses the new computation or format parameters.
 
 ### Save the parameters for the next sessions
 
@@ -66,7 +68,8 @@ Click **Reset all parameters to their default values** and confirm. Save afterwa
 
 - **Export all parameters to a JSON file** / **Import all parameters from a JSON file** (toolbar): all the
   parameters of every tab at once.
-- **Import** / **Export** buttons of the [Load Flow](load_flow.md#import-and-export) and
-  [Security Analysis](security_analysis.md#import-and-export) tabs: only that tab's parameters.
+- **Import** / **Export** buttons of the [Load Flow](load_flow.md#import-and-export),
+  [Security Analysis](security_analysis.md#import-and-export) and
+  [Sensitivity Analysis](sensitivity_analysis.md#import-and-export) tabs: only that tab's parameters.
 
 An import or export that fails is reported by an error notification.

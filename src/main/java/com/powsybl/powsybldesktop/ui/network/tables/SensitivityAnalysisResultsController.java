@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.ui.network.tables;
 
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
@@ -81,7 +82,7 @@ public class SensitivityAnalysisResultsController extends AbstractDisposableCont
     @FXML
     private void initialize() {
         alertLabel.managedProperty().bind(alertLabel.visibleProperty());
-        stateChoiceBox.setConverter(converter(SensitivityAnalysisResultsController::stateName));
+        stateChoiceBox.setConverter(converter(this::stateName));
         matrixChoiceBox.setConverter(converter(index -> index == ALL_MATRICES
                 ? Messages.get("sensitivityAnalysisResults.allMatrices") : resultMatrices.get(index).name()));
         stateChoiceBox.valueProperty().addListener((_, _, _) -> updateRows());
@@ -116,8 +117,9 @@ public class SensitivityAnalysisResultsController extends AbstractDisposableCont
         };
     }
 
-    private static String stateName(SensitivityResultRows.State state) {
-        String name = state.preContingency() ? Messages.get("securityAnalysisResults.preContingency") : state.state().contingencyId();
+    private String stateName(SensitivityResultRows.State state) {
+        String name = state.preContingency() ? Messages.get("securityAnalysisResults.preContingency")
+                : ContingencyNames.displayName(state.state().contingencyId(), sceneModel.getNetwork() == null ? null : sceneModel.getNetwork().getNetwork());
         return switch (state.status()) {
             case SUCCESS -> name;
             case FAILURE -> Messages.get("sensitivityAnalysisResults.state.failed", name);

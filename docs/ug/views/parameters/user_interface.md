@@ -10,7 +10,8 @@ area diagrams behave, how logs and reports are filtered, and a few behaviors.
 The number of decimal places of each displayed quantity, from 0 to 10, in tables, detail views, diagrams and
 results. Fields: **Voltage (kV)**, **Angle (°)** (phase shifts included), **Power (MW, MVAr, MVA)**, **Power factor**,
 **Current (A)**, **Percentage (%)** (such as voltage violations and tap step deviations), **Resistance, reactance (Ω)**,
-**Conductance, susceptance (S)**, **Ratio (rho)**, **Limit scaling** and **Coordinate** (latitudes and longitudes).
+**Conductance, susceptance (S)**, **Ratio (rho)**, **Limit scaling**, **Sensitivity** (sensitivity analysis values) and
+**Coordinate** (latitudes and longitudes).
 
 ## Map
 

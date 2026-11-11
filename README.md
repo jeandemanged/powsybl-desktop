@@ -55,8 +55,8 @@ Start the application, then either load one of the sample networks (_Sample Netw
 open a network file (from the file chooser or by drag and drop), or create a new empty network. Run a load flow from
 the toolbar, and browse the results in the equipment tables, diagrams and violations view.
 
-The user's guide, with step-by-step load flow and security analysis tutorials, is in the application under
-_Help > User's Guide_. Its sources are in [`docs/ug`](docs/ug).
+The user's guide, with step-by-step load flow, security analysis and sensitivity analysis tutorials, is in the
+application under _Help > User's Guide_. Its sources are in [`docs/ug`](docs/ug).
 
 ## What it can do
 
@@ -76,12 +76,14 @@ _Help > User's Guide_. Its sources are in [`docs/ug`](docs/ug).
 - **Map**: substations and lines drawn on a basemap from the network's geographical positions; substation positions
   and line routes can be edited from the map.
 - **Search**: fuzzy search by id or name across the network's equipment.
-- **Simulation**: AC and DC load flow (OpenLoadFlow) with its full parameters, and security analysis with editable
-  contingency lists (JSON import/export); load flow, security analysis results and limit violations views.
+- **Simulation**: AC and DC load flow (OpenLoadFlow) with its full parameters, security analysis with editable
+  contingency lists (JSON import/export), and AC or DC sensitivity analysis with editable factor matrices and variable
+  sets (GLSK), checked against what OpenLoadFlow computes; load flow, security and sensitivity analysis results and
+  limit violations views.
 - **Reports, logs and notifications** for every operation; parameters saved to a per-user configuration file;
   English and French UI.
-- **Studies**: save the parameters, chosen networks with their contingency lists and load flow and security analysis
-  results, reports and logs to a single `.psbx` file, and load it back.
+- **Studies**: save the parameters, chosen networks with their contingency lists, sensitivity factors and load flow,
+  security and sensitivity analysis results, reports and logs to a single `.psbx` file, and load it back.
 
 ## What it cannot do yet
 
@@ -89,8 +91,7 @@ PowSyBl offers much more than what the PowSyBl Desktop application currently exp
 
 The following PowSyBl features are not supported yet in PowSyBl Desktop and are candidates for future work:
 
-- **Other simulations**: [sensitivity analysis](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/simulation/sensitivity/index.html),
-  [short-circuit analysis](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/simulation/shortcircuit/index.html),
+- **Other simulations**: [short-circuit analysis](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/simulation/shortcircuit/index.html),
   [dynamic simulation](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/simulation/dynamic/index.html) and
   [dynamic security analysis](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/simulation/dynamic_security/index.html).
 - **Security analysis features**: operator strategies and remedial actions,

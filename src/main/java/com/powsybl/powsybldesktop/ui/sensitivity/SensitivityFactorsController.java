@@ -390,6 +390,17 @@ public class SensitivityFactorsController extends AbstractDisposableController i
             ids.add(context.getContingencyId());
         }
         ChoiceBox<String> contingencyBox = new ChoiceBox<>(FXCollections.observableArrayList(ids));
+        contingencyBox.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(String id) {
+                return id == null ? "" : ContingencyNames.displayName(id, network);
+            }
+
+            @Override
+            public String fromString(String string) {
+                throw new UnsupportedOperationException();
+            }
+        });
         contingencyBox.setValue(context.getContingencyId());
         contingencyBox.visibleProperty().bind(typeBox.valueProperty().isEqualTo(ContingencyContextType.SPECIFIC));
         Runnable apply = () -> {

@@ -64,10 +64,15 @@ In practice, PowSyBl Desktop lets you:
   voltages and limit violations.
 - **Run security analyses** on contingency lists defined in the application or imported from files, and inspect the
   violations each contingency causes.
+- **Run sensitivity analyses**: how flows, currents and voltages respond to injections, phase shifts or target
+  voltages, before and after each contingency.
+- **Save your work** in a study: the networks with their contingency lists, limit scalings, sensitivity factors and
+  results, the parameters, reports and logs, in a single file to resume later or hand to someone else.
 - **Understand what happened**: every operation produces a report, and the application logs and notifications keep
   track of everything that ran.
 
-The [quick start tutorials](../quickstart/index.md) go through a load flow and a security analysis in a few minutes.
+The [quick start tutorials](../quickstart/index.md) go through a load flow, a security analysis and a sensitivity
+analysis in a few minutes.
 
 ## What PowSyBl Desktop does not do yet
 
@@ -79,8 +84,4 @@ application yet, and could come in future versions:
 - **Remedial actions in security analysis**: operator strategies applied after a contingency.
 - **Dynamic simulation**, with [PowSyBl Dynawo](https://powsybl.readthedocs.io/projects/powsybl-dynawo/en/latest/):
   time-domain simulation of the network's behavior after an event.
-- **Sensitivity analysis**: the sensitivity of flows and voltages to injections, phase shifters or voltage targets.
 - **Short-circuit analysis** and **flow decomposition**.
-- **Study persistence**: loaded networks, results and contingency lists are not kept between two runs of the
-  application. Save networks by exporting them, and contingency lists by exporting them to files; parameters are saved
-  automatically.
