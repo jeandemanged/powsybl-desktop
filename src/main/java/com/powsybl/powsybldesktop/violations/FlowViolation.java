@@ -10,23 +10,25 @@ package com.powsybl.powsybldesktop.violations;
 import com.powsybl.contingency.violations.LimitViolation;
 import com.powsybl.iidm.network.BoundaryLine;
 import com.powsybl.iidm.network.Branch;
-import com.powsybl.iidm.network.DetectionKind;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.LimitType;
 import com.powsybl.iidm.network.LoadingLimits;
 import com.powsybl.iidm.network.Network;
-import com.powsybl.iidm.network.OperationalLimitsGroup;
 import com.powsybl.iidm.network.ThreeSides;
 import com.powsybl.iidm.network.ThreeWindingsTransformer;
+import com.powsybl.iidm.network.limitmodification.LimitsComputer;
+import com.powsybl.iidm.network.limitmodification.result.IdenticalLimitsContainer;
+import com.powsybl.iidm.network.limitmodification.result.LimitsContainer;
 
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
 /**
  * A current, active power or apparent power limit violation on one side of an equipment, with the permanent limit of
- * the same side, limit type and operational limits group: the loading percentage is always relative to it, whichever
- * limit (permanent or temporary) is crossed. The permanent limit is NaN for a {@code DetectionKind.LOW} limit set,
+ * the same side, limit type and operational limits group, scaled by the limit scalings in force: the loading
+ * percentage is always relative to it, whichever limit (permanent or temporary) is crossed. The permanent limit is NaN for a {@code DetectionKind.LOW} limit set,
  * which has none: the percentage is then relative to the crossed limit itself.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -48,27 +50,30 @@ public record FlowViolation(LimitViolation violation, double permanentLimit) imp
 
     /**
      * A flow violation reported by a computation, e.g. a security analysis, with the permanent limit of the network's
-     * matching selected operational limits group, NaN if none.
+     * matching selected operational limits group as {@code limitsComputer} scales it (the limit scalings the
+     * computation used, for its contingency), NaN if none.
      */
-    public static FlowViolation of(LimitViolation violation, Network network) {
+    public static FlowViolation of(LimitViolation violation, Network network, LimitsComputer<Identifiable<?>, LoadingLimits> limitsComputer) {
         LimitType type = LimitType.valueOf(violation.getLimitType().name());
-        double permanentLimit = selectedGroups(network.getIdentifiable(violation.getSubjectId()), violation.getSide()).stream()
-                .filter(group -> violation.getOperationalLimitsGroupId() == null || group.getId().equals(violation.getOperationalLimitsGroupId()))
-                .flatMap(group -> group.getLoadingLimits(type).stream())
-                // a LOW detection kind limit set has no permanent limit: getPermanentLimit() throws
-                .filter(limits -> limits.getDetectionKind() == DetectionKind.HIGH)
-                .mapToDouble(LoadingLimits::getPermanentLimit)
-                .findFirst().orElse(Double.NaN);
-        return new FlowViolation(violation, permanentLimit);
-    }
-
-    private static List<OperationalLimitsGroup> selectedGroups(Identifiable<?> equipment, ThreeSides side) {
-        return switch (equipment) {
-            case Branch<?> branch when side != null && side != ThreeSides.THREE -> branch.getAllSelectedOperationalLimitsGroups(side.toTwoSides());
-            case ThreeWindingsTransformer transformer when side != null -> transformer.getLeg(side).getAllSelectedOperationalLimitsGroups();
-            case BoundaryLine boundaryLine -> boundaryLine.getAllSelectedOperationalLimitsGroups();
+        Identifiable<?> equipment = network.getIdentifiable(violation.getSubjectId());
+        ThreeSides side = violation.getSide();
+        Collection<LimitsContainer<LoadingLimits>> limits = switch (equipment) {
+            case Branch<?> _ when side != null && side != ThreeSides.THREE -> limitsComputer.computeLimits(equipment, type, side, false);
+            case ThreeWindingsTransformer _ when side != null -> limitsComputer.computeLimits(equipment, type, side, false);
+            // not handled by limits computers, see NetworkViolations
+            case BoundaryLine boundaryLine -> boundaryLine.getAllSelectedOperationalLimitsGroups().stream()
+                    .<LimitsContainer<LoadingLimits>>mapMulti((group, downstream) -> group.getLoadingLimits(type)
+                            .ifPresent(l -> downstream.accept(new IdenticalLimitsContainer<>(l, group.getId()))))
+                    .toList();
             case null, default -> List.of();
         };
+        double permanentLimit = limits.stream()
+                .filter(container -> violation.getOperationalLimitsGroupId() == null
+                        || violation.getOperationalLimitsGroupId().equals(container.getOperationalLimitsGroupId()))
+                .mapToDouble(NetworkViolations::permanentLimit)
+                .filter(limit -> !Double.isNaN(limit))
+                .findFirst().orElse(Double.NaN);
+        return new FlowViolation(violation, permanentLimit);
     }
 
     public double percent() {

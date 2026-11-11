@@ -14,6 +14,8 @@ import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.powsybldesktop.violations.NetworkViolations;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
@@ -26,7 +28,7 @@ class LoadFlowRunTest {
     void runComputesTheStateItsReportAndTheViolationsOfTheNewState() throws Exception {
         Network network = EurostagTutorialExample1Factory.createWithFixedCurrentLimits();
 
-        LoadFlowResultAndReport result = LoadFlowRun.run(network, new LoadFlowParameters());
+        LoadFlowResultAndReport result = LoadFlowRun.run(network, new LoadFlowParameters(), List.of());
 
         assertEquals(LoadFlowConvergence.CONVERGED, LoadFlowConvergence.of(result.loadFlowResult()));
         assertFalse(Double.isNaN(network.getLine("NHV1_NHV2_1").getTerminal1().getI()));

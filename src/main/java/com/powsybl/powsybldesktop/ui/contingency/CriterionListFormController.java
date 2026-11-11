@@ -31,19 +31,14 @@ import com.powsybl.iidm.network.Country;
 import com.powsybl.iidm.network.IdentifiableType;
 import com.powsybl.powsybldesktop.contingency.ContingencyListKind;
 import com.powsybl.powsybldesktop.contingency.PropertyCriterionRow;
-import com.powsybl.powsybldesktop.ui.controls.SearchableCheckComboBox;
+import com.powsybl.powsybldesktop.ui.controls.CountryGroup;
+import com.powsybl.powsybldesktop.ui.controls.VoltageIntervalGroup;
 import com.powsybl.powsybldesktop.ui.form.CellFields;
-import com.powsybl.powsybldesktop.utils.Labels;
-import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.collections.FXCollections;
-import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.scene.Node;
 import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
-import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
@@ -151,8 +146,8 @@ public class CriterionListFormController {
         });
         removePropertyCriterionButton.disableProperty().bind(propertyCriteriaTableView.getSelectionModel().selectedItemProperty().isNull());
 
-        commitOnChange(nameField, this::commit);
-        commitOnChange(regexField, this::commit);
+        VoltageIntervalGroup.commitOnChange(nameField, this::commit);
+        VoltageIntervalGroup.commitOnChange(regexField, this::commit);
     }
 
     public void setContingencyList(ContingencyListKind kind, AbstractEquipmentCriterionContingencyList list, Consumer<ContingencyList> onReplace) {
@@ -195,8 +190,8 @@ public class CriterionListFormController {
                 voltageGroups.add(new VoltageIntervalGroup(indexedVoltageKeys[i], onCommit));
             }
         }
-        countryGroups.forEach(group -> criteriaContainer.getChildren().add(group.root));
-        voltageGroups.forEach(group -> criteriaContainer.getChildren().add(group.root));
+        countryGroups.forEach(group -> criteriaContainer.getChildren().add(group.root()));
+        voltageGroups.forEach(group -> criteriaContainer.getChildren().add(group.root()));
     }
 
     private void populateFromList(AbstractEquipmentCriterionContingencyList list) {
@@ -322,86 +317,5 @@ public class CriterionListFormController {
         }
         propertyRows.remove(selected);
         commit();
-    }
-
-    private static void commitOnChange(TextField field, Runnable onCommit) {
-        field.setOnAction(_ -> onCommit.run());
-        field.focusedProperty().addListener((_, _, isFocused) -> {
-            if (Boolean.FALSE.equals(isFocused)) {
-                onCommit.run();
-            }
-        });
-    }
-
-    private static final class CountryGroup {
-        private final SearchableCheckComboBox<Country> comboBox = new SearchableCheckComboBox<>(List.of(Country.values()), Labels.countryFormat());
-        private final Node root;
-
-        CountryGroup(String titleKey, Runnable onCommit) {
-            comboBox.getCheckedItems().addListener((ListChangeListener<Country>) change -> onCommit.run());
-            root = new VBox(4, new Label(Messages.get(titleKey)), comboBox);
-        }
-
-        void setValue(List<Country> countries) {
-            comboBox.setChecked(countries);
-        }
-
-        List<Country> getChecked() {
-            return List.copyOf(comboBox.getCheckedItems());
-        }
-    }
-
-    private static final class VoltageIntervalGroup {
-        private final TextField lowField = new TextField();
-        private final CheckBox lowClosedCheckBox = new CheckBox(Messages.get("contingencies.criterion.voltage.inclusive"));
-        private final TextField highField = new TextField();
-        private final CheckBox highClosedCheckBox = new CheckBox(Messages.get("contingencies.criterion.voltage.inclusive"));
-        private final Node root;
-
-        VoltageIntervalGroup(String titleKey, Runnable onCommit) {
-            lowClosedCheckBox.setSelected(true);
-            highClosedCheckBox.setSelected(true);
-            HBox lowBox = new HBox(4, new Label(Messages.get("contingencies.criterion.voltage.lowBound")), lowField, lowClosedCheckBox);
-            HBox highBox = new HBox(4, new Label(Messages.get("contingencies.criterion.voltage.highBound")), highField, highClosedCheckBox);
-            root = new VBox(4, new Label(Messages.get(titleKey)), lowBox, highBox);
-            commitOnChange(lowField, onCommit);
-            commitOnChange(highField, onCommit);
-            lowClosedCheckBox.selectedProperty().addListener((_, _, _) -> onCommit.run());
-            highClosedCheckBox.selectedProperty().addListener((_, _, _) -> onCommit.run());
-        }
-
-        void setValue(VoltageInterval interval) {
-            lowField.setText(interval == null ? "" : interval.getNominalVoltageLowBound().map(String::valueOf).orElse(""));
-            highField.setText(interval == null ? "" : interval.getNominalVoltageHighBound().map(String::valueOf).orElse(""));
-            lowClosedCheckBox.setSelected(interval == null || interval.isLowClosed());
-            highClosedCheckBox.setSelected(interval == null || interval.isHighClosed());
-        }
-
-        VoltageInterval toInterval() {
-            Double low = parse(lowField.getText());
-            Double high = parse(highField.getText());
-            if (low == null && high == null) {
-                return null;
-            }
-            VoltageInterval.Builder builder = VoltageInterval.builder();
-            if (low != null) {
-                builder.setLowBound(low, lowClosedCheckBox.isSelected());
-            }
-            if (high != null) {
-                builder.setHighBound(high, highClosedCheckBox.isSelected());
-            }
-            return builder.build();
-        }
-
-        private static Double parse(String text) {
-            if (text == null || text.isBlank()) {
-                return null;
-            }
-            try {
-                return Double.valueOf(text.trim());
-            } catch (NumberFormatException _) {
-                return null;
-            }
-        }
     }
 }

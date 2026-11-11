@@ -13,6 +13,7 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.limitscaling.LimitScalings;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
@@ -213,7 +214,9 @@ abstract class AbstractEquipmentTableController<T extends Identifiable<?>> exten
     }
 
     final void showFlowViolations(Window owner, Identifiable<?> equipment) {
-        FlowViolationsDialog.show(owner, equipment, violations().getFlowViolations(equipment.getId()), guiParameters());
+        Network network = sceneModel.getNetwork();
+        FlowViolationsDialog.show(owner, equipment, violations().getFlowViolations(equipment.getId()), guiParameters(),
+                LimitScalings.limitsComputer(mainModel.getStudy(network).getEnabledLimitScalings()));
     }
 
     @Override

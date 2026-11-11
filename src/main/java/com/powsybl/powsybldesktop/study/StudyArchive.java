@@ -25,6 +25,7 @@ import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.loadflow.json.LoadFlowResultDeserializer;
 import com.powsybl.loadflow.json.LoadFlowResultSerializer;
 import com.powsybl.powsybldesktop.contingency.ContingencyListsIO;
+import com.powsybl.powsybldesktop.limitscaling.LimitScalings;
 import com.powsybl.powsybldesktop.logs.LogsModel.LogEntry;
 import com.powsybl.powsybldesktop.parameters.ApplicationParameters;
 import com.powsybl.powsybldesktop.parameters.ApplicationParametersJson;
@@ -33,6 +34,7 @@ import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.security.SecurityAnalysisResult;
 import com.powsybl.security.json.SecurityAnalysisResultDeserializer;
 import com.powsybl.security.json.SecurityAnalysisResultSerializer;
+import com.powsybl.security.limitscaling.LimitScaling;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -52,12 +54,15 @@ import java.util.Map;
  * Writes and reads a {@link Study} as a zip file ({@code .psbx}), through the zip file system so that PowSyBl's own
  * serializers write and read its entries as files:
  * <pre>
- * manifest.json                      format version, networks in order with their selection and contingency lists' enabled flags, report count
+ * manifest.json                      format version, networks in order with their selection and contingency lists' and limit
+ *                                    scalings' enabled flags, report count
  * parameters.json                    as the parameters configuration file
  * networks/&lt;i&gt;/network.biidm          binary IIDM, subnetworks included
  * networks/&lt;i&gt;/contingencies.json     a ListOfContingencyLists
+ * networks/&lt;i&gt;/limit-scalings.json    a LimitScalingList, in order
  * networks/&lt;i&gt;/loadflow-result.json
  * networks/&lt;i&gt;/security-analysis-result.json
+ * networks/&lt;i&gt;/security-analysis-limit-scalings.json   the LimitScalingList the security analysis was run with
  * reports/&lt;i&gt;.json
  * logs.json
  * </pre>
@@ -74,6 +79,8 @@ public final class StudyArchive {
     private static final String PARAMETERS = "parameters.json";
     private static final String NETWORK = "network.biidm";
     private static final String CONTINGENCIES = "contingencies.json";
+    private static final String LIMIT_SCALINGS = "limit-scalings.json";
+    private static final String SECURITY_ANALYSIS_LIMIT_SCALINGS = "security-analysis-limit-scalings.json";
     private static final String LOAD_FLOW_RESULT = "loadflow-result.json";
     private static final String SECURITY_ANALYSIS_RESULT = "security-analysis-result.json";
     private static final String LOGS = "logs.json";
@@ -92,7 +99,7 @@ public final class StudyArchive {
     record Manifest(String formatVersion, String appVersion, List<NetworkEntry> networks, Integer reports) {
     }
 
-    record NetworkEntry(String id, boolean selected, List<Boolean> contingencyListsEnabled) {
+    record NetworkEntry(String id, boolean selected, List<Boolean> contingencyListsEnabled, List<Boolean> limitScalingsEnabled) {
     }
 
     private record LogLine(long timeStamp, String level, String message) {
@@ -133,7 +140,7 @@ public final class StudyArchive {
     private static List<Step> writeSteps(Study study, Path root) {
         List<Step> steps = new ArrayList<>();
         List<NetworkEntry> entries = study.networks().stream()
-                .map(n -> new NetworkEntry(n.network().getId(), n.selected(), n.contingencyListsEnabled()))
+                .map(n -> new NetworkEntry(n.network().getId(), n.selected(), n.contingencyListsEnabled(), n.limitScalingsEnabled()))
                 .toList();
         Integer reportCount = study.reports() == null ? null : study.reports().size();
         Manifest manifest = new Manifest(FORMAT_VERSION, new PowsyblDesktopVersion().getMavenProjectVersion(), entries, reportCount);
@@ -154,6 +161,10 @@ public final class StudyArchive {
                 steps.add(new Step(Messages.get("study.progress.contingencies", name), () -> ContingencyListsIO.write(
                         new ListOfContingencyLists(studyNetwork.network().getId(), studyNetwork.contingencyLists()), folder.resolve(CONTINGENCIES))));
             }
+            if (!studyNetwork.limitScalings().isEmpty()) {
+                steps.add(new Step(Messages.get("study.progress.limitScalings", name),
+                        () -> LimitScalings.write(studyNetwork.limitScalings(), folder.resolve(LIMIT_SCALINGS))));
+            }
             if (studyNetwork.loadFlowResult() != null) {
                 steps.add(new Step(Messages.get("study.progress.loadFlowResult", name),
                         () -> LoadFlowResultSerializer.write(studyNetwork.loadFlowResult(), folder.resolve(LOAD_FLOW_RESULT))));
@@ -164,6 +175,10 @@ public final class StudyArchive {
                         SecurityAnalysisResultSerializer.write(studyNetwork.securityAnalysisResult(), writer);
                     }
                 }));
+                if (!studyNetwork.securityAnalysisLimitScalings().isEmpty()) {
+                    steps.add(new Step(Messages.get("study.progress.securityAnalysisLimitScalings", name),
+                            () -> LimitScalings.write(studyNetwork.securityAnalysisLimitScalings(), folder.resolve(SECURITY_ANALYSIS_LIMIT_SCALINGS))));
+                }
             }
         }
         List<ReportNode> reports = study.reports() == null ? List.of() : study.reports();
@@ -196,6 +211,8 @@ public final class StudyArchive {
             ApplicationParameters[] parameters = new ApplicationParameters[1];
             Network[] networks = new Network[networkCount];
             List<List<ContingencyList>> contingencyLists = new ArrayList<>(Collections.nCopies(networkCount, List.of()));
+            List<List<LimitScaling>> limitScalings = new ArrayList<>(Collections.nCopies(networkCount, List.of()));
+            List<List<LimitScaling>> securityAnalysisLimitScalings = new ArrayList<>(Collections.nCopies(networkCount, List.of()));
             LoadFlowResult[] loadFlowResults = new LoadFlowResult[networkCount];
             SecurityAnalysisResult[] securityAnalysisResults = new SecurityAnalysisResult[networkCount];
             ReportNode[] reports = new ReportNode[manifest.reports() == null ? 0 : manifest.reports()];
@@ -218,6 +235,11 @@ public final class StudyArchive {
                     steps.add(new Step(Messages.get("study.progress.contingencies", name),
                             () -> contingencyLists.set(index, ((ListOfContingencyLists) ContingencyListsIO.read(contingencies)).getContingencyLists())));
                 }
+                Path scalings = folder.resolve(LIMIT_SCALINGS);
+                if (Files.exists(scalings)) {
+                    steps.add(new Step(Messages.get("study.progress.limitScalings", name),
+                            () -> limitScalings.set(index, LimitScalings.read(scalings))));
+                }
                 Path loadFlowResult = folder.resolve(LOAD_FLOW_RESULT);
                 if (Files.exists(loadFlowResult)) {
                     steps.add(new Step(Messages.get("study.progress.loadFlowResult", name),
@@ -227,6 +249,11 @@ public final class StudyArchive {
                 if (Files.exists(securityAnalysisResult)) {
                     steps.add(new Step(Messages.get("study.progress.securityAnalysisResult", name),
                             () -> securityAnalysisResults[index] = SecurityAnalysisResultDeserializer.read(securityAnalysisResult)));
+                }
+                Path securityAnalysisScalings = folder.resolve(SECURITY_ANALYSIS_LIMIT_SCALINGS);
+                if (Files.exists(securityAnalysisScalings)) {
+                    steps.add(new Step(Messages.get("study.progress.securityAnalysisLimitScalings", name),
+                            () -> securityAnalysisLimitScalings.set(index, LimitScalings.read(securityAnalysisScalings))));
                 }
             }
             for (int i = 0; i < reports.length; i++) {
@@ -248,7 +275,12 @@ public final class StudyArchive {
                 List<Boolean> enabled = entry.contingencyListsEnabled() != null && entry.contingencyListsEnabled().size() == lists.size()
                         ? entry.contingencyListsEnabled()
                         : Collections.nCopies(lists.size(), true);
-                studyNetworks.add(new Study.StudyNetwork(networks[i], entry.selected(), lists, enabled, loadFlowResults[i], securityAnalysisResults[i]));
+                List<LimitScaling> scalings = limitScalings.get(i);
+                List<Boolean> scalingsEnabled = entry.limitScalingsEnabled() != null && entry.limitScalingsEnabled().size() == scalings.size()
+                        ? entry.limitScalingsEnabled()
+                        : Collections.nCopies(scalings.size(), true);
+                studyNetworks.add(new Study.StudyNetwork(networks[i], entry.selected(), lists, enabled, scalings, scalingsEnabled,
+                        loadFlowResults[i], securityAnalysisResults[i], securityAnalysisLimitScalings.get(i)));
             }
             return new Study(parameters[0], studyNetworks, manifest.reports() == null ? null : List.of(reports),
                     hasLogs ? logs.getFirst() : null);

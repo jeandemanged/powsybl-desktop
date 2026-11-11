@@ -13,6 +13,7 @@ import com.powsybl.contingency.Contingency;
 import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.contingency.list.DefaultContingencyList;
 import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
+import com.powsybl.iidm.network.LimitType;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.loadflow.LoadFlowResultImpl;
@@ -20,6 +21,7 @@ import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
 import com.powsybl.powsybldesktop.logs.LogsModel.LogEntry;
 import com.powsybl.security.SecurityAnalysisResult;
+import com.powsybl.security.limitscaling.LimitScaling;
 import javafx.application.Platform;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -70,6 +72,11 @@ class StudyTest {
         ContingencyList disabled = new DefaultContingencyList("disabled", List.of(Contingency.line("L1-5-1")));
         study14.getContingencyLists().setAll(enabled, disabled);
         study14.contingencyListEnabledProperty(disabled).set(false);
+        LimitScaling scaling = new LimitScaling(LimitType.CURRENT, 0.9);
+        LimitScaling disabledScaling = new LimitScaling(LimitType.ACTIVE_POWER, 0.8);
+        study14.getLimitScalings().setAll(scaling, disabledScaling);
+        study14.limitScalingEnabledProperty(disabledScaling).set(false);
+        study14.setSecurityAnalysisLimitScalings(List.of(new LimitScaling(LimitType.CURRENT, 0.7)));
         study14.setLoadFlowResult(new LoadFlowResultImpl(true, Map.of(), "lf log",
                 List.of(new LoadFlowResultImpl.ComponentResultImpl(0, 0, LoadFlowResult.ComponentResult.Status.CONVERGED, 0, "slack", 0, 0))));
         study14.setSecurityAnalysisResult(SecurityAnalysisResult.empty());
@@ -97,6 +104,10 @@ class StudyTest {
         assertEquals(List.of("enabled", "disabled"), restored14.getContingencyLists().stream().map(ContingencyList::getName).toList());
         assertTrue(restored14.contingencyListEnabledProperty(restored14.getContingencyLists().getFirst()).get());
         assertFalse(restored14.contingencyListEnabledProperty(restored14.getContingencyLists().getLast()).get());
+        assertEquals(List.of(0.9, 0.8), restored14.getLimitScalings().stream().map(LimitScaling::getValue).toList());
+        assertTrue(restored14.limitScalingEnabledProperty(restored14.getLimitScalings().getFirst()).get());
+        assertFalse(restored14.limitScalingEnabledProperty(restored14.getLimitScalings().getLast()).get());
+        assertEquals(List.of(0.7), restored14.getSecurityAnalysisLimitScalings().stream().map(LimitScaling::getValue).toList());
         assertTrue(restored14.getLoadFlowResult().isFullyConverged());
         assertNotNull(restored14.getSecurityAnalysisResult());
         assertNull(restored.getStudy(restored.getNetworks().getLast()).getLoadFlowResult());
@@ -113,6 +124,7 @@ class StudyTest {
         Network ieee14 = IeeeCdfNetworkFactory.create14();
         mainModel.addNetwork(ieee14);
         mainModel.getStudy(ieee14).getContingencyLists().add(new DefaultContingencyList("list", List.of(Contingency.line("L1-2-1"))));
+        mainModel.getStudy(ieee14).getLimitScalings().add(new LimitScaling(LimitType.CURRENT, 0.9));
         mainModel.getStudy(ieee14).setLoadFlowResult(new LoadFlowResultImpl(true, Map.of(), ""));
 
         Path file = tempDir.resolve("study.psbx");
@@ -123,6 +135,7 @@ class StudyTest {
         assertNull(read.reports());
         assertNull(read.logs());
         assertTrue(read.networks().getFirst().contingencyLists().isEmpty());
+        assertTrue(read.networks().getFirst().limitScalings().isEmpty());
         assertNull(read.networks().getFirst().loadFlowResult());
 
         MainModel restored = new MainModel();

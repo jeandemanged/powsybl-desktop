@@ -121,6 +121,7 @@ final class SaveStudyDialog {
         return switch (part) {
             case PARAMETERS -> "desktop.common.parameters";
             case CONTINGENCIES -> "main.toolbar.contingencies";
+            case LIMIT_SCALINGS -> "main.toolbar.limitScalings";
             case LOAD_FLOW_RESULTS -> "main.toolbar.loadflowresult";
             case SECURITY_ANALYSIS_RESULTS -> "main.toolbar.securityAnalysisResults";
             case REPORTS -> "main.toolbar.reports";

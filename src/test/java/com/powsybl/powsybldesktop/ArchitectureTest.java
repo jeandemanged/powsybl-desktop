@@ -41,7 +41,7 @@ class ArchitectureTest {
     private static final JavaClasses CLASSES_AND_TESTS = new ClassFileImporter().importPackages(ROOT);
 
     private static final String[] STATE = packages("core..", "navigation..", "logs..", "study..");
-    private static final String[] DOMAIN = packages("network..", "search..", "diagram..", "map..", "contingency..", "loadflow..",
+    private static final String[] DOMAIN = packages("network..", "search..", "diagram..", "map..", "contingency..", "limitscaling..", "loadflow..",
             "security..", "violations..", "memory..", "parameters..", "notification..");
     private static final String[] BASE = packages("utils..", "util..", "reports..");
 

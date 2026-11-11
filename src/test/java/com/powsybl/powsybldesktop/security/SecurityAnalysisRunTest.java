@@ -38,7 +38,7 @@ class SecurityAnalysisRunTest {
         Network network = EurostagTutorialExample1Factory.create();
         assertFalse(network.getVariantManager().isVariantMultiThreadAccessAllowed());
 
-        SecurityAnalysisRun run = SecurityAnalysisRun.prepare(network, LINES, new SecurityAnalysisParameters());
+        SecurityAnalysisRun run = SecurityAnalysisRun.prepare(network, LINES, new SecurityAnalysisParameters(), List.of());
         assertTrue(network.getVariantManager().isVariantMultiThreadAccessAllowed());
 
         run.restoreVariantAccess();
@@ -48,7 +48,7 @@ class SecurityAnalysisRunTest {
     @Test
     void computeSimulatesEveryContingencyWithItsReport() throws Exception {
         Network network = EurostagTutorialExample1Factory.createWithFixedCurrentLimits();
-        SecurityAnalysisRun run = SecurityAnalysisRun.prepare(network, LINES, new SecurityAnalysisParameters());
+        SecurityAnalysisRun run = SecurityAnalysisRun.prepare(network, LINES, new SecurityAnalysisParameters(), List.of());
         assertTrue(run.computation().isEmpty());
 
         SecurityAnalysisResultAndReport result = run.compute();

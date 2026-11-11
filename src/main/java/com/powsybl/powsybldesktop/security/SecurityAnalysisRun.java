@@ -8,6 +8,7 @@
 package com.powsybl.powsybldesktop.security;
 
 import com.powsybl.commons.report.ReportNode;
+import com.powsybl.commons.report.TypedValue;
 import com.powsybl.contingency.Contingency;
 import com.powsybl.contingency.ContingencyContext;
 import com.powsybl.contingency.list.ContingencyList;
@@ -16,12 +17,14 @@ import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VariantManager;
 import com.powsybl.powsybldesktop.contingency.ContingencyNames;
+import com.powsybl.powsybldesktop.limitscaling.OlfLimitScalingSupport;
 import com.powsybl.powsybldesktop.utils.Futures;
 import com.powsybl.security.SecurityAnalysis;
 import com.powsybl.security.SecurityAnalysisParameters;
 import com.powsybl.security.SecurityAnalysisReport;
 import com.powsybl.security.SecurityAnalysisRunParameters;
 import com.powsybl.security.json.JsonSecurityAnalysisParameters;
+import com.powsybl.security.limitscaling.LimitScaling;
 import com.powsybl.security.monitor.StateMonitor;
 
 import java.io.ByteArrayInputStream;
@@ -52,25 +55,29 @@ public final class SecurityAnalysisRun {
     private final Network network;
     private final ContingencyList contingencyList;
     private final SecurityAnalysisParameters parameters;
+    private final List<LimitScaling> limitScalings;
     private final String variantId;
     private final boolean variantMultiThreadAccessAllowed;
     private volatile CompletableFuture<SecurityAnalysisReport> computation;
 
-    private SecurityAnalysisRun(Network network, ContingencyList contingencyList, SecurityAnalysisParameters parameters) {
+    private SecurityAnalysisRun(Network network, ContingencyList contingencyList, SecurityAnalysisParameters parameters,
+                                List<LimitScaling> limitScalings) {
         this.network = network;
         this.contingencyList = contingencyList;
         this.parameters = parameters;
+        this.limitScalings = List.copyOf(limitScalings);
         VariantManager variantManager = network.getVariantManager();
         variantId = variantManager.getWorkingVariantId();
         variantMultiThreadAccessAllowed = variantManager.isVariantMultiThreadAccessAllowed();
     }
 
     /**
-     * Prepares a security analysis of {@code network} (a root network) against {@code contingencyList}, allowing
-     * multi-thread access to its variants until {@link #restoreVariantAccess}.
+     * Prepares a security analysis of {@code network} (a root network) against {@code contingencyList} with
+     * {@code limitScalings}, allowing multi-thread access to its variants until {@link #restoreVariantAccess}.
      */
-    public static SecurityAnalysisRun prepare(Network network, ContingencyList contingencyList, SecurityAnalysisParameters parameters) {
-        SecurityAnalysisRun run = new SecurityAnalysisRun(network, contingencyList, parameters);
+    public static SecurityAnalysisRun prepare(Network network, ContingencyList contingencyList, SecurityAnalysisParameters parameters,
+                                              List<LimitScaling> limitScalings) {
+        SecurityAnalysisRun run = new SecurityAnalysisRun(network, contingencyList, parameters, limitScalings);
         network.getVariantManager().allowVariantMultiThreadAccess(true);
         network.getVariantManager().setWorkingVariant(run.variantId);
         return run;
@@ -86,14 +93,39 @@ public final class SecurityAnalysisRun {
                 .withMessageTemplate("desktop.securityAnalysis")
                 .withTimestamp()
                 .build();
+        reportLimitScalingSupport(reportNode);
         List<Contingency> contingencies = ContingencyNames.deduplicate(contingencyList.getContingencies(network));
         SecurityAnalysisRunParameters runParameters = SecurityAnalysisRunParameters.getDefault()
                 .setSecurityAnalysisParameters(parameters)
                 .addMonitor(preContingencyMonitor(network))
+                .setLimitScalings(limitScalings)
                 .setReportNode(reportNode);
         CompletableFuture<SecurityAnalysisReport> future = SecurityAnalysis.runAsync(network, contingencies, runParameters);
         computation = future;
         return new SecurityAnalysisResultAndReport(Futures.await(future).getResult(), reportNode);
+    }
+
+    // Open Load Flow only logs the scalings it skips, and says nothing of the criteria it ignores
+    private void reportLimitScalingSupport(ReportNode reportNode) {
+        for (int i = 0; i < limitScalings.size(); i++) {
+            OlfLimitScalingSupport.Support support = OlfLimitScalingSupport.of(limitScalings.get(i));
+            if (support.status() != OlfLimitScalingSupport.Status.APPLIED) {
+                reportNode.newReportNode()
+                        .withMessageTemplate(support.status() == OlfLimitScalingSupport.Status.PARTIALLY_APPLIED
+                                ? "desktop.securityAnalysis.limitScalingPartiallyApplied" : "desktop.securityAnalysis.limitScalingNotApplied")
+                        .withUntypedValue("index", i + 1)
+                        .withUntypedValue("reasons", String.join(" ", support.reasons()))
+                        .withSeverity(TypedValue.WARN_SEVERITY)
+                        .add();
+            }
+        }
+    }
+
+    /**
+     * The limit scalings the run applies, Open Load Flow skipping some (see {@link OlfLimitScalingSupport}).
+     */
+    public List<LimitScaling> limitScalings() {
+        return limitScalings;
     }
 
     /**

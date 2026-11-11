@@ -11,6 +11,7 @@ import com.powsybl.contingency.violations.LimitViolation;
 import com.powsybl.iidm.network.BoundaryLine;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Line;
+import com.powsybl.iidm.network.LoadingLimits;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.Terminal;
@@ -22,9 +23,11 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.iidm.network.extensions.LinePosition;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
+import com.powsybl.iidm.network.limitmodification.LimitsComputer;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.diagram.BaseVoltages;
+import com.powsybl.powsybldesktop.limitscaling.LimitScalings;
 import com.powsybl.powsybldesktop.network.edit.PositionEdits;
 import com.powsybl.powsybldesktop.parameters.MapViolationLayer;
 import com.powsybl.powsybldesktop.violations.FlowViolation;
@@ -33,6 +36,7 @@ import com.powsybl.powsybldesktop.violations.NetworkViolations;
 import com.powsybl.powsybldesktop.violations.VoltageViolation;
 import com.powsybl.security.PostContingencyComputationStatus;
 import com.powsybl.security.SecurityAnalysisResult;
+import com.powsybl.security.limitscaling.LimitScaling;
 import com.powsybl.security.results.PostContingencyResult;
 
 import java.awt.Color;
@@ -320,10 +324,11 @@ public record MapNetworkData(List<Color> colors,
      *
      * @param violations the network's cached base case violations
      * @param securityAnalysisResult the network's last security analysis result, null for none
+     * @param securityAnalysisLimitScalings the limit scalings that security analysis was run with
      * @param color the color of a base voltage, or the given default color for a null one
      */
     public static MapNetworkData build(Network network, NetworkViolations violations, SecurityAnalysisResult securityAnalysisResult,
-                                       DoubleFunction<String> baseVoltageName, BinaryOperator<String> color) {
+                                       List<LimitScaling> securityAnalysisLimitScalings, DoubleFunction<String> baseVoltageName, BinaryOperator<String> color) {
         List<MarkerData> substations = new ArrayList<>();
         List<LineData> lines = new ArrayList<>();
         List<UnplacedSubstation> unplaced = new ArrayList<>();
@@ -381,7 +386,7 @@ public record MapNetworkData(List<Color> colors,
             unplaced.sort(Comparator.comparing(UnplacedSubstation::text, String.CASE_INSENSITIVE_ORDER));
             unroutedCount = PositionEdits.unroutedCount(network);
             markViolations(network, violations, markedViolations);
-            markContingencyViolations(network, securityAnalysisResult, markedViolations);
+            markContingencyViolations(network, securityAnalysisResult, securityAnalysisLimitScalings, markedViolations);
             markedViolations.values().forEach(m -> {
                 m.flowViolations().sort(Comparator.comparing((MarkedFlowViolation v) -> v.contingency() != null)
                         .thenComparing(MarkedFlowViolation::violation, FlowViolation.SEVERITY));
@@ -399,7 +404,8 @@ public record MapNetworkData(List<Color> colors,
         violations.getVoltageViolations().forEach(v -> markVoltageViolation(network, MapViolationLayer.BASE_CASE_VOLTAGE, null, v, marked));
     }
 
-    private static void markContingencyViolations(Network network, SecurityAnalysisResult result, Map<String, MarkedViolations> marked) {
+    private static void markContingencyViolations(Network network, SecurityAnalysisResult result, List<LimitScaling> limitScalings,
+                                                  Map<String, MarkedViolations> marked) {
         if (result == null || result.getPreContingencyResult().getStatus() != LoadFlowResult.ComponentResult.Status.CONVERGED) {
             return;
         }
@@ -409,10 +415,11 @@ public record MapNetworkData(List<Color> colors,
                 continue;
             }
             String contingency = ContingencyNames.displayName(postContingencyResult.getContingency(), network);
+            LimitsComputer<Identifiable<?>, LoadingLimits> limits = LimitScalings.limitsComputer(limitScalings, postContingencyResult.getContingency().getId());
             for (LimitViolation violation : postContingencyResult.getLimitViolationsResult().getLimitViolations()) {
                 switch (violation.getLimitType()) {
                     case CURRENT, ACTIVE_POWER, APPARENT_POWER -> markFlowViolation(network, MapViolationLayer.CONTINGENCY_FLOW, contingency,
-                            FlowViolation.of(violation, network), marked);
+                            FlowViolation.of(violation, network, limits), marked);
                     case LOW_VOLTAGE, HIGH_VOLTAGE -> {
                         VoltageViolation voltageViolation = VoltageViolation.of(violation, network);
                         if (voltageViolation != null) {

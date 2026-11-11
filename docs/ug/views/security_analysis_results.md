@@ -10,6 +10,11 @@ The view is empty until a security analysis has been run on the network. When a 
 violations of its own equipment are shown. Only flow (current, active power, apparent power) and voltage violations
 are shown.
 
+The security analysis applies the [limit scalings](limit_scalings.md) enabled when it was run. A message above the
+tabs tells when they have changed since (run the analysis again to update the results), and when Open Load Flow did
+not apply, or only partly, some of them. The **Permanent Limit** and the loadings are then the scaled ones, for each
+state, and the **Limit Scaling** column, giving the factor of the crossed limit, is shown.
+
 Four tabs, each giving its number of rows. In every tab the pre-contingency rows (named **Pre-contingency**) come
 first, then the others, most severe first.
 
@@ -30,7 +35,8 @@ One row per state: the pre-contingency situation and each contingency.
 
 One row per state and equipment with a flow violation, showing its most severe one: **Contingency**, **Subject**,
 **Type**, **Side**, **Limit Type**, **Limit Name**, **Acceptable Duration**, **Pre-contingency Value**, **Value**,
-**Permanent Limit**, **Pre-contingency Loading**, **Loading**. A **Limit Scaling** column is hidden by default.
+**Permanent Limit**, **Pre-contingency Loading**, **Loading**. A **Limit Scaling** column is hidden by default, shown
+when the analysis was run with limit scalings.
 
 ![The Flows by contingency tab](../_generated/images/quickstart-sa-flows-by-contingency.png)
 
@@ -60,11 +66,14 @@ comparison. See [Violations](violations.md), which uses the same columns for the
 ### Run a security analysis
 
 1. Define and enable contingency lists in the [Contingencies](contingencies.md) view.
-2. Set the parameters in the **Security Analysis** and **Load Flow** tabs of the [Parameters](parameters.md) view.
-3. Click **Run** > **Security Analysis** in the main toolbar.
+2. Optionally, define and enable limit scalings in the [Limit Scalings](limit_scalings.md) view.
+3. Set the parameters in the **Security Analysis** and **Load Flow** tabs of the [Parameters](parameters.md) view.
+4. Click **Run** > **Security Analysis** in the main toolbar.
 
 The analysis runs on the selected network (the whole merged network, for a subnetwork), with the contingencies of
-all the enabled lists. A notification follows its progress and can cancel it; at the end it offers **View results**
+all the enabled lists and the enabled limit scalings. When Open Load Flow would not apply, or only partly, some of
+these scalings, a dialog lists them with the reasons and asks whether to run anyway; the report of the analysis lists
+them too. A scaling Open Load Flow would fail on is refused: fix or disable it first. A notification follows its progress and can cancel it; at the end it offers **View results**
 and **View report** (the report opens in the [Reports](reports.md) view). Each run replaces the previous results of
 the network. See the [Security analysis tutorial](../quickstart/security_analysis.md).
 
@@ -76,4 +85,6 @@ the network. See the [Security analysis tutorial](../quickstart/security_analysi
   [Substations](substations.md) view.
 - Click the information button of a loading cell (tooltip **Show all violations and limits**) to see all the
   violations of the equipment, in that state and before the contingency (in all states, from **Flows by
-  equipment**), along with its limits.
+  equipment**), along with its limits. The limits scaled by the analysis' limit scalings get a **Scaled Value**
+  column next to the original values when every state scales them alike, otherwise one
+  **Scaled Value (**_states_**)** column per set of states scaling them alike.

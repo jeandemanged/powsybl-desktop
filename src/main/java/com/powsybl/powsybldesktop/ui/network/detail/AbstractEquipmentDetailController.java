@@ -12,6 +12,7 @@ import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.ReactiveLimitsHolder;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.limitscaling.LimitScalings;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
@@ -276,10 +277,12 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
     }
 
     /**
-     * The editable flow limits of a branch, three-winding transformer or boundary line.
+     * The editable flow limits of a branch, three-winding transformer or boundary line, with the limits the enabled
+     * limit scalings scale in the base case.
      */
     protected Tab limitsTab() {
-        return tab("detail.tab.limits", scrolling(register(OperationalLimitsPane.editable(equipment, guiParameters(), onEdit()))));
+        return tab("detail.tab.limits", scrolling(register(OperationalLimitsPane.editable(equipment, guiParameters(), onEdit(),
+                () -> LimitScalings.limitsComputer(mainModel.getStudy(equipment.getParentNetwork()).getEnabledLimitScalings())))));
     }
 
     protected static Tab tab(String titleKey, Node content) {

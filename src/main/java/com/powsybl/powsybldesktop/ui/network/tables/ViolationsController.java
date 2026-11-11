@@ -10,6 +10,7 @@ package com.powsybl.powsybldesktop.ui.network.tables;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.limitscaling.LimitScalings;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.ui.AbstractDisposableController;
 import com.powsybl.powsybldesktop.ui.controls.TableAutoFitLimiter;
@@ -75,7 +76,8 @@ public class ViolationsController extends AbstractDisposableController implement
                 .equipmentType(FlowRow::equipment)
                 .flowViolation(FlowRow::worst)
                 .loading("desktop.common.column.loading", FlowRow::worst,
-                        (window, row) -> FlowViolationsDialog.show(window, row.equipment(), row.violations(), guiParameters()));
+                        (window, row) -> FlowViolationsDialog.show(window, row.equipment(), row.violations(), guiParameters(),
+                                LimitScalings.limitsComputer(mainModel.getStudy(sceneModel.getNetwork()).getEnabledLimitScalings())));
 
         SortedList<VoltageViolation> sortedVoltages = new SortedList<>(voltageData);
         sortedVoltages.comparatorProperty().bind(voltageTableView.comparatorProperty());

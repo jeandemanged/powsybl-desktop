@@ -38,6 +38,7 @@ From left to right:
 | **Substations**                                              | Open the [Substations](../views/substations.md) view.                                                          |
 | **Map**                                                      | Open the [Map](../views/map.md).                                                                               |
 | **Contingencies**                                            | Open the [Contingencies](../views/contingencies.md) view.                                                      |
+| **Limit Scalings**                                           | Open the [Limit Scalings](../views/limit_scalings.md) view.                                                    |
 | **Tables**                                                   | Open an [equipment table](../views/tables.md) (**Equipment** submenu), or a results table.                     |
 | **Run**                                                      | Run a **Load Flow** or a **Security Analysis** on the selected network.                                        |
 | **Parameters**                                               | Open the [Parameters](../views/parameters.md) view.                                                            |
@@ -64,7 +65,7 @@ single-line diagram next to a table, or on a second screen.
 - In the toolbar of a view, click the **Open in new window** button (the square with an arrow, at the right end):
   the view opens in a new window. The small arrow next to it offers **New window** or the existing windows, to open
   the view as a new tab of one of them instead.
-- The **Map**, **Contingencies**, **Parameters**, **Logs** and **Reports** buttons of the main toolbar can also be
+- The **Map**, **Contingencies**, **Limit Scalings**, **Parameters**, **Logs** and **Reports** buttons of the main toolbar can also be
   dragged: release the mouse over a separate window to add the view to it as a tab, anywhere else to open it in a new
   window at that place.
 - Some views open in a separate window by themselves: the equipment detail views, and the diagrams opened from the
@@ -125,8 +126,9 @@ A study saves the application's work in a single `.psbx` file, to resume it late
 
 Saving first asks what the study holds, in two groups of check boxes, each with **All** and **None** buttons:
 
-- **Data**: **Parameters**, **Contingencies** (the contingency lists, with whether each one is enabled), **Load Flow
-  Results**, **Security Analysis Results**, **Reports** and **Logs**;
+- **Data**: **Parameters**, **Contingencies** (the contingency lists, with whether each one is enabled), **Limit
+  Scalings** (in order, with whether each one is enabled), **Load Flow Results**, **Security Analysis Results** (with
+  the limit scalings the analysis was run with), **Reports** and **Logs**;
 - **Networks**: the loaded networks to save, each with its subnetworks. A network is saved with its current values,
   including the ones a load flow computed.
 

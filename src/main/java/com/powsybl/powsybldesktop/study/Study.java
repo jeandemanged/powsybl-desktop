@@ -17,20 +17,26 @@ import com.powsybl.powsybldesktop.logs.LogsModel.LogEntry;
 import com.powsybl.powsybldesktop.parameters.ApplicationParameters;
 import com.powsybl.powsybldesktop.parameters.ApplicationParametersJson;
 import com.powsybl.security.SecurityAnalysisResult;
+import com.powsybl.security.limitscaling.LimitScaling;
 
 import java.util.List;
 import java.util.Set;
 
 /**
  * What a study file holds: the app's state, or the part of it the user chose to save. A part not saved is null
- * (parameters, reports, logs, results) or empty (contingency lists).
+ * (parameters, reports, logs, results) or empty (contingency lists, limit scalings).
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
 public record Study(ApplicationParameters parameters, List<StudyNetwork> networks, List<ReportNode> reports, List<LogEntry> logs) {
 
+    /**
+     * @param securityAnalysisLimitScalings the limit scalings the security analysis result was computed with
+     */
     public record StudyNetwork(Network network, boolean selected, List<ContingencyList> contingencyLists, List<Boolean> contingencyListsEnabled,
-                               LoadFlowResult loadFlowResult, SecurityAnalysisResult securityAnalysisResult) {
+                               List<LimitScaling> limitScalings, List<Boolean> limitScalingsEnabled,
+                               LoadFlowResult loadFlowResult, SecurityAnalysisResult securityAnalysisResult,
+                               List<LimitScaling> securityAnalysisLimitScalings) {
     }
 
     /**
@@ -39,6 +45,7 @@ public record Study(ApplicationParameters parameters, List<StudyNetwork> network
     public enum Part {
         PARAMETERS,
         CONTINGENCIES,
+        LIMIT_SCALINGS,
         LOAD_FLOW_RESULTS,
         SECURITY_ANALYSIS_RESULTS,
         REPORTS,
@@ -57,10 +64,14 @@ public record Study(ApplicationParameters parameters, List<StudyNetwork> network
         List<StudyNetwork> studyNetworks = networks.stream().map(network -> {
             NetworkStudy study = mainModel.getStudy(network);
             List<ContingencyList> lists = parts.contains(Part.CONTINGENCIES) ? List.copyOf(study.getContingencyLists()) : List.of();
+            List<LimitScaling> scalings = parts.contains(Part.LIMIT_SCALINGS) ? List.copyOf(study.getLimitScalings()) : List.of();
+            boolean securityAnalysis = parts.contains(Part.SECURITY_ANALYSIS_RESULTS) && study.getSecurityAnalysisResult() != null;
             return new StudyNetwork(network, network == mainModel.getNetwork(), lists,
                     lists.stream().map(list -> study.contingencyListEnabledProperty(list).get()).toList(),
+                    scalings, scalings.stream().map(scaling -> study.limitScalingEnabledProperty(scaling).get()).toList(),
                     parts.contains(Part.LOAD_FLOW_RESULTS) ? study.getLoadFlowResult() : null,
-                    parts.contains(Part.SECURITY_ANALYSIS_RESULTS) ? study.getSecurityAnalysisResult() : null);
+                    securityAnalysis ? study.getSecurityAnalysisResult() : null,
+                    securityAnalysis ? study.getSecurityAnalysisLimitScalings() : List.of());
         }).toList();
         return new Study(parameters, studyNetworks,
                 parts.contains(Part.REPORTS) ? List.copyOf(mainModel.getReports()) : null,
@@ -84,10 +95,15 @@ public record Study(ApplicationParameters parameters, List<StudyNetwork> network
             for (int i = 0; i < studyNetwork.contingencyLists().size(); i++) {
                 study.contingencyListEnabledProperty(studyNetwork.contingencyLists().get(i)).set(studyNetwork.contingencyListsEnabled().get(i));
             }
+            study.getLimitScalings().setAll(studyNetwork.limitScalings());
+            for (int i = 0; i < studyNetwork.limitScalings().size(); i++) {
+                study.limitScalingEnabledProperty(studyNetwork.limitScalings().get(i)).set(studyNetwork.limitScalingsEnabled().get(i));
+            }
             if (studyNetwork.loadFlowResult() != null) {
                 study.setLoadFlowResult(studyNetwork.loadFlowResult());
             }
             if (studyNetwork.securityAnalysisResult() != null) {
+                study.setSecurityAnalysisLimitScalings(studyNetwork.securityAnalysisLimitScalings());
                 study.setSecurityAnalysisResult(studyNetwork.securityAnalysisResult());
             }
         }

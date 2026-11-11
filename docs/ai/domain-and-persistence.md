@@ -36,14 +36,15 @@ Maven cache may contain unrelated versions.
   `updateProperty()`.
 - Limit violations (`violations/NetworkViolations`: current, active and apparent power limits of branches,
   three-winding transformers and unpaired boundary lines, plus bus voltages) are computed off the FX thread once per
-  loaded root network (`MainController.computeViolations`) and after each load flow run (in its task), then cached in
-  `NetworkStudy.setViolations`, with every equipment's loading (percentage of its permanent limits, violated or not).
-  Edits don't recompute them. Every violation indication (Violations view, the equipment tables' "Loading" and
-  "Voltage Range" columns) reads this cache; never check limits on the fly in a cell.
-  Detection takes a `LimitsComputer` (`NO_MODIFICATIONS` for now) so that limit scalings
-  (`com.powsybl.security.limitscaling`) can be plugged in later.
+  loaded root network (`MainController.computeViolations`), after each load flow run (in its task) and on every change
+  of the enabled limit scalings, then cached in `NetworkStudy.setViolations`, with every equipment's loading
+  (percentage of its scaled permanent limits, violated or not). Edits don't recompute them. Every violation indication
+  (Violations view, the equipment tables' "Loading" and "Voltage Range" columns) reads this cache; never check limits
+  on the fly in a cell. Detection takes a `LimitsComputer`: `LimitScalings.limitsComputer(enabled scalings)` (see
+  [Limit scalings](#limit-scalings)); `FlowViolation.permanentLimit` is the scaled one.
   The Security Analysis Results view shows the security analysis' own violations the same way, converted by
-  `FlowViolation.of`/`VoltageViolation.of` (permanent limit and bus-view bus resolved against the network). Its
+  `FlowViolation.of`/`VoltageViolation.of` (permanent limit, scaled by the scalings the analysis ran with for the
+  state's contingency, and bus-view bus resolved against the network). Its
   post-contingency rows also show the pre-contingency values: the security analysis runs with a pre-contingency only
   `StateMonitor` of all equipment (`SecurityAnalysisRun.preContingencyMonitor`), whose bus results are
   mapped to bus-view buses whatever their id kind (bus breaker view bus, busbar section, bus view bus).
@@ -71,6 +72,42 @@ Maven cache may contain unrelated versions.
   `NetworkStudy.transferContingencyListEnabled`.
 - JSON import/export: `…/contingency/ContingencyListsIO.java` (Jackson + PowSyBl `ContingencyJsonModule`), kept
   toolkit-free for testing.
+
+## Limit scalings
+
+- PowSyBl's `LimitScaling` (`com.powsybl.security.limitscaling`, called LimitReduction before powsybl-core 7.4) is
+  immutable. The ordered list lives in `NetworkStudy.getLimitScalings()` with identity-keyed enabled flags
+  (`limitScalingEnabledProperty`, `transferLimitScalingEnabled`), like the contingency lists. Order matters: of
+  several scalings matching a limit, `AbstractLimitsScaler` keeps the last one. `limitScalingsRevisionProperty()` is
+  bumped on any change of the list or of a flag; `MainController` recomputes the violations on it. A computation
+  request while the network is busy (load flow, the previous computation) waits for it to be free, requests
+  meanwhile coalescing (`pendingViolations`).
+- `…/limitscaling/LimitScalings.limitsComputer(scalings[, contingencyId])` wraps a `DefaultLimitScalingsApplier`.
+  Monitoring only scalings scale the reported violations too (they only don't scale the conditions of remedial
+  actions), but the applier only applies the scalings whose flag equals the `monitoringOnly` argument: the flag is
+  cleared on copies for detection, which always asks `false`. The study, the editor, the JSON files and the security
+  analysis keep the flag as set. Limits computers don't handle boundary lines: unpaired ones stay unscaled
+  (`NetworkViolations`, `FlowViolation.of`, `AffectedLimits`, `OperationalLimitsPane`).
+- Scaled limits are always shown next to the original ones, never instead: `OperationalLimitsPane` adds a read-only
+  "Scaled Value" column in both modes (detail views' Limits tab: base case enabled scalings, part of its
+  `structure()`; violations dialogs: one `ScaledLimits` per state, a security analysis' states scaling a limit set
+  differently getting a column each).
+- Security analysis: `SecurityAnalysisRun` passes the enabled scalings (`setLimitScalings`) and `NetworkStudy` keeps
+  them with the result (`setSecurityAnalysisLimitScalings`): the results view and the map compute scaled permanent
+  limits from them, per contingency, and the results view tells when they differ from the current enabled ones
+  (`LimitScalings.sameContent`, through the JSON form, `LimitScaling` having no `equals`).
+- Open Load Flow 2.4.0 (`LimitScalingManager.isSupported`, private) skips unsupported scalings with a log line only,
+  ignores the countries of `IdentifiableCriterion`s and throws on one without nominal voltage criterion.
+  `…/limitscaling/OlfLimitScalingSupport` mirrors these rules (`APPLIED`, `PARTIALLY_APPLIED`, `NOT_APPLIED`, `FAILS`):
+  never hide them. The editor shows them per scaling and in its toolbar, `MainController.onSecurityAnalysis` asks to
+  confirm (refuses on `FAILS`), the report gets a warning per scaling, the results view a message.
+  `OlfLimitScalingSupportTest` runs Open Load Flow on each rule: update both on an Open Load Flow upgrade.
+- An `IdentifiableCriterion` needs a country or a nominal voltage criterion (its constructors require them non-null).
+- JSON import/export: PowSyBl's `LimitScalingListSerDeUtil` (through `LimitScalings.read`/`write`, `Path`-based). The
+  format has no enabled flag: export writes all the scalings, import enables them.
+- Editor: `ui/limitscaling/LimitScalingsController` (table, preview of `AffectedLimits` computed on the FX thread like
+  the contingencies view's table) and `LimitScalingFormController` (one form per selected scaling, rebuilding it on
+  each commit). It doesn't edit the network: no busy lock.
 
 ## Search
 
@@ -131,18 +168,20 @@ There is no database. Persistent state is:
 | Last file-chooser directory | Java Preferences API | `…/ui/controls/FileChooserPreferences.java` |
 | Networks | User files, imported/exported through PowSyBl `Importer`/`Exporter` | `NetworksController` (import: plain `Task`; export: `AbstractNetworkTask`), `NetworkIO` |
 | Studies (parameters, networks, contingency lists, results, reports, logs) | User-chosen `.psbx` zip file | `…/study/StudyArchive.java`, see [Studies](#studies) |
-| Contingency lists, parameters, reports, diagrams | User-chosen JSON/text/SVG/PNG files | `ContingencyListsIO`, `ApplicationParametersJson`, `ReportsController`, `DiagramPaneController` |
+| Contingency lists, limit scalings, parameters, reports, diagrams | User-chosen JSON/text/SVG/PNG files | `ContingencyListsIO`, `LimitScalings`, `ApplicationParametersJson`, `ReportsController`, `DiagramPaneController` |
 
 Use the existing helpers (and `FileChooserPreferences` for any new `FileChooser`) rather than adding new storage.
-Network state (loaded networks, results, contingency lists) is not persisted between runs, except in study files.
+Network state (loaded networks, results, contingency lists, limit scalings) is not persisted between runs, except in
+study files.
 
 ## Studies
 
 File > Save Study / Load Study write and read the app's state as one zip file, `.psbx`
 (`…/study/StudyArchive.java`, layout in its javadoc): a `manifest.json` (format version, networks in order with the
-selected one and their contingency lists' enabled flags, report count, `null` when reports are not saved), then one
-file per part, each written by an existing serializer — `ApplicationParametersJson`, binary IIDM (`NetworkSerDe`,
-subnetworks included), `ContingencyListsIO`, PowSyBl's load flow / security analysis result and `ReportNode` JSON
+selected one and their contingency lists' and limit scalings' enabled flags, report count, `null` when reports are
+not saved), then one file per part, each written by an existing serializer — `ApplicationParametersJson`, binary IIDM
+(`NetworkSerDe`, subnetworks included), `ContingencyListsIO`, `LimitScalings` (the scalings, and the ones the
+security analysis result was computed with), PowSyBl's load flow / security analysis result and `ReportNode` JSON
 serializers — plus the logs as JSON. Entries are written and read through the JDK zip file system (`jdk.zipfs`,
 listed explicitly in the packaging scripts since jdeps can't see it), so these serializers must go through
 `Files`/`Path`, never `Path.toFile()`. A write goes to a `.tmp` sibling first, moved over the target once complete.

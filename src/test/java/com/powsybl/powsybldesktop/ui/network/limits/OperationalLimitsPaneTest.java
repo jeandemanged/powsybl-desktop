@@ -7,7 +7,9 @@
  */
 package com.powsybl.powsybldesktop.ui.network.limits;
 
+import com.powsybl.contingency.ContingencyContext;
 import com.powsybl.contingency.violations.LimitViolation;
+import com.powsybl.iidm.network.LimitType;
 import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.ThreeWindingsTransformer;
@@ -15,20 +17,24 @@ import com.powsybl.iidm.network.TwoSides;
 import com.powsybl.iidm.network.limitmodification.LimitsComputer;
 import com.powsybl.iidm.network.test.EurostagTutorialExample1Factory;
 import com.powsybl.iidm.network.test.ThreeWindingsTransformerNetworkFactory;
+import com.powsybl.powsybldesktop.limitscaling.LimitScalings;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.violations.FlowViolation;
 import com.powsybl.powsybldesktop.violations.NetworkViolations;
+import com.powsybl.security.limitscaling.LimitScaling;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
+import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -73,6 +79,79 @@ class OperationalLimitsPaneTest extends AbstractHeadlessApplicationTest {
                 .filter(TableView.class::isInstance)
                 .map(node -> (TableView<OperationalLimitsPane.LimitRow>) node)
                 .toList();
+    }
+
+    @Test
+    void scaledLimitsAreShownInAColumnOfTheirOwn() {
+        Network network = EurostagTutorialExample1Factory.createWithFixedCurrentLimits();
+        Line line = network.getLine("NHV1_NHV2_1");
+
+        interact(() -> pane.setEquipment(line, List.of()));
+        TableView<OperationalLimitsPane.LimitRow> unscaled = tables(groups().getFirst()).getFirst();
+        assertEquals(List.of(Messages.get("limits.column.name"), Messages.get("limits.column.value"),
+                Messages.get("limits.column.acceptableDuration"), Messages.get("limits.column.fictitious")),
+                unscaled.getColumns().stream().map(TableColumn::getText).toList());
+
+        interact(() -> pane.setEquipment(line, List.of(), true, List.of(new OperationalLimitsPane.ScaledLimits(null,
+                LimitScalings.limitsComputer(List.of(new LimitScaling(LimitType.CURRENT, 0.5)))))));
+        TableView<OperationalLimitsPane.LimitRow> scaled = tables(groups().getFirst()).getFirst();
+        TableColumn<OperationalLimitsPane.LimitRow, ?> scaledColumn = scaled.getColumns().get(2);
+        assertEquals(Messages.get("limits.column.scaledValue"), scaledColumn.getText());
+        OperationalLimitsPane.LimitRow permanent = scaled.getItems().getFirst();
+        assertEquals(current(permanent.value() * 0.5), scaledColumn.getCellData(permanent));
+    }
+
+    private static String current(double value) {
+        return new GuiParameters().format(GuiParameters.Quantity.CURRENT, value);
+    }
+
+    @Test
+    void statesScalingDifferentlyGetAColumnEach() {
+        Network network = EurostagTutorialExample1Factory.createWithFixedCurrentLimits();
+        Line line = network.getLine("NHV1_NHV2_1");
+        List<LimitScaling> scalings = List.of(LimitScaling.builder(LimitType.CURRENT, 0.5)
+                .withContingencyContext(ContingencyContext.specificContingency("C1")).build());
+
+        interact(() -> pane.setEquipment(line, List.of(), false, List.of(
+                new OperationalLimitsPane.ScaledLimits("Pre", LimitScalings.limitsComputer(scalings)),
+                new OperationalLimitsPane.ScaledLimits("C1", LimitScalings.limitsComputer(scalings, "C1")),
+                new OperationalLimitsPane.ScaledLimits("C2", LimitScalings.limitsComputer(scalings, "C2")))));
+
+        TableView<OperationalLimitsPane.LimitRow> table = tables(groups().getFirst()).getFirst();
+        // only C1 scales the limits
+        assertEquals(Messages.get("limits.column.scaledValue.states", "C1"), table.getColumns().get(2).getText());
+        assertEquals(Messages.get("limits.column.acceptableDuration"), table.getColumns().get(3).getText());
+    }
+
+    @Test
+    void editableModeShowsTheScaledLimitsReadOnly() {
+        Network network = EurostagTutorialExample1Factory.createWithFixedCurrentLimits();
+        Line line = network.getLine("NHV1_NHV2_1");
+        List<LimitScaling> scalings = new ArrayList<>();
+        OperationalLimitsPane[] editable = new OperationalLimitsPane[1];
+        interact(() -> {
+            editable[0] = OperationalLimitsPane.editable(line, GuiParameters::new, () -> { }, () -> LimitScalings.limitsComputer(List.copyOf(scalings)));
+            pane.getChildren().setAll(editable[0]);
+        });
+        assertEquals(4, editableTable(editable[0]).getColumns().size());
+
+        scalings.add(new LimitScaling(LimitType.CURRENT, 0.5));
+        interact(editable[0]::refresh);
+
+        TableView<OperationalLimitsPane.LimitRow> table = editableTable(editable[0]);
+        TableColumn<OperationalLimitsPane.LimitRow, ?> scaledColumn = table.getColumns().get(2);
+        assertEquals(Messages.get("limits.column.scaledValue"), scaledColumn.getText());
+        assertEquals(current(table.getItems().getFirst().value() * 0.5), scaledColumn.getCellData(table.getItems().getFirst()));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static TableView<OperationalLimitsPane.LimitRow> editableTable(OperationalLimitsPane editable) {
+        return editable.getChildren().stream()
+                .filter(node -> node.getStyleClass().contains("limits-group"))
+                .flatMap(node -> ((VBox) node).getChildren().stream())
+                .filter(TableView.class::isInstance)
+                .map(node -> (TableView<OperationalLimitsPane.LimitRow>) node)
+                .findFirst().orElseThrow();
     }
 
     @Test

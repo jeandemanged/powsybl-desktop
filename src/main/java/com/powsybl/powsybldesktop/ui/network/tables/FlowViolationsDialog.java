@@ -9,6 +9,8 @@ package com.powsybl.powsybldesktop.ui.network.tables;
 
 import com.powsybl.contingency.violations.LimitViolationType;
 import com.powsybl.iidm.network.Identifiable;
+import com.powsybl.iidm.network.LoadingLimits;
+import com.powsybl.iidm.network.limitmodification.LimitsComputer;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.ui.form.TableColumnSupport;
 import com.powsybl.powsybldesktop.ui.network.limits.OperationalLimitsPane;
@@ -58,21 +60,24 @@ final class FlowViolationsDialog {
     /**
      * The network's own state's violations, along its sides' present values.
      */
-    static void show(Window owner, Identifiable<?> equipment, List<FlowViolation> violations, GuiParameters guiParameters) {
+    static void show(Window owner, Identifiable<?> equipment, List<FlowViolation> violations, GuiParameters guiParameters,
+                     LimitsComputer<Identifiable<?>, LoadingLimits> limitsComputer) {
         List<Entry> entries = violations.stream().map(v -> new Entry(null, v)).toList();
-        show(owner, equipment, entries, violations.stream().min(FlowViolation.SEVERITY).orElse(null), true, guiParameters);
+        show(owner, equipment, entries, violations.stream().min(FlowViolation.SEVERITY).orElse(null), true, guiParameters,
+                List.of(new OperationalLimitsPane.ScaledLimits(null, limitsComputer)));
     }
 
     /**
      * Computed states' violations, e.g. a security analysis', with a state column. The network's present values
-     * aren't shown, as they are its own state's.
+     * aren't shown, as they are its own state's. The limits are shown scaled as in each of {@code states}.
      */
-    static void showStates(Window owner, Identifiable<?> equipment, List<Entry> entries, FlowViolation worst, GuiParameters guiParameters) {
-        show(owner, equipment, entries, worst, false, guiParameters);
+    static void showStates(Window owner, Identifiable<?> equipment, List<Entry> entries, FlowViolation worst, GuiParameters guiParameters,
+                           List<OperationalLimitsPane.ScaledLimits> states) {
+        show(owner, equipment, entries, worst, false, guiParameters, states);
     }
 
     private static void show(Window owner, Identifiable<?> equipment, List<Entry> entries, FlowViolation worst, boolean presentValues,
-                             GuiParameters guiParameters) {
+                             GuiParameters guiParameters, List<OperationalLimitsPane.ScaledLimits> scaledLimits) {
         Dialog<Void> dialog = new Dialog<>();
         dialog.initOwner(owner);
         dialog.initModality(Modality.WINDOW_MODAL);
@@ -80,7 +85,7 @@ final class FlowViolationsDialog {
         dialog.setTitle(Messages.get("violations.dialogTitle", equipment.getNameOrId()));
 
         OperationalLimitsPane limitsPane = new OperationalLimitsPane(guiParameters);
-        limitsPane.setEquipment(equipment, entries.stream().map(Entry::violation).toList(), presentValues);
+        limitsPane.setEquipment(equipment, entries.stream().map(Entry::violation).toList(), presentValues, scaledLimits);
         limitsPane.setPadding(new Insets(4));
         ScrollPane limitsScrollPane = new ScrollPane(limitsPane);
         limitsScrollPane.setFitToWidth(true);

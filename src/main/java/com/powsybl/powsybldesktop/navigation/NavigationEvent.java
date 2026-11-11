@@ -28,6 +28,7 @@ public record NavigationEvent(NavigationType navigationType, NavigationState sta
             case SUBSTATIONS -> Messages.get("desktop.common.equipment.substation.plural");
             case MAP -> Messages.get("main.toolbar.map");
             case CONTINGENCIES -> Messages.get("main.toolbar.contingencies");
+            case LIMIT_SCALINGS -> Messages.get("main.toolbar.limitScalings");
             case LOGS -> Messages.get("main.toolbar.logs");
             case NETWORK_TABLE_SUBSTATIONS -> Messages.get("desktop.common.equipment.substation.plural");
             case NETWORK_TABLE_VOLTAGE_LEVELS -> Messages.get("desktop.common.equipment.voltageLevel.plural");

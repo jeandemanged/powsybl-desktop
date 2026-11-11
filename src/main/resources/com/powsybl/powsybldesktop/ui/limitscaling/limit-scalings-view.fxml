@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<BorderPane prefHeight="600.0" prefWidth="1100.0" xmlns="http://javafx.com/javafx/17.0.12"
+            xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.ui.limitscaling.LimitScalingsController">
+    <top>
+        <ToolBar BorderPane.alignment="CENTER">
+            <items>
+                <Button fx:id="addButton" mnemonicParsing="false" onAction="#onAdd" text="%desktop.common.action.add">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2p-plus" iconSize="16"/>
+                    </graphic>
+                </Button>
+                <Button fx:id="duplicateButton" mnemonicParsing="false" onAction="#onDuplicate">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2c-content-copy" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%limitScalings.action.duplicate"/>
+                    </tooltip>
+                </Button>
+                <Button fx:id="removeButton" mnemonicParsing="false" onAction="#onRemove">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2m-minus" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%desktop.common.action.remove"/>
+                    </tooltip>
+                </Button>
+                <Separator orientation="VERTICAL"/>
+                <Button fx:id="moveUpButton" mnemonicParsing="false" onAction="#onMoveUp">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2a-arrow-up" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%limitScalings.action.moveUp"/>
+                    </tooltip>
+                </Button>
+                <Button fx:id="moveDownButton" mnemonicParsing="false" onAction="#onMoveDown">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2a-arrow-down" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%limitScalings.action.moveDown"/>
+                    </tooltip>
+                </Button>
+                <Separator orientation="VERTICAL"/>
+                <Button fx:id="enableAllButton" mnemonicParsing="false" onAction="#onEnableAll">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2c-checkbox-multiple-marked-outline" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%limitScalings.action.enableAll"/>
+                    </tooltip>
+                </Button>
+                <Button fx:id="disableAllButton" mnemonicParsing="false" onAction="#onDisableAll">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2c-checkbox-multiple-blank-outline" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%limitScalings.action.disableAll"/>
+                    </tooltip>
+                </Button>
+                <Separator orientation="VERTICAL"/>
+                <Button fx:id="importButton" mnemonicParsing="false" onAction="#onImport">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2u-upload" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%desktop.common.action.import"/>
+                    </tooltip>
+                </Button>
+                <Button fx:id="exportButton" mnemonicParsing="false" onAction="#onExport">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2d-download" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%desktop.common.action.export"/>
+                    </tooltip>
+                </Button>
+                <Separator orientation="VERTICAL"/>
+                <Label fx:id="olfSummaryLabel" styleClass="alert-label"/>
+            </items>
+        </ToolBar>
+    </top>
+    <center>
+        <SplitPane dividerPositions="0.6" BorderPane.alignment="CENTER">
+            <items>
+                <SplitPane dividerPositions="0.4" orientation="VERTICAL">
+                    <items>
+                        <TableView fx:id="scalingsTableView" editable="true">
+                            <columns>
+                                <TableColumn fx:id="enabledColumn" editable="true" text="%limitScalings.column.enabled"/>
+                                <TableColumn fx:id="indexColumn" sortable="false" text="#"/>
+                                <TableColumn fx:id="limitTypeColumn" sortable="false" text="%limitScalings.column.limitType"/>
+                                <TableColumn fx:id="valueColumn" editable="false" sortable="false" text="%limitScalings.column.value"/>
+                                <TableColumn fx:id="contextColumn" sortable="false" text="%limitScalings.column.context"/>
+                                <TableColumn fx:id="criteriaColumn" prefWidth="160" sortable="false" text="%limitScalings.column.equipment"/>
+                                <TableColumn fx:id="durationsColumn" sortable="false" text="%limitScalings.column.durations"/>
+                                <TableColumn fx:id="limitsGroupsColumn" sortable="false" text="%limitScalings.column.limitsGroups"/>
+                                <TableColumn fx:id="monitoringOnlyColumn" sortable="false" text="%limitScalings.column.monitoringOnly"/>
+                                <TableColumn fx:id="olfColumn" sortable="false" text="%limitScalings.column.olf"/>
+                            </columns>
+                        </TableView>
+                        <ScrollPane fitToWidth="true">
+                            <content>
+                                <StackPane fx:id="formHost"/>
+                            </content>
+                        </ScrollPane>
+                    </items>
+                </SplitPane>
+                <VBox spacing="4">
+                    <children>
+                        <Label fx:id="affectedTitleLabel" text="%limitScalings.affected.title"/>
+                        <TableView fx:id="affectedTableView" VBox.vgrow="ALWAYS">
+                            <columns>
+                                <TableColumn fx:id="affectedEquipmentColumn" prefWidth="160" text="%limitScalings.affected.column.equipment"/>
+                                <TableColumn fx:id="affectedSideColumn" text="%desktop.common.column.side"/>
+                                <TableColumn fx:id="affectedGroupColumn" text="%limitScalings.affected.column.group"/>
+                                <TableColumn fx:id="affectedPermanentColumn" text="%limitScalings.affected.column.permanentLimit"/>
+                                <TableColumn fx:id="affectedScaledPermanentColumn" text="%limitScalings.affected.column.scaledPermanentLimit"/>
+                                <TableColumn fx:id="affectedTemporaryColumn" text="%limitScalings.affected.column.temporaryLimits"/>
+                            </columns>
+                        </TableView>
+                        <Label text="%limitScalings.affected.boundaryLines" wrapText="true"/>
+                    </children>
+                </VBox>
+            </items>
+        </SplitPane>
+    </center>
+</BorderPane>

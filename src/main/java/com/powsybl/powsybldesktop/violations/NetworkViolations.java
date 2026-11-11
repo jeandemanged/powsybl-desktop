@@ -45,7 +45,8 @@ import java.util.function.Consumer;
  * {@code NetworkStudy}. Immutable.
  * <p>
  * Flow violations follow PowSyBl's {@code LimitViolationDetection}: on every selected operational limits group, a
- * temporary limit violation when a temporary limit is crossed, a permanent limit violation otherwise. Boundary lines
+ * temporary limit violation when a temporary limit is crossed, a permanent limit violation otherwise. Limits are the
+ * ones of the given {@link LimitsComputer}, scaled by the enabled limit scalings, and so are loadings. Boundary lines
  * aren't checked by PowSyBl, nor supported by its {@link LimitsComputer}s, so unpaired ones are checked here on their
  * unmodified limits; paired ones are covered by their tie line.
  *
@@ -137,13 +138,14 @@ public final class NetworkViolations {
         }
     }
 
-    // the permanent limit, or the lowest temporary limit of a LOW detection kind limit set, which has no permanent one
+    // the (scaled) permanent limit, or the lowest temporary limit of a LOW detection kind limit set, which has no
+    // permanent one: a loading above 100% is a violation
     private static double referenceLimit(LimitsContainer<LoadingLimits> limits) {
-        LoadingLimits originalLimits = limits.getOriginalLimits();
-        if (originalLimits.getDetectionKind() == DetectionKind.HIGH) {
-            return originalLimits.getPermanentLimit();
+        LoadingLimits scaledLimits = limits.getLimits();
+        if (scaledLimits.getDetectionKind() == DetectionKind.HIGH) {
+            return scaledLimits.getPermanentLimit();
         }
-        return originalLimits.getTemporaryLimits().stream().findFirst().map(LoadingLimits.TemporaryLimit::getValue).orElse(Double.NaN);
+        return scaledLimits.getTemporaryLimits().stream().findFirst().map(LoadingLimits.TemporaryLimit::getValue).orElse(Double.NaN);
     }
 
     /**
@@ -195,10 +197,10 @@ public final class NetworkViolations {
         }
     }
 
-    // a LOW detection kind limit set has no permanent limit: getPermanentLimit() throws
-    private static double permanentLimit(LimitsContainer<LoadingLimits> limits) {
-        LoadingLimits originalLimits = limits.getOriginalLimits();
-        return originalLimits.getDetectionKind() == DetectionKind.HIGH ? originalLimits.getPermanentLimit() : Double.NaN;
+    // scaled; a LOW detection kind limit set has no permanent limit: getPermanentLimit() throws
+    static double permanentLimit(LimitsContainer<LoadingLimits> limits) {
+        LoadingLimits scaledLimits = limits.getLimits();
+        return scaledLimits.getDetectionKind() == DetectionKind.HIGH ? scaledLimits.getPermanentLimit() : Double.NaN;
     }
 
     // Same logic as LimitViolationDetection.checkVoltage (package-private), keeping the bus

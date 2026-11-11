@@ -7,6 +7,8 @@
   SPDX-License-Identifier: MPL-2.0
 -->
 
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TabPane?>
@@ -14,6 +16,11 @@
 
 <VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.ui.network.tables.SecurityAnalysisResultsController">
    <children>
+      <Label fx:id="limitScalingsLabel" visible="false" wrapText="true" styleClass="alert-label">
+         <padding>
+            <Insets bottom="4.0" left="6.0" right="6.0" top="4.0"/>
+         </padding>
+      </Label>
       <TabPane tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
          <tabs>
             <Tab fx:id="contingenciesTab">

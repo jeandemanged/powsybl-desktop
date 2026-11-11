@@ -59,7 +59,9 @@ Depending on the equipment kind:
   **Phase Tap Changer**: positions, **Regulation** and the table of **Steps**.
 - **Limits** (lines, tie lines, transformers, boundary lines): for each side, the operational limits groups, and in
   each group the current, active power and apparent power limits: permanent limit and temporary limits (**Name**,
-  **Acceptable Duration**, **Value**, **Fictitious**), with the side's present value.
+  **Acceptable Duration**, **Value**, **Fictitious**), with the side's present value. When enabled
+  [limit scalings](limit_scalings.md) scale a selected group's limits in the base case, a read-only **Scaled Value**
+  column shows the scaled limits next to the original ones.
 
   ![The Limits tab of a line](../_generated/images/details-line-limits.png)
 

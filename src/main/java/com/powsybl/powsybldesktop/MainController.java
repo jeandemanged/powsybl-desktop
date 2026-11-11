@@ -11,13 +11,14 @@ import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.contingency.list.ListOfContingencyLists;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
-import com.powsybl.iidm.network.limitmodification.LimitsComputer;
 import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.powsybldesktop.core.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkStructureChange;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
+import com.powsybl.powsybldesktop.limitscaling.LimitScalings;
+import com.powsybl.powsybldesktop.limitscaling.OlfLimitScalingSupport;
 import com.powsybl.powsybldesktop.loadflow.LoadFlowConvergence;
 import com.powsybl.powsybldesktop.loadflow.LoadFlowResultAndReport;
 import com.powsybl.powsybldesktop.loadflow.LoadFlowRun;
@@ -34,6 +35,7 @@ import com.powsybl.powsybldesktop.security.SecurityAnalysisRun;
 import com.powsybl.powsybldesktop.ui.AbstractDisposableController;
 import com.powsybl.powsybldesktop.ui.DisposableController;
 import com.powsybl.powsybldesktop.ui.contingency.ContingenciesController;
+import com.powsybl.powsybldesktop.ui.limitscaling.LimitScalingsController;
 import com.powsybl.powsybldesktop.ui.logs.LogsViewController;
 import com.powsybl.powsybldesktop.ui.map.MapController;
 import com.powsybl.powsybldesktop.ui.memory.MemoryController;
@@ -76,8 +78,11 @@ import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.powsybldesktop.utils.UserGuide;
 import com.powsybl.powsybldesktop.violations.NetworkViolations;
 import com.powsybl.security.SecurityAnalysisParameters;
+import com.powsybl.security.limitscaling.LimitScaling;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.ListChangeListener;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
@@ -112,7 +117,9 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -152,6 +159,9 @@ public class MainController extends AbstractDisposableController {
     private Button mapButton;
     @FXML
     private Button contingenciesButton;
+
+    @FXML
+    private Button limitScalingsButton;
     @FXML
     private Button parametersButton;
     @FXML
@@ -168,6 +178,7 @@ public class MainController extends AbstractDisposableController {
     private static final String PARAMETERS_WINDOW = "parameters";
     private static final String MAP_FXML = "ui/map/map-view.fxml";
     private static final String CONTINGENCIES_FXML = "ui/contingency/contingencies-view.fxml";
+    private static final String LIMIT_SCALINGS_FXML = "ui/limitscaling/limit-scalings-view.fxml";
 
     private final MainModel mainModel;
     private final SeparateWindows separateWindows;
@@ -187,6 +198,9 @@ public class MainController extends AbstractDisposableController {
     private Stage memoryStage;
 
     private final UserGuide userGuide = UserGuide.locate();
+
+    // networks whose violations are to be computed once they are no longer busy
+    private final Set<Network> pendingViolations = new HashSet<>();
 
     public MainController(MainModel mainModel) {
         this(mainModel, new SeparateWindows(mainModel, () -> null));
@@ -376,13 +390,16 @@ public class MainController extends AbstractDisposableController {
             return;
         }
         LoadFlowParameters parameters = copyParameters(mainModel.getParametersModel().loadFlowParametersProperty().getValue());
+        NetworkStudy study = mainModel.getStudy(network);
+        List<LimitScaling> limitScalings = study.getEnabledLimitScalings();
+        int limitScalingsRevision = study.limitScalingsRevisionProperty().get();
         Service<LoadFlowResultAndReport> loadFlowService = new Service<>() {
             @Override
             protected Task<LoadFlowResultAndReport> createTask() {
                 return new AbstractNetworkTask<>(mainModel, network) {
                     @Override
                     protected LoadFlowResultAndReport compute() throws Exception {
-                        return LoadFlowRun.run(network, parameters);
+                        return LoadFlowRun.run(network, parameters, limitScalings);
                     }
                 };
             }
@@ -393,8 +410,12 @@ public class MainController extends AbstractDisposableController {
         loadFlowService.setOnSucceeded(event -> {
             LoadFlowResultAndReport loadFlowResultAndReport = (LoadFlowResultAndReport) event.getSource().getValue();
             mainModel.getStudy(network).setLoadFlowResult(loadFlowResultAndReport.loadFlowResult());
-            mainModel.getStudy(network).setViolations(loadFlowResultAndReport.violations());
+            study.setViolations(loadFlowResultAndReport.violations());
             mainModel.setUpdate();
+            // scalings changed during the run: its violations are already outdated
+            if (study.limitScalingsRevisionProperty().get() != limitScalingsRevision) {
+                computeViolations(network);
+            }
             mainModel.addReport(loadFlowResultAndReport.reportNode());
             mainModel.getNotificationsModel().replace(runningNotification,
                     loadFlowOutcome(runningNotification.startTimestamp(), loadFlowResultAndReport));
@@ -462,8 +483,12 @@ public class MainController extends AbstractDisposableController {
                 .filter(list -> mainModel.getStudy(network).contingencyListEnabledProperty(list).get())
                 .toList();
         ContingencyList contingencyList = new ListOfContingencyLists(network.getNameOrId(), enabledContingencyLists);
+        List<LimitScaling> limitScalings = mainModel.getStudy(network).getEnabledLimitScalings();
+        if (!confirmLimitScalings(limitScalings)) {
+            return;
+        }
 
-        SecurityAnalysisRun run = SecurityAnalysisRun.prepare(network, contingencyList, parameters);
+        SecurityAnalysisRun run = SecurityAnalysisRun.prepare(network, contingencyList, parameters, limitScalings);
         Service<SecurityAnalysisResultAndReport> securityAnalysisService = new Service<>() {
             @Override
             protected Task<SecurityAnalysisResultAndReport> createTask() {
@@ -481,6 +506,7 @@ public class MainController extends AbstractDisposableController {
         securityAnalysisService.setOnSucceeded(event -> {
             run.restoreVariantAccess();
             SecurityAnalysisResultAndReport securityAnalysisResultAndReport = (SecurityAnalysisResultAndReport) event.getSource().getValue();
+            mainModel.getStudy(network).setSecurityAnalysisLimitScalings(run.limitScalings());
             mainModel.getStudy(network).setSecurityAnalysisResult(securityAnalysisResultAndReport.securityAnalysisResult());
             mainModel.setUpdate();
             mainModel.addReport(securityAnalysisResultAndReport.reportNode());
@@ -508,6 +534,39 @@ public class MainController extends AbstractDisposableController {
         });
         mainModel.getStudy(network).trackComputation(securityAnalysisService);
         securityAnalysisService.start();
+    }
+
+    // Open Load Flow skips the limit scalings it doesn't support with a mere log line: the user decides whether to run
+    // without them. One it would fail on is refused.
+    private boolean confirmLimitScalings(List<LimitScaling> limitScalings) {
+        List<String> failing = new ArrayList<>();
+        List<String> notApplied = new ArrayList<>();
+        for (int i = 0; i < limitScalings.size(); i++) {
+            OlfLimitScalingSupport.Support support = OlfLimitScalingSupport.of(limitScalings.get(i));
+            String line = Messages.get("main.securityAnalysis.limitScaling", i + 1, String.join(" ", support.reasons()));
+            switch (support.status()) {
+                case FAILS -> failing.add(line);
+                case NOT_APPLIED, PARTIALLY_APPLIED -> notApplied.add(line);
+                case APPLIED -> {
+                    // nothing to tell
+                }
+            }
+        }
+        if (!failing.isEmpty()) {
+            Alert alert = new Alert(Alert.AlertType.ERROR, Messages.get("main.securityAnalysis.limitScalingsFail", String.join("\n", failing)), ButtonType.OK);
+            alert.initOwner(borderPane.getScene().getWindow());
+            alert.setHeaderText(null);
+            alert.showAndWait();
+            return false;
+        }
+        if (notApplied.isEmpty()) {
+            return true;
+        }
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION, Messages.get("main.securityAnalysis.limitScalingsNotApplied", String.join("\n", notApplied)),
+                ButtonType.YES, ButtonType.NO);
+        alert.initOwner(borderPane.getScene().getWindow());
+        alert.setHeaderText(null);
+        return alert.showAndWait().filter(ButtonType.YES::equals).isPresent();
     }
 
     // completing without exception doesn't mean the base case converged - without it, no contingency was simulated
@@ -573,16 +632,38 @@ public class MainController extends AbstractDisposableController {
     }
 
     // Every loaded network (imported, merged, detached...) gets its violations computed once, in the background; load
-    // flow runs recompute them afterwards (see onLoadFlow). A detached subnetwork's former root keeps its cache: the
-    // views skip the violations of equipment no longer in the network.
+    // flow runs and limit scaling changes recompute them afterwards (see onLoadFlow). A detached subnetwork's former
+    // root keeps its cache: the views skip the violations of equipment no longer in the network.
+    // While the network is busy (e.g. a load flow writing it, or the previous computation of its violations), the
+    // computation waits for it to be free, several requests meanwhile making a single computation.
     private void computeViolations(Network network) {
+        if (!mainModel.getNetworks().contains(network)) {
+            return;
+        }
+        NetworkStudy study = mainModel.getStudy(network);
+        if (study.isBusy()) {
+            if (pendingViolations.add(network)) {
+                study.busyProperty().addListener(new ChangeListener<>() {
+                    @Override
+                    public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean busy) {
+                        if (!busy) {
+                            observable.removeListener(this);
+                            pendingViolations.remove(network);
+                            computeViolations(network);
+                        }
+                    }
+                });
+            }
+            return;
+        }
+        List<LimitScaling> limitScalings = study.getEnabledLimitScalings();
         Service<NetworkViolations> violationsService = new Service<>() {
             @Override
             protected Task<NetworkViolations> createTask() {
                 return new AbstractNetworkTask<>(mainModel, network) {
                     @Override
                     protected NetworkViolations compute() {
-                        return NetworkViolations.compute(network, LimitsComputer.NO_MODIFICATIONS);
+                        return NetworkViolations.compute(network, LimitScalings.limitsComputer(limitScalings));
                     }
                 };
             }
@@ -599,6 +680,10 @@ public class MainController extends AbstractDisposableController {
         });
         mainModel.getStudy(network).trackComputation(violationsService);
         violationsService.start();
+    }
+
+    private void listenToLimitScalings(Network network) {
+        listenerManager.listen(mainModel.getStudy(network).limitScalingsRevisionProperty(), (_, _, _) -> computeViolations(network));
     }
 
     // Bus-view merged buses are recalculated on every topology change (switch open/close, terminal
@@ -717,9 +802,14 @@ public class MainController extends AbstractDisposableController {
         listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> refreshSearchIndexBuses());
         listenerManager.listen(mainModel.getNetworks(), (ListChangeListener<Network>) change -> {
             while (change.next()) {
-                change.getAddedSubList().forEach(this::computeViolations);
+                change.getAddedSubList().forEach(network -> {
+                    computeViolations(network);
+                    listenToLimitScalings(network);
+                });
             }
         });
+        // after a language reload, which replaces this controller
+        mainModel.getNetworks().forEach(this::listenToLimitScalings);
         listenerManager.listen(separateWindows.getOpenWindows(), (ListChangeListener<SeparateWindows.DetachedWindow>) change -> updateWindowsMenu());
         // also on showing: windows' names and tabs change without changing the list
         windowsMenu.setOnShowing(_ -> updateWindowsMenu());
@@ -727,6 +817,8 @@ public class MainController extends AbstractDisposableController {
         separateWindows.addDragToOpen(mapButton, NavigationType.MAP.name(), () -> detachSceneView(MAP_FXML, NavigationType.MAP));
         separateWindows.addDragToOpen(contingenciesButton, NavigationType.CONTINGENCIES.name(),
                 () -> detachSceneView(CONTINGENCIES_FXML, NavigationType.CONTINGENCIES));
+        separateWindows.addDragToOpen(limitScalingsButton, NavigationType.LIMIT_SCALINGS.name(),
+                () -> detachSceneView(LIMIT_SCALINGS_FXML, NavigationType.LIMIT_SCALINGS));
         separateWindows.addDragToOpen(parametersButton, PARAMETERS_WINDOW, this::detachParameters);
         separateWindows.addDragToOpen(logsButton, LOGS_WINDOW, this::detachLogs);
         separateWindows.addDragToOpen(reportsButton, REPORTS_WINDOW, this::detachReports);
@@ -907,6 +999,8 @@ public class MainController extends AbstractDisposableController {
             ensureSceneView(MapController.class, MAP_FXML, NavigationType.MAP);
         } else if (newValue.navigationType() == NavigationType.CONTINGENCIES) {
             ensureSceneView(ContingenciesController.class, CONTINGENCIES_FXML, NavigationType.CONTINGENCIES);
+        } else if (newValue.navigationType() == NavigationType.LIMIT_SCALINGS) {
+            ensureSceneView(LimitScalingsController.class, LIMIT_SCALINGS_FXML, NavigationType.LIMIT_SCALINGS);
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SUBSTATIONS) {
             SubstationsTableController controller = ensureSceneView(SubstationsTableController.class,
                     "ui/network/tables/substations-view.fxml", NavigationType.NETWORK_TABLE_SUBSTATIONS);
@@ -1107,6 +1201,10 @@ public class MainController extends AbstractDisposableController {
 
     public void onContingencies() {
         mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.CONTINGENCIES, NetworkNavigationState.create(mainModel.getNetwork())));
+    }
+
+    public void onLimitScalings() {
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LIMIT_SCALINGS, NetworkNavigationState.create(mainModel.getNetwork())));
     }
 
     public void onParameters() {

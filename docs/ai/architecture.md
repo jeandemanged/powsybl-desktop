@@ -34,6 +34,7 @@ used, so tests of `core` start the toolkit with `Platform.startup`.
 | `diagram` | `BaseVoltages` (base voltage ranges and colors as single line diagrams use them, for whatever colors equipment outside diagrams), `SubstationDiagramRenderer`, `NetworkAreaDiagramRenderer` |
 | `map` | `MapNetworkData` snapshot, `MapTileRenderer` |
 | `contingency` | `ContingencyListsIO` (JSON I/O), `ContingencyNames`, `ContingencyListKind`, the editor's row models |
+| `limitscaling` | Limit scalings: `LimitScalings` (limits computer for violation detection, JSON I/O, content comparison), `OlfLimitScalingSupport` (what Open Load Flow's security analysis does with a scaling), `AffectedLimits` (the editor's preview), `CriterionKind`, `LimitScalingTexts` |
 | `loadflow`, `security` | The runs (`LoadFlowRun`, `SecurityAnalysisRun`: report, cancellation, OpenLoadFlow's variant switch, parameter copy, pre-contingency monitor), result/report records, `LoadFlowConvergence` |
 | `violations` | `NetworkViolations` (flow and voltage limit violations of the network's state), `FlowViolation`, `VoltageViolation` (also built from a security analysis' violations), `Loading`, `VoltageRange`, `ViolationTexts` (how violations read in the views) |
 | `parameters` | `ParametersModel`, `ApplicationParameters` record, `GuiParameters` (with the map's `Basemap`, ...), `DesktopSldParameters`/`DesktopNadParameters` (PowSyBl's diagram parameters plus desktop-only fields), `ApplicationParametersJson`, `ParametersConfigFile` |
@@ -45,7 +46,7 @@ used, so tests of `core` start the toolkit with `Platform.startup`.
 | `utils` | `Messages`, `Labels`, `ListenerManager`, `LanguagePreferences`, `Futures` (waiting on a PowSyBl future so that interruption cancels it), `UserGuide` (where the built user's guide is) |
 | `ui` | `AbstractDisposableController`, `DisposableController` |
 | `ui/window` | A view's per-window context: `SceneModel`, `SceneView`, and `SeparateWindows` (the separate windows and their tabs, see [windows.md](windows.md)) |
-| `ui/controls` | Reusable controls and helpers: `CopyButtons`, `DateTimePicker`, `SearchableCheckComboBox`, `TableAutoFitLimiter`, `TreeItems`, `FileChooserPreferences` |
+| `ui/controls` | Reusable controls and helpers: `CopyButtons`, `DateTimePicker`, `SearchableCheckComboBox`, `TableAutoFitLimiter`, `TreeItems`, `FileChooserPreferences`, `CountryGroup` and `VoltageIntervalGroup` (equipment criterion pickers of the contingency and limit scaling editors) |
 | `ui/form` | Editing building blocks shared by tables, detail views, creation dialogs and the contingency editor: `TableColumnSupport` (cell factories), `CellFields` (in-cell editors), `DetailForm` + `DetailPart` + `DetailTables` + `DetailSections` (form grids and their common sections), `CreationForm`, `TerminalPickerDialog`, `RemovalDialog` |
 | `ui/network` | `NetworksController` (load/import/export/merge/detach networks), `SubstationsController` (tree + SLD/NAD tabs + embedded tables), `ContainerDiagram` (a container's SLD/NAD, its rendering and JS callbacks), `DropImportDialog` |
 | `ui/network/tables` | One controller per equipment table and their bases (`AbstractEquipmentTableController`, `AbstractBusesController`, `AbstractNetworkObjectTableController`), `EmbeddableEquipmentTable`, `ViolationColumns` (columns of the Violations and Security Analysis Results views), `FlowViolationsDialog`, `ColumnVisibilityToolbarController`, `TableEditActions` (a table's context menu: details, creations, removal), edit dialogs (`GeographicalTagsDialog`, ...) |
@@ -56,6 +57,7 @@ used, so tests of `core` start the toolkit with `Platform.startup`.
 | `ui/diagram` | `DiagramPaneController`: reusable WebView viewport (zoom, fit, PNG/SVG export); `MapBaseVoltages` (per base voltage filter checkboxes, in the map and the GUI parameters) |
 | `ui/map` | Map view: `MapController`, `map.js` + Leaflet |
 | `ui/contingency` | Contingency lists editor (`ContingenciesController` and its inline forms) |
+| `ui/limitscaling` | Limit scalings editor (`LimitScalingsController`, `LimitScalingFormController`) |
 | `ui/parameters` | Parameters view and its tabs (`AbstractDiagramParametersController`, `ParameterFormBuilder` for importer/exporter parameters) |
 | `ui/notification` | Overlay popup and history panel (`NotificationOverlay`, `NotificationView`, `NotificationsController`) |
 | `ui/report` | Report viewer (`ReportsController`, `ReportNodeViewController`, `ReportNodeTreeCell`) |
@@ -75,7 +77,7 @@ uses only the layers below it (from top to bottom):
 | Shell | the root package: `Launcher`, `MainApplication`, `MainController`, `SplashScreen` |
 | UI | `ui..` |
 | State | `core`, `navigation`, `logs`, `study` |
-| Domain | `network..` (`network.edit` included), `search`, `diagram`, `map`, `contingency`, `loadflow`, `security`, `violations`, `memory`, `parameters`, `notification` |
+| Domain | `network..` (`network.edit` included), `search`, `diagram`, `map`, `contingency`, `limitscaling`, `loadflow`, `security`, `violations`, `memory`, `parameters`, `notification` |
 | Base | `utils`, `util`, `reports` |
 
 Every class must be in a layer: a new top-level package fails the test until it is added to one. The test also checks
@@ -119,7 +121,7 @@ display settings, the network change guard, and the sub-models `NavigationHistor
 `NotificationsModel`, `LogsModel`.
 
 `…/core/NetworkStudy.java` holds everything per loaded root network: LF/SA results, cached limit violations,
-contingency lists and their enabled flags, running computation and index-build services, search indexes, Map views,
+contingency lists and limit scalings and their enabled flags, running computation and index-build services, search indexes, Map views,
 busy count. `MainModel.getStudy(n)` resolves a subnetwork to its root and throws if the network is not loaded. Studies
 are created by `addNetwork`/`detachSubnetworks` and disposed (services cancelled, indexes closed) by `removeNetwork`.
 

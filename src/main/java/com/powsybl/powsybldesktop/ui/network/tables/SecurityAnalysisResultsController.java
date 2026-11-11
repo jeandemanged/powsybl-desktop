@@ -13,12 +13,16 @@ import com.powsybl.iidm.network.BusbarSection;
 import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.LimitType;
+import com.powsybl.iidm.network.LoadingLimits;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.ThreeSides;
 import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.iidm.network.limitmodification.LimitsComputer;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.limitscaling.LimitScalings;
+import com.powsybl.powsybldesktop.limitscaling.OlfLimitScalingSupport;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
@@ -26,6 +30,7 @@ import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.search.NetworkSearch;
 import com.powsybl.powsybldesktop.ui.AbstractDisposableController;
 import com.powsybl.powsybldesktop.ui.controls.TableAutoFitLimiter;
+import com.powsybl.powsybldesktop.ui.network.limits.OperationalLimitsPane;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.ui.window.SceneView;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -36,6 +41,7 @@ import com.powsybl.powsybldesktop.violations.VoltageRange;
 import com.powsybl.powsybldesktop.violations.VoltageViolation;
 import com.powsybl.security.PostContingencyComputationStatus;
 import com.powsybl.security.SecurityAnalysisResult;
+import com.powsybl.security.limitscaling.LimitScaling;
 import com.powsybl.security.results.BranchResult;
 import com.powsybl.security.results.BusResult;
 import com.powsybl.security.results.NetworkResult;
@@ -85,6 +91,8 @@ import java.util.function.Predicate;
 public class SecurityAnalysisResultsController extends AbstractDisposableController implements SceneView {
 
     @FXML
+    Label limitScalingsLabel;
+    @FXML
     Tab contingenciesTab;
     @FXML
     public TableView<ContingencyRow> contingenciesTableView;
@@ -119,7 +127,8 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
      * The pre-contingency state or a post-contingency one, and its computation status. A failed state has no
      * violations.
      */
-    record State(String name, boolean preContingency, String statusMessageKey, boolean failed) {
+    // contingencyId: null for the pre-contingency state
+    record State(String name, String contingencyId, boolean preContingency, String statusMessageKey, boolean failed) {
     }
 
     /**
@@ -159,6 +168,7 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
 
     @FXML
     private void initialize() {
+        limitScalingsLabel.managedProperty().bind(limitScalingsLabel.visibleProperty());
         install(contingenciesTableView, contingenciesData, row -> row.state().preContingency());
         ViolationColumns<ContingencyRow> contingencyColumns = new ViolationColumns<>(contingenciesTableView, () -> sceneModel, this::guiParameters)
                 .text("contingency", "securityAnalysisResults.column.contingency", row -> row.state().name());
@@ -361,12 +371,21 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
         if (preContingency != null && preContingency != row) {
             entries.addAll(entries(preContingency));
         }
-        FlowViolationsDialog.showStates(window, row.equipment(), entries, row.worst(), guiParameters());
+        List<ContingencyFlowRow> rows = preContingency != null && preContingency != row ? List.of(row, preContingency) : List.of(row);
+        FlowViolationsDialog.showStates(window, row.equipment(), entries, row.worst(), guiParameters(), scaledLimits(rows));
     }
 
     private void showFlowViolations(Window window, EquipmentFlowRow row) {
         List<FlowViolationsDialog.Entry> entries = row.rows().stream().flatMap(r -> entries(r).stream()).toList();
-        FlowViolationsDialog.showStates(window, row.equipment(), entries, row.worstRow().worst(), guiParameters());
+        FlowViolationsDialog.showStates(window, row.equipment(), entries, row.worstRow().worst(), guiParameters(), scaledLimits(row.rows()));
+    }
+
+    // the limits of each row's state, as scaled by the limit scalings the security analysis was run with
+    private List<OperationalLimitsPane.ScaledLimits> scaledLimits(List<ContingencyFlowRow> rows) {
+        List<LimitScaling> limitScalings = mainModel.getStudy(sceneModel.getNetwork()).getSecurityAnalysisLimitScalings();
+        return rows.stream()
+                .map(r -> new OperationalLimitsPane.ScaledLimits(r.state().name(), LimitScalings.limitsComputer(limitScalings, r.state().contingencyId())))
+                .toList();
     }
 
     private static List<FlowViolationsDialog.Entry> entries(ContingencyFlowRow row) {
@@ -432,23 +451,28 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
         preContingencyVoltageViolations.clear();
         preContingencyNetworkResult = NetworkResult.empty();
         preContingencyVoltages = Map.of();
+        List<LimitScaling> limitScalings = network == null ? List.of() : mainModel.getStudy(network).getSecurityAnalysisLimitScalings();
+        updateLimitScalingsLabel(network, result, limitScalings);
         if (result != null) {
             PreContingencyResult preContingencyResult = result.getPreContingencyResult();
             preContingencyNetworkResult = Objects.requireNonNullElse(preContingencyResult.getNetworkResult(), NetworkResult.empty());
             preContingencyVoltages = busViewVoltages(preContingencyNetworkResult, network.getNetwork());
             LoadFlowResult.ComponentResult.Status preContingencyStatus = preContingencyResult.getStatus();
-            State preContingency = new State(Messages.get("securityAnalysisResults.preContingency"), true,
+            State preContingency = new State(Messages.get("securityAnalysisResults.preContingency"), null, true,
                     preContingencyStatusMessageKey(preContingencyStatus), preContingencyStatus != LoadFlowResult.ComponentResult.Status.CONVERGED);
-            contingencies.add(addState(preContingency, preContingencyResult.getLimitViolationsResult().getLimitViolations(), network, flows, voltages));
+            contingencies.add(addState(preContingency, preContingencyResult.getLimitViolationsResult().getLimitViolations(), network,
+                    LimitScalings.limitsComputer(limitScalings), flows, voltages));
             flows.forEach(row -> preContingencyFlows.put(row.equipment().getId(), row));
             voltages.forEach(row -> preContingencyVoltageViolations.put(row.violation().busId(), row.violation()));
             if (!preContingency.failed()) {
                 for (PostContingencyResult postContingencyResult : result.getPostContingencyResults()) {
                     PostContingencyComputationStatus status = postContingencyResult.getStatus();
-                    State state = new State(ContingencyNames.displayName(postContingencyResult.getContingency(), network), false,
+                    State state = new State(ContingencyNames.displayName(postContingencyResult.getContingency(), network),
+                            postContingencyResult.getContingency().getId(), false,
                             postContingencyStatusMessageKey(status),
                             status != PostContingencyComputationStatus.CONVERGED && status != PostContingencyComputationStatus.NO_IMPACT);
-                    contingencies.add(addState(state, postContingencyResult.getLimitViolationsResult().getLimitViolations(), network, flows, voltages));
+                    contingencies.add(addState(state, postContingencyResult.getLimitViolationsResult().getLimitViolations(), network,
+                            LimitScalings.limitsComputer(limitScalings, postContingencyResult.getContingency().getId()), flows, voltages));
                 }
             }
         }
@@ -465,7 +489,26 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
         voltageTab.setText(Messages.get("securityAnalysisResults.tab.voltage", voltageData.size()));
     }
 
+    // Whether the result is outdated, the limit scalings having changed since, and whether Open Load Flow skipped or
+    // only partly applied some of those it was run with. The limit scaling columns show when it was run with some.
+    private void updateLimitScalingsLabel(Network network, SecurityAnalysisResult result, List<LimitScaling> limitScalings) {
+        List<String> messages = new ArrayList<>();
+        if (result != null && !LimitScalings.sameContent(limitScalings, mainModel.getStudy(network).getEnabledLimitScalings())) {
+            messages.add(Messages.get("securityAnalysisResults.limitScalings.outdated"));
+        }
+        long notApplied = limitScalings.stream().filter(s -> OlfLimitScalingSupport.of(s).status() != OlfLimitScalingSupport.Status.APPLIED).count();
+        if (result != null && notApplied > 0) {
+            messages.add(Messages.get("securityAnalysisResults.limitScalings.notApplied", notApplied, limitScalings.size()));
+        }
+        limitScalingsLabel.setText(String.join("\n", messages));
+        limitScalingsLabel.setVisible(!messages.isEmpty());
+        for (TableView<?> table : List.of(flowByContingencyTableView, flowByEquipmentTableView)) {
+            table.getColumns().stream().filter(c -> "limitScaling".equals(c.getId())).forEach(c -> c.setVisible(result != null && !limitScalings.isEmpty()));
+        }
+    }
+
     private static ContingencyRow addState(State state, List<LimitViolation> violations, Network network,
+                                           LimitsComputer<Identifiable<?>, LoadingLimits> limits,
                                            List<ContingencyFlowRow> flows, List<VoltageRow> voltages) {
         Network root = network.getNetwork();
         Map<String, List<FlowViolation>> flowViolations = new LinkedHashMap<>();
@@ -477,7 +520,7 @@ public class SecurityAnalysisResultsController extends AbstractDisposableControl
             switch (violation.getLimitType()) {
                 case CURRENT, ACTIVE_POWER, APPARENT_POWER -> flowViolations
                         .computeIfAbsent(violation.getSubjectId(), _ -> new ArrayList<>())
-                        .add(FlowViolation.of(violation, root));
+                        .add(FlowViolation.of(violation, root, limits));
                 case LOW_VOLTAGE, HIGH_VOLTAGE -> {
                     VoltageViolation voltageViolation = VoltageViolation.of(violation, root);
                     if (voltageViolation != null) {

@@ -86,6 +86,11 @@
                                 <FontIcon iconLiteral="mdi2f-flash-off" iconSize="16" />
                             </graphic>
                         </Button>
+                        <Button fx:id="limitScalingsButton" mnemonicParsing="false" onAction="#onLimitScalings" text="%main.toolbar.limitScalings">
+                            <graphic>
+                                <FontIcon iconLiteral="mdi2t-tune-vertical" iconSize="16" />
+                            </graphic>
+                        </Button>
                         <MenuButton mnemonicParsing="false" text="%main.toolbar.tables">
                             <graphic>
                                 <FontIcon iconLiteral="mdi2t-table-multiple" iconSize="16" />

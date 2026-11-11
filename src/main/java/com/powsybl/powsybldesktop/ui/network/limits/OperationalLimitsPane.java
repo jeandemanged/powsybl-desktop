@@ -22,6 +22,8 @@ import com.powsybl.iidm.network.Terminal;
 import com.powsybl.iidm.network.ThreeSides;
 import com.powsybl.iidm.network.ThreeWindingsTransformer;
 import com.powsybl.iidm.network.TwoSides;
+import com.powsybl.iidm.network.limitmodification.LimitsComputer;
+import com.powsybl.iidm.network.limitmodification.result.LimitsContainer;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
 import com.powsybl.powsybldesktop.ui.form.DetailForm;
 import com.powsybl.powsybldesktop.ui.form.DetailPart;
@@ -53,7 +55,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -101,6 +105,7 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
     // editable mode only
     private Identifiable<?> equipment;
     private Runnable onEdit;
+    private Supplier<LimitsComputer<Identifiable<?>, LoadingLimits>> limitsComputer = () -> LimitsComputer.NO_MODIFICATIONS;
     private String shownStructure;
     private final List<Runnable> tableRefreshers = new ArrayList<>();
 
@@ -118,17 +123,31 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
     record LimitRow(String name, double value, Integer acceptableDuration, boolean fictitious) {
     }
 
+    /**
+     * The limits of a state, scaled by its limit scalings: of the base case, or after a contingency.
+     *
+     * @param state the state's name, null for the network's own (base case) state
+     */
+    public record ScaledLimits(String state, LimitsComputer<Identifiable<?>, LoadingLimits> limitsComputer) {
+    }
+
+    // a column of scaled values, shared by the states scaling them alike
+    private record ScaledColumn(String header, List<Double> values) {
+    }
+
     public OperationalLimitsPane(GuiParameters guiParameters) {
         super(8);
         Objects.requireNonNull(guiParameters);
         this.guiParameters = () -> guiParameters;
     }
 
-    private OperationalLimitsPane(Identifiable<?> equipment, Supplier<GuiParameters> guiParameters, Runnable onEdit) {
+    private OperationalLimitsPane(Identifiable<?> equipment, Supplier<GuiParameters> guiParameters, Runnable onEdit,
+                                  Supplier<LimitsComputer<Identifiable<?>, LoadingLimits>> limitsComputer) {
         super(8);
         this.guiParameters = Objects.requireNonNull(guiParameters);
         this.equipment = Objects.requireNonNull(equipment);
         this.onEdit = Objects.requireNonNull(onEdit);
+        this.limitsComputer = Objects.requireNonNull(limitsComputer);
         refresh();
     }
 
@@ -138,7 +157,16 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
      * @param onEdit run after every applied edit
      */
     public static OperationalLimitsPane editable(Identifiable<?> equipment, Supplier<GuiParameters> guiParameters, Runnable onEdit) {
-        return new OperationalLimitsPane(equipment, guiParameters, onEdit);
+        return editable(equipment, guiParameters, onEdit, () -> LimitsComputer.NO_MODIFICATIONS);
+    }
+
+    /**
+     * An editor of {@code equipment}'s limits, showing next to them, read-only, the ones {@code limitsComputer}
+     * scales (the enabled limit scalings of the base case).
+     */
+    public static OperationalLimitsPane editable(Identifiable<?> equipment, Supplier<GuiParameters> guiParameters, Runnable onEdit,
+                                                 Supplier<LimitsComputer<Identifiable<?>, LoadingLimits>> limitsComputer) {
+        return new OperationalLimitsPane(equipment, guiParameters, onEdit, limitsComputer);
     }
 
     @Override
@@ -175,6 +203,14 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
      *                      violations, as the network holds its base case's
      */
     public void setEquipment(Identifiable<?> equipment, List<FlowViolation> violations, boolean presentValues) {
+        setEquipment(equipment, violations, presentValues, List.of());
+    }
+
+    /**
+     * Read-only mode, with the scaled limits next to the original ones: a "Scaled Value" column when every state scales
+     * them alike, one column per set of states scaling them alike otherwise, none for limits no state scales.
+     */
+    public void setEquipment(Identifiable<?> equipment, List<FlowViolation> violations, boolean presentValues, List<ScaledLimits> scaledLimits) {
         getChildren().clear();
         List<Side> sides = sides(equipment);
         if (sides.isEmpty()) {
@@ -191,7 +227,7 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
                         .map(FlowViolation::violation)
                         .filter(v -> v.getSide() == side.side() && group.getId().equals(v.getOperationalLimitsGroupId()))
                         .toList();
-                getChildren().add(groupNode(side, group, groupViolations, presentValues));
+                getChildren().add(groupNode(equipment, side, group, groupViolations, presentValues, scaledLimits));
             }
         }
     }
@@ -242,7 +278,8 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
                 holder::addSelectedOperationalLimitsGroups, holder::deselectOperationalLimitsGroups);
     }
 
-    private VBox groupNode(Side side, OperationalLimitsGroup group, List<LimitViolation> groupViolations, boolean presentValues) {
+    private VBox groupNode(Identifiable<?> equipment, Side side, OperationalLimitsGroup group, List<LimitViolation> groupViolations,
+                           boolean presentValues, List<ScaledLimits> scaledLimits) {
         Label title = new Label(Messages.get("limits.group", group.getId()));
         title.getStyleClass().add("limits-group-title");
         VBox box = new VBox(6, title);
@@ -258,7 +295,8 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
                 List<LimitViolation> typeViolations = groupViolations.stream()
                         .filter(v -> v.getLimitType().name().equals(type.name()))
                         .toList();
-                box.getChildren().addAll(limitsHeader(side, type, presentValues), limitsTable(limits.get(), quantity(type), typeViolations));
+                box.getChildren().addAll(limitsHeader(side, type, presentValues),
+                        limitsTable(limits.get(), scaledColumns(equipment, side, group, type, rows(limits.get()), scaledLimits), quantity(type), typeViolations));
             }
         }
         if (empty) {
@@ -276,6 +314,41 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
         return new Label(Messages.get("limits.header", typeText, Double.isNaN(value) ? "-" : guiParameters.get().format(quantity(type), value)));
     }
 
+    // null when not scaled. Limits computers don't handle boundary lines (see NetworkViolations)
+    private static LoadingLimits scaledLimits(Identifiable<?> equipment, Side side, OperationalLimitsGroup group, LimitType type,
+                                              LimitsComputer<Identifiable<?>, LoadingLimits> limitsComputer) {
+        if (!(equipment instanceof Branch<?>) && !(equipment instanceof ThreeWindingsTransformer)) {
+            return null;
+        }
+        return limitsComputer.computeLimits(equipment, type, side.side(), false).stream()
+                .filter(container -> container.isDistinct() && group.getId().equals(container.getOperationalLimitsGroupId()))
+                .map(LimitsContainer::getLimits)
+                .findFirst().orElse(null);
+    }
+
+    private static List<ScaledColumn> scaledColumns(Identifiable<?> equipment, Side side, OperationalLimitsGroup group, LimitType type,
+                                                    List<LimitRow> rows, List<ScaledLimits> scaledLimits) {
+        Map<List<Double>, List<String>> statesByValues = new LinkedHashMap<>();
+        for (ScaledLimits state : scaledLimits) {
+            LoadingLimits scaled = scaledLimits(equipment, side, group, type, state.limitsComputer());
+            if (scaled != null) {
+                statesByValues.computeIfAbsent(rows.stream().map(row -> scaledValue(row, scaled)).toList(), _ -> new ArrayList<>()).add(state.state());
+            }
+        }
+        return statesByValues.entrySet().stream()
+                .map(e -> new ScaledColumn(e.getValue().size() == scaledLimits.size() ? Messages.get("limits.column.scaledValue")
+                        : Messages.get("limits.column.scaledValue.states", String.join(", ", e.getValue())), e.getKey()))
+                .toList();
+    }
+
+    private static double scaledValue(LimitRow row, LoadingLimits scaled) {
+        if (row.acceptableDuration() == null) {
+            return scaled.getPermanentLimit();
+        }
+        LoadingLimits.TemporaryLimit temporaryLimit = scaled.getTemporaryLimit(row.acceptableDuration());
+        return temporaryLimit == null ? Double.NaN : temporaryLimit.getValue();
+    }
+
     private static GuiParameters.Quantity quantity(LimitType type) {
         return type == LimitType.CURRENT ? GuiParameters.Quantity.CURRENT : GuiParameters.Quantity.POWER;
     }
@@ -290,13 +363,19 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
         return rows;
     }
 
-    private TableView<LimitRow> limitsTable(LoadingLimits limits, GuiParameters.Quantity quantity, List<LimitViolation> violations) {
+    private TableView<LimitRow> limitsTable(LoadingLimits limits, List<ScaledColumn> scaledColumns, GuiParameters.Quantity quantity,
+                                            List<LimitViolation> violations) {
         List<LimitRow> rows = rows(limits);
         TableView<LimitRow> table = new TableView<>();
         table.setEditable(false);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.getColumns().add(column("limits.column.name", LimitRow::name));
         table.getColumns().add(column("limits.column.value", row -> limitText(row.value(), quantity)));
+        for (ScaledColumn scaledColumn : scaledColumns) {
+            TableColumn<LimitRow, String> column = column("limits.column.scaledValue", row -> limitText(scaledColumn.values().get(rows.indexOf(row)), quantity));
+            column.setText(scaledColumn.header());
+            table.getColumns().add(column);
+        }
         table.getColumns().add(column("limits.column.acceptableDuration", OperationalLimitsPane::durationText));
         table.getColumns().add(column("limits.column.fictitious", row -> row.fictitious() ? Messages.get("limits.fictitious") : ""));
         table.getItems().setAll(rows);
@@ -353,7 +432,8 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
                         .map(group -> group.getId() + (side.selectedGroups().get().contains(group) ? "*" : "")
                                 + FLOW_LIMIT_TYPES.stream()
                                 .map(type -> group.getLoadingLimits(type)
-                                        .map(limits -> type + "/" + limits.getDetectionKind() + rows(limits).stream()
+                                        .map(limits -> type + "/" + limits.getDetectionKind()
+                                                + (scaledLimits(equipment, side, group, type, limitsComputer.get()) != null ? "s" : "") + rows(limits).stream()
                                                 .map(row -> row.name() + "@" + row.acceptableDuration() + (row.fictitious() ? "f" : ""))
                                                 .collect(Collectors.joining(",")))
                                         .orElse(""))
@@ -404,7 +484,7 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
         for (LimitType type : FLOW_LIMIT_TYPES) {
             Optional<? extends LoadingLimits> limits = group.getLoadingLimits(type);
             if (limits.isPresent()) {
-                box.getChildren().addAll(editableLimitsHeader(side, group, type), editableLimitsTable(group, type));
+                box.getChildren().addAll(editableLimitsHeader(side, group, type), editableLimitsTable(side, group, type));
             } else {
                 MenuItem item = new MenuItem(Messages.get("desktop.common.limitViolationType." + type.name()));
                 item.setOnAction(_ -> edit(addLimitsButton, () -> newLimits(group, type).add()));
@@ -441,7 +521,7 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
         return header;
     }
 
-    private TableView<LimitRow> editableLimitsTable(OperationalLimitsGroup group, LimitType type) {
+    private TableView<LimitRow> editableLimitsTable(Side side, OperationalLimitsGroup group, LimitType type) {
         TableView<LimitRow> table = new TableView<>();
         table.editableProperty().bind(editable);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
@@ -475,7 +555,18 @@ public final class OperationalLimitsPane extends VBox implements DetailPart {
                 (row, fictitious) -> replace(group, type, rows -> rows.stream()
                         .map(r -> r == row ? new LimitRow(r.name(), r.value(), r.acceptableDuration(), fictitious) : r).toList()),
                 onEdit, editable));
-        Runnable fill = () -> table.getItems().setAll(rows(loadingLimits(group, type)));
+        // read-only, next to the value: whether the scalings scale the limits changes the structure, see structure()
+        LoadingLimits[] scaled = {null};
+        if (scaledLimits(equipment, side, group, type, limitsComputer.get()) != null) {
+            TableColumn<LimitRow, String> scaledColumn = column("limits.column.scaledValue",
+                    row -> scaled[0] == null ? "-" : limitText(scaledValue(row, scaled[0]), quantity(type)));
+            scaledColumn.getStyleClass().add("right-aligned-column");
+            table.getColumns().add(2, scaledColumn);
+        }
+        Runnable fill = () -> {
+            scaled[0] = scaledLimits(equipment, side, group, type, limitsComputer.get());
+            table.getItems().setAll(rows(loadingLimits(group, type)));
+        };
         fill.run();
         tableRefreshers.add(fill);
         table.setFixedCellSize(CELL_SIZE + 2);

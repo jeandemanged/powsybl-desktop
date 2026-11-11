@@ -104,7 +104,7 @@ class MapNetworkDataTest {
                 .setVoltageLevel2("VL_ALONE").setBus2("VL_ALONE_B")
                 .setR(1).setX(10)
                 .add();
-        data = MapNetworkData.build(network, NetworkViolations.EMPTY, null, _ -> null, (_, defaultColor) -> defaultColor);
+        data = MapNetworkData.build(network, NetworkViolations.EMPTY, null, List.of(), _ -> null, (_, defaultColor) -> defaultColor);
     }
 
     // L overloaded on side 1, a transformer of S4 overloaded, S3's bus above its voltage level's high limit
@@ -130,7 +130,7 @@ class MapNetworkDataTest {
         network.getVoltageLevel("S3_VL").newLoad().setId("S3_LOAD").setBus("S3_B").setP0(0).setQ0(0).add();
         network.getVoltageLevel("S3_VL").setHighVoltageLimit(410);
         network.getBusBreakerView().getBus("S3_B").setV(420);
-        return MapNetworkData.build(network, NetworkViolations.compute(network, LimitsComputer.NO_MODIFICATIONS), null,
+        return MapNetworkData.build(network, NetworkViolations.compute(network, LimitsComputer.NO_MODIFICATIONS), null, List.of(),
                 _ -> null, (_, defaultColor) -> defaultColor);
     }
 
@@ -336,7 +336,7 @@ class MapNetworkDataTest {
     void contingencyViolationsAreMarkedAfterBaseCaseOnes() {
         buildWithViolations();
         MapNetworkData withViolations = MapNetworkData.build(network, NetworkViolations.compute(network, LimitsComputer.NO_MODIFICATIONS),
-                securityAnalysisResult(), _ -> null, (_, defaultColor) -> defaultColor);
+                securityAnalysisResult(), List.of(), _ -> null, (_, defaultColor) -> defaultColor);
 
         List<MapNetworkData.MarkedFlowViolation> line = withViolations.violationMarker("L").flowViolations();
         assertEquals(2, line.size());
@@ -360,7 +360,7 @@ class MapNetworkDataTest {
         SecurityAnalysisResult failed = new SecurityAnalysisResult(LimitViolationsResult.empty(), LoadFlowResult.ComponentResult.Status.FAILED,
                 result.getPostContingencyResults());
 
-        MapNetworkData withViolations = MapNetworkData.build(network, NetworkViolations.EMPTY, failed, _ -> null, (_, defaultColor) -> defaultColor);
+        MapNetworkData withViolations = MapNetworkData.build(network, NetworkViolations.EMPTY, failed, List.of(), _ -> null, (_, defaultColor) -> defaultColor);
 
         assertNull(withViolations.violationMarker("L"));
         assertNull(withViolations.violationMarker("S5"));
@@ -369,7 +369,7 @@ class MapNetworkDataTest {
     // orange: S5 has contingency violations only
     @Test
     void contingencyOnlyBubbleIsOrange() throws IOException {
-        MapNetworkData withViolations = MapNetworkData.build(network, NetworkViolations.EMPTY, securityAnalysisResult(), _ -> null,
+        MapNetworkData withViolations = MapNetworkData.build(network, NetworkViolations.EMPTY, securityAnalysisResult(), List.of(), _ -> null,
                 (_, defaultColor) -> defaultColor);
         int zoom = 14;
         double scale = Math.pow(2, zoom);
@@ -410,7 +410,7 @@ class MapNetworkDataTest {
         }
         line.getTerminal1().setP(p1).setQ(0);
         line.getTerminal2().setP(p2).setQ(0);
-        return MapNetworkData.build(network, NetworkViolations.compute(network, LimitsComputer.NO_MODIFICATIONS), null,
+        return MapNetworkData.build(network, NetworkViolations.compute(network, LimitsComputer.NO_MODIFICATIONS), null, List.of(),
                 _ -> null, (_, defaultColor) -> defaultColor);
     }
 
@@ -496,7 +496,7 @@ class MapNetworkDataTest {
         Line line = addFlowLine(false);
 
         assertEquals(List.of(1, 1), chevrons(buildWithFlow(line, 100, -99, Double.NaN), "LF"));
-        MapNetworkData uncached = MapNetworkData.build(network, NetworkViolations.EMPTY, null, _ -> null, (_, defaultColor) -> defaultColor);
+        MapNetworkData uncached = MapNetworkData.build(network, NetworkViolations.EMPTY, null, List.of(), _ -> null, (_, defaultColor) -> defaultColor);
         assertEquals(List.of(1, 1), chevrons(uncached, "LF"));
         assertFalse(uncached.lineOverloaded()[lineIndex(uncached, "LF")]);
     }
@@ -524,11 +524,11 @@ class MapNetworkDataTest {
         boundaryLine.getTerminal().setP(100).setQ(0);
 
         MapNetworkData withoutLimits = MapNetworkData.build(network, NetworkViolations.compute(network, LimitsComputer.NO_MODIFICATIONS),
-                null, _ -> null, (_, defaultColor) -> defaultColor);
+                null, List.of(), _ -> null, (_, defaultColor) -> defaultColor);
         assertEquals(List.of(1, 1), chevrons(withoutLimits, "BL"));
         boundaryLine.getOrCreateSelectedOperationalLimitsGroup().newCurrentLimits().setPermanentLimit(160.3).add();
         MapNetworkData withLimits = MapNetworkData.build(network, NetworkViolations.compute(network, LimitsComputer.NO_MODIFICATIONS),
-                null, _ -> null, (_, defaultColor) -> defaultColor);
+                null, List.of(), _ -> null, (_, defaultColor) -> defaultColor);
         assertEquals(List.of(4, 4), chevrons(withLimits, "BL"));
     }
 
@@ -552,7 +552,7 @@ class MapNetworkDataTest {
         sameSite.getTerminal1().setP(100);
         sameSite.getTerminal2().setP(-99);
 
-        MapNetworkData withFlows = MapNetworkData.build(network, NetworkViolations.EMPTY, null, _ -> null, (_, defaultColor) -> defaultColor);
+        MapNetworkData withFlows = MapNetworkData.build(network, NetworkViolations.EMPTY, null, List.of(), _ -> null, (_, defaultColor) -> defaultColor);
         for (String id : List.of("L_TO_UNPLACED", "L_TO_NO_SUBSTATION", "L_SAME_SITE")) {
             assertEquals(List.of(0, 0), chevrons(withFlows, id), id);
         }

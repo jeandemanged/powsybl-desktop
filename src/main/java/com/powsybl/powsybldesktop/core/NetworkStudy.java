@@ -13,9 +13,13 @@ import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.powsybldesktop.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.violations.NetworkViolations;
 import com.powsybl.security.SecurityAnalysisResult;
+import com.powsybl.security.limitscaling.LimitScaling;
+import javafx.beans.Observable;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.ReadOnlyBooleanWrapper;
+import javafx.beans.property.ReadOnlyIntegerProperty;
+import javafx.beans.property.ReadOnlyIntegerWrapper;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -33,7 +37,7 @@ import java.util.Set;
 
 /**
  * Everything the app holds about one loaded root network and its subnetworks: computation results, contingency
- * lists, running background jobs, search indexes and Map views. Created and disposed of by {@link MainModel}.
+ * lists, limit scalings, running background jobs, search indexes and Map views. Created and disposed of by {@link MainModel}.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -50,6 +54,14 @@ public class NetworkStudy {
     // showForm/onReplace) rather than mutating it in place - transferContingencyListEnabled carries the flag
     // over to the replacement so an edit doesn't silently re-enable a sublist the user disabled.
     private final Map<ContingencyList, BooleanProperty> contingencyListEnabled = new IdentityHashMap<>();
+    // Ordered: of several scalings matching the same limit, the last one wins. Enabled flags keyed by identity like
+    // the contingency lists', a LimitScaling being immutable too
+    private final ObservableList<LimitScaling> limitScalings = FXCollections.observableArrayList();
+    private final Map<LimitScaling, BooleanProperty> limitScalingEnabled = new IdentityHashMap<>();
+    // bumped on any change of the enabled scalings, their order included: violations are recomputed on it
+    private final ReadOnlyIntegerWrapper limitScalingsRevision = new ReadOnlyIntegerWrapper();
+    // the enabled scalings the security analysis result was computed with, to tell whether it is outdated
+    private List<LimitScaling> securityAnalysisLimitScalings = List.of();
     // Running background operations, kept here rather than in MainController so that a language reload, which
     // replaces MainController, doesn't forget them and allow a second concurrent run on the same network
     private final Set<Service<?>> computationServices = new HashSet<>();
@@ -70,6 +82,7 @@ public class NetworkStudy {
 
     NetworkStudy(Network network) {
         this.network = Objects.requireNonNull(network);
+        limitScalings.addListener((Observable _) -> bumpLimitScalingsRevision());
     }
 
     public Network getNetwork() {
@@ -113,6 +126,48 @@ public class NetworkStudy {
         if (property != null) {
             contingencyListEnabled.put(to, property);
         }
+    }
+
+    public ObservableList<LimitScaling> getLimitScalings() {
+        return limitScalings;
+    }
+
+    public BooleanProperty limitScalingEnabledProperty(LimitScaling scaling) {
+        return limitScalingEnabled.computeIfAbsent(scaling, _ -> {
+            BooleanProperty property = new SimpleBooleanProperty(true);
+            property.addListener((Observable _) -> bumpLimitScalingsRevision());
+            return property;
+        });
+    }
+
+    public void transferLimitScalingEnabled(LimitScaling from, LimitScaling to) {
+        BooleanProperty property = limitScalingEnabled.remove(from);
+        if (property != null) {
+            limitScalingEnabled.put(to, property);
+        }
+    }
+
+    /**
+     * The enabled limit scalings, in order.
+     */
+    public List<LimitScaling> getEnabledLimitScalings() {
+        return limitScalings.stream().filter(scaling -> limitScalingEnabledProperty(scaling).get()).toList();
+    }
+
+    public ReadOnlyIntegerProperty limitScalingsRevisionProperty() {
+        return limitScalingsRevision.getReadOnlyProperty();
+    }
+
+    private void bumpLimitScalingsRevision() {
+        limitScalingsRevision.set(limitScalingsRevision.get() + 1);
+    }
+
+    public List<LimitScaling> getSecurityAnalysisLimitScalings() {
+        return securityAnalysisLimitScalings;
+    }
+
+    public void setSecurityAnalysisLimitScalings(List<LimitScaling> securityAnalysisLimitScalings) {
+        this.securityAnalysisLimitScalings = List.copyOf(securityAnalysisLimitScalings);
     }
 
     /**

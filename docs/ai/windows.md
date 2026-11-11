@@ -26,7 +26,7 @@ create a `Stage` for a view elsewhere (`ArchitectureTest` allows only the shell 
 
 ## Opening a view in a window
 
-- One view per key: whole-network views (tables, map, contingencies) are keyed by `NavigationType`, container
+- One view per key: whole-network views (tables, map, contingencies, limit scalings) are keyed by `NavigationType`, container
   diagrams and equipment tabs by kind and container id, detail views by equipment id, logs/reports/parameters (not
   network-bound) by name. Opening an open key brings its window to front and selects its tab instead.
 - An "open in new window" split button (`separateWindows.addOpenButton`, its menu listing the windows to open the view
@@ -37,7 +37,7 @@ create a `Stage` for a view elsewhere (`ArchitectureTest` allows only the shell 
     equipment tabs (fixed to the selected container);
   - for logs, reports and parameters, single-instance and not network-bound (`detachLogs`, `detachReports`,
     `detachParameters`, through `openSingleInstance`).
-- The main toolbar's map, contingencies, parameters, logs and reports buttons can also be dragged
+- The main toolbar's map, contingencies, limit scalings, parameters, logs and reports buttons can also be dragged
   (`separateWindows.addDragToOpen(button, key, open)`): released over a separate window, the view opens as a new tab
   of it, elsewhere in a new window at the release point, a hint following the mouse telling which; if the view of `key`
   is already open, the drag moves it as its tab's would. A plain mouse drag (scene filters), not platform drag and

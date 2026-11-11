@@ -51,6 +51,7 @@ import com.powsybl.powsybldesktop.violations.NetworkViolations;
 import com.powsybl.powsybldesktop.violations.ViolationTexts;
 import com.powsybl.powsybldesktop.violations.VoltageViolation;
 import com.powsybl.security.SecurityAnalysisResult;
+import com.powsybl.security.limitscaling.LimitScaling;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -296,10 +297,12 @@ public class MapController extends AbstractDisposableController implements Scene
             buildingNetwork = network;
             NetworkViolations violations = network == null ? NetworkViolations.EMPTY : mainModel.getStudy(network).getViolations();
             SecurityAnalysisResult securityAnalysisResult = network == null ? null : mainModel.getStudy(network).getSecurityAnalysisResult();
+            List<LimitScaling> securityAnalysisLimitScalings = network == null ? List.of() : mainModel.getStudy(network).getSecurityAnalysisLimitScalings();
             return new AbstractNetworkTask<>(mainModel, network) {
                 @Override
                 protected MapNetworkData compute() {
-                    return MapNetworkData.build(network, violations, securityAnalysisResult, baseVoltages::name, baseVoltages::color);
+                    return MapNetworkData.build(network, violations, securityAnalysisResult, securityAnalysisLimitScalings,
+                            baseVoltages::name, baseVoltages::color);
                 }
             };
         }

@@ -151,7 +151,7 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
                 "map-show-flows-box", "general-main-toolbar", "networks-import-menu", "substations-nad", "substations-lines-tab",
                 "search-box-match", "search-box-approximate", "search-box-not-found", "tables-lines", "tables-column-groups", "violations-dialog",
                 "details-generator", "details-line-limits", "general-separate-window", "sa-results-voltages",
-                "parameters-user-interface", "parameters-load-flow", "reports", "logs"), writtenScreenshots);
+                "limit-scalings", "parameters-user-interface", "parameters-load-flow", "reports", "logs"), writtenScreenshots);
     }
 
     private Network loadSmallGrid() throws TimeoutException {
@@ -334,6 +334,8 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         selectTab(root, Messages.get("securityAnalysisResults.tab.voltage", "").replace("()", ""));
         screenshot("sa-results-voltages");
 
+        limitScalings(network);
+
         interact(controller::onParameters);
         WaitForAsyncUtils.waitForFxEvents();
         screenshot("parameters-user-interface");
@@ -347,6 +349,20 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         interact(controller::onLogs);
         WaitForAsyncUtils.waitForFxEvents();
         screenshot("logs");
+    }
+
+    private void limitScalings(Network network) throws TimeoutException {
+        interact(controller::onLimitScalings);
+        clickOn("#addButton");
+        TextField valueField = lookup("#valueField").query();
+        interact(() -> {
+            valueField.setText("90");
+            valueField.getOnAction().handle(null);
+        });
+        waitUntil(() -> !mainModel.isBusy(network));
+        screenshot("limit-scalings");
+        interact(() -> mainModel.getStudy(network).getLimitScalings().clear());
+        waitUntil(() -> !mainModel.isBusy(network));
     }
 
     private void navigateToContainer(VoltageLevel voltageLevel, ContainerNavigationState.ContainerTab tab) {
