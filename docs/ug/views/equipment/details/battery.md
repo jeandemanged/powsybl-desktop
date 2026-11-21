@@ -6,7 +6,7 @@ The details of a battery. Open it from the info button of the [Batteries](../tab
 
 ## Header
 
-A link to the voltage level, and the battery symbol with the solved values and the connection check box. On the right of the **Main** tab, the P/Q capability chart: the reactive limits, the target operating point and the solved one.
+A link to the voltage level, and the battery symbol with the solved values and the connection check box. On the right of the **Main** tab, the P/Q capability chart: the reactive limits, the **Min P** and **Max P** lines, the target operating point and the solved one, editable on the chart (see [Edit on the capability chart](index.md#edit-on-the-capability-chart)).
 
 ## Main tab
 

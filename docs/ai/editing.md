@@ -193,15 +193,20 @@ subclass and a `Kind` entry in `EquipmentDetails`. Entry points:
   the "Diagrams" window).
 
 **What the base builds.**
-- The header (title, voltage level links).
+- The header (title, `linkedContainers()`: by default each of `substations()` followed by its voltage levels, then
+  voltage levels without substation).
 - The main tab's general section: id (editable through IIDM's `setId`, the separate window's tab re-keyed with
-  `SeparateWindows.retarget`; nothing else referring to the old id is updated, e.g. contingencies), name, fictitious.
-  Id and name have a copy button (`DetailForm.copyButton`).
+  `SeparateWindows.retarget`; nothing else referring to the old id is updated, e.g. contingencies), name, fictitious,
+  equivalent (`Connectable` only), country (the distinct countries of `substations()`, by default the voltage levels'
+  substations; not for a substation, whose country is editable in its own rows) and, when the root network has
+  subnetworks, subnetwork (`Labels.networkLabel`, the equipment's parent network and its substations' ones minus the
+  root: a tie line or HVDC line joining two subnetworks has the root as parent). Id and name have a copy button
+  (`DetailForm.copyButton`).
 - The extensions and properties/aliases tabs, and the remove button.
 
 **What a subclass adds**: its main rows (`buildMain`), an `EquipmentSymbol` above the tabs (`symbol()`, from
 `newSymbol()`), a main side node (`mainSide`, e.g. `capabilityChart(...)`) and tabs (`extraTabs`:
-`reactiveLimitsTab(...)`, `limitsTab()`, `TapChangerPane`s, ...). Every part is a `DetailPart` passed to
+`reactiveLimitsTab(...)`, `limitsTab()`, a tab per tap changer kind of `TapChangerPane`s, ...). Every part is a `DetailPart` passed to
 `register(...)`: the base re-reads it after every network update and binds its `editableProperty()` to the busy lock.
 Edits run `onEdit()` (`mainModel.setUpdate`).
 
@@ -223,8 +228,17 @@ Edits run `onEdit()` (`mainModel.setUpdate`).
     terminal row with `TerminalPickerDialog`;
   - links to other equipment's details.
 - `DetailTables`: editable row table columns, fields keyed by row index.
-- `ReactiveLimitsPane`: staged edits + Apply/Revert, IIDM reactive limits being replaced as a whole.
-- `TapChangerPane`, `OperationalLimitsPane.editable(...)` (also the violations popup's read-only pane),
+- `ReactiveLimitsPane`: staged edits + Apply/Revert, IIDM reactive limits being replaced as a whole; its chart's curve
+  edits are staged too (into the points table), its P line drags written at once.
+- `CapabilityChart` (`capabilityChart(...)` for `mainSide`, writing edits straight away, and `ReactiveLimitsPane`'s):
+  fixed axes computed from the data (zero included), so that nothing rescales under a drag; a curve (`setCurve`, not
+  `setLimits`) has draggable points and add/remove context menus, the min/max P lines are draggable when given a
+  setter (null for a VSC converter station). A drag is tracked by chart-level event filters from the press on a point or
+  line handle (the pressed node soon leaves the cursor), reported on release only if something moved; series paths are
+  mouse-transparent so that a P line along the outline stays draggable. The solved point is a CSS-shaped crosshair
+  (`.solved-crosshair`) over the target bubble.
+- `TapChangerPane` (with a `PhaseTapChangerDiagram` for a phase tap changer: steps as rho.e^(j.alpha) phasors, equal
+  axis scales, preferred height spacing every position label, thinned beyond `MAX_HEIGHT`), `OperationalLimitsPane.editable(...)` (also the violations popup's read-only pane),
   `ExtensionsPane` with editors from `ExtensionEditors` (per-type lists composed of shared generic ones),
   `KeyValueTablePane.properties/aliases`, `CoordinatesPane`, `HvdcDetails`.
 - `ui/controls/CopyButtons`: the copy buttons used everywhere (`DetailForm.copyButton`; table name cells through

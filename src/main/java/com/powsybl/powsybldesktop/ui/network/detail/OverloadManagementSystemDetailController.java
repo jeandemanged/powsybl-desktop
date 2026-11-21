@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.ui.network.detail;
 
 import com.powsybl.iidm.network.Container;
 import com.powsybl.iidm.network.OverloadManagementSystem;
+import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.ui.form.DetailForm;
@@ -54,6 +55,11 @@ public class OverloadManagementSystemDetailController extends AbstractEquipmentD
 
     @Override
     protected List<? extends Container<?>> linkedContainers() {
+        return List.of(equipment.getSubstation());
+    }
+
+    @Override
+    protected List<Substation> substations() {
         return List.of(equipment.getSubstation());
     }
 

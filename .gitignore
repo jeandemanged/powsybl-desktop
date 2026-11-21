@@ -38,3 +38,6 @@ build/
 ### Sphinx user guide ###
 docs/ug/_build/
 docs/ug/_generated/
+
+### Studies ###
+*.psbx

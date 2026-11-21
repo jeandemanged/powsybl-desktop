@@ -34,13 +34,16 @@ import javafx.scene.control.Label;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TextField;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
+import javafx.scene.shape.Line;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -120,12 +123,42 @@ class GeneratorDetailControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void showsGenerator() {
         assertTrue(controller.titleLabel.getText().contains(generator.getNameOrId()));
-        assertEquals(generator.getTerminal().getVoltageLevel().getNameOrId(), ((Hyperlink) controller.linksBox.getChildren().get(1)).getText());
+        VoltageLevel voltageLevel = generator.getTerminal().getVoltageLevel();
+        assertEquals(List.of(voltageLevel.getSubstation().orElseThrow().getNameOrId(), voltageLevel.getNameOrId()), controller.linksBox.getChildren().stream()
+                .filter(Hyperlink.class::isInstance).map(node -> ((Hyperlink) node).getText()).toList());
         Node form = controller.form.getNode();
         assertEquals(generator.getId(), field(form, "desktop.common.column.id", TextField.class).getText());
         assertEquals(generator.getEnergySource(), field(form, "detail.generator.energySource", ChoiceBox.class).getValue());
         assertEquals(4, controller.tabPane.getTabs().size());
         assertEquals(generator, controller.getEquipment());
+    }
+
+    @Test
+    void chartEditsWriteTheCurveAndMaxPStraightAway() {
+        interact(() -> {
+            generator.newReactiveCapabilityCurve()
+                    .beginPoint().setP(0).setMinQ(-50).setMaxQ(50).endPoint()
+                    .beginPoint().setP(100).setMinQ(-30).setMaxQ(30).endPoint()
+                    .add();
+            generator.setMinP(0).setMaxP(100);
+            mainModel.setUpdate();
+        });
+        // the main tab's chart
+        CapabilityChart chart = (CapabilityChart) controller.tabPane.getTabs().getFirst().getContent().lookup(".capability-chart");
+
+        Line maxPHandle = chart.lookupAll("Line").stream()
+                .filter(node -> node instanceof Line line && line.getStrokeWidth() > 5 && !line.isMouseTransparent())
+                .map(Line.class::cast)
+                // the max P line is the upper one
+                .min(Comparator.comparingDouble(Line::getStartY)).orElseThrow();
+        drag(maxPHandle, MouseButton.PRIMARY).moveBy(0, -30).drop();
+        assertTrue(generator.getMaxP() > 100, String.valueOf(generator.getMaxP()));
+
+        Node vertex = chart.lookupAll(".capability-curve-point").stream().findFirst().orElseThrow();
+        drag(vertex, MouseButton.PRIMARY).moveBy(30, 0).drop();
+        ReactiveCapabilityCurve curve = generator.getReactiveLimits(ReactiveCapabilityCurve.class);
+        assertEquals(2, curve.getPointCount());
+        assertNotEquals(List.of(50.0, 30.0), curve.getPoints().stream().map(ReactiveCapabilityCurve.Point::getMaxQ).toList());
     }
 
     @Test

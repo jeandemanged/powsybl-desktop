@@ -6,7 +6,7 @@ The details of a voltage source converter station. Open it from the info button 
 
 ## Header
 
-A link to the voltage level, and the VSC converter station symbol with the solved values and the connection check box. On the right of the **Main** tab, the P/Q capability chart: the reactive limits, the target operating point and the solved one. The chart's active power range goes from minus to plus the HVDC line's **Max P**.
+A link to the voltage level, and the VSC converter station symbol with the solved values and the connection check box. On the right of the **Main** tab, the P/Q capability chart: the reactive limits, the target operating point and the solved one, a capability curve being editable on the chart (see [Edit on the capability chart](index.md#edit-on-the-capability-chart)). The chart's **Min P** and **Max P** lines are minus and plus the HVDC line's **Max P**, and can't be dragged.
 
 ## Main tab
 

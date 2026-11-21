@@ -25,16 +25,21 @@ The [Connection](index.md#connection-section) rows of each side.
 
 ## Other tabs
 
-### Tap Changers
+### Ratio Tap Changer, Phase Tap Changer
 
-A **Ratio Tap Changer** and a **Phase Tap Changer** pane. Without tap changer, a pane shows **None** and an **Add** button. With one:
+Each tab shows its tap changer. Without tap changer, a pane shows **None** and an **Add** button. With one:
 
 - **Load Tap Changing Capabilities** (check box), **Low Tap Position** (text field), **High Tap Position** (read-only), **Tap Position** (text field) and **Solved Tap** (read-only);
 - **Regulation**: for a ratio tap changer, as in [Voltage Regulation](index.md#voltage-regulation-section) (modes **Voltage** and **Reactive Power**); for a phase tap changer, **Regulating**, **Regulation Mode**, **Regulation Value**, **Target Deadband** and **Regulated Terminal**;
 - **Steps**: a table of the steps, **Tap Position**, **Alpha (°)** (phase tap changer only), **Rho**, **R (%)**, **X (%)**, **G (%)** and **B (%)**, all editable but the position;
 - **Add step** appends a copy of the highest step, **Remove step** removes the selected one, **Remove** deletes the tap changer.
 
-![The Tap Changers tab](../../../_generated/images/detail-two-winding-transformer-tap-changers.png)
+A phase tap changer also shows a diagram of its steps as voltage phasors, in per unit of the source voltage: the source
+voltage arrow along the horizontal axis, and a dot per step at its **Rho** and **Alpha (°)**, labelled with its tap
+position and joined in position order. The current tap position's dot is bigger and blue, with the arrow of its
+voltage and its angle alpha. The diagram follows every edit.
+
+![The Ratio Tap Changer tab](../../../_generated/images/detail-two-winding-transformer-ratio-tap-changer.png)
 
 ### Limits
 

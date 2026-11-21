@@ -22,7 +22,7 @@ import java.util.List;
 
 /**
  * Three-winding transformer detail: star rated voltage, each leg's characteristics and connection,
- * each leg's ratio and phase tap changers, editable flow limits.
+ * each leg's ratio tap changers and phase tap changers in a tab each, editable flow limits.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -55,16 +55,23 @@ public class ThreeWindingsTransformerDetailController extends AbstractEquipmentD
 
     @Override
     protected List<Tab> extraTabs() {
-        VBox tapChangers = new VBox(16);
+        VBox ratioTapChangers = new VBox(16);
+        VBox phaseTapChangers = new VBox(16);
         for (ThreeWindingsTransformer.Leg leg : equipment.getLegs()) {
-            int side = leg.getSide().getNum();
-            TapChangerPane ratio = register(TapChangerPane.ratio(leg, "transformers.column.ratioTapChanger", sceneModel, guiParameters(), onEdit()));
-            TapChangerPane phase = register(TapChangerPane.phase(leg, "transformers.column.phaseTapChanger", sceneModel, guiParameters(), onEdit()));
-            Label title = new Label(Messages.get("detail.section.leg", side));
-            title.getStyleClass().add("limits-side-title");
-            tapChangers.getChildren().addAll(title, ratio, phase);
+            ratioTapChangers.getChildren().addAll(legTitle(leg),
+                    register(TapChangerPane.ratio(leg, "transformers.column.ratioTapChanger", sceneModel, guiParameters(), onEdit())));
+            phaseTapChangers.getChildren().addAll(legTitle(leg),
+                    register(TapChangerPane.phase(leg, "transformers.column.phaseTapChanger", sceneModel, guiParameters(), onEdit())));
         }
-        return List.of(tab("detail.tab.tapChangers", scrolling(tapChangers)), limitsTab());
+        return List.of(tab("transformers.columnGroup.ratioTapChanger", scrolling(ratioTapChangers)),
+                tab("transformers.columnGroup.phaseTapChanger", scrolling(phaseTapChangers)),
+                limitsTab());
+    }
+
+    private static Label legTitle(ThreeWindingsTransformer.Leg leg) {
+        Label title = new Label(Messages.get("detail.section.leg", leg.getSide().getNum()));
+        title.getStyleClass().add("limits-side-title");
+        return title;
     }
 
     @Override

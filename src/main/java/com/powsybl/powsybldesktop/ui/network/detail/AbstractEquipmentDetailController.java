@@ -7,9 +7,14 @@
  */
 package com.powsybl.powsybldesktop.ui.network.detail;
 
+import com.powsybl.iidm.network.Connectable;
 import com.powsybl.iidm.network.Container;
+import com.powsybl.iidm.network.Country;
 import com.powsybl.iidm.network.Identifiable;
+import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.ReactiveCapabilityCurve;
 import com.powsybl.iidm.network.ReactiveLimitsHolder;
+import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.limitscaling.LimitScalings;
@@ -25,6 +30,7 @@ import com.powsybl.powsybldesktop.ui.form.RemovalDialog;
 import com.powsybl.powsybldesktop.ui.network.limits.OperationalLimitsPane;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.ui.window.SceneView;
+import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.binding.BooleanBinding;
 import javafx.fxml.FXML;
@@ -48,13 +54,17 @@ import org.kordamp.ikonli.javafx.FontIcon;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.DoubleConsumer;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Detail view of one equipment, non-modal (see {@link EquipmentDetails}), one subclass per equipment type, all on
- * {@code equipment-detail-view.fxml}. This base builds what every type shares: the title and voltage level links,
- * the main tab's form starting with the general section (id, editable, name, fictitious), the extensions, properties
+ * {@code equipment-detail-view.fxml}. This base builds what every type shares: the title and substation and voltage
+ * level links, the main tab's form starting with the general section (id, editable, name, fictitious, equivalent,
+ * country, subnetwork), the extensions, properties
  * and aliases tabs; subclasses add their main rows, an {@link EquipmentSymbol} above the tabs, a main tab side node
  * (e.g. a P/Q diagram) and tabs of their own.
  * Edits write straight to the equipment, as in the tables; every {@link #register registered} part is re-read on
@@ -112,10 +122,25 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
     protected abstract List<VoltageLevel> voltageLevels();
 
     /**
-     * The containers linked in the header, opening the {@link #containerTab} of each in the substations view.
+     * The containers linked in the header, opening the {@link #containerTab} of each in the substations view: by
+     * default each substation followed by its {@link #voltageLevels}, then the voltage levels without substation.
      */
     protected List<? extends Container<?>> linkedContainers() {
-        return voltageLevels();
+        List<Container<?>> containers = new ArrayList<>();
+        for (Substation substation : substations()) {
+            containers.add(substation);
+            voltageLevels().stream().filter(voltageLevel -> voltageLevel.getNullableSubstation() == substation).distinct().forEach(containers::add);
+        }
+        voltageLevels().stream().filter(voltageLevel -> voltageLevel.getNullableSubstation() == null).distinct().forEach(containers::add);
+        return containers;
+    }
+
+    /**
+     * The substations whose countries and subnetworks the general section shows, by default those of the
+     * {@link #voltageLevels}.
+     */
+    protected List<Substation> substations() {
+        return voltageLevels().stream().map(VoltageLevel::getNullableSubstation).filter(Objects::nonNull).distinct().toList();
     }
 
     /**
@@ -176,6 +201,16 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
                 .textField("desktop.common.column.name", () -> equipment.getOptionalName().orElse(null), this::setName)
                 .copyButton(() -> equipment.getOptionalName().orElse(null))
                 .booleanField("detail.fictitious", equipment::isFictitious, equipment::setFictitious);
+        if (equipment instanceof Connectable<?> connectable) {
+            form.booleanField("detail.equivalent", connectable::isEquivalent, connectable::setEquivalent);
+        }
+        // a substation's own country is editable, in its main rows
+        if (!(equipment instanceof Substation)) {
+            form.text("desktop.common.column.country", this::countries);
+        }
+        if (!equipment.getNetwork().getSubnetworks().isEmpty()) {
+            form.text("desktop.common.equipment.subnetwork", () -> subnetworks().stream().map(Labels::networkLabel).collect(Collectors.joining("\n")));
+        }
         buildMain(form);
         mainScrollPane.setContent(form.getNode());
         Node side = mainSide();
@@ -201,7 +236,12 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
         propertiesBox.getChildren().setAll(propertiesPane, aliasesPane);
 
         ContainerNavigationState.ContainerTab tab = containerTab();
+        Container<?> previous = null;
         for (Container<?> container : linkedContainers()) {
+            if (previous instanceof Substation && container instanceof VoltageLevel voltageLevel && voltageLevel.getNullableSubstation() == previous) {
+                linksBox.getChildren().add(new Label("›"));
+            }
+            previous = container;
             Hyperlink link = new Hyperlink(container.getNameOrId());
             link.getStyleClass().add("container-link");
             // a diagram tab selects no row
@@ -258,22 +298,48 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
     }
 
     /**
-     * A P/Q diagram of {@code holder}'s reactive limits and operating points, e.g. for {@link #mainSide}.
+     * A P/Q diagram of {@code holder}'s reactive limits and operating points, e.g. for {@link #mainSide}. A capability
+     * curve edited on it, and its P lines dragged (unless their setter is null), are written straight away.
      */
-    protected Node capabilityChart(ReactiveLimitsHolder holder, DoubleSupplier minP, DoubleSupplier maxP,
+    protected Node capabilityChart(ReactiveLimitsHolder holder, DoubleSupplier minP, DoubleSupplier maxP, DoubleConsumer setMinP, DoubleConsumer setMaxP,
                                    Supplier<ReactiveLimitsPane.OperatingPoints> operatingPoints) {
         CapabilityChart chart = new CapabilityChart();
-        register(DetailPart.of(() -> {
-            chart.setLimits(CapabilityChart.points(holder.getReactiveLimits(), minP.getAsDouble(), maxP.getAsDouble()));
-            ReactiveLimitsPane.OperatingPoints points = operatingPoints.get();
-            chart.setOperatingPoints(points.targetP(), points.targetQ(), points.solvedP(), points.solvedQ());
+        chart.editableProperty().bind(editable);
+        DetailPart part = register(DetailPart.of(() -> {
+            List<CapabilityChart.Point> points = CapabilityChart.points(holder.getReactiveLimits(), minP.getAsDouble(), maxP.getAsDouble());
+            if (holder.getReactiveLimits() instanceof ReactiveCapabilityCurve) {
+                chart.setCurve(points);
+            } else {
+                chart.setLimits(points);
+            }
+            chart.setActivePowerLimits(minP.getAsDouble(), maxP.getAsDouble());
+            ReactiveLimitsPane.OperatingPoints operating = operatingPoints.get();
+            chart.setOperatingPoints(operating.targetP(), operating.targetQ(), operating.solvedP(), operating.solvedQ());
         }));
+        chart.setOnCurveEdited(points -> applyFromChart(chart, part, () -> ReactiveLimitsPane.writeCurve(holder, points)));
+        if (setMinP != null) {
+            chart.setOnMinPEdited(value -> applyFromChart(chart, part, () -> setMinP.accept(value)));
+        }
+        if (setMaxP != null) {
+            chart.setOnMaxPEdited(value -> applyFromChart(chart, part, () -> setMaxP.accept(value)));
+        }
         return chart;
     }
 
-    protected Tab reactiveLimitsTab(ReactiveLimitsHolder holder, DoubleSupplier minP, DoubleSupplier maxP,
+    // on failure, the chart goes back to the network's values
+    private void applyFromChart(CapabilityChart chart, DetailPart part, Runnable edit) {
+        if (!DetailForm.apply(chart, edit, onEdit())) {
+            part.refresh();
+        }
+    }
+
+    /**
+     * @param setMinP null if the chart's min P line can't be dragged, as {@code setMaxP}
+     */
+    protected Tab reactiveLimitsTab(ReactiveLimitsHolder holder, DoubleSupplier minP, DoubleSupplier maxP, DoubleConsumer setMinP, DoubleConsumer setMaxP,
                                     Supplier<ReactiveLimitsPane.OperatingPoints> operatingPoints) {
-        return tab("detail.tab.reactiveLimits", register(new ReactiveLimitsPane(holder, minP, maxP, operatingPoints, guiParameters(), onEdit())));
+        return tab("detail.tab.reactiveLimits", register(new ReactiveLimitsPane(holder, minP, maxP, setMinP, setMaxP, operatingPoints,
+                guiParameters(), onEdit())));
     }
 
     /**
@@ -315,6 +381,20 @@ public abstract class AbstractEquipmentDetailController<T extends Identifiable<T
     private void updateSearchIndexes(String oldId) {
         mainModel.getStudy(equipment.getNetwork()).getSearchIndexes()
                 .forEach((network, index) -> index.applyRename(network, equipment, oldId));
+    }
+
+    private String countries() {
+        List<Country> countries = substations().stream().map(Substation::getNullableCountry).filter(Objects::nonNull).distinct().toList();
+        return countries.size() == 1 ? Labels.countryFormat().toString(countries.getFirst())
+                : countries.stream().map(Country::name).collect(Collectors.joining(", "));
+    }
+
+    // a tie line or an HVDC line may join two subnetworks while its own parent network is the root one
+    private List<Network> subnetworks() {
+        return Stream.concat(Stream.of(equipment.getParentNetwork()), substations().stream().map(Substation::getParentNetwork))
+                .filter(network -> network != equipment.getNetwork())
+                .distinct()
+                .toList();
     }
 
     private void refresh() {

@@ -39,6 +39,11 @@ public class SubstationDetailController extends AbstractEquipmentDetailControlle
     }
 
     @Override
+    protected List<Substation> substations() {
+        return List.of(equipment);
+    }
+
+    @Override
     protected ContainerNavigationState.ContainerTab containerTab() {
         return ContainerNavigationState.ContainerTab.SINGLE_LINE;
     }

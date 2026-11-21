@@ -51,10 +51,11 @@ import java.util.function.Supplier;
 
 /**
  * Editor of an equipment's reactive limits, min/max or capability curve, with a {@link CapabilityChart} preview. IIDM's
- * reactive limits are immutable, replaced as a whole: edits (kind, min/max Q, curve points added, removed or changed)
- * are staged here, previewed, and written by Apply (or dropped by Revert), so that no intermediate state (e.g. two
+ * reactive limits are immutable, replaced as a whole: edits (kind, min/max Q, curve points added, removed or changed,
+ * in the table or the chart) are staged here, previewed, and written by Apply (or dropped by Revert), so that no intermediate state (e.g. two
  * points at the same P while typing) reaches the network. Reactive capability shapes are shown but not editable,
- * though they can be replaced by another kind. Shared by every reactive limits holder's detail view.
+ * though they can be replaced by another kind. Dragging the chart's min or max P line writes it straight away, P limits
+ * not being reactive limits. Shared by every reactive limits holder's detail view.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -109,8 +110,9 @@ public final class ReactiveLimitsPane extends SplitPane implements DetailPart {
 
     /**
      * @param minP for a min/max limits outline, and to seed a new curve
+     * @param setMinP null if the chart's min P line can't be dragged, as {@code setMaxP}
      */
-    public ReactiveLimitsPane(ReactiveLimitsHolder holder, DoubleSupplier minP, DoubleSupplier maxP,
+    public ReactiveLimitsPane(ReactiveLimitsHolder holder, DoubleSupplier minP, DoubleSupplier maxP, DoubleConsumer setMinP, DoubleConsumer setMaxP,
                               Supplier<OperatingPoints> operatingPoints, Supplier<GuiParameters> guiParameters, Runnable onEdit) {
         this.holder = Objects.requireNonNull(holder);
         this.minP = Objects.requireNonNull(minP);
@@ -181,6 +183,13 @@ public final class ReactiveLimitsPane extends SplitPane implements DetailPart {
         VBox editor = new VBox(8, kindBox, minMaxPane, curvePane, shapeLabel, buttons);
         editor.setPadding(new Insets(8));
         editor.setMinWidth(320);
+        chart.editableProperty().bind(editable);
+        chart.setOnCurveEdited(points -> {
+            pointsTable.getItems().setAll(points.stream().map(point -> new PointRow(point.p(), point.minQ(), point.maxQ())).toList());
+            staged();
+        });
+        chart.setOnMinPEdited(activePowerLimitEditor(setMinP));
+        chart.setOnMaxPEdited(activePowerLimitEditor(setMaxP));
         BorderPane chartPane = new BorderPane(chart);
         chartPane.setPadding(new Insets(8));
         getItems().setAll(editor, chartPane);
@@ -263,11 +272,12 @@ public final class ReactiveLimitsPane extends SplitPane implements DetailPart {
     }
 
     private void updateChart() {
-        chart.setLimits(switch (kind) {
-            case MIN_MAX -> CapabilityChart.rectangle(minQ, maxQ, minP.getAsDouble(), maxP.getAsDouble());
-            case CURVE -> pointsTable.getItems().stream().map(PointRow::point).toList();
-            case SHAPE -> List.of();
-        });
+        switch (kind) {
+            case MIN_MAX -> chart.setLimits(CapabilityChart.rectangle(minQ, maxQ, minP.getAsDouble(), maxP.getAsDouble()));
+            case CURVE -> chart.setCurve(pointsTable.getItems().stream().map(PointRow::point).toList());
+            case SHAPE -> chart.setLimits(List.of());
+        }
+        chart.setActivePowerLimits(minP.getAsDouble(), maxP.getAsDouble());
         OperatingPoints points = operatingPoints.get();
         chart.setOperatingPoints(points.targetP(), points.targetQ(), points.solvedP(), points.solvedQ());
     }
@@ -277,13 +287,29 @@ public final class ReactiveLimitsPane extends SplitPane implements DetailPart {
             if (kind == ReactiveLimitsKind.MIN_MAX) {
                 holder.newMinMaxReactiveLimits().setMinQ(minQ).setMaxQ(maxQ).add();
             } else {
-                ReactiveCapabilityCurveAdder adder = holder.newReactiveCapabilityCurve();
-                pointsTable.getItems().forEach(row -> adder.beginPoint().setP(row.p).setMinQ(row.minQ).setMaxQ(row.maxQ).endPoint());
-                adder.add();
+                writeCurve(holder, pointsTable.getItems().stream().map(PointRow::point).toList());
             }
         }, onEdit)) {
             load();
         }
+    }
+
+    /**
+     * Replaces {@code holder}'s reactive limits by a curve of {@code points}.
+     */
+    static void writeCurve(ReactiveLimitsHolder holder, List<CapabilityChart.Point> points) {
+        ReactiveCapabilityCurveAdder adder = holder.newReactiveCapabilityCurve();
+        points.forEach(point -> adder.beginPoint().setP(point.p()).setMinQ(point.minQ()).setMaxQ(point.maxQ()).endPoint());
+        adder.add();
+    }
+
+    // on failure, the line goes back to the network's value
+    private DoubleConsumer activePowerLimitEditor(DoubleConsumer setter) {
+        return setter == null ? null : value -> {
+            if (!DetailForm.apply(chart, () -> setter.accept(value), onEdit)) {
+                updateChart();
+            }
+        };
     }
 
     private void stageOnCommit(TextField field, DoubleConsumer stage) {

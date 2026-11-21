@@ -28,8 +28,8 @@ switches, substations, voltage levels, grounds, areas and overload management sy
 ### Header and symbol
 
 - The title gives the equipment kind and name, for instance **Generator GEN_1**.
-- Links to the equipment's voltage levels (to the substation for a substation) open it in the
-  [Substations](../../diagrams/substations.md) view, on the tab listing this kind of equipment with its row selected;
+- Links to the equipment's substations, each followed by its voltage levels (only the substation for a substation),
+  open it in the [Substations](../../diagrams/substations.md) view, on the tab listing this kind of equipment with its row selected;
   for substations, voltage levels, areas and overload management systems, on the single line diagram tab.
 - **Remove** removes the equipment, after a confirmation listing what is removed with it.
 - For connectable equipment, a symbol drawn as in the single line diagrams, colored by base voltage (grey when
@@ -38,7 +38,10 @@ switches, substations, voltage levels, grounds, areas and overload management sy
 
 ### Main tab
 
-- **General**: **Id** and **Name** (each with a copy button) and **Fictitious**.
+- **General**: **Id** and **Name** (each with a copy button), **Fictitious**, **Equivalent** (connectable equipment:
+  an equivalent from a network reduction, for instance), **Country** (the countries of the equipment's substations;
+  editable further down for a substation) and, in a network with subnetworks, **Subnetwork** (with its countries; one
+  per side for a tie line or HVDC line joining two subnetworks).
 - Then the sections of the equipment kind, for instance:
   - **Connection**: the node (node/breaker topology) or the bus (bus/breaker topology), and the bus of the bus/branch
     view;
@@ -48,8 +51,10 @@ switches, substations, voltage levels, grounds, areas and overload management sy
     topology kind, nominal voltage and voltage limits;
   - links to related equipment: a tie line's **Boundary Line 1** and **Boundary Line 2**, a converter station's
     **Other Converter Station**...
-- Generators, batteries and VSC converter stations also show a P/Q capability chart: the reactive limits, the target
-  operating point and the solved one.
+- Generators, batteries and VSC converter stations also show a P/Q capability chart: the reactive limits, the
+  **Min P** and **Max P** lines (red), the target operating point (a bubble) and the solved one (a cross, so that both
+  show when they overlap). A capability curve and the P lines can be edited on the chart, see
+  [Edit on the capability chart](#edit-on-the-capability-chart).
 
 ![The details of a generator](../../../_generated/images/details-generator.png)
 
@@ -60,8 +65,10 @@ Depending on the equipment kind:
 - **Reactive Limits** (generators, batteries, VSC converter stations, boundary lines with generation): the **Kind**
   of limits, **Min/max** (**Min Q**, **Max Q**) or **Capability curve** (a table of points P, **Min Q**, **Max Q**).
   A **Capability shape** is shown but can't be edited here.
-- **Tap Changers** (two- and three-winding transformers): for each winding, its **Ratio Tap Changer** and
-  **Phase Tap Changer**: positions, **Regulation** and the table of **Steps**.
+- **Ratio Tap Changer** and **Phase Tap Changer** (two-winding transformers), **Ratio Tap Changers** and **Phase Tap
+  Changers** (three-winding transformers, one per leg): positions, **Regulation** and the table of **Steps**; for a phase
+  tap changer, a diagram of the steps' voltage phasors (see
+  [two-winding transformers](two_winding_transformer.md#ratio-tap-changer-phase-tap-changer)).
 - **Limits** (lines, tie lines, transformers, boundary lines): for each side, the operational limits groups, and in
   each group the current, active power and apparent power limits: permanent limit and temporary limits (**Name**,
   **Value**, **Acceptable Duration**, **Fictitious**), with the side's present value. When enabled
@@ -165,6 +172,22 @@ overload_management_system
 2. Enter **Min Q** and **Max Q**, or edit the curve points, adding and removing them with **Add point** and
    **Remove point**.
 3. Click **Apply** to replace the reactive limits, or **Revert** to discard the changes.
+
+A capability curve can also be edited on the tab's chart: changes are staged in the table, until **Apply**.
+
+### Edit on the capability chart
+
+On a capability chart (the **Main** tab's, or the **Reactive Limits** tab's):
+
+- drag a point of a capability curve to change its P and its min or max Q;
+- right-click a point and choose **Remove point** (a curve keeps two points at least), or right-click elsewhere in the
+  chart and choose **Add point** to add a point at that P, its min and max Q interpolated along the curve;
+- drag the **Min P** or **Max P** line to change the equipment's minimum or maximum active power (not for a VSC
+  converter station, whose range is its HVDC line's **Max P**).
+
+On the **Main** tab, each change is written to the network when the mouse is released. On the **Reactive Limits** tab,
+curve changes wait for **Apply**, as in the table, while the P lines are written at once, P limits not being reactive
+limits.
 
 ### Edit tap changers
 

@@ -28,9 +28,9 @@ Links to the voltage levels of the legs, and the three-winding transformer symbo
 
 ## Other tabs
 
-### Tap Changers
+### Ratio Tap Changers, Phase Tap Changers
 
-For each leg, the same panes as for a [two-winding transformer](two_winding_transformer.md#tap-changers).
+For each leg, the same pane as for a [two-winding transformer](two_winding_transformer.md#ratio-tap-changer-phase-tap-changer).
 
 ### Limits
 

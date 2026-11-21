@@ -58,12 +58,12 @@ public class GeneratorDetailController extends AbstractEquipmentDetailController
 
     @Override
     protected Node mainSide() {
-        return capabilityChart(equipment, equipment::getMinP, equipment::getMaxP, this::operatingPoints);
+        return capabilityChart(equipment, equipment::getMinP, equipment::getMaxP, equipment::setMinP, equipment::setMaxP, this::operatingPoints);
     }
 
     @Override
     protected List<Tab> extraTabs() {
-        return List.of(reactiveLimitsTab(equipment, equipment::getMinP, equipment::getMaxP, this::operatingPoints));
+        return List.of(reactiveLimitsTab(equipment, equipment::getMinP, equipment::getMaxP, equipment::setMinP, equipment::setMaxP, this::operatingPoints));
     }
 
     @Override

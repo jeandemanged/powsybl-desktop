@@ -28,11 +28,13 @@ import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.util.StringConverter;
 
@@ -47,8 +49,8 @@ import java.util.stream.IntStream;
 /**
  * One winding's ratio or phase tap changer: added or removed, its positions and regulation (a ratio tap changer's is a
  * {@link com.powsybl.iidm.network.regulation.VoltageRegulation}, shown as {@link DetailSections#voltageRegulation}
- * shows any), and its steps, edited in place, added or removed (IIDM then replaces them all). Shared by two- and
- * three-winding transformers' detail views.
+ * shows any), and its steps, edited in place, added or removed (IIDM then replaces them all), summarized for a phase
+ * tap changer by a {@link PhaseTapChangerDiagram}. Shared by two- and three-winding transformers' detail views.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -68,6 +70,7 @@ public final class TapChangerPane extends VBox implements DetailPart {
     private TapChanger<?, ?, ?, ?> shown;
     private DetailForm form;
     private TableView<Integer> stepsTable;
+    private PhaseTapChangerDiagram diagram;
 
     private TapChangerPane(boolean phase, String titleKey, Supplier<? extends TapChanger<?, ?, ?, ?>> tapChanger, Runnable creator,
                            SceneModel sceneModel, Supplier<GuiParameters> guiParameters, Runnable onEdit) {
@@ -109,6 +112,9 @@ public final class TapChangerPane extends VBox implements DetailPart {
             rebuild();
         } else if (shown != null) {
             form.refresh();
+            if (diagram != null) {
+                diagram.show((PhaseTapChanger) shown);
+            }
             stepsTable.getItems().setAll(positions(shown));
             DetailTables.fitHeight(stepsTable, stepsTable.getItems().size());
         }
@@ -128,6 +134,7 @@ public final class TapChangerPane extends VBox implements DetailPart {
             getChildren().setAll(title, new Label(Messages.get("detail.keyValue.empty")), addButton);
             form = null;
             stepsTable = null;
+            diagram = null;
             return;
         }
         form = new DetailForm(guiParameters, onEdit);
@@ -165,7 +172,15 @@ public final class TapChangerPane extends VBox implements DetailPart {
         buttons.setAlignment(Pos.CENTER_LEFT);
         Label stepsTitle = new Label(Messages.get("detail.tapChanger.steps"));
         stepsTitle.getStyleClass().add("section-title");
-        getChildren().setAll(title, form.getNode(), stepsTitle, stepsTable, buttons);
+        Node main = form.getNode();
+        diagram = null;
+        if (changer instanceof PhaseTapChanger phaseChanger) {
+            diagram = new PhaseTapChangerDiagram();
+            diagram.show(phaseChanger);
+            HBox.setHgrow(diagram, Priority.ALWAYS);
+            main = new HBox(16, form.getNode(), diagram);
+        }
+        getChildren().setAll(title, main, stepsTitle, stepsTable, buttons);
     }
 
     private void phaseRegulation(PhaseTapChanger changer) {

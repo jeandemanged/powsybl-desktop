@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.ui.network.detail;
 
 import com.powsybl.iidm.network.Area;
 import com.powsybl.iidm.network.Container;
+import com.powsybl.iidm.network.Country;
 import com.powsybl.iidm.network.Generator;
 import com.powsybl.iidm.network.Ground;
 import com.powsybl.iidm.network.Identifiable;
@@ -18,6 +19,7 @@ import com.powsybl.iidm.network.LoadingLimits;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.OperationalLimitsGroup;
 import com.powsybl.iidm.network.OverloadManagementSystem;
+import com.powsybl.iidm.network.PhaseTapChanger;
 import com.powsybl.iidm.network.ShuntCompensator;
 import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.Switch;
@@ -38,6 +40,7 @@ import com.powsybl.powsybldesktop.ui.network.limits.OperationalLimitsPane;
 import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.ui.window.SeparateWindows;
+import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.event.ActionEvent;
 import javafx.scene.Node;
@@ -45,6 +48,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBase;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Labeled;
@@ -55,8 +59,10 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -239,6 +245,23 @@ class EquipmentDetailViewsTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
+    void generalSectionShowsEquivalentCountriesSubnetworksAndSubstationLinks() {
+        Network network = Network.merge(EurostagTutorialExample1Factory.create(), FourSubstationsNodeBreakerFactory.create());
+        Line line = network.getLine("NHV1_NHV2_1");
+        network.getSubstation("P2").setCountry(Country.BE);
+        AbstractEquipmentDetailController<?> controller = open(network, line);
+
+        assertEquals("FR, BE", formField(controller, "desktop.common.column.country", Labeled.class).getText());
+        assertEquals(Labels.networkLabel(line.getParentNetwork()), formField(controller, "desktop.common.equipment.subnetwork", Labeled.class).getText());
+        assertEquals(List.of("P1", "VLHV1", "P2", "VLHV2"), controller.linksBox.getChildren().stream()
+                .filter(Hyperlink.class::isInstance).map(node -> ((Hyperlink) node).getText()).toList());
+
+        CheckBox equivalent = formField(controller, "detail.equivalent", CheckBox.class);
+        interact(equivalent::fire);
+        assertTrue(line.isEquivalent());
+    }
+
+    @Test
     void idAndNameEditsUpdateTheSearchIndex() {
         Network network = EurostagTutorialExample1Factory.create();
         Generator generator = network.getGenerator("GEN");
@@ -321,20 +344,42 @@ class EquipmentDetailViewsTest extends AbstractHeadlessApplicationTest {
                 .findFirst().orElseThrow();
         transformer.getOptionalRatioTapChanger().ifPresent(TapChanger::remove);
         AbstractEquipmentDetailController<?> controller = open(network, transformer);
-        Parent tapChangers = content(controller, "detail.tab.tapChangers", Parent.class);
-
         int steps = transformer.getPhaseTapChanger().getStepCount();
-        TapChangerPane phasePane = (TapChangerPane) tapChangers.getChildrenUnmodifiable().get(1);
+        TapChangerPane phasePane = content(controller, "transformers.column.phaseTapChanger", TapChangerPane.class);
         interact(() -> button(phasePane, Button.class, Messages.get("detail.tapChanger.addStep")).fire());
         assertEquals(steps + 1, transformer.getPhaseTapChanger().getStepCount());
 
-        TapChangerPane ratioPane = (TapChangerPane) tapChangers.getChildrenUnmodifiable().getFirst();
+        TapChangerPane ratioPane = content(controller, "transformers.column.ratioTapChanger", TapChangerPane.class);
         interact(() -> button(ratioPane, Button.class, Messages.get("desktop.common.action.add")).fire());
         assertNotNull(transformer.getRatioTapChanger());
         assertEquals(1, transformer.getRatioTapChanger().getStepCount());
 
         interact(() -> button(ratioPane, Button.class, Messages.get("desktop.common.action.remove")).fire());
         assertNull(transformer.getRatioTapChanger());
+    }
+
+    @Test
+    void phaseTapChangerDiagramShowsEveryStepAndTheCurrentOne() {
+        Network network = FourSubstationsNodeBreakerFactory.create();
+        TwoWindingsTransformer transformer = network.getTwoWindingsTransformerStream()
+                .filter(TwoWindingsTransformer::hasPhaseTapChanger)
+                .findFirst().orElseThrow();
+        PhaseTapChanger changer = transformer.getPhaseTapChanger();
+        AbstractEquipmentDetailController<?> controller = open(network, transformer);
+        Parent pane = content(controller, "transformers.column.phaseTapChanger", Parent.class);
+
+        assertEquals(changer.getStepCount() - 1, pane.lookupAll(".phase-diagram-step").size());
+        assertEquals(1, pane.lookupAll(".phase-diagram-current").size());
+        assertEquals(String.valueOf(changer.getTapPosition()), ((Text) pane.lookup(".phase-diagram-current-label")).getText());
+
+        int other = changer.getTapPosition() == changer.getLowTapPosition() ? changer.getHighTapPosition() : changer.getLowTapPosition();
+        interact(() -> {
+            changer.setTapPosition(other);
+            mainModel.setUpdate();
+        });
+        interact(() -> pane.applyCss());
+        interact(() -> ((Region) pane.lookup(".phase-tap-changer-diagram")).layout());
+        assertEquals(String.valueOf(other), ((Text) pane.lookup(".phase-diagram-current-label")).getText());
     }
 
     @Test

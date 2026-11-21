@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.ui.network.detail;
 
 import com.powsybl.iidm.network.Area;
 import com.powsybl.iidm.network.AreaBoundary;
+import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
@@ -35,6 +36,7 @@ import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Area detail: type, interchange target and the interchanges of the last load flow, then tabs listing its voltage levels
@@ -50,6 +52,11 @@ public class AreaDetailController extends AbstractEquipmentDetailController<Area
     @Override
     protected List<VoltageLevel> voltageLevels() {
         return List.of();
+    }
+
+    @Override
+    protected List<Substation> substations() {
+        return equipment.getVoltageLevelStream().map(VoltageLevel::getNullableSubstation).filter(Objects::nonNull).distinct().toList();
     }
 
     @Override

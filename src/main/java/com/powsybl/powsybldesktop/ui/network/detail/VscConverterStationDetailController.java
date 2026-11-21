@@ -48,12 +48,12 @@ public class VscConverterStationDetailController extends AbstractEquipmentDetail
 
     @Override
     protected Node mainSide() {
-        return capabilityChart(equipment, () -> -maxP(), this::maxP, this::operatingPoints);
+        return capabilityChart(equipment, () -> -maxP(), this::maxP, null, null, this::operatingPoints);
     }
 
     @Override
     protected List<Tab> extraTabs() {
-        return List.of(reactiveLimitsTab(equipment, () -> -maxP(), this::maxP, this::operatingPoints));
+        return List.of(reactiveLimitsTab(equipment, () -> -maxP(), this::maxP, null, null, this::operatingPoints));
     }
 
     @Override

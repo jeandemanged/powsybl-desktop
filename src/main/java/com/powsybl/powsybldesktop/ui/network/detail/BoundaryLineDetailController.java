@@ -67,7 +67,7 @@ public class BoundaryLineDetailController extends AbstractEquipmentDetailControl
         BoundaryLine.Generation generation = equipment.getGeneration();
         if (generation != null) {
             // generator convention, the terminal's being load convention
-            tabs.add(reactiveLimitsTab(generation, generation::getMinP, generation::getMaxP, () -> new ReactiveLimitsPane.OperatingPoints(
+            tabs.add(reactiveLimitsTab(generation, generation::getMinP, generation::getMaxP, generation::setMinP, generation::setMaxP, () -> new ReactiveLimitsPane.OperatingPoints(
                     generation.getTargetP(), generation.getTargetQ(), -equipment.getTerminal().getP(), -equipment.getTerminal().getQ())));
         }
         tabs.add(limitsTab());

@@ -15,13 +15,12 @@ import com.powsybl.powsybldesktop.ui.form.DetailForm;
 import com.powsybl.powsybldesktop.ui.form.DetailSections;
 import com.powsybl.sld.library.SldComponentTypeName;
 import javafx.scene.control.Tab;
-import javafx.scene.layout.VBox;
 
 import java.util.List;
 
 /**
  * Two-winding transformer detail: characteristics, each side's connection, ratio and phase tap
- * changers (replacing the transformers table's former steps dialog), editable flow limits.
+ * changers in a tab each (replacing the transformers table's former steps dialog), editable flow limits.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -52,10 +51,12 @@ public class TwoWindingsTransformerDetailController extends AbstractEquipmentDet
 
     @Override
     protected List<Tab> extraTabs() {
-        VBox tapChangers = new VBox(16,
-                register(TapChangerPane.ratio(equipment, "transformers.column.ratioTapChanger", sceneModel, guiParameters(), onEdit())),
-                register(TapChangerPane.phase(equipment, "transformers.column.phaseTapChanger", sceneModel, guiParameters(), onEdit())));
-        return List.of(tab("detail.tab.tapChangers", scrolling(tapChangers)), limitsTab());
+        return List.of(
+                tab("transformers.column.ratioTapChanger", scrolling(register(TapChangerPane.ratio(equipment, "transformers.column.ratioTapChanger",
+                        sceneModel, guiParameters(), onEdit())))),
+                tab("transformers.column.phaseTapChanger", scrolling(register(TapChangerPane.phase(equipment, "transformers.column.phaseTapChanger",
+                        sceneModel, guiParameters(), onEdit())))),
+                limitsTab());
     }
 
     @Override

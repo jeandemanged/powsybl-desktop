@@ -397,6 +397,58 @@
     -fx-font-weight: bold;
 }
 
+/* CapabilityChart: the solved operating point as a crosshair (and its legend symbol), so that the target bubble
+   under it stays visible; the min and max P lines */
+.capability-chart .solved-crosshair.chart-line-symbol,
+.capability-chart .chart-legend-item-symbol.series2 {
+    -fx-shape: "M4.4,0 H5.6 V4.4 H10 V5.6 H5.6 V10 H4.4 V5.6 H0 V4.4 H4.4 Z";
+    -fx-background-color: CHART_COLOR_3;
+    -fx-background-insets: 0;
+    -fx-background-radius: 0;
+    -fx-padding: 8px;
+}
+
+.capability-chart .capability-p-limit {
+    -fx-stroke: #d32f2f;
+    -fx-stroke-width: 1.5px;
+}
+
+.capability-chart .capability-p-limit-label {
+    -fx-fill: #d32f2f;
+}
+
+/* PhaseTapChangerDiagram: the voltage phasors of a phase tap changer's steps, the current one colored */
+.phase-diagram-axis,
+.phase-diagram-angle {
+    -fx-stroke: gray;
+    -fx-fill: transparent;
+}
+
+.phase-diagram-vector,
+.phase-diagram-locus {
+    -fx-stroke: #333333;
+    -fx-fill: transparent;
+}
+
+.phase-diagram-arrow-head,
+.phase-diagram-step {
+    -fx-fill: #333333;
+}
+
+.phase-diagram-label {
+    -fx-fill: #333333;
+    -fx-font-size: 0.9em;
+}
+
+.phase-diagram-current,
+.phase-diagram-current-label {
+    -fx-fill: #1e88e5;
+}
+
+.phase-diagram-current-label {
+    -fx-font-weight: bold;
+}
+
 .limits-side-title {
     -fx-font-weight: bold;
     -fx-font-size: 1.1em;

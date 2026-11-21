@@ -20,6 +20,7 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.Substation;
 import com.powsybl.iidm.network.ThreeSides;
 import com.powsybl.iidm.network.TwoSides;
+import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.iidm.network.extensions.Coordinate;
 import com.powsybl.iidm.network.extensions.SubstationPosition;
@@ -590,7 +591,7 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         detailScreenshots("detail-boundary-line", first(microGrid.getBoundaryLineStream()));
         tableScreenshot("table-transformers", controller::onTransformers);
         detailScreenshots("detail-two-winding-transformer", first(microGrid.getTwoWindingsTransformerStream()
-                .filter(transformer -> transformer.hasPhaseTapChanger() || transformer.hasRatioTapChanger())), "detail.tab.tapChangers");
+                .filter(TwoWindingsTransformer::hasRatioTapChanger)), "transformers.column.ratioTapChanger");
         detailScreenshots("detail-three-winding-transformer", first(microGrid.getThreeWindingsTransformerStream()));
 
         Network metrix = loadSample(MetrixTutorialSixBusesFactory::create);
@@ -627,7 +628,7 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
                 "detail-shunt-compensator-sections", "table-overload-management-systems", "detail-overload-management-system",
                 "detail-overload-management-system-trippings", "table-tie-lines", "detail-tie-line", "table-boundary-lines",
                 "detail-boundary-line", "table-transformers", "detail-two-winding-transformer",
-                "detail-two-winding-transformer-tap-changers", "detail-three-winding-transformer", "table-hvdc-lines",
+                "detail-two-winding-transformer-ratio-tap-changer", "detail-three-winding-transformer", "table-hvdc-lines",
                 "detail-hvdc-line", "table-vsc-converter-stations", "detail-vsc-converter-station",
                 "table-static-var-compensators", "detail-static-var-compensator", "table-lcc-converter-stations",
                 "detail-lcc-converter-station", "table-batteries", "detail-battery", "table-grounds", "detail-ground",
