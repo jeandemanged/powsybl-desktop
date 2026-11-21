@@ -8,6 +8,7 @@
 package com.powsybl.powsybldesktop;
 
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.core.RecentStudies;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.parameters.ParametersConfigFile;
 import com.powsybl.powsybldesktop.utils.LanguagePreferences;
@@ -45,7 +46,7 @@ public class MainApplication extends Application {
     @Override
     public void start(Stage stage) {
         LanguagePreferences.applyPersisted();
-        MainModel mainModel = new MainModel();
+        MainModel mainModel = new MainModel(RecentStudies.persisted());
         Optional<Notification> parametersLoadError = ParametersConfigFile.load(mainModel.getParametersModel(), ParametersConfigFile.defaultPath());
         // only once the main view listens to notifications, for the error to pop up
         stage.setOnShown(_ -> parametersLoadError.ifPresent(mainModel.getNotificationsModel()::add));

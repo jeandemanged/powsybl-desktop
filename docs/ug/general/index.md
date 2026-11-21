@@ -20,7 +20,7 @@ views side by side, open them in [separate windows](#separate-windows-and-tabs).
 
 | Menu         | Items                                                                                              |
 |--------------|----------------------------------------------------------------------------------------------------|
-| **File**     | **Load Study…** and **Save Study…** load and save a [study](#studies). **Exit** closes the application, with all its windows. With networks loaded, it first asks for confirmation, as their unsaved changes are lost; closing the main window does the same. Turn this off with **Confirm before exiting** in the parameters' **User Interface** tab. |
+| **File**     | **Load Study…** and **Save Study…** load and save a [study](#studies), **Recent Studies** loads one of the last ten saved or loaded. **Exit** closes the application, with all its windows. With networks loaded, it first asks for confirmation, as their unsaved changes are lost; closing the main window does the same. Turn this off with **Confirm before exiting** in the parameters' **User Interface** tab. |
 | **Language** | **English** or **Français**. See [Language](#language).                                            |
 | **Windows**  | One submenu per separate window. See [Separate windows and tabs](#separate-windows-and-tabs).     |
 | **Help**     | **User's Guide (PDF)** and **User's Guide (HTML)** open this guide with the system's PDF viewer or web browser, **Memory** opens the memory window, **About** shows links to PowSyBl, the versions of the PowSyBl modules, of Java, of the JVM and of the OS, and the third-party licenses. |
@@ -141,6 +141,12 @@ Limit violations and the search index are computed again once the networks are l
 Saving and loading can take a while for large networks: a progress bar shows each step, and the application can't be
 used meanwhile. A notification tells the outcome. A network busy with another operation, such as a running load flow,
 can't be saved until it is over.
+
+The application remembers the last ten studies saved or loaded, from one start to the next. **File** > **Recent
+Studies** lists them, most recent first, to load one without choosing its file; the full path shows when hovering an
+entry, and **Clear Recent Studies** empties the list. When no network is loaded, the [networks
+view](../views/network/networks.md) lists them as links too. A study whose file no longer exists is removed from the
+list when chosen. Loading a recent study asks for confirmation as **Load Study…** does.
 
 ## Language
 

@@ -63,6 +63,7 @@ import com.powsybl.powsybldesktop.ui.network.detail.ExtensionEditors;
 import com.powsybl.powsybldesktop.ui.network.detail.ExtensionsPane;
 import com.powsybl.powsybldesktop.ui.network.detail.KeyValueTablePane;
 import com.powsybl.powsybldesktop.ui.network.edit.ContainerCreations;
+import com.powsybl.powsybldesktop.ui.study.StudyCommands;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -76,6 +77,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuButton;
@@ -86,6 +88,7 @@ import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
@@ -136,6 +139,9 @@ public class NetworksController extends AbstractDisposableController {
 
     @FXML
     private VBox noNetworksPane;
+
+    @FXML
+    private VBox recentStudiesBox;
 
     @FXML
     private Region dropOverlay;
@@ -222,6 +228,8 @@ public class NetworksController extends AbstractDisposableController {
         updateNetworkInfo(mainModel.getNetwork());
         updateSelectionState();
         listenerManager.listen(mainModel.getNetworks(), _ -> updateNetworkList());
+        updateRecentStudies();
+        listenerManager.listen(mainModel.getRecentStudies().getFiles(), _ -> updateRecentStudies());
         listenerManager.listen(mainModel.networkProperty(), (_, _, newNetwork) -> updateNetworkInfo(newNetwork));
         listenerManager.listen(networksTreeView.getSelectionModel().getSelectedItems(), _ -> updateSelectionState());
         listenerManager.listen(mainModel.networkBusyProperty(), (_, _, _) -> updateMergeDetachButtons(getSelectedNetworks()));
@@ -527,6 +535,20 @@ public class NetworksController extends AbstractDisposableController {
         networksTreeView.getSelectionModel().select(selectedNetworkTreeItem[0]);
         noNetworksPane.setVisible(mainModel.getNetworks().isEmpty());
         closeAllButton.setDisable(mainModel.getNetworks().isEmpty());
+    }
+
+    private void updateRecentStudies() {
+        List<Path> files = mainModel.getRecentStudies().getFiles();
+        // after the title label
+        recentStudiesBox.getChildren().remove(1, recentStudiesBox.getChildren().size());
+        for (Path file : files) {
+            Hyperlink link = new Hyperlink(file.getFileName().toString());
+            link.setTooltip(new Tooltip(file.toString()));
+            link.setOnAction(_ -> StudyCommands.loadRecent(networksTreeView.getScene().getWindow(), sceneModel, file));
+            recentStudiesBox.getChildren().add(link);
+        }
+        recentStudiesBox.setVisible(!files.isEmpty());
+        recentStudiesBox.setManaged(!files.isEmpty());
     }
 
     private static final int TREE_COUNTRIES_MAX_LISTED = 5;

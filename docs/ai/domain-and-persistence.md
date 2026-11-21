@@ -202,6 +202,7 @@ There is no database. Persistent state is:
 | Max heap | The `-Xmx` line of the packaged app's launcher `.cfg` (see [build-and-testing.md](build-and-testing.md#packaging)) | `…/memory/MaxHeapConfig.java`, edited from the Memory window |
 | UI language | Java Preferences API | `…/utils/LanguagePreferences.java` |
 | Last file-chooser directory | Java Preferences API | `…/ui/controls/FileChooserPreferences.java` |
+| Recent studies (last 10 saved or loaded `.psbx`) | Java Preferences API | `…/core/RecentStudies.java`, see [Studies](#studies) |
 | Networks | User files, imported/exported through PowSyBl `Importer`/`Exporter` | `NetworksController` (import: plain `Task`; export: `AbstractNetworkTask`), `NetworkIO` |
 | Studies (parameters, networks, contingency lists, limit scalings, sensitivity factors, results, reports, logs) | User-chosen `.psbx` zip file | `…/study/StudyArchive.java`, see [Studies](#studies) |
 | Contingency lists, limit scalings, sensitivity factors, parameters, reports, diagrams | User-chosen JSON/text/SVG/PNG files | `ContingencyListsIO`, `LimitScalings`, `SensitivityFactorsIO`, `ApplicationParametersJson`, `ReportsController`, `DiagramPaneController` |
@@ -234,3 +235,11 @@ listed explicitly in the packaging scripts since jdeps can't see it), so these s
   choice, then a `Service` behind an application-modal progress dialog fed by the archive's per-step `Progress`.
   Saving marks the saved networks busy (refused if one already is); loading is a plain `Task` (networks not loaded
   yet), asks to confirm replacing loaded networks and offers to save them in a study first.
+- `…/core/RecentStudies.java` (`MainModel.getRecentStudies()`) is the observable list of the last 10 studies saved or
+  loaded successfully, most recent first, by normalized absolute path. Only the instance `MainApplication` creates
+  (`RecentStudies.persisted()`) reads and writes the Java Preferences; `new MainModel()` gets an in-memory one, so that
+  tests neither show nor change the developer's list. File > Recent Studies (`MainController.updateRecentStudiesMenu`)
+  and the links of the networks view's empty state (`NetworksController.updateRecentStudies`) call
+  `StudyCommands.loadRecent`: the load flow above without the file chooser, a file that no longer exists being removed
+  from the list with an error notification. The empty state pane is `pickOnBounds="false"` rather than mouse
+  transparent, its labels being mouse transparent, so that the links are clickable and clicks elsewhere reach the tree.

@@ -62,6 +62,7 @@ public class MainModel {
     private final ParametersModel parametersModel = new ParametersModel();
     private final NotificationsModel notificationsModel = new NotificationsModel();
     private final LogsModel logsModel = new LogsModel();
+    private final RecentStudies recentStudies;
     private final DoubleProperty diagramZoom = new SimpleDoubleProperty(1.0);
     private final BooleanProperty diagramFitToScreen = new SimpleBooleanProperty(false);
     private final IntegerProperty diagramAreaDepth = new SimpleIntegerProperty(1);
@@ -69,6 +70,11 @@ public class MainModel {
     private Predicate<Network> networkChangeGuard = _ -> true;
 
     public MainModel() {
+        this(new RecentStudies());
+    }
+
+    public MainModel(RecentStudies recentStudies) {
+        this.recentStudies = Objects.requireNonNull(recentStudies);
         update.setValue(Instant.now());
     }
 
@@ -257,6 +263,10 @@ public class MainModel {
 
     public LogsModel getLogsModel() {
         return logsModel;
+    }
+
+    public RecentStudies getRecentStudies() {
+        return recentStudies;
     }
 
     public void addReport(ReportNode reportNode) {

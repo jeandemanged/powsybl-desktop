@@ -26,7 +26,7 @@ used, so tests of `core` start the toolkit with `Platform.startup`.
 | Package | Responsibility |
 |---|---|
 | root (`…/`) | The shell: `Launcher`, `MainApplication`, `SplashScreen`, `MainController` |
-| `core` | The shared state: `MainModel`, `NetworkStudy`, `AbstractNetworkTask`, `NetworkStructureChange`, `NetworkChanges` (the funnel of every creation and removal, see [editing.md](editing.md#structural-edits)) |
+| `core` | The shared state: `MainModel`, `NetworkStudy`, `RecentStudies`, `AbstractNetworkTask`, `NetworkStructureChange`, `NetworkChanges` (the funnel of every creation and removal, see [editing.md](editing.md#structural-edits)) |
 | `navigation` | `NavigationType`, `NavigationEvent` (record), the `NavigationState` interface and one implementation per restorable selection (`NetworkNavigationState` subclasses, `ReportNavigationState`), `NavigationHistory` |
 | `network` | `NetworkIO` (import/export formats, format detection of a file, import and export with their reports), `NetworkAndReport`, `NetworkTieLines`, `VoltageRegulations` (IIDM voltage regulation helpers), `VariantMultiThreadAccess` (variant switch around Open Load Flow's multi-threaded analyses), sample networks (`MapTestNetworkFactory`) |
 | `network/edit` | Changing the network structure: `NetworkEdits` (applying modifications, ids proposed), what each creation builds from its values (`Containers`, `Injections`, `Branches`, `Topologies`, `LineModifications`, `NetworkObjects`, each with spec records; `Connection` for where a feeder is connected), `Removals` (what a removal takes along, and the removal itself), `PositionEdits`, `FeederOrders`, `Kinds` |
@@ -63,7 +63,7 @@ used, so tests of `core` start the toolkit with `Platform.startup`.
 | `ui/notification` | Overlay popup and history panel (`NotificationOverlay`, `NotificationView`, `NotificationsController`) |
 | `ui/report` | Report viewer (`ReportsController`, `ReportNodeViewController`, `ReportNodeTreeCell`) |
 | `ui/logs`, `ui/memory`, `ui/about` | Logs view, small secondary windows |
-| `ui/study` | File > Save Study / Load Study: `StudyCommands`, `SaveStudyDialog` |
+| `ui/study` | File > Save Study / Load Study / Recent Studies: `StudyCommands`, `SaveStudyDialog` |
 
 `src/main/java-templates/…/util/PowsyblDesktopVersion.java` is filled in at build time by the
 `templating-maven-plugin` (declared in `pom.xml`, configured by `powsybl-parent`).
@@ -119,7 +119,7 @@ a subnetwork), an `updateProperty()` timestamp fired after any network mutation 
 `setUpdate(VoltageLevel)`), `networkBusyProperty()` (bound to the selected network's `NetworkStudy.busyProperty()`;
 `markBusy(network)` returns an idempotent release action), search index state, reports, the main window's diagram
 display settings, the network change guard, and the sub-models `NavigationHistory`, `ParametersModel`,
-`NotificationsModel`, `LogsModel`.
+`NotificationsModel`, `LogsModel`, `RecentStudies`.
 
 `…/core/NetworkStudy.java` holds everything per loaded root network: LF/SA/sensitivity results, cached limit violations,
 contingency lists and limit scalings and their enabled flags, sensitivity factor matrices and variable sets, running computation and index-build services, search indexes, Map views,

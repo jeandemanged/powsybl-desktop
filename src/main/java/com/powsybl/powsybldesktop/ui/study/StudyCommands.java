@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
@@ -43,8 +44,8 @@ import java.util.Locale;
 import java.util.Optional;
 
 /**
- * File &gt; Save Study and Load Study: what to save, the file, and the write or read in the background behind an
- * application-modal progress dialog, the app being unusable meanwhile.
+ * File &gt; Save Study, Load Study and Recent Studies: what to save, the file, and the write or read in the background
+ * behind an application-modal progress dialog, the app being unusable meanwhile.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -96,6 +97,7 @@ public final class StudyCommands {
         };
         service.setOnSucceeded(_ -> {
             releases.forEach(Runnable::run);
+            mainModel.getRecentStudies().add(path);
             mainModel.getNotificationsModel().add(Notification.createSuccess(start, "study.save.completed").withMessageArgs(path.getFileName()));
             // after the progress dialog has closed, e.g. for the next file chooser
             Platform.runLater(onSaved);
@@ -108,9 +110,32 @@ public final class StudyCommands {
     }
 
     public static void load(Window owner, SceneModel sceneModel) {
+        confirmReplace(owner, sceneModel, () -> {
+            File file = chooseFile(owner, false);
+            if (file != null) {
+                read(owner, sceneModel, file.toPath());
+            }
+        });
+    }
+
+    /**
+     * Loads a study of File &gt; Recent Studies or of the networks view's links, without a file chooser. A file which
+     * no longer exists is removed from the recent studies.
+     */
+    public static void loadRecent(Window owner, SceneModel sceneModel, Path path) {
+        MainModel mainModel = sceneModel.getMainModel();
+        if (!Files.isRegularFile(path)) {
+            mainModel.getRecentStudies().remove(path);
+            mainModel.getNotificationsModel().add(Notification.createError(Instant.now(), "study.recent.missing").withMessageArgs(path));
+            return;
+        }
+        confirmReplace(owner, sceneModel, () -> read(owner, sceneModel, path));
+    }
+
+    private static void confirmReplace(Window owner, SceneModel sceneModel, Runnable load) {
         MainModel mainModel = sceneModel.getMainModel();
         if (mainModel.getNetworks().isEmpty()) {
-            chooseAndLoad(owner, sceneModel);
+            load.run();
             return;
         }
         if (refuseIfBusy(mainModel, mainModel.getNetworks())) {
@@ -124,19 +149,14 @@ public final class StudyCommands {
         alert.setHeaderText(null);
         Optional<ButtonType> answer = alert.showAndWait();
         if (answer.filter(saveFirst::equals).isPresent()) {
-            save(owner, sceneModel, () -> chooseAndLoad(owner, sceneModel));
+            save(owner, sceneModel, load);
         } else if (answer.filter(replace::equals).isPresent()) {
-            chooseAndLoad(owner, sceneModel);
+            load.run();
         }
     }
 
-    private static void chooseAndLoad(Window owner, SceneModel sceneModel) {
-        File file = chooseFile(owner, false);
-        if (file == null) {
-            return;
-        }
+    private static void read(Window owner, SceneModel sceneModel, Path path) {
         MainModel mainModel = sceneModel.getMainModel();
-        Path path = file.toPath();
         Instant start = Instant.now();
         // a plain Task: the study's networks aren't loaded yet
         Service<Study> service = new Service<>() {
@@ -157,6 +177,7 @@ public final class StudyCommands {
         };
         service.setOnSucceeded(event -> {
             ((Study) event.getSource().getValue()).restore(mainModel);
+            mainModel.getRecentStudies().add(path);
             mainModel.getNotificationsModel().add(Notification.createSuccess(start, "study.load.completed").withMessageArgs(path.getFileName()));
         });
         service.setOnFailed(event -> failed(sceneModel, start, "study.load.failed", event.getSource().getException(), path));

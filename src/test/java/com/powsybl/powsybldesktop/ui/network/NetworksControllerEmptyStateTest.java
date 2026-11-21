@@ -10,12 +10,14 @@ package com.powsybl.powsybldesktop.ui.network;
 import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.notification.NotificationStatus;
 import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.BorderPane;
@@ -25,8 +27,11 @@ import javafx.stage.Stage;
 import javafx.util.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -40,6 +45,9 @@ class NetworksControllerEmptyStateTest extends AbstractHeadlessApplicationTest {
 
     private NetworksController controller;
     private MainModel mainModel;
+
+    @TempDir
+    private Path directory;
 
     @Override
     public void start(Stage stage) throws IOException {
@@ -100,6 +108,37 @@ class NetworksControllerEmptyStateTest extends AbstractHeadlessApplicationTest {
         interact(() -> { });
 
         assertNull(mainModel.getNetwork());
+    }
+
+    private List<String> recentStudyLinks() {
+        return lookup("#recentStudiesBox .hyperlink").queryAllAs(Hyperlink.class).stream().map(Hyperlink::getText).toList();
+    }
+
+    @Test
+    void recentStudiesAreHiddenWhenThereAreNone() {
+        assertFalse(lookup("#recentStudiesBox").query().isVisible());
+    }
+
+    @Test
+    void recentStudiesAreListedAsLinksMostRecentFirst() {
+        interact(() -> {
+            mainModel.getRecentStudies().add(directory.resolve("a.psbx"));
+            mainModel.getRecentStudies().add(directory.resolve("b.psbx"));
+        });
+
+        assertTrue(lookup("#recentStudiesBox").query().isVisible());
+        assertEquals(List.of("b.psbx", "a.psbx"), recentStudyLinks());
+    }
+
+    @Test
+    void clickingAMissingRecentStudyRemovesIt() {
+        interact(() -> mainModel.getRecentStudies().add(directory.resolve("missing.psbx")));
+
+        clickOn("missing.psbx");
+
+        assertTrue(mainModel.getRecentStudies().getFiles().isEmpty());
+        assertEquals(NotificationStatus.ERROR, mainModel.getNotificationsModel().getNotifications().getLast().status());
+        assertFalse(lookup("#recentStudiesBox").query().isVisible());
     }
 
     @Test

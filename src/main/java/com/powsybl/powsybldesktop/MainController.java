@@ -165,6 +165,8 @@ public class MainController extends AbstractDisposableController {
     @FXML
     public Button forwardButton;
     @FXML
+    private Menu recentStudiesMenu;
+    @FXML
     private Menu windowsMenu;
     @FXML
     public RadioMenuItem languageEnglishItem;
@@ -935,6 +937,8 @@ public class MainController extends AbstractDisposableController {
         });
         // after a language reload, which replaces this controller
         mainModel.getNetworks().forEach(this::listenToLimitScalings);
+        listenerManager.listen(mainModel.getRecentStudies().getFiles(), (ListChangeListener<Path>) _ -> updateRecentStudiesMenu());
+        updateRecentStudiesMenu();
         listenerManager.listen(separateWindows.getOpenWindows(), (ListChangeListener<SeparateWindows.DetachedWindow>) change -> updateWindowsMenu());
         // also on showing: windows' names and tabs change without changing the list
         windowsMenu.setOnShowing(_ -> updateWindowsMenu());
@@ -1057,6 +1061,25 @@ public class MainController extends AbstractDisposableController {
             return selected == implicitlySelectedRoot ? target : null;
         }
         return target;
+    }
+
+    private void updateRecentStudiesMenu() {
+        List<Path> files = mainModel.getRecentStudies().getFiles();
+        recentStudiesMenu.setDisable(files.isEmpty());
+        List<MenuItem> items = new ArrayList<>();
+        for (Path file : files) {
+            // a CustomMenuItem for the tooltip, a plain MenuItem having none
+            Label label = new Label(file.getFileName().toString());
+            label.setTooltip(new Tooltip(file.toString()));
+            CustomMenuItem item = new CustomMenuItem(label);
+            item.setOnAction(_ -> StudyCommands.loadRecent(borderPane.getScene().getWindow(), sceneModel, file));
+            items.add(item);
+        }
+        items.add(new SeparatorMenuItem());
+        MenuItem clear = new MenuItem(Messages.get("main.menu.file.recentStudies.clear"));
+        clear.setOnAction(_ -> mainModel.getRecentStudies().clear());
+        items.add(clear);
+        recentStudiesMenu.getItems().setAll(items);
     }
 
     private void updateWindowsMenu() {

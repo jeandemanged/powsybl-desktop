@@ -13,7 +13,8 @@ On the left, a toolbar and the tree of loaded networks:
 - an item shows the network name (or id if it has no name) followed by its countries, or by the number of countries
   when there are more than five;
 - when no network is loaded, the tree shows **No network loaded** and a hint to drag and drop network files or
-  folders there.
+  folders there, followed by the **Recent studies:** saved or loaded last, as links loading them in one click (see
+  [Studies](../../general/index.md#studies)).
 
 Selecting a network in the tree makes it the network shown by every other view (substations, tables, map, results).
 Several networks can be selected at once (Ctrl or Shift click) for closing, merging or detaching them.
