@@ -42,12 +42,12 @@
                 <Separator orientation="VERTICAL"/>
                 <MenuButton fx:id="importMenuButton" mnemonicParsing="false" text="%desktop.common.action.import">
                     <graphic>
-                        <FontIcon iconLiteral="mdi2u-upload" iconSize="16"/>
+                        <FontIcon iconLiteral="mdi2t-tray-arrow-down" iconSize="16"/>
                     </graphic>
                 </MenuButton>
                 <MenuButton fx:id="exportMenuButton" mnemonicParsing="false" text="%desktop.common.action.export">
                     <graphic>
-                        <FontIcon iconLiteral="mdi2d-download" iconSize="16"/>
+                        <FontIcon iconLiteral="mdi2t-tray-arrow-up" iconSize="16"/>
                     </graphic>
                 </MenuButton>
             </items>

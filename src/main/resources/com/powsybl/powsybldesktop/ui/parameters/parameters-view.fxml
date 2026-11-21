@@ -39,7 +39,7 @@
             <Separator orientation="VERTICAL"/>
             <Button mnemonicParsing="false" onAction="#onImport">
                 <graphic>
-                    <FontIcon iconLiteral="mdi2u-upload" iconSize="16"/>
+                    <FontIcon iconLiteral="mdi2t-tray-arrow-down" iconSize="16"/>
                 </graphic>
                 <tooltip>
                     <Tooltip text="%parameters.toolbar.import"/>
@@ -47,7 +47,7 @@
             </Button>
             <Button mnemonicParsing="false" onAction="#onExport">
                 <graphic>
-                    <FontIcon iconLiteral="mdi2d-download" iconSize="16"/>
+                    <FontIcon iconLiteral="mdi2t-tray-arrow-up" iconSize="16"/>
                 </graphic>
                 <tooltip>
                     <Tooltip text="%parameters.toolbar.export"/>
