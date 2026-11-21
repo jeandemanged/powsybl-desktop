@@ -7,6 +7,9 @@
  */
 package com.powsybl.powsybldesktop;
 
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.joran.JoranConfigurator;
+import ch.qos.logback.core.joran.spi.JoranException;
 import com.powsybl.cgmes.conformity.CgmesConformity1Catalog;
 import com.powsybl.contingency.violations.LimitViolation;
 import com.powsybl.contingency.violations.LimitViolationType;
@@ -69,8 +72,10 @@ import javafx.stage.Popup;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.testfx.robot.Motion;
 import org.testfx.util.NodeQueryUtils;
 import org.testfx.util.WaitForAsyncUtils;
@@ -123,6 +128,16 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
     private Stage stage;
     private Region root;
     private final List<String> writtenScreenshots = new ArrayList<>();
+
+    // the logs screenshot shows what the application logs, which logback-test.xml mostly turns off for the other tests
+    @BeforeAll
+    static void logAsTheApplication() throws JoranException {
+        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        context.reset();
+        JoranConfigurator configurator = new JoranConfigurator();
+        configurator.setContext(context);
+        configurator.doConfigure(UserGuideScreenshotsTest.class.getResource("/logback.xml"));
+    }
 
     @Override
     public void start(Stage stage) throws IOException {

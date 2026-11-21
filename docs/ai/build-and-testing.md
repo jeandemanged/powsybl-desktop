@@ -80,6 +80,11 @@ Tests mirror the main package layout under `src/test/java/com/powsybl/powsybldes
   single JavaFX toolkit and TestFX shares one primary stage, so concurrent UI tests would overwrite each other's
   scene. Tests must not share state outside the JVM: write files under `@TempDir`. A UI test flaky only in CI is more
   likely a race with a short timer than a fork problem.
+- `src/test/resources/logback-test.xml` replaces `logback.xml` in tests: `com.powsybl` loggers are off (Open Load Flow
+  alone made tens of megabytes of output), except `com.powsybl.powsybldesktop`, which `LogsViewControllerTest` needs.
+  The application keeps `logback.xml`'s INFO level. To debug a PowSyBl library in a test, add a logger for it at
+  INFO in `logback-test.xml`. `UserGuideScreenshotsTest` reloads `logback.xml` instead, so that its logs
+  screenshot shows what the application logs.
 
 Canonical controller test: `ui/network/tables/LoadsControllerTest.java`:
 
