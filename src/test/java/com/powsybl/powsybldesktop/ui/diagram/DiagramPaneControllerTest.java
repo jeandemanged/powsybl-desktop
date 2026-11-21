@@ -13,11 +13,16 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.ToggleButton;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -48,5 +53,28 @@ class DiagramPaneControllerTest extends AbstractHeadlessApplicationTest {
 
         // SubstationsController persists this property to MainModel: it must change for the untick to be kept
         assertFalse(controller.fitToScreenProperty().get());
+    }
+
+    @Test
+    void pngIsTheWholeDiagramAtTwiceItsSizeWhateverTheViewport() throws Exception {
+        // wider than the viewport, zoomed out: a snapshot of the view would be cropped or low resolution
+        String svg = """
+                <svg xmlns="http://www.w3.org/2000/svg" width="3000" height="400" viewBox="0 0 3000 400">
+                    <rect x="2900" y="300" width="100" height="100" fill="red"/>
+                </svg>""";
+        interact(() -> {
+            controller.showDiagram(svg);
+            controller.restoreZoom(0.25, false);
+        });
+        CompletableFuture<byte[]> png = new CompletableFuture<>();
+
+        interact(() -> controller.rasterize(png::complete));
+
+        Image image = new Image(new ByteArrayInputStream(png.get(10, TimeUnit.SECONDS)));
+        assertEquals(6000, image.getWidth());
+        assertEquals(800, image.getHeight());
+        // the bottom right corner, far outside the viewport, is drawn
+        assertEquals(1.0, image.getPixelReader().getColor(5990, 790).getRed(), 0.01);
+        assertEquals(0.0, image.getPixelReader().getColor(5990, 790).getGreen(), 0.01);
     }
 }

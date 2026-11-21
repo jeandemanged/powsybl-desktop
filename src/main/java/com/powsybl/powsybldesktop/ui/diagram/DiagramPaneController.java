@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop.ui.diagram;
 
+import com.powsybl.powsybldesktop.core.UnexpectedErrors;
 import com.powsybl.powsybldesktop.ui.controls.FileChooserPreferences;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.property.BooleanProperty;
@@ -18,10 +19,8 @@ import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.concurrent.Worker;
-import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXML;
 import javafx.scene.Cursor;
-import javafx.scene.SnapshotParameters;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuButton;
@@ -40,14 +39,16 @@ import netscape.javascript.JSObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.imageio.ImageIO;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
@@ -83,6 +84,38 @@ public class DiagramPaneController {
                     </body>
                 </html>
             """;
+
+    // The SVG is drawn on a canvas by the page's own WebKit, so the PNG looks like the view without being limited to
+    // its viewport and screen resolution. PNG_SCALE times the diagram's own pixel size, within what a canvas can hold.
+    private static final double PNG_SCALE = 2;
+    private static final int PNG_MAX_SIDE = 8192;
+    private static final String RASTERIZE_SCRIPT = """
+            (function() {
+                var bridge = window.pngExport;
+                var svg = window.pngExportSvg;
+                window.pngExportSvg = null;
+                var img = new Image();
+                img.onload = function() {
+                    try {
+                        var scale = Math.min(%s, %d / Math.max(img.width, img.height));
+                        var canvas = document.createElement('canvas');
+                        canvas.width = Math.round(img.width * scale);
+                        canvas.height = Math.round(img.height * scale);
+                        var context = canvas.getContext('2d');
+                        // clipboard targets often show transparency as black
+                        context.fillStyle = 'white';
+                        context.fillRect(0, 0, canvas.width, canvas.height);
+                        context.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        bridge.done(canvas.toDataURL('image/png'));
+                    } catch (e) {
+                        bridge.failed(String(e));
+                    }
+                };
+                img.onerror = function() { bridge.failed('the SVG could not be loaded as an image'); };
+                img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+            })();
+            """.formatted(PNG_SCALE, PNG_MAX_SIDE);
+    private static final String PNG_DATA_URL_PREFIX = "data:image/png;base64,";
 
     private static final StringConverter<Integer> ZOOM_PERCENT_CONVERTER = new StringConverter<>() {
         @Override
@@ -126,6 +159,8 @@ public class DiagramPaneController {
     private double panStartScreenY;
     private double panStartScrollX;
     private double panStartScrollY;
+    // held here: the page only keeps a weak reference to the Java objects it is given
+    private final PngExportBridge pngExportBridge = new PngExportBridge();
 
     @FXML
     private void initialize() {
@@ -409,9 +444,11 @@ public class DiagramPaneController {
 
     @FXML
     private void onCopyDiagramPng() {
-        ClipboardContent content = new ClipboardContent();
-        content.putImage(snapshot());
-        Clipboard.getSystemClipboard().setContent(content);
+        rasterize(png -> {
+            ClipboardContent content = new ClipboardContent();
+            content.putImage(new Image(new ByteArrayInputStream(png)));
+            Clipboard.getSystemClipboard().setContent(content);
+        });
     }
 
     @FXML
@@ -423,13 +460,13 @@ public class DiagramPaneController {
 
     @FXML
     private void onSaveDiagramPng() {
-        chooseDiagramFile("png").ifPresent(file -> {
+        chooseDiagramFile("png").ifPresent(file -> rasterize(png -> {
             try {
-                ImageIO.write(SwingFXUtils.fromFXImage(snapshot(), null), "png", file);
+                Files.write(file.toPath(), png);
             } catch (IOException e) {
                 LOGGER.error(e.getMessage(), e);
             }
-        });
+        }));
     }
 
     @FXML
@@ -463,8 +500,29 @@ public class DiagramPaneController {
         return sanitized.isEmpty() ? "diagram" : sanitized;
     }
 
-    // rasterizes exactly what's currently displayed (current zoom/scroll), like a screenshot of the diagram view
-    private Image snapshot() {
-        return webView.snapshot(new SnapshotParameters(), null);
+    /** Renders the whole diagram as a PNG, handed to {@code onPng} later on the FX thread. */
+    // on the classpath, JSObject resolves to JDK 25's jdk.jsobject, deprecated for removal, rather than JavaFX's own copy
+    @SuppressWarnings("removal")
+    void rasterize(Consumer<byte[]> onPng) {
+        pngExportBridge.onPng = onPng;
+        JSObject window = (JSObject) webView.getEngine().executeScript("window");
+        window.setMember("pngExport", pngExportBridge);
+        // set as a JS value rather than spliced into script source, see inject
+        window.setMember("pngExportSvg", svg.get());
+        webView.getEngine().executeScript(RASTERIZE_SCRIPT);
+    }
+
+    /** Called back by {@link #RASTERIZE_SCRIPT}: public for the page to reach it. */
+    public static final class PngExportBridge {
+        private Consumer<byte[]> onPng;
+
+        public void done(String dataUrl) {
+            UnexpectedErrors.guard(() -> onPng.accept(Base64.getDecoder().decode(dataUrl.substring(PNG_DATA_URL_PREFIX.length()))));
+        }
+
+        // notified rather than only logged: the user would otherwise wait for a PNG that never comes
+        public void failed(String message) {
+            UnexpectedErrors.report(new IllegalStateException("Diagram PNG export failed: " + message));
+        }
     }
 }

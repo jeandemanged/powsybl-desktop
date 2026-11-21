@@ -24,6 +24,10 @@ when one looks wrong, snapshot it rather than reason from the source (see
 
 - Diagrams are SVG produced off the FX thread by `SubstationDiagramRenderer` / `NetworkAreaDiagramRenderer` and
   injected by `DiagramPaneController` (zoom, fit, PNG/SVG export) into an HTML shell in a `WebView`.
+- PNG export (copy/save) never snapshots the `WebView`, which would give only the viewport at screen resolution:
+  `DiagramPaneController.rasterize` has the page draw the whole SVG on a canvas at 2x its pixel size (longest side
+  capped at 8192 px by scaling down, never cropping) and hand back `toDataURL` through a bridge object. It is
+  asynchronous, and failures are notified through `UnexpectedErrors`.
 - `…/ui/network/ContainerDiagram.java` is a container's diagram, used by the substations view's tabs and by separate
   windows: its `renderService` is a latest-wins `Service` (see [threading.md](threading.md#canonical-patterns)), it
   copies the GUI decimals into each render's parameters copy (see
