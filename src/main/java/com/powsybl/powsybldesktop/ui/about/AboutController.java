@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop.ui.about;
 
+import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.tools.Version;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
@@ -40,7 +41,7 @@ import static java.time.temporal.ChronoField.*;
  * Content of the "About" dialog: the app logo, links to the PowSyBl website/documentation/GitHub, and a
  * table of every PowSyBl module on the classpath - {@link Version#list()} discovers one entry per
  * repository (including this app's own, registered by {@code PowsyblDesktopVersion}) via {@code @AutoService},
- * and the THIRD-PARTY.txt license list that license-maven-plugin generates at build time.
+ * a table of the running Java/JVM and OS, and the THIRD-PARTY.txt license list that license-maven-plugin generates at build time.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -88,7 +89,20 @@ public class AboutController {
     private TableColumn<Version, String> buildTimestampColumn;
 
     @FXML
+    private TableView<JavaProperty> javaTableView;
+    @FXML
+    private TableColumn<JavaProperty, String> javaPropertyColumn;
+    @FXML
+    private TableColumn<JavaProperty, String> javaValueColumn;
+
+    @FXML
     private TextArea thirdPartyTextArea;
+
+    private record JavaProperty(String label, String value) {
+        static JavaProperty of(String labelKey, String systemProperty) {
+            return new JavaProperty(Messages.get(labelKey), System.getProperty(systemProperty));
+        }
+    }
 
     @FXML
     private void initialize() {
@@ -103,6 +117,17 @@ public class AboutController {
 
         versionsTableView.setItems(FXCollections.observableArrayList(
                 Version.list().stream().sorted(Comparator.comparing(Version::getRepositoryName)).toList()));
+
+        javaPropertyColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().label()));
+        javaValueColumn.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().value()));
+        javaTableView.setItems(FXCollections.observableArrayList(
+                JavaProperty.of("about.java.javaVersion", "java.version"),
+                JavaProperty.of("about.java.javaRuntime", "java.runtime.version"),
+                JavaProperty.of("about.java.jvmVersion", "java.vm.version"),
+                JavaProperty.of("about.java.jvmName", "java.vm.name"),
+                JavaProperty.of("about.java.jvmVendor", "java.vm.vendor"),
+                JavaProperty.of("about.java.os", "os.name"),
+                JavaProperty.of("about.java.architecture", "os.arch")));
 
         thirdPartyTextArea.setText(readThirdPartyLicenses());
     }

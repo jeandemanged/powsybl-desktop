@@ -23,7 +23,7 @@ views side by side, open them in [separate windows](#separate-windows-and-tabs).
 | **File**     | **Load Study…** and **Save Study…** load and save a [study](#studies). **Exit** closes the application, with all its windows. With networks loaded, it first asks for confirmation, as their unsaved changes are lost; closing the main window does the same. Turn this off with **Confirm before exiting** in the parameters' **User Interface** tab. |
 | **Language** | **English** or **Français**. See [Language](#language).                                            |
 | **Windows**  | One submenu per separate window. See [Separate windows and tabs](#separate-windows-and-tabs).     |
-| **Help**     | **User's Guide (PDF)** and **User's Guide (HTML)** open this guide with the system's PDF viewer or web browser, **Memory** opens the memory window, **About** shows links to PowSyBl, the versions of the PowSyBl modules and the third-party licenses. |
+| **Help**     | **User's Guide (PDF)** and **User's Guide (HTML)** open this guide with the system's PDF viewer or web browser, **Memory** opens the memory window, **About** shows links to PowSyBl, the versions of the PowSyBl modules, of Java, of the JVM and of the OS, and the third-party licenses. |
 
 ## Main toolbar
 
