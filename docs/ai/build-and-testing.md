@@ -80,6 +80,12 @@ Tests mirror the main package layout under `src/test/java/com/powsybl/powsybldes
   single JavaFX toolkit and TestFX shares one primary stage, so concurrent UI tests would overwrite each other's
   scene. Tests must not share state outside the JVM: write files under `@TempDir`. A UI test flaky only in CI is more
   likely a race with a short timer than a fork problem.
+- The headless screen is a fixed 1000 x 1000 frame buffer: a window drawn with any pixel above or below it (y < 0, or
+  its bottom row past it) throws `IndexOutOfBoundsException` from `HeadlessWindow.blit`, on the FX thread, reported by
+  TestFX as a "Delayed Exception" on whatever test runs next in that JVM, often an unrelated class, after some test
+  orders only (mostly in CI). Production code must not park a window off-screen, even briefly: `NotificationOverlay`
+  sizes and places its popup before showing it rather than showing it at (-10000, -10000) until laid out. Windows
+  wider than 1000 or left of 0 only wrap and are harmless.
 - `src/test/resources/logback-test.xml` replaces `logback.xml` in tests: `com.powsybl` loggers are off (Open Load Flow
   alone made tens of megabytes of output), except `com.powsybl.powsybldesktop`, which `LogsViewControllerTest` needs.
   The application keeps `logback.xml`'s INFO level. To debug a PowSyBl library in a test, add a logger for it at

@@ -86,8 +86,7 @@ public class NotificationOverlay {
         stack.getChildren().add(view);
 
         if (!popup.isShowing()) {
-            // Shown off-screen first; the bounds listener above moves it into the corner once laid out.
-            popup.show(owner, -10_000, -10_000);
+            showPopup();
         }
         if (notification.status() != NotificationStatus.RUNNING) {
             entry.autoHide().playFromStart();
@@ -142,8 +141,24 @@ public class NotificationOverlay {
         }
     }
 
+    // Sized and placed before showing, not shown off-screen until its layout moves it: the headless platform of the tests
+    // can't draw a window off-screen (an IndexOutOfBoundsException), should a frame be drawn in between.
+    private void showPopup() {
+        stack.applyCss();
+        stack.autosize();
+        popup.show(owner, x(), y());
+    }
+
     private void reposition() {
-        popup.setX(owner.getX() + owner.getWidth() - stack.getWidth() - MARGIN);
-        popup.setY(owner.getY() + owner.getHeight() - stack.getHeight() - MARGIN);
+        popup.setX(x());
+        popup.setY(y());
+    }
+
+    private double x() {
+        return owner.getX() + owner.getWidth() - stack.getWidth() - MARGIN;
+    }
+
+    private double y() {
+        return owner.getY() + owner.getHeight() - stack.getHeight() - MARGIN;
     }
 }
