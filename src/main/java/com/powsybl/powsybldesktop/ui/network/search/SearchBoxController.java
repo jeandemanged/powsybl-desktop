@@ -11,6 +11,7 @@ import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
+import com.powsybl.powsybldesktop.core.UnexpectedErrors;
 import com.powsybl.powsybldesktop.search.NetworkSearch;
 import com.powsybl.powsybldesktop.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
@@ -94,7 +95,10 @@ public class SearchBoxController {
         searchField.textProperty().addListener((_, _, _) -> searchDebounce.playFromStart());
         // resolved here, on the FX thread, since resolving reads the network (see NetworkSearchIndex.Candidates)
         searchService.setOnSucceeded(_ -> onSearchResult(searchService.getValue().resolve()));
-        searchService.setOnFailed(_ -> onSearchResult(new NetworkSearchIndex.Result(List.of(), false)));
+        searchService.setOnFailed(_ -> {
+            UnexpectedErrors.report(searchService.getException());
+            onSearchResult(new NetworkSearchIndex.Result(List.of(), false));
+        });
     }
 
     /**

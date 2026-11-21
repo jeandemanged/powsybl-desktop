@@ -38,6 +38,7 @@ import com.powsybl.nad.svg.metadata.DiagramMetadata;
 import com.powsybl.nad.svg.metadata.NodeMetadata;
 import com.powsybl.powsybldesktop.core.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.core.UnexpectedErrors;
 import com.powsybl.powsybldesktop.diagram.NetworkAreaDiagramRenderer;
 import com.powsybl.powsybldesktop.diagram.SubstationDiagramRenderer;
 import com.powsybl.powsybldesktop.navigation.ContainerNavigationState;
@@ -205,7 +206,7 @@ public final class ContainerDiagram extends AbstractDisposableController {
                 applyHighlight(highlight);
             }
         });
-        renderService.setOnFailed(_ -> LOGGER.error(renderService.getException().getMessage(), renderService.getException()));
+        renderService.setOnFailed(_ -> UnexpectedErrors.report(renderService.getException()));
 
         var parametersModel = mainModel.getParametersModel();
         pane.setOnEngineLoaded(() -> ((JSObject) pane.getWebView().getEngine().executeScript("window")).setMember("controller", this));
@@ -481,16 +482,18 @@ public final class ContainerDiagram extends AbstractDisposableController {
 
     @SuppressWarnings("unused") // used by JS
     public void onFeederTopBottomClick(String id) {
-        GraphMetadata.NodeMetadata node = sldMetadata == null ? null : sldMetadata.getNodeMetadata(id);
-        if (node == null) {
-            return;
-        }
-        Identifiable<?> equipment = container.getNetwork().getIdentifiable(node.getEquipmentId());
-        if (node.getNextVId() == null && EquipmentDetails.supports(equipment)) {
-            EquipmentDetails.open(sceneModel, equipment);
-        } else {
-            showEquipment(node, equipment);
-        }
+        UnexpectedErrors.guard(() -> {
+            GraphMetadata.NodeMetadata node = sldMetadata == null ? null : sldMetadata.getNodeMetadata(id);
+            if (node == null) {
+                return;
+            }
+            Identifiable<?> equipment = container.getNetwork().getIdentifiable(node.getEquipmentId());
+            if (node.getNextVId() == null && EquipmentDetails.supports(equipment)) {
+                EquipmentDetails.open(sceneModel, equipment);
+            } else {
+                showEquipment(node, equipment);
+            }
+        });
     }
 
     /**
@@ -500,11 +503,13 @@ public final class ContainerDiagram extends AbstractDisposableController {
      */
     @SuppressWarnings("unused") // used by JS
     public boolean isClickableEquipment(String id) {
-        if (kind == Kind.AREA) {
-            return areaClickAction(id) != null;
-        }
-        Identifiable<?> equipment = equipment(id);
-        return equipment instanceof BusbarSection || equipment instanceof TwoWindingsTransformer || equipment instanceof ThreeWindingsTransformer;
+        return UnexpectedErrors.guard(() -> {
+            if (kind == Kind.AREA) {
+                return areaClickAction(id) != null;
+            }
+            Identifiable<?> equipment = equipment(id);
+            return equipment instanceof BusbarSection || equipment instanceof TwoWindingsTransformer || equipment instanceof ThreeWindingsTransformer;
+        }, false);
     }
 
     /**
@@ -513,14 +518,16 @@ public final class ContainerDiagram extends AbstractDisposableController {
      */
     @SuppressWarnings("unused") // used by JS
     public void onEquipmentClick(String id) {
-        if (kind == Kind.AREA) {
-            Runnable action = areaClickAction(id);
-            if (action != null) {
-                action.run();
+        UnexpectedErrors.guard(() -> {
+            if (kind == Kind.AREA) {
+                Runnable action = areaClickAction(id);
+                if (action != null) {
+                    action.run();
+                }
+                return;
             }
-            return;
-        }
-        EquipmentDetails.open(sceneModel, equipment(id));
+            EquipmentDetails.open(sceneModel, equipment(id));
+        });
     }
 
     // what a click on an area diagram's element does, null if nothing: centering on a voltage level other than the
@@ -552,6 +559,11 @@ public final class ContainerDiagram extends AbstractDisposableController {
      */
     @SuppressWarnings("unused") // used by JS
     public boolean onEquipmentContextMenu(String id) {
+        // true when failing, for JS not to try the clicked element's parents as well
+        return UnexpectedErrors.guard(() -> showEquipmentContextMenu(id), true);
+    }
+
+    private boolean showEquipmentContextMenu(String id) {
         if (kind == Kind.AREA) {
             return showContextMenu(areaContextMenuItems(id));
         }
@@ -672,14 +684,16 @@ public final class ContainerDiagram extends AbstractDisposableController {
      */
     @SuppressWarnings("unused") // used by JS
     public void onBackgroundContextMenu() {
-        if (container == null) {
-            return;
-        }
-        List<MenuItem> items = EditMenus.items(sceneModel, () -> pane.getWebView().getScene().getWindow(), container.getParentNetwork(), container);
-        if (!items.isEmpty()) {
-            contextMenu.getItems().setAll(items);
-            contextMenu.show(pane.getWebView(), contextMenuX, contextMenuY);
-        }
+        UnexpectedErrors.guard(() -> {
+            if (container == null) {
+                return;
+            }
+            List<MenuItem> items = EditMenus.items(sceneModel, () -> pane.getWebView().getScene().getWindow(), container.getParentNetwork(), container);
+            if (!items.isEmpty()) {
+                contextMenu.getItems().setAll(items);
+                contextMenu.show(pane.getWebView(), contextMenuX, contextMenuY);
+            }
+        });
     }
 
     // the WebView, its own context menu disabled, doesn't dispatch contextmenu events to the page: the script finds the
@@ -744,18 +758,20 @@ public final class ContainerDiagram extends AbstractDisposableController {
 
     @SuppressWarnings("unused") // used by JS
     public void onSwitchClick(String id) {
-        Objects.requireNonNull(id);
-        // not while a background job uses the network (see MainModel.markBusy), e.g. this diagram's re-render
-        // after a previous click
-        if (mainModel.isBusy(container.getNetwork())) {
-            mainModel.getNotificationsModel().add(Notification.createError(Instant.now(), "main.networkBusy"));
-            return;
-        }
-        GraphMetadata.NodeMetadata nodeMetadata = Objects.requireNonNull(sldMetadata.getNodeMetadata(id));
-        Switch aSwitch = Objects.requireNonNull(container.getNetwork().getSwitch(nodeMetadata.getEquipmentId()));
-        aSwitch.setOpen(!aSwitch.isOpen());
-        // re-renders through the updateProperty listener
-        mainModel.setUpdate(aSwitch.getVoltageLevel());
+        UnexpectedErrors.guard(() -> {
+            Objects.requireNonNull(id);
+            // not while a background job uses the network (see MainModel.markBusy), e.g. this diagram's re-render
+            // after a previous click
+            if (mainModel.isBusy(container.getNetwork())) {
+                mainModel.getNotificationsModel().add(Notification.createError(Instant.now(), "main.networkBusy"));
+                return;
+            }
+            GraphMetadata.NodeMetadata nodeMetadata = Objects.requireNonNull(sldMetadata.getNodeMetadata(id));
+            Switch aSwitch = Objects.requireNonNull(container.getNetwork().getSwitch(nodeMetadata.getEquipmentId()));
+            aSwitch.setOpen(!aSwitch.isOpen());
+            // re-renders through the updateProperty listener
+            mainModel.setUpdate(aSwitch.getVoltageLevel());
+        });
     }
 
     @Override

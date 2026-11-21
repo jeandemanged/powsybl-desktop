@@ -114,6 +114,9 @@ analyses, exports... A notification pops up at the bottom right of the main wind
 - links to follow up, such as **View results** and **View report**, or the logs when something failed;
 - while the operation runs, a **Cancel** button.
 
+Any other error, raised for instance by PowSyBl while editing the network or clicking in a diagram, shows as a failed
+**Unexpected error** notification giving the error, with a **View logs** link to its details.
+
 The popup hides by itself a few seconds after the operation ends. The speech bubble button at the right end of the main
 toolbar opens the notifications panel, which keeps all of them; **Clear all** empties it.
 

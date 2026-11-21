@@ -49,7 +49,8 @@ UI resources
 15. Editors go through `CellFields`/`TableColumnSupport` (tables) and `DetailForm`/`DetailPart` (detail views), never
     ad-hoc cell factories. [editing](editing.md#editing-cells)
 16. Long-running and failed operations are reported through `NotificationsModel` (RUNNING → `replace` with outcome),
-    failures also logged with SLF4J. [architecture](architecture.md#notifications)
+    failures also logged with SLF4J. Exceptions nothing handles reach `UnexpectedErrors` (uncaught exception handler,
+    `guard` around JS callbacks, `report` in otherwise silent `setOnFailed`s). [architecture](architecture.md#notifications)
 
 Build
 17. Checkstyle must pass — it fails the build. [build-and-testing](build-and-testing.md#checkstyle-fails-the-build)

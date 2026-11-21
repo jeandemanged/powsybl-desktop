@@ -27,6 +27,7 @@ import com.powsybl.powsybldesktop.core.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkChanges;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
+import com.powsybl.powsybldesktop.core.UnexpectedErrors;
 import com.powsybl.powsybldesktop.diagram.BaseVoltages;
 import com.powsybl.powsybldesktop.map.MapNetworkData;
 import com.powsybl.powsybldesktop.map.MapTileRenderer;
@@ -388,7 +389,7 @@ public class MapController extends AbstractDisposableController implements Scene
             }
         });
         networkDataService.setOnFailed(_ -> {
-            LOGGER.error(networkDataService.getException().getMessage(), networkDataService.getException());
+            UnexpectedErrors.report(networkDataService.getException());
             hideLoadingPane();
         });
         loadingPaneDelay.setOnFinished(_ -> loadingPane.setVisible(true));
@@ -596,14 +597,16 @@ public class MapController extends AbstractDisposableController implements Scene
      */
     @SuppressWarnings("unused") // called from map.js
     public void onTileLoad(boolean success) {
-        basemapUnreachableLabel.setVisible(!success && basemapComboBox.getValue() == Basemap.OPEN_STREET_MAP);
+        UnexpectedErrors.guard(() -> {
+            basemapUnreachableLabel.setVisible(!success && basemapComboBox.getValue() == Basemap.OPEN_STREET_MAP);
+        });
     }
 
     /**
      * Called from map.js for each network tile Leaflet needs: draws it on a tile thread, then hands it back to
      * map.js' {@code onTileRendered}, as a PNG data URL, or an empty string for a fully transparent tile.
      */
-    @SuppressWarnings("unused") // called from map.js
+    @SuppressWarnings({"unused", "checkstyle:IllegalCatch"}) // called from map.js
     public void requestTile(int id, int zoom, int x, int y, double ratio) {
         // the WebView outlives dispose() and Leaflet keeps requesting tiles from it
         if (tileExecutor.isShutdown()) {
@@ -618,6 +621,9 @@ public class MapController extends AbstractDisposableController implements Scene
             String url = "";
             try {
                 url = renderTile(data, showCountries, hidden, violations, flows, zoom, x, y, ratio);
+            } catch (RuntimeException e) {
+                // the executor would keep it in the tile's future, which nobody reads
+                UnexpectedErrors.report(e);
             } finally {
                 // even if drawing failed, or Leaflet would wait for the tile forever
                 deliverTile(id, url);
@@ -650,10 +656,12 @@ public class MapController extends AbstractDisposableController implements Scene
      */
     @SuppressWarnings("unused") // called from map.js
     public void cancelTile(int id) {
-        Future<?> tile = pendingTiles.remove(id);
-        if (tile != null) {
-            tile.cancel(false);
-        }
+        UnexpectedErrors.guard(() -> {
+            Future<?> tile = pendingTiles.remove(id);
+            if (tile != null) {
+                tile.cancel(false);
+            }
+        });
     }
 
     /**
@@ -680,14 +688,16 @@ public class MapController extends AbstractDisposableController implements Scene
      */
     @SuppressWarnings("unused") // called from map.js
     public String hitTest(double latitude, double longitude, double zoom) {
-        MapNetworkData.Hit hit = hitAt(latitude, longitude, zoom);
-        try {
-            return hit == null ? null : objectMapper.writeValueAsString(new Hover(hit.key(), hit.text(), hit.lat(), hit.lng(),
-                    violationTexts(networkData.violationMarker(hit.id()))));
-        } catch (JsonProcessingException e) {
-            LOGGER.error(e.getMessage(), e);
-            return null;
-        }
+        return UnexpectedErrors.guard(() -> {
+            MapNetworkData.Hit hit = hitAt(latitude, longitude, zoom);
+            try {
+                return hit == null ? null : objectMapper.writeValueAsString(new Hover(hit.key(), hit.text(), hit.lat(), hit.lng(),
+                        violationTexts(networkData.violationMarker(hit.id()))));
+            } catch (JsonProcessingException e) {
+                LOGGER.error(e.getMessage(), e);
+                return null;
+            }
+        }, null);
     }
 
     private MapNetworkData.Hit hitAt(double latitude, double longitude, double zoom) {
@@ -757,11 +767,13 @@ public class MapController extends AbstractDisposableController implements Scene
 
     @SuppressWarnings("unused") // called from map.js
     public void openLink(String url) {
-        try {
-            Desktop.getDesktop().browse(new URI(url));
-        } catch (IOException | URISyntaxException e) {
-            LOGGER.warn("Could not open link: {}", url, e);
-        }
+        UnexpectedErrors.guard(() -> {
+            try {
+                Desktop.getDesktop().browse(new URI(url));
+            } catch (IOException | URISyntaxException e) {
+                LOGGER.warn("Could not open link: {}", url, e);
+            }
+        });
     }
 
     /**
@@ -769,30 +781,38 @@ public class MapController extends AbstractDisposableController implements Scene
      */
     @SuppressWarnings("unused") // called from map.js
     public void onViewChanged(double latitude, double longitude, double zoom) {
-        if (displayedNetwork != null) {
-            mainModel.getStudy(displayedNetwork).setMapView(displayedNetwork, new NetworkStudy.MapView(latitude, longitude, zoom));
-        }
+        UnexpectedErrors.guard(() -> {
+            if (displayedNetwork != null) {
+                mainModel.getStudy(displayedNetwork).setMapView(displayedNetwork, new NetworkStudy.MapView(latitude, longitude, zoom));
+            }
+        });
     }
 
     @SuppressWarnings("unused") // called from map.js
     public void onMapClick(double latitude, double longitude, double zoom) {
-        MapNetworkData.Hit hit = hitAt(latitude, longitude, zoom);
-        Network network = network();
-        if (hit == null || network == null) {
-            return;
-        }
-        Identifiable<?> identifiable = network.getIdentifiable(hit.id());
-        if (identifiable instanceof Substation substation) {
-            sceneModel.getDetailWindows().ifPresent(windows ->
-                    ContainerDiagram.open(windows, true, ContainerDiagram.Kind.SINGLE_LINE, substation));
-        } else {
-            EquipmentDetails.open(sceneModel, identifiable);
-        }
+        UnexpectedErrors.guard(() -> {
+            MapNetworkData.Hit hit = hitAt(latitude, longitude, zoom);
+            Network network = network();
+            if (hit == null || network == null) {
+                return;
+            }
+            Identifiable<?> identifiable = network.getIdentifiable(hit.id());
+            if (identifiable instanceof Substation substation) {
+                sceneModel.getDetailWindows().ifPresent(windows ->
+                        ContainerDiagram.open(windows, true, ContainerDiagram.Kind.SINGLE_LINE, substation));
+            } else {
+                EquipmentDetails.open(sceneModel, identifiable);
+            }
+        });
     }
 
     // the clicked substation's and its voltage levels' diagrams, then creation in it, or of a substation at the clicked place
     @SuppressWarnings("unused") // called from map.js
     public void onMapContextMenu(double latitude, double longitude, double zoom) {
+        UnexpectedErrors.guard(() -> showMapContextMenu(latitude, longitude, zoom));
+    }
+
+    private void showMapContextMenu(double latitude, double longitude, double zoom) {
         Network network = network();
         if (network == null) {
             return;
@@ -907,20 +927,22 @@ public class MapController extends AbstractDisposableController implements Scene
      */
     @SuppressWarnings("unused") // called from map.js
     public void onPlace(double latitude, double longitude) {
-        // not from within the JavaScript call: the edit refreshes the map
-        Platform.runLater(() -> {
-            MapNetworkData.UnplacedSubstation selected = unplacedListView.getSelectionModel().getSelectedItem();
-            Network network = network();
-            Substation substation = selected == null || network == null ? null : network.getSubstation(selected.id());
-            if (!placing || substation == null) {
-                return;
-            }
-            int index = unplacedListView.getSelectionModel().getSelectedIndex();
-            if (NetworkChanges.apply(mainModel, network, _ -> PositionEdits.setSubstationPosition(substation, new Coordinate(latitude, longitude)))) {
-                // until the refreshed list shows the next one: a click meanwhile would move this one instead
-                unplacedListView.getSelectionModel().clearSelection();
-                nextPlacement = index;
-            }
+        UnexpectedErrors.guard(() -> {
+            // not from within the JavaScript call: the edit refreshes the map
+            Platform.runLater(() -> {
+                MapNetworkData.UnplacedSubstation selected = unplacedListView.getSelectionModel().getSelectedItem();
+                Network network = network();
+                Substation substation = selected == null || network == null ? null : network.getSubstation(selected.id());
+                if (!placing || substation == null) {
+                    return;
+                }
+                int index = unplacedListView.getSelectionModel().getSelectedIndex();
+                if (NetworkChanges.apply(mainModel, network, _ -> PositionEdits.setSubstationPosition(substation, new Coordinate(latitude, longitude)))) {
+                    // until the refreshed list shows the next one: a click meanwhile would move this one instead
+                    unplacedListView.getSelectionModel().clearSelection();
+                    nextPlacement = index;
+                }
+            });
         });
     }
 
@@ -1042,8 +1064,10 @@ public class MapController extends AbstractDisposableController implements Scene
      */
     @SuppressWarnings("unused") // called from map.js
     public void onEditChanged(int points) {
-        editHintLabel.setText(Messages.get(edited instanceof Substation ? "map.edit.moveHint"
-                : points < 2 ? "map.edit.drawHint" : "map.edit.routeHint"));
+        UnexpectedErrors.guard(() -> {
+            editHintLabel.setText(Messages.get(edited instanceof Substation ? "map.edit.moveHint"
+                    : points < 2 ? "map.edit.drawHint" : "map.edit.routeHint"));
+        });
     }
 
     @FXML
@@ -1102,21 +1126,23 @@ public class MapController extends AbstractDisposableController implements Scene
      */
     @SuppressWarnings("unused") // called from map.js
     public void onEditContextMenu(int point) {
-        List<MenuItem> items = new ArrayList<>();
-        if (point >= 0 && !(edited instanceof Substation)) {
-            items.add(menuItem("map.edit.deletePoint", () -> jsWindow.call("deleteEditPoint", point)));
-        }
-        if (!(edited instanceof Substation)) {
-            MenuItem straight = menuItem("edit.menu.straightRoute", this::straightenEdit);
-            straight.setDisable(edited == null || PositionEdits.straightRoute(edited).isEmpty());
-            items.add(straight);
-        }
-        items.add(new SeparatorMenuItem());
-        items.add(menuItem("detail.action.apply", this::applyEdit));
-        items.add(menuItem("desktop.common.action.cancel", this::cancelEdit));
-        contextMenu.getItems().setAll(items);
-        // not from within the JavaScript call
-        Platform.runLater(() -> contextMenu.show(webView, contextMenuX, contextMenuY));
+        UnexpectedErrors.guard(() -> {
+            List<MenuItem> items = new ArrayList<>();
+            if (point >= 0 && !(edited instanceof Substation)) {
+                items.add(menuItem("map.edit.deletePoint", () -> jsWindow.call("deleteEditPoint", point)));
+            }
+            if (!(edited instanceof Substation)) {
+                MenuItem straight = menuItem("edit.menu.straightRoute", this::straightenEdit);
+                straight.setDisable(edited == null || PositionEdits.straightRoute(edited).isEmpty());
+                items.add(straight);
+            }
+            items.add(new SeparatorMenuItem());
+            items.add(menuItem("detail.action.apply", this::applyEdit));
+            items.add(menuItem("desktop.common.action.cancel", this::cancelEdit));
+            contextMenu.getItems().setAll(items);
+            // not from within the JavaScript call
+            Platform.runLater(() -> contextMenu.show(webView, contextMenuX, contextMenuY));
+        });
     }
 
     // Enter applies an edit, Escape cancels it, or stops placing substations

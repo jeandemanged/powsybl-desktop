@@ -16,6 +16,8 @@ when one looks wrong, snapshot it rather than reason from the source (see
     `onEquipmentClick`, `onEquipmentContextMenu`, `onBackgroundContextMenu`;
   - `ui/map/map.js` → `…/ui/map/MapController.java`: `requestTile`, `cancelTile`, `onTileLoad`, `hitTest`,
     `onMapClick`, `onMapContextMenu`, `onViewChanged`, `onPlace`, `onEditChanged`, `onEditContextMenu`, `openLink`.
+- A callback's exception would only become a script error: callbacks wrap their body in `UnexpectedErrors.guard` (see
+  [architecture](architecture.md#notifications)); a new one must too.
 - Java → JS is `webEngine.executeScript(...)` calling the scripts' global functions.
 
 ## Diagrams (SLD / NAD)

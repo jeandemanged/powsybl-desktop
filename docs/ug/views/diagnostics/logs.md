@@ -14,12 +14,14 @@ A table with one row per message:
 - **Message**: the message text.
 
 WARN rows and ERROR rows are highlighted in their own colors. A message spanning several lines (such as a table of
-load flow parameters) keeps one table line per message line. When a message is too long for its
-column, hover it to read it in full in a tooltip.
+load flow parameters, or an error followed by its stack trace) keeps one table line per message line. When a message
+is too long for its column, hover it to read it in full in a tooltip.
 
 ![The logs of a security analysis](../../_generated/images/logs.png)
 
-New messages appear as they are logged, and the table scrolls to the newest one. Only the latest 20,000 messages are
+New messages appear as they are logged. While the newest messages are in view (at the top or at the bottom, depending
+on the sort order), the table scrolls to each new one; once you scroll away from them, it stays on the messages you are
+reading until you scroll back. Only the latest 20,000 messages are
 kept. The logs are not saved between sessions, unless saved in a [study](../../general/index.md#studies).
 
 For the detailed outcome of an import, export, load flow, security analysis or sensitivity

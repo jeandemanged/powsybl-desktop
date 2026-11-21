@@ -19,6 +19,7 @@ import com.powsybl.powsybldesktop.core.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkStructureChange;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
+import com.powsybl.powsybldesktop.core.UnexpectedErrors;
 import com.powsybl.powsybldesktop.limitscaling.LimitScalings;
 import com.powsybl.powsybldesktop.limitscaling.OlfLimitScalingSupport;
 import com.powsybl.powsybldesktop.loadflow.LoadFlowConvergence;
@@ -801,10 +802,7 @@ public class MainController extends AbstractDisposableController {
                 mainModel.setUpdate();
             }
         });
-        violationsService.setOnFailed(event -> {
-            Throwable exception = event.getSource().getException();
-            LOGGER.error(exception.toString(), exception);
-        });
+        violationsService.setOnFailed(event -> UnexpectedErrors.report(event.getSource().getException()));
         mainModel.getStudy(network).trackComputation(violationsService);
         violationsService.start();
     }
@@ -901,6 +899,8 @@ public class MainController extends AbstractDisposableController {
 
     @FXML
     private void initialize() {
+        // a reloaded shell replaces the previous one's, whose navigation is gone
+        UnexpectedErrors.install(mainModel, () -> mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS)));
         userGuidePdfItem.setDisable(userGuide.pdf().isEmpty());
         userGuideHtmlItem.setDisable(userGuide.html().isEmpty());
         mainModel.getNavigationHistory().setGuard(event -> {

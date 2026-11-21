@@ -214,6 +214,22 @@ User-facing outcome of any background or failing operation is a `notification/No
 
 Canonical example: `MainController.onLoadFlow` and `NetworksController.runImport`.
 
+Exceptions nothing handles are reported by `…/core/UnexpectedErrors.java` (logged with their stack trace and notified
+as `main.unexpectedError` with a "View logs" action; the same error repeated back to back is notified once):
+
+- `UnexpectedErrors.install` (in `MainController.initialize`, the shell owning navigation, which the "View logs"
+  action needs) sets the JVM's default uncaught exception handler, which JavaFX calls for exceptions escaping FX event
+  handlers, and which other threads reach too. It still passes exceptions on to the handler it replaced: TestFX's in
+  UI tests, failing them as before. Don't catch exceptions just to swallow them: a PowSyBl call throwing in a menu
+  action or a cell commit shows up this way. `report` and `guard` hand theirs to that same handler.
+- Methods called from a WebView's script (`sld.js`, `nad.js`, `map.js`) wrap their body in `UnexpectedErrors.guard`
+  (all but `MapController.requestTile`, which only hands the work to the tile pool):
+  WebKit turns their exceptions into script errors the handler never sees (and `window.onerror` only gets
+  "Script error."). The value-returning overload takes the fallback returned when the body throws.
+- Background `Service`s without a dedicated failure notification (diagram rendering, map data, violations, the search
+  box query) call `UnexpectedErrors.report` in `setOnFailed`; so does a map tile thread, an executor keeping a task's
+  exception in a `Future` nobody reads.
+
 ## Reports and logs
 
 - PowSyBl `ReportNode`s are created by the toolkit-free runs (`LoadFlowRun`, `SecurityAnalysisRun`,
@@ -227,5 +243,6 @@ Canonical example: `MainController.onLoadFlow` and `NetworksController.runImport
   `olf.*`): ours is `desktop.<camelCaseName>`.
 - Logging uses SLF4J (`LoggerFactory.getLogger(X.class)`), backed by Logback (`src/main/resources/logback.xml`).
   `LogsModel` captures root-logger events as `LogEntry` snapshots (sequence number, timestamp, level, formatted
-  message — never the event itself, whose arguments/throwable would retain e.g. closed networks) in a concurrent queue, flushed once per second by a `Timeline` into the
+  message, followed by the stack trace as text when logged with an exception — never the event itself, whose
+  arguments/throwable would retain e.g. closed networks) in a concurrent queue, flushed once per second by a `Timeline` into the
   observable list (capped at 20,000) shown by the Logs view.

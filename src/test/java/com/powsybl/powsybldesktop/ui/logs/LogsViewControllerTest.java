@@ -20,14 +20,19 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.skin.VirtualFlow;
 import javafx.scene.input.Clipboard;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testfx.util.WaitForAsyncUtils;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -54,9 +59,11 @@ class LogsViewControllerTest extends AbstractHeadlessApplicationTest {
 
     private LogsViewController controller;
     private ParametersModel parametersModel;
+    private Stage stage;
 
     @Override
     public void start(Stage stage) throws IOException {
+        this.stage = stage;
         FXMLLoader loader = new FXMLLoader(getClass().getResource(
                 "/com/powsybl/powsybldesktop/ui/logs/logs-view.fxml"), Messages.bundle());
         Parent root = loader.load();
@@ -77,6 +84,93 @@ class LogsViewControllerTest extends AbstractHeadlessApplicationTest {
         LOGGER.warn("row test message");
         LogEntry event = waitForNextLogRow(sizeBefore);
         assertEquals("row test message", event.message());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void opensOnTheNewestLogs(boolean newestOnTop) throws Exception {
+        VirtualFlow<?> flow = reopenWithTallRows(newestOnTop);
+        assertTrue(showsNewest(flow, newestOnTop), () -> visibleRange(flow));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void followsNewLogsWhileShowingTheNewest(boolean newestOnTop) throws Exception {
+        VirtualFlow<?> flow = reopenWithTallRows(newestOnTop);
+        LOGGER.info("followed");
+        waitForRow("followed");
+        assertEquals("followed", newestVisible(flow, newestOnTop).message());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void staysOnTheRowsShownOnceScrolledAway(boolean newestOnTop) throws Exception {
+        VirtualFlow<?> flow = reopenWithTallRows(newestOnTop);
+        interact(() -> controller.tableView.scrollTo(150));
+        WaitForAsyncUtils.waitForFxEvents();
+        Object onTop = flow.getFirstVisibleCell().getItem();
+
+        LOGGER.info("not followed");
+        waitForRow("not followed");
+        assertEquals(onTop, flow.getFirstVisibleCell().getItem());
+    }
+
+    // as opened from the toolbar on a session with many logs, some of them tall (stack traces)
+    private VirtualFlow<?> reopenWithTallRows(boolean newestOnTop) throws Exception {
+        List<LogEntry> entries = new ArrayList<>();
+        for (int i = 0; i < 300; i++) {
+            String message = i % 10 == 0 ? "error " + i + "\n\tat frame".repeat(40) : "info " + i;
+            // numbered below this session's logs, as a study's
+            entries.add(new LogEntry(i - 300L, i, i % 10 == 0 ? Level.ERROR : Level.INFO, message));
+        }
+        interact(() -> logsModel.restoreLogs(entries));
+        VirtualFlow<?> flow = WaitForAsyncUtils.asyncFx(() -> {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(
+                    "/com/powsybl/powsybldesktop/ui/logs/logs-view.fxml"), Messages.bundle());
+            Parent root = loader.load();
+            controller = loader.getController();
+            parametersModel = new ParametersModel();
+            parametersModel.getGuiParameters().setLogsNewestOnTop(newestOnTop);
+            controller.setModels(logsModel, parametersModel);
+            stage.setScene(new Scene(root));
+            return (VirtualFlow<?>) controller.tableView.lookup(".virtual-flow");
+        }).get();
+        WaitForAsyncUtils.waitForFxEvents();
+        return flow;
+    }
+
+    private void waitForRow(String message) throws TimeoutException {
+        WaitForAsyncUtils.waitFor(5, TimeUnit.SECONDS, () -> isShown(message));
+        WaitForAsyncUtils.waitForFxEvents();
+    }
+
+    private boolean showsNewest(VirtualFlow<?> flow, boolean newestOnTop) {
+        return newestOnTop ? flow.getFirstVisibleCell().getIndex() == 0
+                : flow.getLastVisibleCell().getIndex() == controller.tableView.getItems().size() - 1;
+    }
+
+    private static LogEntry newestVisible(VirtualFlow<?> flow, boolean newestOnTop) {
+        return (LogEntry) (newestOnTop ? flow.getFirstVisibleCell() : flow.getLastVisibleCell()).getItem();
+    }
+
+    private String visibleRange(VirtualFlow<?> flow) {
+        return "rows " + flow.getFirstVisibleCell().getIndex() + " to " + flow.getLastVisibleCell().getIndex()
+                + " of " + controller.tableView.getItems().size();
+    }
+
+    @Test
+    void loggedExceptionKeepsItsStackTrace() throws TimeoutException {
+        int sizeBefore = controller.tableView.getItems().size();
+        IllegalStateException exception = new IllegalStateException("broken");
+        LOGGER.error(exception.toString(), exception);
+        LogEntry event = waitForNextLogRow(sizeBefore);
+        assertTrue(event.message().startsWith("java.lang.IllegalStateException: broken" + System.lineSeparator() + "\tat "), event.message());
+        assertTrue(event.message().contains("loggedExceptionKeepsItsStackTrace"), event.message());
+
+        sizeBefore = controller.tableView.getItems().size();
+        LOGGER.error("context", exception);
+        event = waitForNextLogRow(sizeBefore);
+        assertTrue(event.message().startsWith("context" + System.lineSeparator() + "java.lang.IllegalStateException: broken"), event.message());
     }
 
     @Test

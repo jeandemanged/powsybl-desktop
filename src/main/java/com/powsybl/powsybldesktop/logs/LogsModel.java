@@ -9,6 +9,8 @@ package com.powsybl.powsybldesktop.logs;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.IThrowableProxy;
+import ch.qos.logback.classic.spi.ThrowableProxyUtil;
 import ch.qos.logback.core.AppenderBase;
 import ch.qos.logback.core.spi.BasicSequenceNumberGenerator;
 import javafx.animation.Animation;
@@ -86,7 +88,19 @@ public class LogsModel {
         @Override
         protected void append(ILoggingEvent eventObject) {
             pendingLogs.add(new LogEntry(eventObject.getSequenceNumber(), eventObject.getTimeStamp(),
-                    eventObject.getLevel(), eventObject.getFormattedMessage()));
+                    eventObject.getLevel(), message(eventObject)));
+        }
+
+        // with the stack trace as text, the only way to see it in the app
+        private static String message(ILoggingEvent event) {
+            String message = event.getFormattedMessage();
+            IThrowableProxy throwable = event.getThrowableProxy();
+            if (throwable == null) {
+                return message;
+            }
+            String stackTrace = ThrowableProxyUtil.asString(throwable);
+            // usually logged with the exception's own description as message, which starts the stack trace
+            return stackTrace.startsWith(message) ? stackTrace : message + System.lineSeparator() + stackTrace;
         }
     }
 

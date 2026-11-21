@@ -17,6 +17,8 @@ import com.powsybl.powsybldesktop.ui.controls.TableAutoFitLimiter;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.fxml.FXML;
@@ -29,6 +31,7 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.Tooltip;
+import javafx.scene.control.skin.VirtualFlow;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.text.Text;
@@ -73,6 +76,9 @@ public class LogsViewController extends AbstractDisposableController {
 
     private LogsModel logsModel;
     private ParametersModel parametersModel;
+    private boolean laidOut;
+    // whether new logs scroll the table to them: only while it shows the newest ones, not to pull the user away
+    private boolean followNewest = true;
 
     private static final Comparator<LogEntry> NEWEST_FIRST =
             Comparator.comparingLong(LogEntry::sequenceNumber).reversed();
@@ -100,7 +106,6 @@ public class LogsViewController extends AbstractDisposableController {
         this.parametersModel = parametersModel;
         FilteredList<LogEntry> filteredLogs = new FilteredList<>(logsModel.getLogs(), this::isLevelShown);
         SortedList<LogEntry> sortedLogs = new SortedList<>(filteredLogs, NEWEST_FIRST);
-        tableView.setItems(sortedLogs);
         TableAutoFitLimiter.install(tableView);
 
         keepOneSelected(levelToggleGroup);
@@ -131,8 +136,33 @@ public class LogsViewController extends AbstractDisposableController {
         // edited from this view or the parameters view, or replaced by a parameters reset or import
         listenerManager.listen(parametersModel.guiParametersRevisionProperty(), (_, _, _) -> applyGuiParameters());
 
-        listenerManager.listen(logsModel.getLogs(), _ -> Platform.runLater(this::scrollToNewest));
-        scrollToNewest();
+        VirtualFlow<?> flow = (VirtualFlow<?>) tableView.lookup(".virtual-flow");
+        flow.positionProperty().addListener((_, _, position) -> followNewest = laidOut
+                && (newestOnTopToggleButton.isSelected() ? position.doubleValue() <= 0 : position.doubleValue() >= 1));
+        listenerManager.listen(logsModel.getLogs(), _ -> {
+            if (followNewest) {
+                Platform.runLater(this::scrollToNewest);
+            } else if (flow.getFirstVisibleCell() != null) {
+                // not laid out again yet: still the row on top before the change, which rows added above would push down
+                Object onTop = flow.getFirstVisibleCell().getItem();
+                Platform.runLater(() -> tableView.scrollTo((LogEntry) onTop));
+            }
+        });
+        // Items given before the table is laid out in a scene get their first rows measured unstyled, 0 high, which the
+        // table caches and keeps: never shown, e.g. the newest ones hidden above the top row.
+        tableView.needsLayoutProperty().addListener(new ChangeListener<>() {
+            @Override
+            public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean needsLayout) {
+                if (!needsLayout) {
+                    observable.removeListener(this);
+                    Platform.runLater(() -> {
+                        tableView.setItems(sortedLogs);
+                        laidOut = true;
+                        scrollToNewest();
+                    });
+                }
+            }
+        });
         timeColumn.setCellValueFactory(cellData -> {
             Instant instant = Instant.ofEpochMilli(cellData.getValue().timeStamp());
 
@@ -189,7 +219,8 @@ public class LogsViewController extends AbstractDisposableController {
     }
 
     private void scrollToNewest() {
-        if (tableView.getItems().isEmpty()) {
+        followNewest = true;
+        if (!laidOut || tableView.getItems().isEmpty()) {
             return;
         }
         tableView.scrollTo(newestOnTopToggleButton.isSelected() ? 0 : tableView.getItems().size() - 1);
