@@ -25,6 +25,7 @@ import com.powsybl.powsybldesktop.ui.network.NetworksController.ImportChoice;
 import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.utils.Messages;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -39,6 +40,7 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.input.KeyCode;
@@ -108,6 +110,12 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
     @SuppressWarnings("unchecked")
     private TableView<Pair<String, String>> networkInfoTable() {
         return (TableView<Pair<String, String>>) lookup("#networkInfoTable").queryAs(TableView.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    private TreeCell<Network> treeCell(Network network) {
+        return lookup(".tree-cell").<TreeCell<Network>>match(cell -> ((TreeCell<Network>) cell).getItem() == network)
+                .queryAs(TreeCell.class);
     }
 
     private Label idCaptionLabel() {
@@ -513,5 +521,24 @@ class NetworksControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals(4, mainModel.getNetworks().size(), outcome.status() + " " + outcome.message());
         assertEquals(NotificationStatus.ERROR, outcome.status());
         assertTrue(outcome.message().startsWith("2 of 3 networks imported, 1 failed"), outcome.message());
+    }
+
+    @Test
+    void mergingNetworksWithSharedIdsShowsErrorAndKeepsNetworksIntact() {
+        int ieee14Buses = ieee14.getBusBreakerView().getBusStream().toList().size();
+        selectNetwork(ieee14);
+        interact(() -> treeView().getSelectionModel().select(treeCell(ieee118).getTreeItem()));
+
+        Button mergeButton = lookup("#mergeButton").queryButton();
+        assertFalse(mergeButton.isDisabled());
+        // fired asynchronously: clickOn didn't reach the toolbar button headlessly, and the alert's showAndWait would block interact()
+        Platform.runLater(mergeButton::fire);
+        WaitForAsyncUtils.waitForFxEvents();
+
+        DialogPane dialogPane = lookup(".dialog-pane").queryAs(DialogPane.class);
+        assertTrue(dialogPane.getHeaderText().startsWith("Cannot merge"), dialogPane.getHeaderText());
+        clickOn(dialogPane.lookupButton(ButtonType.OK));
+        assertEquals(List.of(ieee14, ieee118), mainModel.getNetworks());
+        assertEquals(ieee14Buses, ieee14.getBusBreakerView().getBusStream().toList().size());
     }
 }

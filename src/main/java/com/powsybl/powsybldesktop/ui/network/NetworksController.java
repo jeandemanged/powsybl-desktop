@@ -50,6 +50,7 @@ import com.powsybl.powsybldesktop.navigation.ReportNavigationState;
 import com.powsybl.powsybldesktop.network.MapTestNetworkFactory;
 import com.powsybl.powsybldesktop.network.NetworkAndReport;
 import com.powsybl.powsybldesktop.network.NetworkIO;
+import com.powsybl.powsybldesktop.network.NetworkMerges;
 import com.powsybl.powsybldesktop.network.NetworkTieLines;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
@@ -967,7 +968,7 @@ public class NetworksController extends AbstractDisposableController {
     }
 
     private void showTooManyDropped(long importable) {
-        showDropError(Messages.get("networks.drop.tooMany.title"),
+        showError(Messages.get("networks.drop.tooMany.title"),
                 Messages.get("networks.drop.tooMany.header", MAX_DROPPED_IMPORTS),
                 Messages.get("networks.drop.tooMany.content", importable, MAX_DROPPED_IMPORTS));
     }
@@ -975,18 +976,18 @@ public class NetworksController extends AbstractDisposableController {
     private void showUnsupportedDrop(List<Path> paths, Map<String, List<Importer>> formats) {
         String importers = String.join(", ", formats.keySet());
         if (paths.size() == 1) {
-            showDropError(Messages.get("networks.drop.unsupported.title"),
+            showError(Messages.get("networks.drop.unsupported.title"),
                     Messages.get("networks.drop.unsupported.header", paths.getFirst().getFileName()),
                     Messages.get("networks.drop.unsupported.content", importers));
         } else {
-            showDropError(Messages.get("networks.drop.unsupported.title"),
+            showError(Messages.get("networks.drop.unsupported.title"),
                     Messages.get("networks.drop.unsupportedAll.header", paths.size()),
                     Messages.get("networks.drop.unsupportedAll.content", importers,
                             paths.stream().map(path -> "- " + path.getFileName()).collect(Collectors.joining("\n"))));
         }
     }
 
-    private void showDropError(String title, String header, String content) {
+    private void showError(String title, String header, String content) {
         // Alert's built-in content label is sized before wrapping is accounted for and gets truncated with an
         // ellipsis on long text: a fixed-width wrapping label and a dialog kept at its preferred height avoid it
         Label contentLabel = new Label(content);
@@ -1195,9 +1196,19 @@ public class NetworksController extends AbstractDisposableController {
         if (!noneBusy(selectedNetworks)) {
             return;
         }
-        Network merged = Network.merge(selectedNetworks.toArray(new Network[0]));
-        selectedNetworks.forEach(mainModel::removeNetwork);
-        mainModel.addNetwork(merged);
+        mainModel.mergeNetworks(selectedNetworks).ifPresent(refusal -> {
+            switch (refusal) {
+                case NetworkMerges.SharedIds(List<String> ids, boolean truncated) -> showError(
+                        Messages.get("networks.merge.failed.title"),
+                        Messages.get("networks.merge.sharedIds.header"),
+                        Messages.get(truncated ? "networks.merge.sharedIds.contentTruncated" : "networks.merge.sharedIds.content",
+                                String.join(", ", ids)));
+                case NetworkMerges.MultipleVariants(List<String> networkIds) -> showError(
+                        Messages.get("networks.merge.failed.title"),
+                        Messages.get("networks.merge.multipleVariants.header"),
+                        Messages.get("networks.merge.multipleVariants.content", String.join(", ", networkIds)));
+            }
+        });
     }
 
     @FXML

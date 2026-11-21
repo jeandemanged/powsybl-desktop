@@ -20,6 +20,7 @@ import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.navigation.NetworkNavigationState;
+import com.powsybl.powsybldesktop.network.NetworkMerges;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.search.NetworkSearchIndex;
 import com.powsybl.security.SecurityAnalysisParameters;
@@ -30,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -275,6 +277,32 @@ class MainModelTest {
         model.addNetwork(network);
 
         assertEquals(NetworkSearchIndex.State.BUILDING, model.searchIndexStateProperty().get());
+    }
+
+    @Test
+    void mergeNetworksReplacesThemByTheirMerge() {
+        Network network1 = NetworkFactory.findDefault().createNetwork("N1", "test");
+        Network network2 = NetworkFactory.findDefault().createNetwork("N2", "test");
+        model.addNetwork(network1);
+        model.addNetwork(network2);
+
+        assertEquals(Optional.empty(), model.mergeNetworks(List.of(network1, network2)));
+        Network merged = model.getNetworks().getFirst();
+        assertEquals(1, model.getNetworks().size());
+        assertEquals(List.of("N1", "N2"), merged.getSubnetworks().stream().map(Network::getId).sorted().toList());
+    }
+
+    @Test
+    void refusedMergeLeavesNetworksUnchanged() {
+        Network network1 = IeeeCdfNetworkFactory.create14();
+        Network network2 = IeeeCdfNetworkFactory.create30();
+        model.addNetwork(network1);
+        model.addNetwork(network2);
+        int substationCount = network1.getSubstationCount();
+
+        assertTrue(model.mergeNetworks(List.of(network1, network2)).orElseThrow() instanceof NetworkMerges.SharedIds);
+        assertEquals(List.of(network1, network2), model.getNetworks());
+        assertEquals(substationCount, network1.getSubstationCount());
     }
 
     @Test

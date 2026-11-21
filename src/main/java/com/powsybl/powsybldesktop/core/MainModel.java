@@ -13,6 +13,7 @@ import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.powsybldesktop.logs.LogsModel;
 import com.powsybl.powsybldesktop.navigation.NavigationEvent;
 import com.powsybl.powsybldesktop.navigation.NavigationHistory;
+import com.powsybl.powsybldesktop.network.NetworkMerges;
 import com.powsybl.powsybldesktop.notification.NotificationsModel;
 import com.powsybl.powsybldesktop.parameters.ParametersModel;
 import com.powsybl.powsybldesktop.search.NetworkSearchIndex;
@@ -34,6 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 /**
@@ -126,6 +128,19 @@ public class MainModel {
 
     // Subnetwork.detach() moves the equipment into a new network and leaves the subnetwork object empty and
     // orphaned, so nothing may keep referencing it - and the root's search indexes still hold the moved equipment.
+    /**
+     * Replaces {@code networks} by their merge, unless it would be refused: the networks are then left unchanged.
+     */
+    public Optional<NetworkMerges.Refusal> mergeNetworks(List<Network> networks) {
+        Optional<NetworkMerges.Refusal> refusal = NetworkMerges.refusal(networks);
+        if (refusal.isEmpty()) {
+            Network merged = Network.merge(networks.toArray(new Network[0]));
+            networks.forEach(this::removeNetwork);
+            addNetwork(merged);
+        }
+        return refusal;
+    }
+
     public void detachSubnetworks(List<Network> subnetworks) {
         navigationHistory.removeIf(event -> event.state() != null && event.state().getSelectedNetwork() != null
                 && subnetworks.contains(event.state().getSelectedNetwork()));

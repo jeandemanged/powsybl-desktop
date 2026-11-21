@@ -104,7 +104,8 @@ These fields are disabled while a computation runs on the network.
 ### Merge and detach
 
 - **Merge**: select two or more loaded networks that have no subnetworks, then click **Merge**. They are replaced by
-  a single network holding each of them as a subnetwork.
+  a single network holding each of them as a subnetwork. IDs must be unique across the merged networks: if some IDs
+  exist in more than one of them, the merge is refused, the shared IDs are listed, and the networks are left unchanged.
 - **Detach**: select one or more subnetworks and click **Detach** to turn them back into separate networks. Selecting
   a merged network and clicking **Detach** detaches all its subnetworks.
 

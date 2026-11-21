@@ -26,7 +26,11 @@ Maven cache may contain unrelated versions.
   selected by the user stays selected for its subnetworks' equipment. Only equipment held by the root network (e.g. a
   tie line between subnetworks, which a subnetwork's views don't list) selects the root network, left again for the
   next subnetwork equipment navigated to; another subnetwork's equipment selects that subnetwork.
-- Merging and detaching are done in `NetworksController`; detaching goes through `MainModel.detachSubnetworks`, which
+- Merging goes through `MainModel.mergeNetworks`, which merges only if `NetworkMerges.refusal` finds nothing powsybl
+  would refuse (several variants, shared ids/aliases/voltage angle limit ids) and returns the refusal otherwise:
+  powsybl checks each network only as it merges it, so a failure leaves the networks merged before it emptied and
+  unusable (a later merge of them throws an NPE in `detachDcTopologyModel`).
+- Detaching is done in `NetworksController` and goes through `MainModel.detachSubnetworks`, which
   drops navigation entries, search indexes and map views referring to the detached subnetworks (the subnetwork object is
   left empty by `Subnetwork.detach()`).
 - Load flow, security and sensitivity analysis always run on the **root** network (a subnetwork-scoped run would ignore tie lines
