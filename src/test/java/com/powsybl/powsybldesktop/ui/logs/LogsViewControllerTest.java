@@ -107,12 +107,16 @@ class LogsViewControllerTest extends AbstractHeadlessApplicationTest {
     void staysOnTheRowsShownOnceScrolledAway(boolean newestOnTop) throws Exception {
         VirtualFlow<?> flow = reopenWithTallRows(newestOnTop);
         interact(() -> controller.tableView.scrollTo(150));
+        // partly scrolled out, to keep as well
+        interact(() -> flow.scrollPixels(10));
         WaitForAsyncUtils.waitForFxEvents();
         Object onTop = flow.getFirstVisibleCell().getItem();
+        double onTopY = flow.getFirstVisibleCell().getLayoutY();
 
         LOGGER.info("not followed");
         waitForRow("not followed");
         assertEquals(onTop, flow.getFirstVisibleCell().getItem());
+        assertEquals(onTopY, flow.getFirstVisibleCell().getLayoutY(), 0.5);
     }
 
     // as opened from the toolbar on a session with many logs, some of them tall (stack traces)

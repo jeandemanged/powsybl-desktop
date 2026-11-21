@@ -23,6 +23,7 @@ import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.fxml.FXML;
 import javafx.scene.control.ContextMenu;
+import javafx.scene.control.IndexedCell;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
@@ -143,9 +144,12 @@ public class LogsViewController extends AbstractDisposableController {
             if (followNewest) {
                 Platform.runLater(this::scrollToNewest);
             } else if (flow.getFirstVisibleCell() != null) {
-                // not laid out again yet: still the row on top before the change, which rows added above would push down
-                Object onTop = flow.getFirstVisibleCell().getItem();
-                Platform.runLater(() -> tableView.scrollTo((LogEntry) onTop));
+                // not laid out again yet: still the row on top before the change, which rows added above would push
+                // down, and how much of it is scrolled out of view
+                IndexedCell<?> top = flow.getFirstVisibleCell();
+                Object onTop = top.getItem();
+                double y = top.getLayoutY();
+                Platform.runLater(() -> keepAt(flow, onTop, y));
             }
         });
         // Items given before the table is laid out in a scene get their first rows measured unstyled, 0 high, which the
@@ -216,6 +220,25 @@ public class LogsViewController extends AbstractDisposableController {
     @FXML
     private void onClearAll() {
         logsModel.clearLogs();
+    }
+
+    // Moves the row showing item back to y. Only laid out rows' positions are exact: those of the others, and of a row
+    // scrolled to, are estimated from the heights of the rows measured so far.
+    private void keepAt(VirtualFlow<?> flow, Object item, double y) {
+        int index = tableView.getItems().indexOf(item);
+        if (index < 0) {
+            return;
+        }
+        tableView.layout();
+        IndexedCell<?> cell = flow.getVisibleCell(index);
+        if (cell == null) {
+            flow.scrollToTop(index);
+            tableView.layout();
+            cell = flow.getVisibleCell(index);
+        }
+        if (cell != null) {
+            flow.scrollPixels(cell.getLayoutY() - y);
+        }
     }
 
     private void scrollToNewest() {
