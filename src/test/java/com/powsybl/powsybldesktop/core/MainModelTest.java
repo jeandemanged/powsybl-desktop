@@ -284,6 +284,8 @@ class MainModelTest {
                 NetworkFactory.findDefault().createNetwork("N2", "test"));
         Network subnetwork1 = merged.getSubnetwork("N1");
         model.addNetwork(merged);
+        // an entry recorded while no network was selected
+        model.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORKS, NetworkNavigationState.create(null)));
         model.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORKS, NetworkNavigationState.create(subnetwork1)));
         model.setNetwork(subnetwork1);
         ContingencyList list = new DefaultContingencyList("list", List.of());
@@ -295,7 +297,8 @@ class MainModelTest {
         assertEquals("N1", detached.getId());
         assertNotSame(subnetwork1, detached);
         assertEquals(List.of(merged, detached), model.getNetworks());
-        assertTrue(model.getNavigationHistory().getPast().isEmpty());
+        assertEquals(1, model.getNavigationHistory().getPast().size());
+        assertNull(model.getNavigationHistory().getPast().getFirst().state().getSelectedNetwork());
         assertEquals(List.of(list), model.getStudy(merged).getContingencyLists(), "lists stay with the root network they were edited for");
         assertTrue(model.getStudy(detached).getContingencyLists().isEmpty());
     }

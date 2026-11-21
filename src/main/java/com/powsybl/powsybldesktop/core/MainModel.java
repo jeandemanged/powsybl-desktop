@@ -127,7 +127,8 @@ public class MainModel {
     // Subnetwork.detach() moves the equipment into a new network and leaves the subnetwork object empty and
     // orphaned, so nothing may keep referencing it - and the root's search indexes still hold the moved equipment.
     public void detachSubnetworks(List<Network> subnetworks) {
-        navigationHistory.removeIf(event -> event.state() != null && subnetworks.contains(event.state().getSelectedNetwork()));
+        navigationHistory.removeIf(event -> event.state() != null && event.state().getSelectedNetwork() != null
+                && subnetworks.contains(event.state().getSelectedNetwork()));
         getStudy(subnetworks.getFirst()).forgetSubnetworks();
         for (Network subnetwork : subnetworks) {
             Network detached = subnetwork.detach();
