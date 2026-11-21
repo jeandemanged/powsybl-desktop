@@ -23,7 +23,11 @@ import com.powsybl.sensitivity.WeightedSensitivityVariable;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -67,28 +71,45 @@ class OlfSensitivityFactorSupportTest {
         };
     }
 
-    // null when Open Load Flow computes the factor, else the message it fails with
-    private static String olfFailure(SensitivityFunctionType functionType, SensitivityVariableType variableType, boolean variableSet, boolean dc) {
-        boolean side3 = functionType.getSide().orElse(0) == 3;
-        Network network = side3 ? ThreeWindingsTransformerNetworkFactory.create() : FourSubstationsNodeBreakerFactory.create();
-        SensitivityFactor factor = new SensitivityFactor(functionType, functionId(network, functionType), variableType,
-                variableSet ? VARIABLE_SET : variableId(network, variableType), variableSet, ContingencyContext.none());
+    private record Case(Network network, SensitivityFunctionType functionType, SensitivityVariableType variableType, boolean variableSet, boolean dc) {
+
+        boolean expectedUnsupported() {
+            return !OlfSensitivityFactorSupport.unsupportedReasons(functionType, variableType, variableSet, dc).isEmpty();
+        }
+
+        SensitivityFactor factor() {
+            return new SensitivityFactor(functionType, functionId(network, functionType), variableType,
+                    variableSet ? VARIABLE_SET : variableId(network, variableType), variableSet, ContingencyContext.none());
+        }
+    }
+
+    // each case's failure as if run alone (null when Open Load Flow computes it, else the message it fails with), in
+    // a few runs: Open Load Flow fails a whole run on its first refused factor, so a failing run is split in halves
+    // until each refused factor runs alone
+    private static void olfFailures(List<Case> cases, Map<Case, String> failures) {
+        Network network = cases.getFirst().network();
         SensitivityAnalysisParameters parameters = new SensitivityAnalysisParameters();
-        parameters.getLoadFlowParameters().setDc(dc);
+        parameters.getLoadFlowParameters().setDc(cases.getFirst().dc());
         SensitivityAnalysisRunParameters runParameters = SensitivityAnalysisRunParameters.getDefault()
                 .setParameters(parameters)
                 .setVariableSets(List.of(new SensitivityVariableSet(VARIABLE_SET,
                         List.of(new WeightedSensitivityVariable(first(network.getGeneratorStream()), 1)))));
-        Throwable failure = SensitivityAnalysis.runAsync(network, network.getVariantManager().getWorkingVariantId(), List.of(factor), runParameters)
+        Throwable failure = SensitivityAnalysis.runAsync(network, network.getVariantManager().getWorkingVariantId(),
+                        cases.stream().map(Case::factor).toList(), runParameters)
                 .handle((_, e) -> e)
                 .join();
         if (failure == null) {
-            return null;
+            cases.forEach(c -> failures.put(c, null));
+        } else if (cases.size() > 1) {
+            int middle = cases.size() / 2;
+            olfFailures(cases.subList(0, middle), failures);
+            olfFailures(cases.subList(middle, cases.size()), failures);
+        } else {
+            while (failure.getCause() != null) {
+                failure = failure.getCause();
+            }
+            failures.put(cases.getFirst(), String.valueOf(failure.getMessage()));
         }
-        while (failure.getCause() != null) {
-            failure = failure.getCause();
-        }
-        return String.valueOf(failure.getMessage());
     }
 
     private static boolean isSupportFailure(String message) {
@@ -97,28 +118,42 @@ class OlfSensitivityFactorSupportTest {
 
     @Test
     void reasonsMatchOpenLoadFlowRefusals() {
-        List<String> mismatches = new ArrayList<>();
-        int checked = 0;
+        Network fourSubstations = FourSubstationsNodeBreakerFactory.create();
+        Network threeWindings = ThreeWindingsTransformerNetworkFactory.create();
+        List<Case> cases = new ArrayList<>();
         for (SensitivityFunctionType functionType : SensitivityFunctionType.values()) {
+            Network network = functionType.getSide().orElse(0) == 3 ? threeWindings : fourSubstations;
             for (SensitivityVariableType variableType : SensitivityVariableType.values()) {
                 for (boolean variableSet : List.of(false, true)) {
                     for (boolean dc : List.of(false, true)) {
-                        boolean expectedUnsupported = !OlfSensitivityFactorSupport.unsupportedReasons(functionType, variableType, variableSet, dc).isEmpty();
-                        String failure = olfFailure(functionType, variableType, variableSet, dc);
-                        boolean unsupported = failure != null && isSupportFailure(failure);
-                        // Open Load Flow checks the DC kinds once it has found the factor's equipment, which the test
-                        // networks don't all have (e.g. a three-winding phase shifter)
-                        boolean dcOnly = dc && OlfSensitivityFactorSupport.unsupportedReasons(functionType, variableType, variableSet, false).isEmpty();
-                        if (expectedUnsupported && dcOnly && failure != null && !unsupported) {
-                            continue;
-                        }
-                        checked++;
-                        if (expectedUnsupported != unsupported) {
-                            mismatches.add(functionType + " x " + variableType + (variableSet ? " (set)" : "") + (dc ? " DC" : " AC")
-                                    + ": expected " + (expectedUnsupported ? "unsupported" : "supported") + ", got " + failure);
-                        }
+                        cases.add(new Case(network, functionType, variableType, variableSet, dc));
                     }
                 }
+            }
+        }
+        // the supported cases are expected computed: run together per network and mode; the others are expected refused: run alone
+        Map<Case, String> failures = new HashMap<>();
+        cases.stream().filter(c -> !c.expectedUnsupported())
+                .collect(Collectors.groupingBy(c -> List.of(c.network(), c.dc()), LinkedHashMap::new, Collectors.toList()))
+                .values().forEach(supported -> olfFailures(supported, failures));
+        cases.stream().filter(Case::expectedUnsupported).forEach(c -> olfFailures(List.of(c), failures));
+
+        List<String> mismatches = new ArrayList<>();
+        int checked = 0;
+        for (Case c : cases) {
+            boolean expectedUnsupported = c.expectedUnsupported();
+            String failure = failures.get(c);
+            boolean unsupported = failure != null && isSupportFailure(failure);
+            // Open Load Flow checks the DC kinds once it has found the factor's equipment, which the test
+            // networks don't all have (e.g. a three-winding phase shifter)
+            boolean dcOnly = c.dc() && OlfSensitivityFactorSupport.unsupportedReasons(c.functionType(), c.variableType(), c.variableSet(), false).isEmpty();
+            if (expectedUnsupported && dcOnly && failure != null && !unsupported) {
+                continue;
+            }
+            checked++;
+            if (expectedUnsupported != unsupported) {
+                mismatches.add(c.functionType() + " x " + c.variableType() + (c.variableSet() ? " (set)" : "") + (c.dc() ? " DC" : " AC")
+                        + ": expected " + (expectedUnsupported ? "unsupported" : "supported") + ", got " + failure);
             }
         }
         assertEquals(List.of(), mismatches, String.join("\n", mismatches));
