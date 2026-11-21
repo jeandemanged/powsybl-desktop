@@ -130,7 +130,6 @@ List of third-party dependencies grouped by their license type.
         * javafx fxml (org.openjfx:javafx-fxml:27.0.1 - https://openjdk.java.net/projects/openjfx/)
         * javafx graphics (org.openjfx:javafx-graphics:27.0.1 - https://openjdk.java.net/projects/openjfx/)
         * javafx media (org.openjfx:javafx-media:27.0.1 - https://openjdk.java.net/projects/openjfx/)
-        * javafx swing (org.openjfx:javafx-swing:27.0.1 - https://openjdk.java.net/projects/openjfx/)
         * javafx web (org.openjfx:javafx-web:27.0.1 - https://openjdk.java.net/projects/openjfx/)
         * jdk jsobject (org.openjfx:jdk-jsobject:27.0.1 - https://openjdk.java.net/projects/openjfx/)
 

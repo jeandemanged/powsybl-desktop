@@ -194,7 +194,7 @@ and some have HTTPS certificate chains `curl` can't verify.
 - The `copy-dependencies` execution excludes `org.openjfx` on purpose (JavaFX is jlinked as modules; having the jars
   on the classpath too breaks startup) — do not remove that exclusion.
 - Hence `jdeps` can't see which JavaFX modules the app uses: the scripts list them by hand
-  (`javafx.controls,javafx.fxml,javafx.swing,javafx.web`), plus `jdk.zipfs`, a service jdeps can't see either, which
+  (`javafx.controls,javafx.fxml,javafx.web`), plus `jdk.zipfs`, a service jdeps can't see either, which
   study files go through (`study/StudyArchive`). Code using another JavaFX module (e.g. `javafx.media`) or such a
   service must add it to all three scripts and to the README's manual sequence, or the packaged app fails at runtime
   while tests and `javafx:run` pass.

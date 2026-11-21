@@ -73,7 +73,7 @@ JDEPS_MODULES="$(jdeps \
 echo "    Detected: $JDEPS_MODULES"
 
 # jdk.zipfs: study files (StudyArchive) go through the zip file system, a service jdeps cannot see
-ALL_MODULES="$JDEPS_MODULES,jdk.zipfs,javafx.controls,javafx.fxml,javafx.swing,javafx.web"
+ALL_MODULES="$JDEPS_MODULES,jdk.zipfs,javafx.controls,javafx.fxml,javafx.web"
 
 rm -rf "$RUNTIME_DIR"
 echo "==> jlink: building custom runtime image"
