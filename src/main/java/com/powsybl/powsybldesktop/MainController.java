@@ -87,6 +87,7 @@ import com.powsybl.powsybldesktop.ui.network.tables.VscConverterStationsControll
 import com.powsybl.powsybldesktop.ui.notification.NotificationOverlay;
 import com.powsybl.powsybldesktop.ui.notification.NotificationsController;
 import com.powsybl.powsybldesktop.ui.parameters.ParametersController;
+import com.powsybl.powsybldesktop.ui.rao.CracController;
 import com.powsybl.powsybldesktop.ui.report.ReportsController;
 import com.powsybl.powsybldesktop.ui.sensitivity.SensitivityFactorsController;
 import com.powsybl.powsybldesktop.ui.study.StudyCommands;
@@ -207,6 +208,7 @@ public class MainController extends AbstractDisposableController {
     private static final String CONTINGENCIES_FXML = "ui/contingency/contingencies-view.fxml";
     private static final String LIMIT_SCALINGS_FXML = "ui/limitscaling/limit-scalings-view.fxml";
     private static final String SENSITIVITY_FACTORS_FXML = "ui/sensitivity/sensitivity-factors-view.fxml";
+    private static final String CRAC_FXML = "ui/rao/crac-view.fxml";
 
     private final MainModel mainModel;
     private final SeparateWindows separateWindows;
@@ -1077,7 +1079,9 @@ public class MainController extends AbstractDisposableController {
                 new MenuView(NavigationType.LIMIT_SCALINGS, "main.toolbar.limitScalings", "mdi2t-tune-vertical", NavigationType.LIMIT_SCALINGS.name(),
                         this::onLimitScalings, () -> detachSceneView(LIMIT_SCALINGS_FXML, NavigationType.LIMIT_SCALINGS)),
                 new MenuView(NavigationType.SENSITIVITY_FACTORS, "main.toolbar.sensitivityFactors", "mdi2m-matrix", NavigationType.SENSITIVITY_FACTORS.name(),
-                        this::onSensitivityFactors, () -> detachSceneView(SENSITIVITY_FACTORS_FXML, NavigationType.SENSITIVITY_FACTORS))));
+                        this::onSensitivityFactors, () -> detachSceneView(SENSITIVITY_FACTORS_FXML, NavigationType.SENSITIVITY_FACTORS)),
+                new MenuView(NavigationType.CRAC, "main.toolbar.crac", "mdi2s-shield-alert-outline", NavigationType.CRAC.name(),
+                        this::onCrac, () -> detachSceneView(CRAC_FXML, NavigationType.CRAC))));
         separateWindows.addDragToOpen(parametersButton, PARAMETERS_WINDOW, this::detachParameters);
         initParametersMenu();
         initLastUsedViewButton(diagnosticsButton, List.of(
@@ -1283,6 +1287,8 @@ public class MainController extends AbstractDisposableController {
             ensureSceneView(LimitScalingsController.class, LIMIT_SCALINGS_FXML, NavigationType.LIMIT_SCALINGS);
         } else if (newValue.navigationType() == NavigationType.SENSITIVITY_FACTORS) {
             ensureSceneView(SensitivityFactorsController.class, SENSITIVITY_FACTORS_FXML, NavigationType.SENSITIVITY_FACTORS);
+        } else if (newValue.navigationType() == NavigationType.CRAC) {
+            ensureSceneView(CracController.class, CRAC_FXML, NavigationType.CRAC);
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SUBSTATIONS) {
             SubstationsTableController controller = ensureSceneView(SubstationsTableController.class,
                     "ui/network/tables/substations-view.fxml", NavigationType.NETWORK_TABLE_SUBSTATIONS);
@@ -1496,6 +1502,10 @@ public class MainController extends AbstractDisposableController {
 
     public void onSensitivityFactors() {
         mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SENSITIVITY_FACTORS, NetworkNavigationState.create(mainModel.getNetwork())));
+    }
+
+    public void onCrac() {
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.CRAC, NetworkNavigationState.create(mainModel.getNetwork())));
     }
 
     public void onParameters() {

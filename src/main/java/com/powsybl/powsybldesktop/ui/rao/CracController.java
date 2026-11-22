@@ -1,0 +1,548 @@
+/**
+ * Copyright (c) 2026, Artelys (https://www.artelys.com)
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * SPDX-License-Identifier: MPL-2.0
+ */
+package com.powsybl.powsybldesktop.ui.rao;
+
+import com.powsybl.commons.PowsyblException;
+import com.powsybl.contingency.Contingency;
+import com.powsybl.contingency.ContingencyElement;
+import com.powsybl.iidm.network.Identifiable;
+import com.powsybl.iidm.network.Network;
+import com.powsybl.openrao.commons.OpenRaoException;
+import com.powsybl.openrao.data.crac.api.Crac;
+import com.powsybl.openrao.data.crac.api.CracCreationContext;
+import com.powsybl.openrao.data.crac.api.Instant;
+import com.powsybl.openrao.data.crac.api.RemedialAction;
+import com.powsybl.openrao.data.crac.api.State;
+import com.powsybl.openrao.data.crac.api.cnec.AngleCnec;
+import com.powsybl.openrao.data.crac.api.cnec.Cnec;
+import com.powsybl.openrao.data.crac.api.cnec.FlowCnec;
+import com.powsybl.openrao.data.crac.api.cnec.VoltageCnec;
+import com.powsybl.openrao.data.crac.api.networkaction.NetworkAction;
+import com.powsybl.openrao.data.crac.api.parameters.CracCreationParameters;
+import com.powsybl.openrao.data.crac.api.rangeaction.CounterTradeRangeAction;
+import com.powsybl.openrao.data.crac.api.rangeaction.HvdcRangeAction;
+import com.powsybl.openrao.data.crac.api.rangeaction.InjectionRangeAction;
+import com.powsybl.openrao.data.crac.api.rangeaction.PstRangeAction;
+import com.powsybl.openrao.data.crac.api.threshold.BranchThreshold;
+import com.powsybl.openrao.data.crac.api.threshold.Threshold;
+import com.powsybl.openrao.data.crac.api.usagerule.OnConstraint;
+import com.powsybl.openrao.data.crac.api.usagerule.OnContingencyState;
+import com.powsybl.openrao.data.crac.api.usagerule.OnFlowConstraintInCountry;
+import com.powsybl.openrao.data.crac.api.usagerule.UsageRule;
+import com.powsybl.powsybldesktop.contingency.ContingencyNames;
+import com.powsybl.powsybldesktop.core.AbstractNetworkTask;
+import com.powsybl.powsybldesktop.core.MainModel;
+import com.powsybl.powsybldesktop.core.NetworkStudy;
+import com.powsybl.powsybldesktop.notification.Notification;
+import com.powsybl.powsybldesktop.notification.NotificationAction;
+import com.powsybl.powsybldesktop.rao.CracElements;
+import com.powsybl.powsybldesktop.rao.CracIO;
+import com.powsybl.powsybldesktop.rao.RaoResultRows;
+import com.powsybl.powsybldesktop.ui.AbstractDisposableController;
+import com.powsybl.powsybldesktop.ui.controls.FileChooserPreferences;
+import com.powsybl.powsybldesktop.ui.window.SceneModel;
+import com.powsybl.powsybldesktop.ui.window.SceneView;
+import com.powsybl.powsybldesktop.utils.Messages;
+import javafx.beans.InvalidationListener;
+import javafx.beans.property.ObjectProperty;
+import javafx.collections.FXCollections;
+import javafx.concurrent.Service;
+import javafx.concurrent.Task;
+import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.Tooltip;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.StackPane;
+import javafx.stage.FileChooser;
+import org.kordamp.ikonli.javafx.FontIcon;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+/**
+ * The CRAC of the selected network (its root's, the one a RAO runs on): its contingencies, CNECs and remedial actions,
+ * the details of the selected one, and the report of its import. Imports a CRAC file of any format OpenRAO reads
+ * (asking the format's parameters, {@link CracImportDialog}), exports it in OpenRAO's JSON format, removes it. Objects
+ * whose network elements are missing from the network (edited since the import) are marked, with the missing ids.
+ *
+ * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
+ */
+public class CracController extends AbstractDisposableController implements SceneView {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CracController.class);
+
+    @FXML
+    Button importButton;
+    @FXML
+    Button exportButton;
+    @FXML
+    Button removeButton;
+    @FXML
+    Label headerLabel;
+    @FXML
+    TabPane tabPane;
+    @FXML
+    Tab contingenciesTab;
+    @FXML
+    Tab cnecsTab;
+    @FXML
+    Tab remedialActionsTab;
+    @FXML
+    Tab reportTab;
+    @FXML
+    ListView<Contingency> contingenciesListView;
+    @FXML
+    ListView<Cnec<?>> cnecsListView;
+    @FXML
+    ListView<RemedialAction<?>> remedialActionsListView;
+    @FXML
+    ListView<String> reportListView;
+    @FXML
+    StackPane detailsHost;
+
+    // not a ChangeListener: OpenRAO's CRACs are equal by id, so replacing one by another of the same id is no change
+    private final InvalidationListener cracListener = _ -> refreshCrac();
+    private ObjectProperty<Crac> watchedCrac;
+    private Network network;
+    private SceneModel sceneModel;
+    private MainModel mainModel;
+    // the parameters of the last import, by format, offered again
+    private final Map<String, CracCreationParameters> lastImportParameters = new HashMap<>();
+
+    @FXML
+    private void initialize() {
+        contingenciesListView.setCellFactory(_ -> new ProblemCell<>(contingency -> contingency.getName().orElse(contingency.getId()),
+                contingency -> CracElements.missing(network, contingency)));
+        cnecsListView.setCellFactory(_ -> new ProblemCell<>(cnec -> Messages.get("crac.cnec.item", cnec.getName(), stateName(cnec.getState())),
+                cnec -> CracElements.missing(network, cnec)));
+        remedialActionsListView.setCellFactory(_ -> new ProblemCell<>(action -> Messages.get("crac.remedialAction.item", action.getName(), actionType(action)),
+                action -> CracElements.missing(network, action)));
+        reportListView.setPlaceholder(new Label(Messages.get("crac.report.none")));
+        contingenciesListView.getSelectionModel().selectedItemProperty().addListener((_, _, _) -> showDetails());
+        cnecsListView.getSelectionModel().selectedItemProperty().addListener((_, _, _) -> showDetails());
+        remedialActionsListView.getSelectionModel().selectedItemProperty().addListener((_, _, _) -> showDetails());
+        tabPane.getSelectionModel().selectedItemProperty().addListener((_, _, _) -> showDetails());
+    }
+
+    @Override
+    public void setSceneModel(SceneModel sceneModel) {
+        this.sceneModel = Objects.requireNonNull(sceneModel);
+        this.mainModel = sceneModel.getMainModel();
+        listenerManager.listen(sceneModel.networkProperty(), (_, _, newValue) -> refreshForNetwork(newValue));
+        // a network edit may remove or restore elements of the CRAC
+        listenerManager.listen(mainModel.updateProperty(), (_, _, _) -> refreshProblems());
+        refreshForNetwork(sceneModel.getNetwork());
+    }
+
+    private NetworkStudy study() {
+        return network == null ? null : mainModel.getStudy(network);
+    }
+
+    // the CRAC is the root network's, the one a RAO runs on
+    private void refreshForNetwork(Network selectedNetwork) {
+        Network newNetwork = selectedNetwork == null ? null : selectedNetwork.getNetwork();
+        if (newNetwork != null && newNetwork == network) {
+            return;
+        }
+        network = newNetwork;
+        watch(network == null ? null : study().cracProperty());
+        importButton.setDisable(network == null);
+        refreshCrac();
+    }
+
+    private void watch(ObjectProperty<Crac> crac) {
+        if (watchedCrac != crac) {
+            if (watchedCrac != null) {
+                watchedCrac.removeListener(cracListener);
+            }
+            watchedCrac = crac;
+            if (crac != null) {
+                crac.addListener(cracListener);
+            }
+        }
+    }
+
+    private void refreshCrac() {
+        Crac crac = network == null ? null : study().getCrac();
+        exportButton.setDisable(crac == null);
+        removeButton.setDisable(crac == null);
+        headerLabel.setText(network == null ? Messages.get("crac.noNetwork") : crac == null ? Messages.get("crac.none") : header(crac));
+        contingenciesListView.setItems(crac == null ? FXCollections.observableArrayList()
+                : FXCollections.observableArrayList(crac.getContingencies().stream().sorted(Comparator.comparing(Contingency::getId)).toList()));
+        cnecsListView.setItems(crac == null ? FXCollections.observableArrayList()
+                : FXCollections.observableArrayList(crac.getCnecs().stream().<Cnec<?>>map(cnec -> cnec)
+                        .sorted(Comparator.<Cnec<?>, State>comparing(Cnec::getState, RaoResultRows.STATE_ORDER).thenComparing(Cnec::getId)).toList()));
+        remedialActionsListView.setItems(crac == null ? FXCollections.observableArrayList()
+                : FXCollections.observableArrayList(crac.getRemedialActions().stream().sorted(Comparator.comparing(RemedialAction::getId)).toList()));
+        reportListView.setItems(FXCollections.observableArrayList(crac == null ? List.of() : study().getCracCreationReport()));
+        String empty = Messages.get(crac == null ? "crac.empty.noCrac" : "crac.empty.none");
+        contingenciesListView.setPlaceholder(new Label(empty));
+        cnecsListView.setPlaceholder(new Label(empty));
+        remedialActionsListView.setPlaceholder(new Label(empty));
+        showDetails();
+    }
+
+    private void refreshProblems() {
+        contingenciesListView.refresh();
+        cnecsListView.refresh();
+        remedialActionsListView.refresh();
+        showDetails();
+    }
+
+    private static String header(Crac crac) {
+        String name = crac.getName().equals(crac.getId()) ? crac.getId() : crac.getName() + " (" + crac.getId() + ")";
+        String instants = crac.getSortedInstants().stream().map(Instant::getId).collect(Collectors.joining(", "));
+        return crac.getTimestamp()
+                .map(timestamp -> Messages.get("crac.header.timestamp", name, timestamp.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), instants))
+                .orElseGet(() -> Messages.get("crac.header", name, instants));
+    }
+
+    String stateName(State state) {
+        if (state.isPreventive()) {
+            return Messages.get("raoResults.preventive");
+        }
+        return Messages.get("raoResults.stateName", state.getContingency().map(contingency -> ContingencyNames.displayName(contingency, network)).orElse(""),
+                state.getInstant().getId());
+    }
+
+    static String actionType(RemedialAction<?> action) {
+        return Messages.get(switch (action) {
+            case NetworkAction _ -> "raoResults.actionType.network";
+            case PstRangeAction _ -> "raoResults.actionType.pst";
+            case HvdcRangeAction _ -> "raoResults.actionType.hvdc";
+            case CounterTradeRangeAction _ -> "raoResults.actionType.counterTrade";
+            case InjectionRangeAction _ -> "raoResults.actionType.injection";
+            default -> "raoResults.actionType.range";
+        });
+    }
+
+    private String elementName(String id) {
+        Identifiable<?> identifiable = network == null ? null : network.getIdentifiable(id);
+        if (identifiable == null) {
+            return Messages.get("crac.details.missingElement", id);
+        }
+        return identifiable.getNameOrId().equals(id) ? id : identifiable.getNameOrId() + " (" + id + ")";
+    }
+
+    // ----- details of the selected object -----
+
+    private void showDetails() {
+        Tab tab = tabPane.getSelectionModel().getSelectedItem();
+        List<String[]> rows = new ArrayList<>();
+        if (tab == contingenciesTab && contingenciesListView.getSelectionModel().getSelectedItem() != null) {
+            contingencyDetails(contingenciesListView.getSelectionModel().getSelectedItem(), rows);
+        } else if (tab == cnecsTab && cnecsListView.getSelectionModel().getSelectedItem() != null) {
+            cnecDetails(cnecsListView.getSelectionModel().getSelectedItem(), rows);
+        } else if (tab == remedialActionsTab && remedialActionsListView.getSelectionModel().getSelectedItem() != null) {
+            remedialActionDetails(remedialActionsListView.getSelectionModel().getSelectedItem(), rows);
+        }
+        if (rows.isEmpty()) {
+            detailsHost.getChildren().clear();
+            return;
+        }
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(6);
+        for (String[] row : rows) {
+            Label label = new Label(row[0]);
+            label.getStyleClass().add("crac-details-label");
+            Label value = new Label(row[1]);
+            value.setWrapText(true);
+            grid.addRow(grid.getRowCount(), label, value);
+        }
+        detailsHost.getChildren().setAll(grid);
+    }
+
+    private static void row(List<String[]> rows, String key, String value) {
+        rows.add(new String[] {Messages.get(key), value});
+    }
+
+    private void contingencyDetails(Contingency contingency, List<String[]> rows) {
+        row(rows, "crac.details.id", contingency.getId());
+        row(rows, "crac.details.name", contingency.getName().orElse(contingency.getId()));
+        row(rows, "crac.details.elements", contingency.getElements().stream().map(ContingencyElement::getId).map(this::elementName)
+                .collect(Collectors.joining("\n")));
+    }
+
+    private void cnecDetails(Cnec<?> cnec, List<String[]> rows) {
+        row(rows, "crac.details.id", cnec.getId());
+        row(rows, "crac.details.name", cnec.getName());
+        row(rows, "crac.details.cnecType", Messages.get(switch (cnec) {
+            case FlowCnec _ -> "crac.cnecType.flow";
+            case AngleCnec _ -> "crac.cnecType.angle";
+            case VoltageCnec _ -> "crac.cnecType.voltage";
+            default -> "crac.cnecType.other";
+        }));
+        row(rows, "crac.details.elements", cnec.getNetworkElementsIds().stream().sorted().map(this::elementName).collect(Collectors.joining("\n")));
+        row(rows, "crac.details.state", stateName(cnec.getState()));
+        row(rows, "crac.details.role", Messages.get(cnec.isOptimized()
+                ? cnec.isMonitored() ? "raoResults.role.optimizedAndMonitored" : "raoResults.role.optimized"
+                : cnec.isMonitored() ? "raoResults.role.monitored" : "raoResults.role.none"));
+        row(rows, "crac.details.thresholds", thresholds(cnec));
+        row(rows, "crac.details.reliabilityMargin", Double.toString(cnec.getReliabilityMargin()));
+        row(rows, "crac.details.operator", Objects.toString(cnec.getOperator(), "-"));
+    }
+
+    private static String thresholds(Cnec<?> cnec) {
+        List<? extends Threshold> thresholds = switch (cnec) {
+            case FlowCnec flowCnec -> List.copyOf(flowCnec.getThresholds());
+            case AngleCnec angleCnec -> List.copyOf(angleCnec.getThresholds());
+            case VoltageCnec voltageCnec -> List.copyOf(voltageCnec.getThresholds());
+            default -> List.of();
+        };
+        return thresholds.stream().map(threshold -> {
+            String side = threshold instanceof BranchThreshold branchThreshold ? Messages.get("crac.details.side", branchThreshold.getSide().getNum()) + " " : "";
+            return side + Messages.get("crac.details.threshold", threshold.min().map(String::valueOf).orElse("-"),
+                    threshold.max().map(String::valueOf).orElse("-"), threshold.getUnit());
+        }).sorted().collect(Collectors.joining("\n"));
+    }
+
+    private void remedialActionDetails(RemedialAction<?> action, List<String[]> rows) {
+        row(rows, "crac.details.id", action.getId());
+        row(rows, "crac.details.name", action.getName());
+        row(rows, "crac.details.actionType", actionType(action));
+        row(rows, "crac.details.elements", action.getNetworkElementsIds().stream().sorted().map(this::elementName).collect(Collectors.joining("\n")));
+        row(rows, "crac.details.usageRules", action.getUsageRules().stream().map(this::usageRule).sorted().collect(Collectors.joining("\n")));
+        row(rows, "crac.details.operator", Objects.toString(action.getOperator(), "-"));
+        action.getActivationCost().ifPresent(cost -> row(rows, "crac.details.activationCost", Double.toString(cost)));
+        action.getSpeed().ifPresent(speed -> row(rows, "crac.details.speed", Integer.toString(speed)));
+    }
+
+    private String usageRule(UsageRule rule) {
+        return switch (rule) {
+            case OnContingencyState onState -> Messages.get("crac.usageRule.onState", stateName(onState.getState()));
+            case OnConstraint<?> onConstraint -> Messages.get("crac.usageRule.onConstraint", rule.getInstant().getId(), onConstraint.getCnec().getName());
+            case OnFlowConstraintInCountry onCountry -> Messages.get("crac.usageRule.onCountry", rule.getInstant().getId(), onCountry.getCountry());
+            default -> Messages.get("crac.usageRule.onInstant", rule.getInstant().getId());
+        };
+    }
+
+    private static final class ProblemCell<T> extends ListCell<T> {
+        private final Function<T, String> text;
+        private final Function<T, List<String>> missing;
+
+        ProblemCell(Function<T, String> text, Function<T, List<String>> missing) {
+            this.text = text;
+            this.missing = missing;
+        }
+
+        @Override
+        protected void updateItem(T item, boolean empty) {
+            super.updateItem(item, empty);
+            setTooltip(null);
+            setGraphic(null);
+            if (empty || item == null) {
+                setText(null);
+                return;
+            }
+            setText(text.apply(item));
+            List<String> missingIds = missing.apply(item);
+            if (!missingIds.isEmpty()) {
+                FontIcon icon = new FontIcon("mdi2a-alert");
+                icon.getStyleClass().add("alert-icon");
+                setGraphic(icon);
+                setTooltip(new Tooltip(Messages.get("crac.missingElements", String.join(", ", missingIds))));
+            }
+        }
+    }
+
+    // ----- import, export, removal -----
+
+    @FXML
+    private void onImport() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(Messages.get("crac.import.files"), "*.json", "*.xml", "*.zip"));
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(Messages.get("networks.file.allFiles"), "*.*"));
+        FileChooserPreferences.applyLastDirectory(fileChooser);
+        File file = fileChooser.showOpenDialog(detailsHost.getScene().getWindow());
+        if (file != null) {
+            FileChooserPreferences.saveLastDirectory(file);
+            importFile(file.toPath());
+        }
+    }
+
+    private record CracFile(String name, byte[] bytes, Optional<String> format) {
+    }
+
+    // the file is read and its format detected (by OpenRAO's importers, which parse it) off the FX thread, then its
+    // parameters asked, then the CRAC created against the network
+    void importFile(Path path) {
+        Network root = network;
+        if (root == null) {
+            return;
+        }
+        java.time.Instant start = java.time.Instant.now();
+        Service<CracFile> detection = new Service<>() {
+            @Override
+            protected Task<CracFile> createTask() {
+                return new Task<>() {
+                    @Override
+                    protected CracFile call() throws IOException {
+                        String name = path.getFileName().toString();
+                        byte[] bytes = Files.readAllBytes(path);
+                        return new CracFile(name, bytes, CracIO.format(name, bytes));
+                    }
+                };
+            }
+        };
+        detection.setOnSucceeded(_ -> {
+            CracFile file = detection.getValue();
+            if (file.format().isEmpty()) {
+                mainModel.getNotificationsModel().add(Notification.createError(start, "crac.import.unknownFormat").withMessageArgs(file.name()));
+                return;
+            }
+            String format = file.format().get();
+            askParameters(file.name(), format).ifPresent(parameters -> {
+                lastImportParameters.put(format, parameters);
+                importCrac(root, file.name(), file.bytes(), parameters);
+            });
+        });
+        detection.setOnFailed(event -> {
+            Throwable exception = event.getSource().getException();
+            LOGGER.error("Failed to read {}", path, exception);
+            mainModel.getNotificationsModel().add(Notification.createError(start, "crac.import.failed").withMessageArgs(path.getFileName(), exception.getMessage()));
+        });
+        detection.start();
+    }
+
+    // overridable by a test, which can't answer a modal dialog
+    Optional<CracCreationParameters> askParameters(String fileName, String format) {
+        CracImportDialog dialog = new CracImportDialog(detailsHost.getScene().getWindow(), fileName, format,
+                lastImportParameters.getOrDefault(format, new CracCreationParameters()));
+        return dialog.showAndWait();
+    }
+
+    void importCrac(Network root, String fileName, byte[] bytes, CracCreationParameters parameters) {
+        if (mainModel.isBusy(root)) {
+            mainModel.getNotificationsModel().add(Notification.createError(java.time.Instant.now(), "main.networkBusy"));
+            return;
+        }
+        Service<CracCreationContext> creation = new Service<>() {
+            @Override
+            protected Task<CracCreationContext> createTask() {
+                return new AbstractNetworkTask<>(mainModel, root) {
+                    @Override
+                    protected CracCreationContext compute() {
+                        return CracIO.read(fileName, bytes, root, parameters);
+                    }
+                };
+            }
+        };
+        Notification running = Notification.createRunning("crac.import.running", creation::cancel).withMessageArgs(fileName);
+        mainModel.getNotificationsModel().add(running);
+        creation.setOnSucceeded(_ -> {
+            CracCreationContext context = creation.getValue();
+            List<String> report = CracIO.report(context);
+            NotificationAction viewReport = new NotificationAction("crac.import.viewReport", _ -> showReport(fileName, report));
+            if (context.isCreationSuccessful()) {
+                mainModel.getStudy(root).setCrac(context.getCrac(), report);
+                mainModel.getNotificationsModel().replace(running,
+                        Notification.createSuccess(running.startTimestamp(), "crac.import.completed", viewReport).withMessageArgs(fileName));
+            } else {
+                // the CRAC in place is kept
+                mainModel.getNotificationsModel().replace(running,
+                        Notification.createError(running.startTimestamp(), "crac.import.creationFailed", viewReport).withMessageArgs(fileName));
+            }
+        });
+        creation.setOnFailed(event -> {
+            Throwable exception = event.getSource().getException();
+            LOGGER.error("Failed to import the CRAC {}", fileName, exception);
+            mainModel.getNotificationsModel().replace(running,
+                    Notification.createError(running.startTimestamp(), "crac.import.failed").withMessageArgs(fileName, exception.getMessage()));
+        });
+        creation.setOnCancelled(_ -> mainModel.getNotificationsModel().replace(running,
+                Notification.createCancelled(running.startTimestamp(), "crac.import.cancelled").withMessageArgs(fileName)));
+        mainModel.getStudy(root).trackComputation(creation);
+        creation.start();
+    }
+
+    private void showReport(String fileName, List<String> report) {
+        TextArea text = new TextArea(report.isEmpty() ? Messages.get("crac.report.none") : String.join("\n", report));
+        text.setEditable(false);
+        text.setWrapText(true);
+        text.setPrefSize(700, 400);
+        Alert alert = new Alert(Alert.AlertType.INFORMATION, null, ButtonType.CLOSE);
+        alert.initOwner(detailsHost.getScene() == null ? null : detailsHost.getScene().getWindow());
+        alert.setTitle(Messages.get("crac.report.title", fileName));
+        alert.setHeaderText(null);
+        alert.getDialogPane().setContent(text);
+        alert.setResizable(true);
+        alert.show();
+    }
+
+    @FXML
+    private void onExport() {
+        Crac crac = network == null ? null : study().getCrac();
+        if (crac == null) {
+            return;
+        }
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(Messages.get("networks.file.supportedFiles", "json"), "*.json"));
+        fileChooser.setInitialFileName(crac.getId() + ".json");
+        FileChooserPreferences.applyLastDirectory(fileChooser);
+        File file = fileChooser.showSaveDialog(detailsHost.getScene().getWindow());
+        if (file != null) {
+            FileChooserPreferences.saveLastDirectory(file);
+            exportTo(file.toPath());
+        }
+    }
+
+    void exportTo(Path path) {
+        java.time.Instant start = java.time.Instant.now();
+        try (OutputStream outputStream = Files.newOutputStream(path)) {
+            CracIO.writeJson(study().getCrac(), outputStream);
+        } catch (IOException | UncheckedIOException | PowsyblException | OpenRaoException e) {
+            LOGGER.error("Failed to write {}", path, e);
+            mainModel.getNotificationsModel().add(Notification.createError(start, "crac.export.failed").withMessageArgs(path, e.getMessage()));
+        }
+    }
+
+    @FXML
+    private void onRemove() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION, Messages.get("crac.remove.confirm"), ButtonType.OK, ButtonType.CANCEL);
+        alert.initOwner(detailsHost.getScene().getWindow());
+        alert.setHeaderText(null);
+        if (alert.showAndWait().filter(ButtonType.OK::equals).isPresent()) {
+            remove();
+        }
+    }
+
+    void remove() {
+        study().setCrac(null, List.of());
+    }
+
+    @Override
+    public void dispose() {
+        watch(null);
+        super.dispose();
+    }
+}

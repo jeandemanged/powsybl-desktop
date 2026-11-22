@@ -62,6 +62,8 @@ public class NetworkStudy {
     private final ObservableList<SensitivityVariableSet> sensitivityVariableSets = FXCollections.observableArrayList();
     // the CRAC of the remedial action optimization, null when the study has none
     private final ObjectProperty<Crac> crac = new SimpleObjectProperty<>();
+    // the report of the CRAC's creation by its import: what was ignored or altered, and why
+    private List<String> cracCreationReport = List.of();
     private RaoResult raoResult;
     // the CRAC the RAO result refers to (the run's copy, see RaoRun), the study's it was copied from, and whether it was
     // AC or DC, which it doesn't hold
@@ -158,6 +160,18 @@ public class NetworkStudy {
 
     public Crac getCrac() {
         return crac.get();
+    }
+
+    public List<String> getCracCreationReport() {
+        return cracCreationReport;
+    }
+
+    /**
+     * Replaces the CRAC, null for none, with the report of its creation.
+     */
+    public void setCrac(Crac newCrac, List<String> creationReport) {
+        cracCreationReport = List.copyOf(creationReport);
+        crac.set(newCrac);
     }
 
     public RaoResult getRaoResult() {

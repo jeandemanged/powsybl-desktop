@@ -98,8 +98,9 @@ Build
 - **Dialogs**: modal dialogs are built in code (mostly static `show` helpers; `RemovalDialog.confirmThenRemove` and the
   `ElementPickerDialog` subclass differ), secondary windows are FXML; there is no single dialog abstraction. Follow the form
   matching your need (see ui-conventions).
-- **File I/O on the FX thread**: contingency list, limit scalings, sensitivity factors and parameters JSON
-  import/export run synchronously in event handlers (small files), unlike network import/export which run in services.
+- **File I/O on the FX thread**: contingency list, limit scalings, sensitivity factors, CRAC export and parameters JSON
+  import/export run synchronously in event handlers (small files), unlike network import/export and CRAC import
+  (format detection parses the file, creation reads the network) which run in services.
 - **Network import and study loading use a plain `Task`** rather than `AbstractNetworkTask` — intentional, since the
   networks are not loaded yet; **study saving** marks its networks busy with `markBusy` instead, writing several at
   once (see [threading](threading.md#rules), rule 5).

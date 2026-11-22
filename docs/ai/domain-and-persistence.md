@@ -137,6 +137,18 @@ Maven cache may contain unrelated versions.
   CRAC), and writes OpenRAO's JSON. It picks the importer itself, leaving out the `Network` one (the CRAC generator),
   which claims any file it can read as a network and then ignores it. OpenRAO's JSON importer needs current limits on
   the CNECs' branches.
+- The CRAC is `NetworkStudy.cracProperty()` (with `getCracCreationReport()`, its import's report, set together by
+  `setCrac`), shown by `ui/rao/CracController` (**Inputs** > **CRAC**): contingencies, CNECs, remedial actions (sorted
+  by id, CNECs by state), the selected one's details, the import report. Objects whose network elements are missing
+  from the network (`…/rao/CracElements.java`, also used by `RaoRun.problems`) are marked, refreshed on
+  `MainModel.updateProperty()`. Import: the file is read and its format detected (`CracIO.format`, parsing it) in a
+  plain `Task`, then `CracImportDialog` asks the format's parameters (`…/rao/CracImportParameters.java`: the time
+  stamp of CIM, NC and flow-based constraint documents, NC's capacity calculation region, the flow-based ICS costs,
+  the rest from an OpenRAO CRAC creation parameters JSON file; the last ones by format are offered again), then the
+  CRAC is created in an `AbstractNetworkTask` (it reads the network). A failed creation (null CRAC) keeps the CRAC in
+  place, its report reachable from the error notification. OpenRAO 7.5.1's CRAC creation parameters serializers write
+  time stamps with a literal 'Z' without converting them to UTC: `CracImportParameters.copy` restores them after its JSON
+  round trip. Export writes OpenRAO's JSON, synchronously.
 - They all produce a `ReportNode` stored with `mainModel.addReport` (see
   [architecture.md](architecture.md#reports-and-logs)).
 
@@ -258,7 +270,7 @@ There is no database. Persistent state is:
 | Recent studies (last 10 saved or loaded `.psbx`) | Java Preferences API | `…/core/RecentStudies.java`, see [Studies](#studies) |
 | Networks | User files, imported/exported through PowSyBl `Importer`/`Exporter` | `NetworksController` (import: plain `Task`; export: `AbstractNetworkTask`), `NetworkIO` |
 | Studies (parameters, networks, contingency lists, limit scalings, sensitivity factors, results, reports, logs) | User-chosen `.psbx` zip file | `…/study/StudyArchive.java`, see [Studies](#studies) |
-| Contingency lists, limit scalings, sensitivity factors, parameters, reports, diagrams | User-chosen JSON/text/SVG/PNG files | `ContingencyListsIO`, `LimitScalings`, `SensitivityFactorsIO`, `ApplicationParametersJson`, `ReportsController`, `DiagramPaneController` |
+| Contingency lists, limit scalings, sensitivity factors, CRACs, parameters, reports, diagrams | User-chosen JSON/text/SVG/PNG files (CRACs: any format OpenRAO imports) | `ContingencyListsIO`, `LimitScalings`, `SensitivityFactorsIO`, `CracIO`, `ApplicationParametersJson`, `ReportsController`, `DiagramPaneController` |
 
 Use the existing helpers (and `FileChooserPreferences` for any new `FileChooser`) rather than adding new storage.
 Network state (loaded networks, results, contingency lists, limit scalings, sensitivity factors) is not persisted

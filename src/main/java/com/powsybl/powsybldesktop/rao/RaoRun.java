@@ -10,7 +10,6 @@ package com.powsybl.powsybldesktop.rao;
 import com.powsybl.commons.io.TreeDataFormat;
 import com.powsybl.commons.report.ReportNode;
 import com.powsybl.contingency.Contingency;
-import com.powsybl.contingency.ContingencyElement;
 import com.powsybl.iidm.network.HvdcLine;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.NetworkFactory;
@@ -47,7 +46,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.stream.Stream;
 
 /**
  * A run of OpenRAO's search tree RAO, directly or through FastRAO, which runs it on the worst CNECs only, adding CNECs
@@ -110,13 +108,13 @@ public final class RaoRun {
             problems.add(Messages.get("rao.problem.noCnec"));
         }
         crac.getContingencies().stream().sorted(Comparator.comparing(Contingency::getId))
-                .forEach(contingency -> missing(network, contingency.getElements().stream().map(ContingencyElement::getId))
+                .forEach(contingency -> listed(CracElements.missing(network, contingency))
                         .ifPresent(ids -> problems.add(Messages.get("rao.problem.contingencyElements", contingency.getId(), ids))));
         crac.getCnecs().stream().<Cnec<?>>map(cnec -> cnec).sorted(Comparator.comparing(Cnec::getId))
-                .forEach(cnec -> missing(network, cnec.getNetworkElementsIds().stream())
+                .forEach(cnec -> listed(CracElements.missing(network, cnec))
                         .ifPresent(ids -> problems.add(Messages.get("rao.problem.cnecElements", cnec.getId(), ids))));
         crac.getRemedialActions().stream().sorted(Comparator.comparing(RemedialAction::getId))
-                .forEach(action -> missing(network, action.getNetworkElementsIds().stream())
+                .forEach(action -> listed(CracElements.missing(network, action))
                         .ifPresent(ids -> problems.add(Messages.get("rao.problem.remedialActionElements", action.getId(), ids))));
         ObjectiveFunctionParameters.ObjectiveFunctionType objective = parameters.getObjectiveFunctionParameters().getType();
         if (objective.relativePositiveMargins()) {
@@ -151,10 +149,6 @@ public final class RaoRun {
     private static boolean inAcEmulation(HvdcLine line) {
         HvdcAngleDroopActivePowerControl control = line.getExtension(HvdcAngleDroopActivePowerControl.class);
         return control != null && control.isEnabled();
-    }
-
-    private static Optional<String> missing(Network network, Stream<String> ids) {
-        return listed(ids.filter(id -> network.getIdentifiable(id) == null).distinct().sorted().toList());
     }
 
     private static Optional<String> listed(Collection<String> ids) {

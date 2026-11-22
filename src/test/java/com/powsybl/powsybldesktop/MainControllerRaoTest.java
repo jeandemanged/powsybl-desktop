@@ -27,6 +27,8 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.DialogPane;
+import javafx.scene.control.SplitMenuButton;
+import javafx.scene.control.ToolBar;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -126,6 +128,20 @@ class MainControllerRaoTest extends AbstractHeadlessApplicationTest {
             outcome.actions().getFirst().handler().accept(null);
             assertEquals(NavigationType.NETWORK_TABLE_RAO_RESULTS, mainModel.getNavigationHistory().currentEventProperty().get().navigationType());
         });
+    }
+
+    // through MainController, which adds the open in new window button to its tool bar
+    @Test
+    void opensTheCracView() throws TimeoutException {
+        load();
+
+        interact(controller::onCrac);
+
+        assertEquals(NavigationType.CRAC, mainModel.getNavigationHistory().currentEventProperty().get().navigationType());
+        ToolBar toolBar = lookup(".tool-bar").queryAll().stream().map(ToolBar.class::cast)
+                .filter(bar -> bar.getItems().stream().anyMatch(item -> item instanceof Button button && button.getId() != null && button.getId().equals("importButton")))
+                .findFirst().orElseThrow();
+        assertTrue(toolBar.getItems().stream().anyMatch(SplitMenuButton.class::isInstance), toolBar.getItems().toString());
     }
 
     // shedding LD2 leaves L1 at about 134 A after the loss of L2, above a 130 A threshold

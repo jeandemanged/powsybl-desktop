@@ -30,6 +30,7 @@ public record NavigationEvent(NavigationType navigationType, NavigationState sta
             case CONTINGENCIES -> Messages.get("main.toolbar.contingencies");
             case LIMIT_SCALINGS -> Messages.get("main.toolbar.limitScalings");
             case SENSITIVITY_FACTORS -> Messages.get("main.toolbar.sensitivityFactors");
+            case CRAC -> Messages.get("main.toolbar.crac");
             case LOGS -> Messages.get("main.toolbar.logs");
             case NETWORK_TABLE_SUBSTATIONS -> Messages.get("desktop.common.equipment.substation.plural");
             case NETWORK_TABLE_VOLTAGE_LEVELS -> Messages.get("desktop.common.equipment.voltageLevel.plural");

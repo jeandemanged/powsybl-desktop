@@ -312,6 +312,11 @@
     -fx-text-fill: red;
 }
 
+/* The names of a CRAC object's details (CracController). */
+.crac-details-label {
+    -fx-font-weight: bold;
+}
+
 /* ===== Separate windows (SeparateWindows) ===== */
 
 /* Follows the mouse while a main toolbar button is dragged, telling where its view will open. */

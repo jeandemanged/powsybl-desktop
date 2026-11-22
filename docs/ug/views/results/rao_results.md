@@ -54,7 +54,7 @@ sum, then each virtual cost.
 
 ### Run a remedial action optimization
 
-1. Give the network a CRAC (contingencies, CNECs and remedial actions).
+1. Give the network a CRAC (contingencies, CNECs and remedial actions) in the [CRAC](../inputs/crac.md) view.
 2. Set the parameters in the **Remedial Action Optimization** and **Load Flow** tabs of the
    [Parameters](../parameters/index.md) view.
 3. Click **Run** > **Remedial Action Optimization** in the main toolbar.
