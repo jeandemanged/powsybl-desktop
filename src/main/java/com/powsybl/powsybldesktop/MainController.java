@@ -52,6 +52,7 @@ import com.powsybl.powsybldesktop.sensitivity.SensitivityFactorMatrix;
 import com.powsybl.powsybldesktop.ui.AbstractDisposableController;
 import com.powsybl.powsybldesktop.ui.DisposableController;
 import com.powsybl.powsybldesktop.ui.contingency.ContingenciesController;
+import com.powsybl.powsybldesktop.ui.controls.FullRowMenuItems;
 import com.powsybl.powsybldesktop.ui.limitscaling.LimitScalingsController;
 import com.powsybl.powsybldesktop.ui.logs.LogsViewController;
 import com.powsybl.powsybldesktop.ui.map.MapController;
@@ -1201,10 +1202,9 @@ public class MainController extends AbstractDisposableController {
         recentStudiesMenu.setDisable(files.isEmpty());
         List<MenuItem> items = new ArrayList<>();
         for (Path file : files) {
-            // a CustomMenuItem for the tooltip, a plain MenuItem having none
-            Label label = new Label(file.getFileName().toString());
-            label.setTooltip(new Tooltip(file.toString()));
-            CustomMenuItem item = new CustomMenuItem(label);
+            // a CustomMenuItem for the tooltip, a plain MenuItem having none, clickable on its whole row
+            CustomMenuItem item = FullRowMenuItems.create(file.getFileName().toString(), null);
+            FullRowMenuItems.label(item).setTooltip(new Tooltip(file.toString()));
             item.setOnAction(_ -> StudyCommands.loadRecent(borderPane.getScene().getWindow(), sceneModel, file));
             items.add(item);
         }
@@ -1519,9 +1519,8 @@ public class MainController extends AbstractDisposableController {
         for (int i = 0; i < titles.size(); i++) {
             int index = i;
             // a node to drag, which a plain MenuItem doesn't expose
-            Label label = new Label(titles.get(i));
-            label.setMnemonicParsing(false);
-            CustomMenuItem item = new CustomMenuItem(label);
+            CustomMenuItem item = FullRowMenuItems.create(titles.get(i), null);
+            Label label = FullRowMenuItems.label(item);
             item.setOnAction(_ -> {
                 onParameters();
                 if (currentController instanceof ParametersController parameters) {
@@ -1566,9 +1565,8 @@ public class MainController extends AbstractDisposableController {
         separateWindows.addDragToOpen(button, () -> lastUsed.get().windowKey(), () -> lastUsed.get().detach().run());
         for (MenuView view : views) {
             // a node to drag, which a plain MenuItem doesn't expose
-            Label label = new Label(Messages.get(view.labelKey()), new FontIcon(view.iconLiteral()));
-            label.setMnemonicParsing(false);
-            CustomMenuItem item = new CustomMenuItem(label);
+            CustomMenuItem item = FullRowMenuItems.create(Messages.get(view.labelKey()), new FontIcon(view.iconLiteral()));
+            Label label = FullRowMenuItems.label(item);
             item.setOnAction(_ -> view.open().run());
             button.getItems().add(item);
             separateWindows.addDragToOpen(label, view.windowKey(), view.detach(), () -> {
