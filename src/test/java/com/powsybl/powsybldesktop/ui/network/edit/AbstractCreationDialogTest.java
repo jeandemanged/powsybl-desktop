@@ -42,15 +42,10 @@ import java.util.function.Function;
 abstract class AbstractCreationDialogTest extends AbstractHeadlessApplicationTest {
 
     protected Stage stage;
-    // the primary stage's, shared by every test class of the JVM: restored for those that follow
-    private double originalX;
-    private double originalY;
 
     @Override
     public void start(Stage stage) {
         this.stage = stage;
-        originalX = stage.getX();
-        originalY = stage.getY();
         stage.setScene(new Scene(new StackPane(), 200, 200));
         stage.show();
         // dialogs are centered on it: they must fit the headless screen (blitting outside fails)
@@ -59,14 +54,10 @@ abstract class AbstractCreationDialogTest extends AbstractHeadlessApplicationTes
         stage.setY((screen.getHeight() - stage.getHeight()) / 2);
     }
 
-    // e.g. an edit error's popup, which would outlive the test, and the moved primary stage
+    // e.g. an edit error's popup, which would outlive the test (the base class puts the moved primary stage back)
     @AfterEach
     void closeOtherWindows() {
-        interact(() -> {
-            List.copyOf(Window.getWindows()).stream().filter(window -> window != stage).forEach(Window::hide);
-            stage.setX(originalX);
-            stage.setY(originalY);
-        });
+        interact(() -> List.copyOf(Window.getWindows()).stream().filter(window -> window != stage).forEach(Window::hide));
     }
 
     // two node breaker voltage levels of 2 parallel busbars in one substation, and a third, bus breaker one
