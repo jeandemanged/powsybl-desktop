@@ -14,6 +14,10 @@ module used (directly, or at runtime through ServiceLoader such as the format co
 `powsybl-config-classic` and the RDF4J triple store) is declared without a version and managed by the
 `com.powsybl:powsybl-dependencies` BOM imported in `dependencyManagement` at `powsybl-dependencies.version`, under the
 `powsybl-parent` parent. The BOM manages Logback as `runtime`, so the Logback dependencies state `compile` explicitly.
+One exception: OpenRAO (`open-rao-*`) is newer than the BOM's, at `powsybl-open-rao.version`, through its own BOM
+imported first; that BOM imports an older powsybl-core, so the powsybl-core BOM is imported before it at
+`powsybl-core.version`, which must stay the version `powsybl-dependencies` manages (imports are resolved in order, the
+first managing an artifact winning). Check with `mvn dependency:tree` that no other version moves on an upgrade.
 Read the BOM version in `pom.xml`'s properties, and resolve the in-use ones with `mvn -o dependency:tree` before reading a PowSyBl sources jar; the local
 Maven cache may contain unrelated versions.
 
@@ -97,6 +101,25 @@ Maven cache may contain unrelated versions.
   told apart from NaN ("Not computed"). It tells when the study's matrices differ from the run's. The result holds
   contingency ids only: `ContingencyNames.displayName(String, Network)` names them after the element of the same id.
   `SensitivityTexts` names the function and variable types.
+- Remedial action optimization: `…/rao/RaoRun.java`, OpenRAO's search tree RAO (`Rao.find("SearchTreeRao")`) with a
+  CRAC (contingencies, CNECs, remedial actions). Unlike the other runs it works on a **copy of the network**
+  (`NetworkSerDe.copy`, binary, in its own daemon thread) and of the CRAC (`CracIO.copy`, through JSON, in `prepare` on
+  the FX thread). On the network itself (OpenRAO 7.5.1) it switches the working variant while running, so the FX thread
+  would read intermediate states; with thread-local variants (`VariantMultiThreadAccess`) its multi-threaded network
+  pool silently falls back to the initial situation; it leaves variants behind, failing the next run ("Target variants
+  already exist"); and it adds network actions to the CRAC for HVDC range actions. Its result is never applied to the
+  network (OpenRAO has no API for that). OpenRAO swallows interruptions: a cancelled run is abandoned, its thread
+  finishing on the copies. Most failures come back as a failed result (`ComputationStatus.FAILURE`, whose other
+  getters throw) rather than an exception: `compute` turns it into a `RaoFailedException` with the execution details
+  and the report. `RaoRun.problems` refuses beforehand what OpenRAO's `RaoUtil.checkParameters` would fail on for
+  inputs the application never gives (GLSKs, reference program: relative margins, loop flows), costly min margin
+  parameters missing for `MIN_COST`, HVDC AC emulation, the PST model with elementary action limits, curative usage
+  limits, and the CRAC's elements missing from the network (edited since the import): update it on an OpenRAO upgrade.
+- CRAC files: `…/rao/CracIO.java` reads every format an OpenRAO importer handles (JSON, CSE, CIM, NC, FlowBased
+  constraint) into a `CracCreationContext`, whose creation report tells what was ignored or why it failed (a null
+  CRAC), and writes OpenRAO's JSON. It picks the importer itself, leaving out the `Network` one (the CRAC generator),
+  which claims any file it can read as a network and then ignores it. OpenRAO's JSON importer needs current limits on
+  the CNECs' branches.
 - They all produce a `ReportNode` stored with `mainModel.addReport` (see
   [architecture.md](architecture.md#reports-and-logs)).
 
