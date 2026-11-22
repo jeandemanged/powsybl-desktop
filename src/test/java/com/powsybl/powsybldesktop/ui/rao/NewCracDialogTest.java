@@ -7,12 +7,17 @@
  */
 package com.powsybl.powsybldesktop.ui.rao;
 
+import com.powsybl.iidm.network.TwoSides;
 import com.powsybl.openrao.data.crac.api.Crac;
 import com.powsybl.openrao.data.crac.api.Instant;
 import com.powsybl.openrao.data.crac.api.InstantKind;
+import com.powsybl.powsybldesktop.rao.CnecEdits;
+import com.powsybl.powsybldesktop.rao.CnecEdits.StateRef;
 import com.powsybl.powsybldesktop.rao.CracEdits;
+import com.powsybl.powsybldesktop.rao.RaoTestCases;
 import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.ButtonType;
 import javafx.scene.layout.StackPane;
@@ -20,6 +25,7 @@ import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -102,5 +108,28 @@ class NewCracDialogTest extends AbstractHeadlessApplicationTest {
         });
         assertTrue(added.get());
         assertEquals(List.of("preventive", "outage", "curative", "curative 2"), instants(crac));
+    }
+
+    @Test
+    void asksTheStatesAndSidesOfFlowCnecs() {
+        Crac crac = RaoTestCases.crac(RaoTestCases.network());
+        List<StateRef> states = CnecEdits.states(crac);
+        AtomicReference<AddFlowCnecsDialog> dialog = new AtomicReference<>();
+        interact(() -> dialog.set(new AddFlowCnecsDialog(stage, 2, states, StateRef::instantId, Set.of(TwoSides.ONE))));
+        AddFlowCnecsDialog addFlowCnecs = dialog.get();
+        Node ok = addFlowCnecs.getDialogPane().lookupButton(ButtonType.OK);
+        assertEquals(new AddFlowCnecsDialog.Request(states, Set.of(TwoSides.ONE)), addFlowCnecs.request());
+        assertFalse(ok.isDisabled());
+
+        interact(() -> addFlowCnecs.side1CheckBox.setSelected(false));
+        assertTrue(ok.isDisabled(), "no side");
+        interact(() -> {
+            addFlowCnecs.side2CheckBox.setSelected(true);
+            addFlowCnecs.checkedStates.values().forEach(checked -> checked.set(false));
+        });
+        assertTrue(ok.isDisabled(), "no state");
+        interact(() -> addFlowCnecs.checkedStates.get(states.getLast()).set(true));
+        assertFalse(ok.isDisabled());
+        assertEquals(new AddFlowCnecsDialog.Request(List.of(states.getLast()), Set.of(TwoSides.TWO)), addFlowCnecs.getResultConverter().call(ButtonType.OK));
     }
 }

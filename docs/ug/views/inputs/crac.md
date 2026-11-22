@@ -7,8 +7,8 @@ the other inputs, the CRAC belongs to the whole network a RAO runs on, for a sub
 
 ## Content
 
-A toolbar with **New**, **Import**, **Generate**, **Export**, an **Add** menu, a button to remove the selected contingency and
-a button to remove the CRAC, then a line telling the CRAC's name, its time stamp if it has one, and its instants
+A toolbar with **New**, **Import**, **Generate**, **Export**, an **Add** menu, a button to remove the selected contingency or
+CNEC and a button to remove the CRAC, then a line telling the CRAC's name, its time stamp if it has one, and its instants
 (preventive, outage, then any auto and curative ones), or "No CRAC for this network: create, import or generate one".
 
 On the left, five tabs:
@@ -27,8 +27,9 @@ icon; its tooltip gives the missing elements. A RAO with such a CRAC is refused.
 On the right, the details of the object selected on the left:
 
 - a contingency: its form, to edit it (see below);
-- a CNEC: its type (flow, angle or voltage), network elements, state, role (optimized, monitored), thresholds by side
-  with their unit, reliability margin and operator;
+- a flow CNEC: its form, to edit it (see below);
+- an angle or voltage CNEC: its type, network elements, state, role (optimized, monitored), thresholds with their unit,
+  reliability margin and operator;
 - a remedial action: its type, network elements, usage rules (when it is available: at an instant, after a
   contingency, when a CNEC is constrained, on a flow constraint in a country), operator, activation cost and speed.
 
@@ -93,6 +94,26 @@ The form of the selected contingency edits it, each change applied at once:
 The button after the **Add** menu removes the selected contingency, unless a CNEC or a remedial action refers to it (a
 notification then says which). Each edit marks the last [RAO result](../results/rao_results.md) as computed with
 another CRAC.
+
+### Add and edit flow CNECs
+
+**Add** > **Flow CNECs…** first picks branches, then asks the states to monitor them at (the preventive state, and each
+contingency at each instant after it: all checked at first) and the sides with thresholds (those of the
+[CRAC Creation](../parameters/crac_creation.md) tab's default monitored side at first). A flow CNEC is added on each
+branch at each state, as **Generate** makes one: named after the branch and the state, optimized, with the nominal
+voltages of the branch's ends and, on each side, a threshold of ± its permanent current limit (A), or else of ± its
+permanent active power limit (MW). Those whose id the CRAC already has, or with no limit on the sides, are skipped:
+**View skipped CNECs** in the notification tells which and why.
+
+The form of the selected flow CNEC edits it, each change applied at once (text fields on Enter or when leaving them):
+**Id**, **Name**, **Branch** (**Change…** picks another), **State**, **Role** (**Optimized**, **Monitored**),
+**Reliability Margin**, **Operator**, **Border**, the **Nominal Voltages** and **iMax** of both sides (needed by thresholds
+in A and % of iMax), and the **Thresholds**: a row per threshold with its side (1 or 2), unit (A, MW or %), min and/or
+max. A change OpenRAO refuses (no threshold, a threshold in % without iMax...) is told below the fields and undone. When a
+remedial action is conditioned on the CNEC (an on-constraint usage rule), only its role can be changed, and it can't be
+removed. Angle and voltage CNECs, only monitored by the RAO, can be removed but not edited.
+
+The button after the **Add** menu also removes the selected CNEC.
 
 ### Export the CRAC
 

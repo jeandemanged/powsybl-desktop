@@ -160,6 +160,14 @@ Maven cache may contain unrelated versions.
   `NetworkStudy.cracEdited()`; the CRAC view refreshes on the revision, keeping each list's selection by id and the
   selected contingency's `ContingencyForm` (so the field being edited keeps its focus). `NewCracDialog` and
   `NewInstantDialog` apply on OK, staying open with OpenRAO's reason when it refuses.
+- Flow CNEC editing: `…/rao/CnecEdits.java`. A `FlowCnec` is immutable but for its role (`setOptimized`,
+  `setMonitored`): any other change replaces it by a new one built from a `FlowCnecSpec` record (`FlowCnecSpec.of`
+  reads one), the old one put back when OpenRAO refuses the new one (no threshold, % of iMax without iMax...), so the
+  object of an id may change even on a refused edit. OpenRAO 7.5.1 removes a CNEC even when an `OnConstraint` usage
+  rule refers to it: `CnecEdits` refuses replacing or removing such a CNEC. `defaultSpec` makes a CNEC as the CRAC
+  generator's `CnecCreator` does (id `branchName_state`, ± permanent current, else active power, limit on the sides,
+  permanent current limits as iMax). `FlowCnecForm` edits one (thresholds as `RowsTableEditor` rows: side, unit, min,
+  max); angle and voltage CNECs stay read-only.
 - CRAC generation (**Generate** in the CRAC view): `…/rao/CracGenerator.java` runs OpenRAO's `NetworkCracCreator`
   (crac-io-network, OpenRAO 7.5.1) with the application's `…/rao/CracGeneratorSettings.java` (the CRAC Generator
   parameters tab, `ui/parameters/CracGeneratorParametersController`) turned into `NetworkCracCreationParameters` on a

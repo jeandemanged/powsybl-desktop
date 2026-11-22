@@ -17,11 +17,13 @@ import com.powsybl.iidm.network.test.PhaseShifterTestCaseFactory;
 import com.powsybl.openrao.data.crac.api.Crac;
 import com.powsybl.openrao.data.crac.api.Instant;
 import com.powsybl.openrao.data.crac.api.InstantKind;
+import com.powsybl.openrao.data.crac.api.cnec.FlowCnec;
 import com.powsybl.openrao.data.crac.api.parameters.CracCreationParameters;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationStatus;
+import com.powsybl.powsybldesktop.rao.CnecEdits;
 import com.powsybl.powsybldesktop.rao.CracEdits;
 import com.powsybl.powsybldesktop.rao.CracIO;
 import com.powsybl.powsybldesktop.rao.RaoTestCases;
@@ -32,9 +34,11 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -77,6 +81,9 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
     // the ids the element picker answers, and the ids it was given as already present
     private final List<String> picked = new ArrayList<>();
     private final List<Set<String>> presentWhenPicked = new ArrayList<>();
+    // the branches picked, and the states and sides of the flow CNECs asked
+    private final List<String> pickedBranches = new ArrayList<>();
+    private AddFlowCnecsDialog.Request flowCnecsRequest;
 
     // the import dialog and the element picker, modal: answered
     private final class AnsweringCracController extends CracController {
@@ -90,6 +97,16 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
         List<String> pickContingencyElements(Set<String> present) {
             presentWhenPicked.add(present);
             return List.copyOf(picked);
+        }
+
+        @Override
+        List<String> pickBranches(String title) {
+            return List.copyOf(pickedBranches);
+        }
+
+        @Override
+        Optional<AddFlowCnecsDialog.Request> askFlowCnecs(int branchCount) {
+            return Optional.of(flowCnecsRequest);
         }
 
         Optional<CracCreationParameters> ask(String fileName, String format) {
@@ -155,9 +172,10 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
             controller.tabPane.getSelectionModel().select(controller.cnecsTab);
             controller.cnecsListView.getSelectionModel().select(1);
         });
-        String cnec = details();
-        assertTrue(cnec.contains(Messages.get("raoResults.stateName", "L2 out", "curative")), cnec);
-        assertTrue(cnec.contains(Messages.get("crac.details.side", 1) + " " + Messages.get("crac.details.threshold", "-150.0", "150.0", "A")), cnec);
+        // a flow CNEC: its form
+        FlowCnecForm cnec = controller.flowCnecForm;
+        assertEquals(Messages.get("raoResults.stateName", "L2 out", "curative"), cnec.stateChoiceBox.getConverter().toString(cnec.stateChoiceBox.getValue()));
+        assertEquals(List.of(List.of("1", "A", "-150", "150")), cnec.thresholdsEditor.getRows());
 
         interact(() -> {
             controller.tabPane.getSelectionModel().select(controller.remedialActionsTab);
@@ -383,5 +401,106 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
                 .filter(candidate -> candidate.messageKey().equals("crac.contingency.fromLists.completed")).findFirst().orElseThrow();
         assertEquals(NotificationStatus.SUCCESS, notification.status());
         assertEquals(List.of(1, 1), notification.messageArgs());
+    }
+
+    @Test
+    void addsFlowCnecsOnBranches() {
+        interact(() -> study.setCrac(RaoTestCases.crac(network), List.of()));
+        pickedBranches.addAll(List.of("L1", "L2"));
+        flowCnecsRequest = new AddFlowCnecsDialog.Request(List.of(new CnecEdits.StateRef(null, "preventive")), Set.of(TwoSides.ONE));
+        interact(controller::onAddFlowCnecs);
+
+        assertSame(controller.cnecsTab, controller.tabPane.getSelectionModel().getSelectedItem());
+        assertEquals(List.of("L1 preventive", "L1_preventive", "L2_preventive", "L1 curative"),
+                controller.cnecsListView.getItems().stream().map(cnec -> cnec.getId()).toList());
+        assertEquals("L1_preventive", controller.cnecsListView.getSelectionModel().getSelectedItem().getId());
+        Notification notification = notification("crac.cnec.add").orElseThrow();
+        assertEquals(NotificationStatus.SUCCESS, notification.status());
+        assertEquals(List.of(2, 0), notification.messageArgs());
+
+        // again: all skipped, already there
+        interact(controller::onAddFlowCnecs);
+        assertEquals(4, controller.cnecsListView.getItems().size());
+        assertTrue(mainModel.getNotificationsModel().getNotifications().stream().anyMatch(n -> n.status() == NotificationStatus.PARTIAL_SUCCESS));
+    }
+
+    @Test
+    void editsAFlowCnec() {
+        interact(() -> study.setCrac(RaoTestCases.crac(network), List.of()));
+        interact(() -> {
+            controller.tabPane.getSelectionModel().select(controller.cnecsTab);
+            controller.cnecsListView.getSelectionModel().select(1);
+        });
+        FlowCnecForm form = controller.flowCnecForm;
+        FlowCnec cnec = study.getCrac().getFlowCnec("L1 curative");
+        assertSame(cnec, form.cnec());
+        assertSame(form.root(), controller.detailsHost.getChildren().getFirst());
+        assertEquals(List.of(List.of("1", "A", "-150", "150")), form.thresholdsEditor.getRows());
+
+        // the role in place
+        int revision = study.cracRevisionProperty().get();
+        interact(() -> form.monitoredCheckBox.setSelected(true));
+        assertSame(cnec, study.getCrac().getFlowCnec("L1 curative"));
+        assertTrue(cnec.isMonitored());
+        assertEquals(revision + 1, study.cracRevisionProperty().get());
+
+        // anything else by replacing it: kept selected, in the same form
+        interact(() -> {
+            form.reliabilityMarginField.setText("10");
+            form.reliabilityMarginField.fireEvent(new ActionEvent());
+        });
+        FlowCnec replaced = study.getCrac().getFlowCnec("L1 curative");
+        assertNotSame(cnec, replaced);
+        assertEquals(10., replaced.getReliabilityMargin());
+        assertTrue(replaced.isMonitored());
+        assertSame(replaced, controller.cnecsListView.getSelectionModel().getSelectedItem());
+        assertSame(form, controller.flowCnecForm);
+
+        // a refused change is told and reverted
+        interact(() -> {
+            form.iMax1Field.setText("x");
+            form.iMax1Field.fireEvent(new ActionEvent());
+        });
+        assertTrue(form.errorLabel.isVisible());
+        assertEquals("", form.iMax1Field.getText());
+
+        // no threshold: refused by OpenRAO, the CNEC put back (a new object), the rows kept as typed
+        interact(() -> {
+            form.thresholdsEditor.getTable().getSelectionModel().select(0);
+            ((Button) ((HBox) form.thresholdsEditor.getChildren().get(1)).getChildren().get(1)).fire();
+        });
+        assertNotNull(form.thresholdsEditor.getError());
+        FlowCnec putBack = study.getCrac().getFlowCnec("L1 curative");
+        assertEquals(1, putBack.getThresholds().size());
+        assertSame(putBack, form.cnec());
+        assertSame(putBack, controller.cnecsListView.getSelectionModel().getSelectedItem());
+        assertSame(form, controller.flowCnecForm);
+
+        interact(controller::onRemoveSelected);
+        assertNull(study.getCrac().getCnec("L1 curative"));
+    }
+
+    @Test
+    void keepsACnecARemedialActionIsConditionedOn() {
+        interact(() -> {
+            Crac crac = RaoTestCases.crac(network);
+            crac.newNetworkAction().withId("on constraint").newLoadAction().withNetworkElement("LD2").withActivePowerValue(50.).add()
+                    .newOnConstraintUsageRule().withCnec("L1 curative").withInstant("curative").add()
+                    .add();
+            study.setCrac(crac, List.of());
+        });
+        interact(() -> {
+            controller.tabPane.getSelectionModel().select(controller.cnecsTab);
+            controller.cnecsListView.getSelectionModel().select(1);
+        });
+        FlowCnecForm form = controller.flowCnecForm;
+        assertFalse(form.idField.isEditable());
+        assertTrue(form.thresholdsEditor.isDisabled());
+        assertFalse(form.optimizedCheckBox.isDisabled());
+        assertEquals(Messages.get("crac.cnec.referencedBy", "on constraint"), form.referencesLabel.getText());
+
+        interact(controller::onRemoveSelected);
+        assertNotNull(study.getCrac().getCnec("L1 curative"));
+        assertEquals(NotificationStatus.ERROR, notification("crac.removeSelected").orElseThrow().status());
     }
 }

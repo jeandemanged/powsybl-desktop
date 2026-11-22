@@ -40,6 +40,7 @@ import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
+import com.powsybl.powsybldesktop.rao.CnecEdits;
 import com.powsybl.powsybldesktop.rao.CracEdits;
 import com.powsybl.powsybldesktop.rao.CracElements;
 import com.powsybl.powsybldesktop.rao.CracGenerator;
@@ -54,6 +55,7 @@ import com.powsybl.powsybldesktop.ui.sensitivity.ElementPickerDialog;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.ui.window.SceneView;
 import com.powsybl.powsybldesktop.utils.Messages;
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.ReadOnlyIntegerProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
@@ -101,11 +103,12 @@ import java.util.stream.Collectors;
 
 /**
  * The CRAC of the selected network (its root's, the one a RAO runs on): its instants, contingencies, CNECs and remedial
- * actions, the details of the selected one (a contingency's editable, {@link ContingencyForm}), and the report of its
- * import. Creates an empty CRAC ({@link NewCracDialog}), imports a CRAC file of any format OpenRAO reads (asking the
- * format's parameters, {@link CracImportDialog}), generates one from the network, exports it in OpenRAO's JSON format,
- * removes it, adds instants ({@link NewInstantDialog}) and contingencies. Each edit bumps the study's CRAC revision, which
- * this view refreshes on. Objects whose network elements are missing from the network (edited since the import) are
+ * actions, the details of the selected one (a contingency's and a flow CNEC's editable, {@link ContingencyForm},
+ * {@link FlowCnecForm}), and the report of its import. Creates an empty CRAC ({@link NewCracDialog}), imports a CRAC
+ * file of any format OpenRAO reads (asking the format's parameters, {@link CracImportDialog}), generates one from the
+ * network, exports it in OpenRAO's JSON format, removes it. Adds instants ({@link NewInstantDialog}), contingencies and
+ * flow CNECs ({@link AddFlowCnecsDialog}), removes contingencies and CNECs. Each edit bumps the study's CRAC revision,
+ * which this view refreshes on. Objects whose network elements are missing from the network (edited since the import) are
  * marked, with the missing ids.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
@@ -167,8 +170,11 @@ public class CracController extends AbstractDisposableController implements Scen
     private ReadOnlyIntegerProperty watchedRevision;
     // the form of the selected contingency, kept while it is selected so that an edit keeps its focus
     ContingencyForm contingencyForm;
-    // the contingency to select at the next refresh: one just added or renamed
+    // the form of the selected flow CNEC, kept likewise
+    FlowCnecForm flowCnecForm;
+    // the contingency and the CNEC to select at the next refresh: one just added, renamed or replaced
     private String contingencyToSelect;
+    private String cnecToSelect;
     // while the lists are refreshed: their selection is cleared then restored, the details shown once done
     private boolean refreshing;
     private Network network;
@@ -194,8 +200,9 @@ public class CracController extends AbstractDisposableController implements Scen
         remedialActionsListView.setCellFactory(_ -> new ProblemCell<>(action -> Messages.get("crac.remedialAction.item", action.getName(), actionType(action)),
                 action -> missingProblem(CracElements.missing(network, action))));
         reportListView.setPlaceholder(new Label(Messages.get("crac.report.none")));
-        removeSelectedButton.disableProperty().bind(tabPane.getSelectionModel().selectedItemProperty().isNotEqualTo(contingenciesTab)
-                .or(contingenciesListView.getSelectionModel().selectedItemProperty().isNull()));
+        removeSelectedButton.disableProperty().bind(Bindings.createBooleanBinding(() -> selectedToRemove().isEmpty(),
+                tabPane.getSelectionModel().selectedItemProperty(), contingenciesListView.getSelectionModel().selectedItemProperty(),
+                cnecsListView.getSelectionModel().selectedItemProperty()));
         contingenciesListView.getSelectionModel().selectedItemProperty().addListener((_, _, _) -> onSelection());
         cnecsListView.getSelectionModel().selectedItemProperty().addListener((_, _, _) -> onSelection());
         remedialActionsListView.getSelectionModel().selectedItemProperty().addListener((_, _, _) -> onSelection());
@@ -256,13 +263,15 @@ public class CracController extends AbstractDisposableController implements Scen
         String selectedContingency = contingencyToSelect != null ? contingencyToSelect
                 : Optional.ofNullable(contingenciesListView.getSelectionModel().getSelectedItem()).map(Contingency::getId).orElse(null);
         contingencyToSelect = null;
+        String selectedCnec = cnecToSelect;
+        cnecToSelect = null;
         refreshing = true;
         try {
             setItems(instantsListView, crac == null ? List.of() : crac.getSortedInstants(), Instant::getId, null);
             setItems(contingenciesListView, crac == null ? List.of() : crac.getContingencies().stream().sorted(Comparator.comparing(Contingency::getId)).toList(),
                     Contingency::getId, selectedContingency);
             setItems(cnecsListView, crac == null ? List.of() : crac.getCnecs().stream().<Cnec<?>>map(cnec -> cnec)
-                    .sorted(Comparator.<Cnec<?>, State>comparing(Cnec::getState, RaoResultRows.STATE_ORDER).thenComparing(Cnec::getId)).toList(), Cnec::getId, null);
+                    .sorted(Comparator.<Cnec<?>, State>comparing(Cnec::getState, RaoResultRows.STATE_ORDER).thenComparing(Cnec::getId)).toList(), Cnec::getId, selectedCnec);
             setItems(remedialActionsListView, crac == null ? List.of() : crac.getRemedialActions().stream().sorted(Comparator.comparing(RemedialAction::getId)).toList(),
                     RemedialAction::getId, null);
         } finally {
@@ -294,8 +303,9 @@ public class CracController extends AbstractDisposableController implements Scen
     }
 
     private void refreshProblems() {
-        // the contingency form tells its problems too
+        // the forms tell their problems too
         contingencyForm = null;
+        flowCnecForm = null;
         contingenciesListView.refresh();
         cnecsListView.refresh();
         remedialActionsListView.refresh();
@@ -311,11 +321,16 @@ public class CracController extends AbstractDisposableController implements Scen
     }
 
     String stateName(State state) {
+        return stateName(CnecEdits.StateRef.of(state));
+    }
+
+    String stateName(CnecEdits.StateRef state) {
         if (state.isPreventive()) {
             return Messages.get("raoResults.preventive");
         }
-        return Messages.get("raoResults.stateName", state.getContingency().map(contingency -> ContingencyNames.displayName(contingency, network)).orElse(""),
-                state.getInstant().getId());
+        Contingency contingency = crac() == null ? null : crac().getContingency(state.contingencyId());
+        return Messages.get("raoResults.stateName", contingency == null ? state.contingencyId() : ContingencyNames.displayName(contingency, network),
+                state.instantId());
     }
 
     static String actionType(RemedialAction<?> action) {
@@ -353,6 +368,11 @@ public class CracController extends AbstractDisposableController implements Scen
             return;
         }
         contingencyForm = null;
+        if (tab == cnecsTab && cnecsListView.getSelectionModel().getSelectedItem() instanceof FlowCnec flowCnec) {
+            showFlowCnecForm(flowCnec);
+            return;
+        }
+        flowCnecForm = null;
         List<String[]> rows = new ArrayList<>();
         if (tab == cnecsTab && cnecsListView.getSelectionModel().getSelectedItem() != null) {
             cnecDetails(cnecsListView.getSelectionModel().getSelectedItem(), rows);
@@ -390,6 +410,22 @@ public class CracController extends AbstractDisposableController implements Scen
             }, this::pickContingencyElements);
             detailsHost.getChildren().setAll(contingencyForm.root());
         }
+    }
+
+    private void showFlowCnecForm(FlowCnec cnec) {
+        if (flowCnecForm == null || flowCnecForm.cnec() != cnec) {
+            flowCnecForm = new FlowCnecForm(crac(), network, cnec, edited -> {
+                cnecToSelect = edited.getId();
+                study().cracEdited();
+            }, this::stateName, () -> pickBranches(Messages.get("crac.cnec.changeBranch.title")).stream().findFirst());
+            detailsHost.getChildren().setAll(flowCnecForm.root());
+        }
+    }
+
+    // the ids of the branches picked; overridable by a test, which can't answer a modal dialog
+    List<String> pickBranches(String title) {
+        return new ElementPickerDialog(detailsHost.getScene().getWindow(), title, SensitivityElements.identifiables(network.getBranchStream().map(branch -> (Identifiable<?>) branch)), Set.of())
+                .showAndWait().orElse(List.of());
     }
 
     // the ids of the network objects picked to be added to a contingency; overridable by a test, which can't answer a
@@ -546,17 +582,61 @@ public class CracController extends AbstractDisposableController implements Scen
 
     @FXML
     void onRemoveSelected() {
-        Contingency contingency = contingenciesListView.getSelectionModel().getSelectedItem();
-        if (contingency == null || tabPane.getSelectionModel().getSelectedItem() != contingenciesTab) {
+        Optional<Object> selected = selectedToRemove();
+        if (selected.isEmpty()) {
             return;
         }
         try {
-            CracEdits.removeContingency(crac(), contingency.getId());
+            switch (selected.get()) {
+                case Contingency contingency -> CracEdits.removeContingency(crac(), contingency.getId());
+                case Cnec<?> cnec -> CnecEdits.remove(crac(), cnec.getId());
+                default -> throw new IllegalStateException();
+            }
         } catch (IllegalArgumentException e) {
             mainModel.getNotificationsModel().add(Notification.createError(java.time.Instant.now(), "crac.removeSelected.failed").withMessageArgs(e.getMessage()));
             return;
         }
         study().cracEdited();
+    }
+
+    // the object of the selected tab the remove button removes: a contingency or a CNEC
+    private Optional<Object> selectedToRemove() {
+        Tab tab = tabPane.getSelectionModel().getSelectedItem();
+        if (tab == contingenciesTab) {
+            return Optional.ofNullable(contingenciesListView.getSelectionModel().getSelectedItem());
+        }
+        return tab == cnecsTab ? Optional.ofNullable(cnecsListView.getSelectionModel().getSelectedItem()) : Optional.empty();
+    }
+
+    // on branches picked, at the states and sides asked, as OpenRAO's CRAC generator makes them
+    @FXML
+    void onAddFlowCnecs() {
+        Crac crac = crac();
+        if (crac == null) {
+            return;
+        }
+        List<String> branchIds = pickBranches(Messages.get("crac.cnec.add.branches"));
+        if (!branchIds.isEmpty()) {
+            askFlowCnecs(branchIds.size()).ifPresent(request -> addFlowCnecs(branchIds, request));
+        }
+    }
+
+    // overridable by a test, which can't answer a modal dialog
+    Optional<AddFlowCnecsDialog.Request> askFlowCnecs(int branchCount) {
+        return new AddFlowCnecsDialog(detailsHost.getScene().getWindow(), branchCount, CnecEdits.states(crac()), this::stateName,
+                mainModel.getParametersModel().cracCreationParametersProperty().get().getDefaultMonitoredSides()).showAndWait();
+    }
+
+    void addFlowCnecs(List<String> branchIds, AddFlowCnecsDialog.Request request) {
+        java.time.Instant start = java.time.Instant.now();
+        CnecEdits.Added added = CnecEdits.addFlowCnecs(crac(), network, branchIds, request.states(), request.sides());
+        tabPane.getSelectionModel().select(cnecsTab);
+        added.added().stream().findFirst().ifPresent(first -> cnecToSelect = first.getId());
+        study().cracEdited();
+        NotificationAction details = new NotificationAction("crac.cnec.add.viewSkipped", _ -> showLines(Messages.get("crac.cnec.add.skippedTitle"), added.skipped()));
+        mainModel.getNotificationsModel().add(added.skipped().isEmpty()
+                ? Notification.createSuccess(start, "crac.cnec.add.completed").withMessageArgs(added.added().size(), 0)
+                : Notification.createPartialSuccess(start, "crac.cnec.add.completed", details).withMessageArgs(added.added().size(), added.skipped().size()));
     }
 
     // ----- import, export, removal -----
@@ -717,13 +797,17 @@ public class CracController extends AbstractDisposableController implements Scen
     }
 
     private void showReport(String fileName, List<String> report) {
-        TextArea text = new TextArea(report.isEmpty() ? Messages.get("crac.report.none") : String.join("\n", report));
+        showLines(Messages.get("crac.report.title", fileName), report.isEmpty() ? List.of(Messages.get("crac.report.none")) : report);
+    }
+
+    private void showLines(String title, List<String> lines) {
+        TextArea text = new TextArea(String.join("\n", lines));
         text.setEditable(false);
         text.setWrapText(true);
         text.setPrefSize(700, 400);
         Alert alert = new Alert(Alert.AlertType.INFORMATION, null, ButtonType.CLOSE);
         alert.initOwner(detailsHost.getScene() == null ? null : detailsHost.getScene().getWindow());
-        alert.setTitle(Messages.get("crac.report.title", fileName));
+        alert.setTitle(title);
         alert.setHeaderText(null);
         alert.getDialogPane().setContent(text);
         alert.setResizable(true);
