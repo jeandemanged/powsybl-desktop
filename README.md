@@ -43,9 +43,9 @@ It has three goals:
 Download the archive for your platform (Windows, Linux, macOS on Apple Silicon) from the
 [releases](https://github.com/jeandemanged/powsybl-desktop/releases), extract it and run the executable inside:
 
-- Windows: `PowSyBl Desktop/PowSyBl Desktop.exe`
-- Linux: `PowSyBl Desktop/bin/PowSyBl Desktop`
-- macOS: `PowSyBl Desktop.app`
+- Windows: `PowSyBl Desktop <version>/PowSyBl Desktop.exe`
+- Linux: `PowSyBl Desktop <version>/bin/PowSyBl Desktop`
+- macOS: `PowSyBl Desktop <version>/PowSyBl Desktop.app`
 
 The archive is a portable app-image, not an installer: nothing is installed system-wide.
 
@@ -250,9 +250,11 @@ if present, and fall back to jpackage's default icon otherwise.
 
 #### Continuous integration and releases
 
-All three scripts are run on GitHub Actions by `.github/workflows/package-release.yml` (manual dispatch, publishes
-from branch `init`): it tags the commit, packages the app-image on Windows, Linux and macOS (Apple Silicon) runners
-with the downloaded JavaFX jmods, archives each one and publishes them as a GitHub release. Each packaging job builds
+All three scripts are run on GitHub Actions by `.github/workflows/package-release.yml` on every push to `main`
+(merges included): it tags the commit with the version, packages the app-image on Windows, Linux and macOS (Apple Silicon) runners
+with the downloaded JavaFX jmods, archives each one as `powsybl-desktop-<version>-<platform>.zip` (`.tar.gz` on Linux), holding a `PowSyBl Desktop <version>` folder, and
+publishes them as a GitHub release. The version is semver, derived from the Maven one: `0.1.0-SNAPSHOT` gives
+`0.1.0-beta.YYYYMMDD.<short sha>`. Each packaging job builds
 its own platform's user's guide first, so that it is shipped in the app-image; the release also gets a
 `…-user-guide.zip` asset with the HTML and PDF of all three platforms, a folder per platform. Every push is also built and tested on
 the same three platforms by `.github/workflows/ci.yml`, which also builds the user's guide on each of them: the HTML

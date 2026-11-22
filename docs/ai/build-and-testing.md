@@ -167,12 +167,15 @@ the test adds one to the small grid. Each tab of the Parameters view has its `pa
 -DforkCount=1C` on Windows, Ubuntu and macOS with Temurin 25. In parallel, the `user-guide` jobs build the user's guide
 on the same three platforms, and `user-guide-artifact` merges them into one `user-guide` artifact with a `windows`,
 `linux` and `macos` folder, each holding `html/` and the PDF (from the platforms that succeeded).
-`.github/workflows/package-release.yml` (manual dispatch, publishes from branch `init`): tags the commit
-(`vYYYYMMDD-sha`), builds the user's guide and runs the three packaging scripts on Windows, Linux and macOS (Apple
-Silicon) runners with downloaded JavaFX jmods, archives the app-images and creates a GitHub release marked latest, then
+`.github/workflows/package-release.yml` (on every push to `main`; a manual dispatch publishes only from `main`):
+derives a semver version from the Maven one (`X.Y.Z-SNAPSHOT` becomes `X.Y.Z-beta.YYYYMMDD.<short sha>`, a non-SNAPSHOT
+version is used as is), tags the commit `v<version>`, builds the user's guide and runs the three packaging scripts on Windows, Linux and macOS (Apple
+Silicon) runners with downloaded JavaFX jmods, archives the app-images as `powsybl-desktop-<version>-windows.zip`, `-linux.tar.gz` and `-macos.zip`, each holding a
+single `PowSyBl Desktop <version>` folder (on macOS it wraps the unrenamed `PowSyBl Desktop.app`; `package-macos.sh`
+still turns a leading `0` into `1` for jpackage's `--app-version` only), and creates a GitHub release marked latest, then
 deletes all but the newest 5 such releases and their tags. Each packaging job also
 uploads its guide (`user-guide-<platform>`), and the release job zips them into one
-`powsybl-desktop-<version>-<sha>-user-guide.zip` asset (`user-guide/{windows,linux,macos}`, each with `html/` and the
+`powsybl-desktop-<version>-user-guide.zip` asset (`user-guide/{windows,linux,macos}`, each with `html/` and the
 PDF); it downloads the app archives by the `powsybl-desktop-*` pattern so that the guide's files stay out of `dist`.
 Both build the guide with the composite action `.github/actions/build-user-guide`: Python 3.12, TeX Live from its
 official installer (`install-tl`, scheme-basic plus the collections Sphinx's LaTeX needs, in `~/texlive`, cached per OS

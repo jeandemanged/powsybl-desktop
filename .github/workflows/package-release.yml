@@ -1,6 +1,9 @@
 name: Package & pre-release
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch: {}
 
 permissions:
@@ -11,23 +14,32 @@ env:
 
 jobs:
   prep:
-    # workflow_dispatch can be run from any branch that has this file; only "init" actually publishes.
-    if: github.ref == 'refs/heads/init'
+    # workflow_dispatch can be run from any branch that has this file; only "main" actually publishes.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.vars.outputs.version }}
-      sha: ${{ steps.vars.outputs.sha }}
       tag: ${{ steps.vars.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
 
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      # Semver: X.Y.Z-SNAPSHOT becomes the pre-release X.Y.Z-beta.YYYYMMDD.<sha>
       - id: vars
         run: |
-          version="$(date -u +%Y%m%d)"
-          sha="${GITHUB_SHA::7}"
+          pom_version="$(mvn -B -q help:evaluate -Dexpression=project.version -DforceStdout)"
+          case "$pom_version" in
+            *-SNAPSHOT) version="${pom_version%-SNAPSHOT}-beta.$(date -u +%Y%m%d).${GITHUB_SHA::7}" ;;
+            *) version="$pom_version" ;;
+          esac
+          echo "Version: $version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          echo "tag=v${version}-${sha}" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
 
       # Tag now, once, so every platform builds against the exact same fixed ref instead of the
       # (potentially moving) branch tip.
@@ -52,6 +64,8 @@ jobs:
             platform: macos
             jmods_os: osx-aarch64 # GitHub's macos-latest runners are Apple Silicon
     runs-on: ${{ matrix.os }}
+    env:
+      VERSION: ${{ needs.prep.outputs.version }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -92,30 +106,39 @@ jobs:
         shell: bash
         run: ./packaging/package-macos.sh "$JMODS_DIR"
 
+      # Each archive holds a single "PowSyBl Desktop <version>" folder, so that versions extract side by side
       - name: Create archive (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $name = "powsybl-desktop-${{ needs.prep.outputs.version }}-${{ needs.prep.outputs.sha }}-windows.zip"
-          Compress-Archive -Path "target/dist/PowSyBl Desktop" -DestinationPath $name
+          $name = "powsybl-desktop-$env:VERSION-windows.zip"
+          $folder = "target/dist/PowSyBl Desktop $env:VERSION"
+          Move-Item -LiteralPath "target/dist/PowSyBl Desktop" -Destination $folder
+          Compress-Archive -LiteralPath $folder -DestinationPath $name
           echo "ARCHIVE_NAME=$name" >> $env:GITHUB_ENV
 
       - name: Create archive (Linux)
         if: matrix.platform == 'linux'
         shell: bash
         run: |
-          name="powsybl-desktop-${{ needs.prep.outputs.version }}-${{ needs.prep.outputs.sha }}-linux.tar.gz"
-          tar -czf "$name" -C target/dist "PowSyBl Desktop"
+          name="powsybl-desktop-$VERSION-linux.tar.gz"
+          folder="PowSyBl Desktop $VERSION"
+          mv "target/dist/PowSyBl Desktop" "target/dist/$folder"
+          tar -czf "$name" -C target/dist "$folder"
           echo "ARCHIVE_NAME=$name" >> "$GITHUB_ENV"
 
       - name: Create archive (macOS)
         if: matrix.platform == 'macos'
         shell: bash
         run: |
-          name="powsybl-desktop-${{ needs.prep.outputs.version }}-${{ needs.prep.outputs.sha }}-macos.zip"
+          name="powsybl-desktop-$VERSION-macos.zip"
+          # The versioned folder wraps the bundle, which keeps its plain name once moved to /Applications
+          folder="target/dist/PowSyBl Desktop $VERSION"
+          mkdir "$folder"
+          mv "target/dist/PowSyBl Desktop.app" "$folder/"
           # ditto (not zip/tar) preserves the .app bundle's resource fork/permissions correctly - the
           # same tool Xcode itself uses to archive app bundles.
-          ditto -c -k --sequesterRsrc --keepParent "target/dist/PowSyBl Desktop.app" "$name"
+          ditto -c -k --sequesterRsrc --keepParent "$folder" "$name"
           echo "ARCHIVE_NAME=$name" >> "$GITHUB_ENV"
 
       - uses: actions/upload-artifact@v7
@@ -155,7 +178,7 @@ jobs:
           merge-multiple: true
 
       - name: Archive the user's guide
-        run: zip -qr "dist/powsybl-desktop-${{ needs.prep.outputs.version }}-${{ needs.prep.outputs.sha }}-user-guide.zip" user-guide
+        run: zip -qr "dist/powsybl-desktop-${{ needs.prep.outputs.version }}-user-guide.zip" user-guide
 
       - name: Create pre-release
         env:
@@ -166,11 +189,11 @@ jobs:
           # built - no --target needed. Deliberately not flagged as a GitHub prerelease (no
           # --prerelease) so it shows up as a normal release; --latest marks it as the release
           # GitHub highlights, since without it that's decided by date/version heuristics we don't
-          # control (our tags aren't semver).
+          # control (and GitHub never treats a semver pre-release tag as latest on its own).
           gh release create "$tag" dist/* \
             --repo "${{ github.repository }}" \
             --title "$tag" \
-            --notes "Automated pre-release build from commit ${{ github.sha }} on branch init." \
+            --notes "Automated pre-release build from commit ${{ github.sha }} on branch main." \
             --latest
 
       - name: Purge old pre-releases (keep newest 5)
@@ -179,7 +202,7 @@ jobs:
         run: |
           gh release list --repo "${{ github.repository }}" --limit 200 \
             --json tagName,name,createdAt \
-            --jq '[.[] | select(.name | test("^v[0-9]{8}-[0-9a-f]{7}$"))] | sort_by(.createdAt) | reverse | .[5:][].tagName' \
+            --jq '[.[] | select(.name | test("^v[0-9]+\\.[0-9]+\\.[0-9]+-beta\\.[0-9]{8}\\.[0-9a-f]{7}$"))] | sort_by(.createdAt) | reverse | .[5:][].tagName' \
           | while read -r old_tag; do
               echo "Deleting old pre-release: $old_tag"
               gh release delete "$old_tag" --repo "${{ github.repository }}" --yes --cleanup-tag
