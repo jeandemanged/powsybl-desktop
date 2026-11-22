@@ -37,10 +37,10 @@ import com.powsybl.openrao.data.crac.api.rangeaction.PstRangeActionAdder;
 import com.powsybl.openrao.data.crac.api.rangeaction.RangeAction;
 import com.powsybl.openrao.data.crac.api.rangeaction.StandardRangeActionAdder;
 import com.powsybl.openrao.data.crac.api.rangeaction.VariationDirection;
-import com.powsybl.openrao.data.crac.api.usagerule.UsageRule;
 import com.powsybl.openrao.data.crac.io.commons.iidm.IidmCounterTradeHelper;
 import com.powsybl.openrao.data.crac.io.commons.iidm.IidmHvdcHelper;
 import com.powsybl.openrao.data.crac.io.commons.iidm.IidmPstHelper;
+import com.powsybl.powsybldesktop.rao.UsageRuleEdits.UsageRuleSpec;
 import com.powsybl.powsybldesktop.utils.Messages;
 
 import java.util.ArrayList;
@@ -53,6 +53,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
@@ -312,14 +313,15 @@ public final class RangeActionEdits {
     /**
      * Adds a range action, available as {@code usageRules} tell.
      */
-    public static RangeAction<?> add(Crac crac, Network network, RangeActionSpec spec, Collection<UsageRule> usageRules) {
+    public static RangeAction<?> add(Crac crac, Network network, RangeActionSpec spec, Collection<UsageRuleSpec> usageRules) {
         if (spec.id().isEmpty()) {
             throw new IllegalArgumentException(Messages.get("cracEdits.idRequired"));
         }
         if (crac.getRemedialAction(spec.id()) != null) {
             throw new IllegalArgumentException(Messages.get("networkActionEdits.exists", spec.id()));
         }
-        RangeActionSpec checked = check(network, spec, usageRules);
+        UsageRuleEdits.checkAll(crac, usageRules);
+        RangeActionSpec checked = check(crac, network, spec, usageRules);
         try {
             return build(crac, checked, usageRules);
         } catch (OpenRaoException e) {
@@ -328,7 +330,7 @@ public final class RangeActionEdits {
     }
 
     // the spec, with a PST's taps from the network when it has none
-    private static RangeActionSpec check(Network network, RangeActionSpec spec, Collection<UsageRule> usageRules) {
+    private static RangeActionSpec check(Crac crac, Network network, RangeActionSpec spec, Collection<UsageRuleSpec> usageRules) {
         RangeActionSpec checked = spec;
         switch (spec.type()) {
             case PST, HVDC -> {
@@ -350,7 +352,7 @@ public final class RangeActionEdits {
             case INJECTION -> checkInjections(network, spec.elements());
             case COUNTER_TRADE -> checkAreas(spec);
         }
-        checkRanges(spec, usageRules);
+        checkRanges(crac, spec, usageRules);
         return checked;
     }
 
@@ -410,7 +412,7 @@ public final class RangeActionEdits {
         }
     }
 
-    private static void checkRanges(RangeActionSpec spec, Collection<UsageRule> usageRules) {
+    private static void checkRanges(Crac crac, RangeActionSpec spec, Collection<UsageRuleSpec> usageRules) {
         if (spec.type() != Type.PST && spec.ranges().isEmpty()) {
             throw new IllegalArgumentException(Messages.get("rangeActionEdits.rangeRequired"));
         }
@@ -421,14 +423,19 @@ public final class RangeActionEdits {
                         throw new IllegalArgumentException(Messages.get("rangeActionEdits.tapNotInteger", TableRows.text(tap)));
                     }
                 }
-                // OpenRAO drops such ranges of a PST range action only available at the preventive instant
-                if (range.type() == RangeType.RELATIVE_TO_PREVIOUS_INSTANT && usageRules.stream().allMatch(rule -> rule.getInstant().isPreventive())) {
-                    throw new IllegalArgumentException(Messages.get("rangeActionEdits.previousInstantPreventive"));
-                }
             } else if (range.type() == RangeType.ABSOLUTE && (range.min() == null || range.max() == null)) {
                 throw new IllegalArgumentException(Messages.get("rangeActionEdits.absoluteBounds"));
             }
             checkMinMax(range);
+        }
+        checkPreviousInstantRanges(crac, spec, usageRules);
+    }
+
+    // OpenRAO drops the ranges relative to the previous instant of a PST range action only available at the preventive instant
+    private static void checkPreviousInstantRanges(Crac crac, RangeActionSpec spec, Collection<UsageRuleSpec> usageRules) {
+        if (spec.type() == Type.PST && spec.ranges().stream().anyMatch(range -> range.type() == RangeType.RELATIVE_TO_PREVIOUS_INSTANT)
+                && usageRules.stream().allMatch(rule -> crac.getInstant(rule.instantId()).isPreventive())) {
+            throw new IllegalArgumentException(Messages.get("rangeActionEdits.previousInstantPreventive"));
         }
     }
 
@@ -439,7 +446,7 @@ public final class RangeActionEdits {
     }
 
     // unchecked: OpenRAO's adders' own checks apart
-    private static RangeAction<?> build(Crac crac, RangeActionSpec spec, Collection<UsageRule> usageRules) {
+    private static RangeAction<?> build(Crac crac, RangeActionSpec spec, Collection<UsageRuleSpec> usageRules) {
         return switch (spec.type()) {
             case PST -> {
                 PstRangeActionAdder adder = common(crac.newPstRangeAction(), spec, usageRules).withGroupId(spec.groupId())
@@ -488,9 +495,9 @@ public final class RangeActionEdits {
         };
     }
 
-    private static <T extends RemedialActionAdder<T>> T common(T adder, RangeActionSpec spec, Collection<UsageRule> usageRules) {
+    private static <T extends RemedialActionAdder<T>> T common(T adder, RangeActionSpec spec, Collection<UsageRuleSpec> usageRules) {
         adder.withId(spec.id()).withName(spec.name()).withOperator(spec.operator()).withSpeed(spec.speed()).withActivationCost(spec.activationCost());
-        NetworkActionEdits.copyUsageRules(adder, usageRules);
+        UsageRuleEdits.addTo(adder, usageRules);
         return adder;
     }
 
@@ -508,7 +515,7 @@ public final class RangeActionEdits {
     }
 
     // a missing bound: unbounded, rather than the adder's default (Double.MIN_VALUE, a bound of about 0, for a minimum)
-    private static <T extends StandardRangeActionAdder<T>> T standard(T adder, RangeActionSpec spec, Collection<UsageRule> usageRules) {
+    private static <T extends StandardRangeActionAdder<T>> T standard(T adder, RangeActionSpec spec, Collection<UsageRuleSpec> usageRules) {
         common(adder, spec, usageRules).withGroupId(spec.groupId()).withInitialSetpoint(spec.initialSetpoint());
         variationCosts(spec, adder::withVariationCost);
         for (RangeSpec range : spec.ranges()) {
@@ -529,11 +536,7 @@ public final class RangeActionEdits {
      * refused; {@code action} itself when nothing changes.
      */
     public static RangeAction<?> change(Crac crac, Network network, RangeAction<?> action, RangeActionSpec spec) {
-        if (action instanceof CounterTradeRangeAction) {
-            throw new IllegalArgumentException(Messages.get("rangeActionEdits.counterTradeFixed"));
-        }
-        RangeActionSpec current = RangeActionSpec.of(action)
-                .orElseThrow(() -> new IllegalArgumentException(Messages.get("networkActionEdits.unsupported", action.getId())));
+        RangeActionSpec current = current(action);
         if (current.equals(spec)) {
             return action;
         }
@@ -543,13 +546,48 @@ public final class RangeActionEdits {
         if (!spec.id().equals(action.getId()) && crac.getRemedialAction(spec.id()) != null) {
             throw new IllegalArgumentException(Messages.get("networkActionEdits.exists", spec.id()));
         }
-        List<UsageRule> usageRules = List.copyOf(action.getUsageRules());
+        List<UsageRuleSpec> usageRules = UsageRuleEdits.of(action);
+        return replace(crac, action, current, usageRules, () -> add(crac, network, spec, usageRules));
+    }
+
+    /**
+     * Replaces {@code action} by the same one with {@code usageRules}, putting it back when they are refused; its
+     * elements are not checked again (the network may have changed since), its ranges are, against the new rules. See
+     * {@link UsageRuleEdits#set}.
+     */
+    static RangeAction<?> setUsageRules(Crac crac, Network network, RangeAction<?> action, List<UsageRuleSpec> usageRules) {
+        RangeActionSpec current = current(action);
+        List<UsageRuleSpec> currentRules = UsageRuleEdits.of(action);
+        if (Set.copyOf(currentRules).equals(Set.copyOf(usageRules))) {
+            return action;
+        }
+        UsageRuleEdits.checkAll(crac, usageRules);
+        checkPreviousInstantRanges(crac, current, usageRules);
+        return replace(crac, action, current, currentRules, () -> {
+            try {
+                return build(crac, current, usageRules);
+            } catch (OpenRaoException e) {
+                throw new IllegalArgumentException(e.getMessage(), e);
+            }
+        });
+    }
+
+    // a counter-trade, which OpenRAO 7.5.1 can't remove, can't be replaced
+    private static RangeActionSpec current(RangeAction<?> action) {
+        if (action instanceof CounterTradeRangeAction) {
+            throw new IllegalArgumentException(Messages.get("rangeActionEdits.counterTradeFixed"));
+        }
+        return RangeActionSpec.of(action).orElseThrow(() -> new IllegalArgumentException(Messages.get("networkActionEdits.unsupported", action.getId())));
+    }
+
+    // {@code action} removed, then its replacement added, or else {@code action} put back as it was, unchecked
+    private static RangeAction<?> replace(Crac crac, RangeAction<?> action, RangeActionSpec current, List<UsageRuleSpec> currentRules,
+                                          Supplier<RangeAction<?>> replacement) {
         crac.removeRemedialAction(action.getId());
         try {
-            return add(crac, network, spec, usageRules);
+            return replacement.get();
         } catch (IllegalArgumentException e) {
-            // as it was: not checked again, the network may have changed since
-            build(crac, current, usageRules);
+            build(crac, current, currentRules);
             throw e;
         }
     }

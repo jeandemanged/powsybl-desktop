@@ -74,6 +74,12 @@ new CRAC, with no contingency, CNEC or remedial action yet, replaces the network
 **Add** > **Instant…** asks the kind and id of a new instant, added after the existing ones: an auto instant only while
 the CRAC has neither auto nor curative instant, curative ones always. Instants can't be removed.
 
+The form of the selected instant shows its kind and edits its **Remedial Action Usage Limits**, the most the RAO may
+use at that instant: **Max Remedial Actions** in all (applied on Enter or when leaving the field), and **Per TSO**, a
+row per TSO (the operator of the remedial actions) with its max topological actions, PSTs, remedial actions and
+elementary actions. A blank limit is none. A limit can't be negative, and a TSO's max remedial actions can't be fewer
+than its max topological actions or PSTs. The outage instant has no usage limits: no remedial action is used at it.
+
 ### Add and edit contingencies
 
 - **Add** > **Contingency** adds a contingency with no elements, named "Contingency 1" (or the next free number), and
@@ -138,9 +144,8 @@ its kind, element and value:
 | `acEmulationOff` | an HVDC line | none |
 
 **Add Actions…** adds an elementary action on more elements picked, as above. An element can be acted on only once,
-and must be of the kind's type. A refused change is told below the fields and undone. The usage rules (when the action
-is available: at an instant, after a contingency, when a CNEC is constrained, on a flow constraint in a country) are
-shown, unchanged by the edits. An imported action with an elementary action of another kind (a relative set point...)
+and must be of the kind's type. A refused change is told below the fields and undone. The **Usage Rules** are edited
+[as below](#edit-usage-rules). An imported action with an elementary action of another kind (a relative set point...)
 is read-only.
 
 The button after the **Add** menu also removes the selected remedial action, network or range action.
@@ -184,7 +189,26 @@ A counter-trading range action has its **Area** and **Connected Areas**: a row p
 with an area, a row with a blank range for an area without any. Areas are country codes (`FR`, `BE`...). OpenRAO 7.5.1
 can't remove a counter-trading range action from a CRAC: once added or imported, it is read-only and can't be removed.
 
-A refused change is told below the fields and undone. The usage rules are shown, unchanged by the edits.
+A refused change is told below the fields and undone. The **Usage Rules** are edited [as below](#edit-usage-rules),
+but for a counter-trading range action's.
+
+### Edit usage rules
+
+The usage rules of a remedial action tell when the RAO may use it; an action without any is never used. The
+**Usage Rules** list of a network or range action's form shows them; the **+** button asks a new one, the **-** button
+removes the selected ones. The new rule's **Kind** tells what else it needs:
+
+- **At an instant**: the action is available at the **Instant**, in every state (after any contingency for an auto or
+  curative instant).
+- **After a contingency**: available at the auto or curative **Instant** after the **Contingency** only.
+- **When a CNEC is constrained**: available at the **Instant** when the **CNEC** is overloaded; only the CNECs at that
+  instant or after it are offered.
+- **On a flow constraint in a country**: available at the **Instant** when a CNEC of the **Country** is overloaded,
+  after the **Contingency** or after any.
+
+No rule can be at the outage instant. A rule the action already has, or one OpenRAO would refuse, is told below the
+list, the action unchanged. A PST range action with a range relative to the previous instant must keep a rule at an
+instant other than the preventive one.
 
 ### Export the CRAC
 

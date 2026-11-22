@@ -11,11 +11,11 @@ import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.openrao.data.crac.api.Crac;
 import com.powsybl.openrao.data.crac.api.networkaction.NetworkAction;
-import com.powsybl.openrao.data.crac.api.usagerule.UsageRule;
 import com.powsybl.powsybldesktop.rao.CracElements;
 import com.powsybl.powsybldesktop.rao.NetworkActionEdits;
 import com.powsybl.powsybldesktop.rao.NetworkActionEdits.ElementaryActionSpec;
 import com.powsybl.powsybldesktop.rao.NetworkActionEdits.NetworkActionSpec;
+import com.powsybl.powsybldesktop.rao.UsageRuleEdits;
 import com.powsybl.powsybldesktop.ui.controls.RowsTableEditor;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.scene.Node;
@@ -32,6 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -39,8 +40,8 @@ import java.util.stream.Collectors;
  * OpenRAO's network actions are immutable: each change replaces the action by a new one with the same usage rules
  * ({@link NetworkActionEdits#change}), applied at once (Enter or focus loss for the text fields, each edit for the
  * actions) and told {@code onEdited}; a refused change is told below the fields and the fields reverted (the actions
- * kept as typed, to be fixed). Its usage rules are shown. An action with an elementary action OpenRAO's adders don't
- * make is read-only.
+ * kept as typed, to be fixed). Its usage rules are replaced likewise ({@link UsageRulesPane}, {@link UsageRuleEdits#set}).
+ * An action with an elementary action OpenRAO's adders don't make is read-only.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -49,7 +50,6 @@ final class NetworkActionForm {
     private final Crac crac;
     private final Network network;
     private final Consumer<NetworkAction> onEdited;
-    private final Function<UsageRule, String> usageRuleText;
     private NetworkAction action;
     private boolean refreshing;
     private final VBox root;
@@ -61,15 +61,15 @@ final class NetworkActionForm {
     final RowsTableEditor actionsEditor = new RowsTableEditor(List.of(Messages.get("crac.networkAction.column.kind"),
             Messages.get("crac.networkAction.column.element"), Messages.get("crac.networkAction.column.value")));
     final Button addActionsButton = new Button(Messages.get("crac.networkAction.addActions"));
-    final Label usageRulesLabel = new Label();
+    final UsageRulesPane usageRulesPane;
     final Label problemLabel = new Label();
     final Label errorLabel = new Label();
 
     /**
-     * @param usageRule the text of a usage rule
+     * @param usageRules what the usage rules pane takes from the view
      * @param picker    the ids of the network elements picked to be acted on, given those already acted on
      */
-    NetworkActionForm(Crac crac, Network network, NetworkAction action, Consumer<NetworkAction> onEdited, Function<UsageRule, String> usageRule,
+    NetworkActionForm(Crac crac, Network network, NetworkAction action, Consumer<NetworkAction> onEdited, UsageRulesPane.Context usageRules,
                       Function<Set<String>, List<String>> picker) {
         this.crac = crac;
         this.network = network;
@@ -92,12 +92,12 @@ final class NetworkActionForm {
         });
         addActionsButton.setOnAction(_ -> addActions(picker));
         Label help = new Label(Messages.get("crac.networkAction.actionsHelp"));
-        for (Label label : List.of(help, usageRulesLabel, problemLabel, errorLabel)) {
+        for (Label label : List.of(help, problemLabel, errorLabel)) {
             FormFields.wrap(label);
         }
         problemLabel.getStyleClass().add("alert-label");
         errorLabel.getStyleClass().add("alert-label");
-        this.usageRuleText = usageRule;
+        usageRulesPane = new UsageRulesPane(usageRules, rules -> edit(() -> (NetworkAction) UsageRuleEdits.set(crac, network, action, rules)));
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
@@ -108,7 +108,7 @@ final class NetworkActionForm {
         grid.addRow(3, FormFields.boldLabel("crac.details.speed"), speedField);
         grid.addRow(4, FormFields.boldLabel("crac.details.activationCost"), activationCostField);
         root = new VBox(8, grid, errorLabel, FormFields.boldLabel("crac.networkAction.actions"), actionsEditor, addActionsButton, help, problemLabel,
-                FormFields.boldLabel("crac.details.usageRules"), usageRulesLabel);
+                FormFields.boldLabel("crac.details.usageRules"), usageRulesPane.root());
         refresh();
     }
 
@@ -139,8 +139,7 @@ final class NetworkActionForm {
             }
             actionsEditor.setDisable(!editable);
             addActionsButton.setDisable(!editable);
-            String usageRules = action.getUsageRules().stream().map(usageRuleText).sorted().collect(Collectors.joining("\n"));
-            usageRulesLabel.setText(usageRules.isEmpty() ? Messages.get("crac.networkAction.noUsageRule") : usageRules);
+            usageRulesPane.setRules(UsageRuleEdits.of(action), editable);
             List<String> problems = new ArrayList<>();
             if (!editable) {
                 problems.add(Messages.get("networkActionEdits.unsupported", action.getId()));
@@ -207,9 +206,14 @@ final class NetworkActionForm {
 
     // throws when refused, the action as it was, a new object (put back): told onEdited
     private void change(NetworkActionSpec spec) {
+        edit(() -> NetworkActionEdits.change(crac, network, action, spec));
+    }
+
+    // throws when refused, the action as it was, a new object (put back): told onEdited
+    private void edit(Supplier<NetworkAction> edit) {
         String id = action.getId();
         try {
-            NetworkAction changed = NetworkActionEdits.change(crac, network, action, spec);
+            NetworkAction changed = edit.get();
             showError(null);
             boolean replaced = changed != action;
             action = changed;

@@ -13,7 +13,6 @@ import com.powsybl.iidm.network.Load;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.openrao.data.crac.api.Crac;
 import com.powsybl.openrao.data.crac.api.rangeaction.RangeAction;
-import com.powsybl.openrao.data.crac.api.usagerule.UsageRule;
 import com.powsybl.powsybldesktop.rao.CracElements;
 import com.powsybl.powsybldesktop.rao.RangeActionEdits;
 import com.powsybl.powsybldesktop.rao.RangeActionEdits.ConnectedAreaSpec;
@@ -21,6 +20,7 @@ import com.powsybl.powsybldesktop.rao.RangeActionEdits.KeyedElement;
 import com.powsybl.powsybldesktop.rao.RangeActionEdits.RangeActionSpec;
 import com.powsybl.powsybldesktop.rao.RangeActionEdits.RangeSpec;
 import com.powsybl.powsybldesktop.rao.RangeActionEdits.Type;
+import com.powsybl.powsybldesktop.rao.UsageRuleEdits;
 import com.powsybl.powsybldesktop.ui.controls.RowsTableEditor;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.scene.Node;
@@ -37,7 +37,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -45,7 +45,8 @@ import java.util.stream.Collectors;
  * or HVDC line, its injections and their keys, its counter-trade areas. OpenRAO's range actions are immutable: each
  * change replaces the action by a new one with the same usage rules ({@link RangeActionEdits#change}), applied at once
  * (Enter or focus loss for the text fields, each edit for the tables) and told {@code onEdited}; a refused change is told
- * and the fields reverted (the tables kept as typed, to be fixed). Its usage rules are shown.
+ * and the fields reverted (the tables kept as typed, to be fixed). Its usage rules are replaced likewise
+ * ({@link UsageRulesPane}, {@link UsageRuleEdits#set}). A counter-trade, which OpenRAO 7.5.1 can't remove, is read-only.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -61,7 +62,6 @@ final class RangeActionForm {
     private final Crac crac;
     private final Network network;
     private final Consumer<RangeAction<?>> onEdited;
-    private final Function<UsageRule, String> usageRuleText;
     private final Type type;
     private RangeAction<?> action;
     private boolean refreshing;
@@ -86,16 +86,16 @@ final class RangeActionForm {
     final Button addInjectionsButton = new Button(Messages.get("crac.rangeAction.addInjections"));
     final RowsTableEditor connectedAreasEditor = new RowsTableEditor(List.of(Messages.get("crac.rangeAction.column.area"),
             Messages.get("crac.rangeAction.column.rangeType"), Messages.get("crac.rangeAction.column.min"), Messages.get("crac.rangeAction.column.max")));
-    final Label usageRulesLabel = new Label();
+    final UsageRulesPane usageRulesPane;
     final Label problemLabel = new Label();
     final Label errorLabel = new Label();
 
-    RangeActionForm(Crac crac, Network network, RangeAction<?> action, Consumer<RangeAction<?>> onEdited, Function<UsageRule, String> usageRule, Picker picker) {
+    RangeActionForm(Crac crac, Network network, RangeAction<?> action, Consumer<RangeAction<?>> onEdited, UsageRulesPane.Context usageRules, Picker picker) {
         this.crac = crac;
         this.network = network;
         this.action = action;
         this.onEdited = onEdited;
-        this.usageRuleText = usageRule;
+        usageRulesPane = new UsageRulesPane(usageRules, rules -> edit(() -> (RangeAction<?>) UsageRuleEdits.set(crac, network, this.action, rules)));
         this.type = current().type();
 
         for (TextField field : textFields()) {
@@ -131,7 +131,7 @@ final class RangeActionForm {
         addInjectionsButton.setOnAction(_ -> addInjections(picker));
         Label rangesHelp = new Label(Messages.get(type == Type.PST ? "crac.rangeAction.tapRangesHelp" : "crac.rangeAction.rangesHelp"));
         Label areasHelp = new Label(Messages.get("crac.rangeAction.connectedAreasHelp"));
-        for (Label label : List.of(rangesHelp, areasHelp, initialTapLabel, usageRulesLabel, problemLabel, errorLabel)) {
+        for (Label label : List.of(rangesHelp, areasHelp, initialTapLabel, problemLabel, errorLabel)) {
             FormFields.wrap(label);
         }
         problemLabel.getStyleClass().add("alert-label");
@@ -174,7 +174,7 @@ final class RangeActionForm {
             root.getChildren().addAll(FormFields.boldLabel("crac.rangeAction.connectedAreas"), connectedAreasEditor, areasHelp);
         }
         root.getChildren().addAll(FormFields.boldLabel(type == Type.PST ? "crac.rangeAction.tapRanges" : "crac.rangeAction.ranges"), rangesEditor, rangesHelp,
-                problemLabel, FormFields.boldLabel("crac.details.usageRules"), usageRulesLabel);
+                problemLabel, FormFields.boldLabel("crac.details.usageRules"), usageRulesPane.root());
         refresh();
     }
 
@@ -229,8 +229,7 @@ final class RangeActionForm {
             for (Node node : List.<Node>of(rangesEditor, keysEditor, connectedAreasEditor, pickElementButton, addInjectionsButton)) {
                 node.setDisable(!editable);
             }
-            String usageRules = action.getUsageRules().stream().map(usageRuleText).sorted().collect(Collectors.joining("\n"));
-            usageRulesLabel.setText(usageRules.isEmpty() ? Messages.get("crac.networkAction.noUsageRule") : usageRules);
+            usageRulesPane.setRules(UsageRuleEdits.of(action), editable);
             List<String> problems = new ArrayList<>();
             if (!editable) {
                 problems.add(Messages.get("rangeActionEdits.counterTradeFixed"));
@@ -306,9 +305,14 @@ final class RangeActionForm {
 
     // throws when refused, the action as it was, a new object (put back): told onEdited
     private void change(RangeActionSpec spec) {
+        edit(() -> RangeActionEdits.change(crac, network, action, spec));
+    }
+
+    // throws when refused, the action as it was, a new object (put back): told onEdited
+    private void edit(Supplier<RangeAction<?>> edit) {
         String id = action.getId();
         try {
-            RangeAction<?> changed = RangeActionEdits.change(crac, network, action, spec);
+            RangeAction<?> changed = edit.get();
             showError(null);
             boolean replaced = changed != action;
             action = changed;

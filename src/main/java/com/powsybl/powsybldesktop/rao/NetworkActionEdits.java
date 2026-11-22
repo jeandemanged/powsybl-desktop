@@ -30,17 +30,11 @@ import com.powsybl.iidm.network.Terminal;
 import com.powsybl.iidm.network.TwoWindingsTransformer;
 import com.powsybl.openrao.commons.OpenRaoException;
 import com.powsybl.openrao.data.crac.api.Crac;
-import com.powsybl.openrao.data.crac.api.RemedialActionAdder;
 import com.powsybl.openrao.data.crac.api.networkaction.ActionType;
 import com.powsybl.openrao.data.crac.api.networkaction.NetworkAction;
 import com.powsybl.openrao.data.crac.api.networkaction.NetworkActionAdder;
 import com.powsybl.openrao.data.crac.api.networkaction.SwitchPair;
-import com.powsybl.openrao.data.crac.api.usagerule.OnConstraint;
-import com.powsybl.openrao.data.crac.api.usagerule.OnContingencyState;
-import com.powsybl.openrao.data.crac.api.usagerule.OnFlowConstraintInCountry;
-import com.powsybl.openrao.data.crac.api.usagerule.OnFlowConstraintInCountryAdder;
-import com.powsybl.openrao.data.crac.api.usagerule.OnInstant;
-import com.powsybl.openrao.data.crac.api.usagerule.UsageRule;
+import com.powsybl.powsybldesktop.rao.UsageRuleEdits.UsageRuleSpec;
 import com.powsybl.powsybldesktop.utils.Messages;
 
 import java.util.ArrayList;
@@ -53,6 +47,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
@@ -254,7 +249,7 @@ public final class NetworkActionEdits {
     /**
      * Adds a network action, available as {@code usageRules} tell.
      */
-    public static NetworkAction add(Crac crac, Network network, NetworkActionSpec spec, Collection<UsageRule> usageRules) {
+    public static NetworkAction add(Crac crac, Network network, NetworkActionSpec spec, Collection<UsageRuleSpec> usageRules) {
         if (spec.id().isEmpty()) {
             throw new IllegalArgumentException(Messages.get("cracEdits.idRequired"));
         }
@@ -264,6 +259,7 @@ public final class NetworkActionEdits {
         if (spec.actions().isEmpty()) {
             throw new IllegalArgumentException(Messages.get("networkActionEdits.noAction"));
         }
+        UsageRuleEdits.checkAll(crac, usageRules);
         Set<String> elements = new HashSet<>();
         for (ElementaryActionSpec action : spec.actions()) {
             check(network, action);
@@ -273,17 +269,22 @@ public final class NetworkActionEdits {
                 }
             }
         }
+        try {
+            return build(crac, spec, usageRules);
+        } catch (OpenRaoException e) {
+            throw new IllegalArgumentException(e.getMessage(), e);
+        }
+    }
+
+    // unchecked: OpenRAO's adders' own checks apart
+    private static NetworkAction build(Crac crac, NetworkActionSpec spec, Collection<UsageRuleSpec> usageRules) {
         NetworkActionAdder adder = crac.newNetworkAction().withId(spec.id()).withName(spec.name()).withOperator(spec.operator())
                 .withSpeed(spec.speed()).withActivationCost(spec.activationCost());
         for (ElementaryActionSpec action : spec.actions()) {
             addTo(adder, action);
         }
-        copyUsageRules(adder, usageRules);
-        try {
-            return adder.add();
-        } catch (OpenRaoException e) {
-            throw new IllegalArgumentException(e.getMessage(), e);
-        }
+        UsageRuleEdits.addTo(adder, usageRules);
+        return adder.add();
     }
 
     private static void check(Network network, ElementaryActionSpec action) {
@@ -346,26 +347,6 @@ public final class NetworkActionEdits {
         }
     }
 
-    /**
-     * Adds to {@code adder} usage rules like {@code usageRules}, those of another remedial action of the same CRAC.
-     */
-    public static <T extends RemedialActionAdder<T>> void copyUsageRules(T adder, Collection<UsageRule> usageRules) {
-        for (UsageRule rule : usageRules) {
-            String instant = rule.getInstant().getId();
-            switch (rule) {
-                case OnContingencyState onState -> adder.newOnContingencyStateUsageRule().withContingency(onState.getContingency().getId()).withInstant(instant).add();
-                case OnConstraint<?> onConstraint -> adder.newOnConstraintUsageRule().withCnec(onConstraint.getCnec().getId()).withInstant(instant).add();
-                case OnFlowConstraintInCountry onCountry -> {
-                    OnFlowConstraintInCountryAdder<T> ruleAdder = adder.newOnFlowConstraintInCountryUsageRule().withCountry(onCountry.getCountry()).withInstant(instant);
-                    onCountry.getContingency().ifPresent(contingency -> ruleAdder.withContingency(contingency.getId()));
-                    ruleAdder.add();
-                }
-                case OnInstant _ -> adder.newOnInstantUsageRule().withInstant(instant).add();
-                default -> throw new IllegalArgumentException(rule.getClass().getSimpleName());
-            }
-        }
-    }
-
     // ----- change, removal -----
 
     /**
@@ -373,27 +354,49 @@ public final class NetworkActionEdits {
      * refused; {@code action} itself when nothing changes.
      */
     public static NetworkAction change(Crac crac, Network network, NetworkAction action, NetworkActionSpec spec) {
-        Optional<NetworkActionSpec> current = NetworkActionSpec.of(action);
-        if (current.isEmpty()) {
-            throw new IllegalArgumentException(Messages.get("networkActionEdits.unsupported", action.getId()));
-        }
-        if (current.get().equals(spec)) {
+        NetworkActionSpec current = current(action);
+        if (current.equals(spec)) {
             return action;
         }
         if (!spec.id().equals(action.getId()) && crac.getRemedialAction(spec.id()) != null) {
             throw new IllegalArgumentException(Messages.get("networkActionEdits.exists", spec.id()));
         }
-        List<UsageRule> usageRules = List.copyOf(action.getUsageRules());
+        List<UsageRuleSpec> usageRules = UsageRuleEdits.of(action);
+        return replace(crac, action, current, usageRules, () -> add(crac, network, spec, usageRules));
+    }
+
+    /**
+     * Replaces {@code action} by the same one with {@code usageRules}, putting it back when they are refused; its
+     * elements are not checked again (the network may have changed since). See {@link UsageRuleEdits#set}.
+     */
+    static NetworkAction setUsageRules(Crac crac, Network network, NetworkAction action, List<UsageRuleSpec> usageRules) {
+        NetworkActionSpec current = current(action);
+        List<UsageRuleSpec> currentRules = UsageRuleEdits.of(action);
+        if (Set.copyOf(currentRules).equals(Set.copyOf(usageRules))) {
+            return action;
+        }
+        return replace(crac, action, current, currentRules, () -> {
+            UsageRuleEdits.checkAll(crac, usageRules);
+            try {
+                return build(crac, current, usageRules);
+            } catch (OpenRaoException e) {
+                throw new IllegalArgumentException(e.getMessage(), e);
+            }
+        });
+    }
+
+    private static NetworkActionSpec current(NetworkAction action) {
+        return NetworkActionSpec.of(action).orElseThrow(() -> new IllegalArgumentException(Messages.get("networkActionEdits.unsupported", action.getId())));
+    }
+
+    // {@code action} removed, then its replacement added, or else {@code action} put back as it was, unchecked
+    private static NetworkAction replace(Crac crac, NetworkAction action, NetworkActionSpec current, List<UsageRuleSpec> currentRules,
+                                        Supplier<NetworkAction> replacement) {
         crac.removeNetworkAction(action.getId());
         try {
-            return add(crac, network, spec, usageRules);
+            return replacement.get();
         } catch (IllegalArgumentException e) {
-            // as it was: its elements are not checked again, the network may have changed since
-            NetworkActionAdder adder = crac.newNetworkAction().withId(current.get().id()).withName(current.get().name())
-                    .withOperator(current.get().operator()).withSpeed(current.get().speed()).withActivationCost(current.get().activationCost());
-            current.get().actions().forEach(elementary -> addTo(adder, elementary));
-            copyUsageRules(adder, usageRules);
-            adder.add();
+            build(crac, current, currentRules);
             throw e;
         }
     }

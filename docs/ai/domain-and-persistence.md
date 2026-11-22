@@ -170,7 +170,7 @@ Maven cache may contain unrelated versions.
   max); angle and voltage CNECs stay read-only.
 - Network action editing: `…/rao/NetworkActionEdits.java`. A `NetworkAction` is immutable (but for `addUsageRule`): any
   change replaces it by one built from a `NetworkActionSpec` (id, name, operator, speed, activation cost, sorted
-  `ElementaryActionSpec`s), its usage rules re-made through the adder (`copyUsageRules`, re-adding the states
+  `ElementaryActionSpec`s), its usage rules re-made through the adder (`UsageRuleEdits.addTo`, re-adding the states
   `removeNetworkAction` may drop), the old one put back on refusal. `NetworkActionSpec.of` reads only the elementary
   actions OpenRAO's adders make (absolute set points, no side); an action with another is read-only. Elements are
   checked against the network only when it has them. `defaultAction` infers an elementary action from a picked network
@@ -188,6 +188,21 @@ Maven cache may contain unrelated versions.
   codes). `RangeActionForm` edits one; a range action of another type keeps the read-only details. OpenRAO 7.5.1 has no
   removal of a counter-trade (`removeRemedialAction` skips them, and `getRemedialActions` leaves them out: list remedial
   actions with `CracElements.remedialActions`): `RangeActionEdits` refuses changing or removing one, its form is read-only.
+- Usage rules: `…/rao/UsageRuleEdits.java`. A rule is a `UsageRuleSpec` record (kind: on instant, on contingency
+  state, on constraint, on flow constraint in country; instant, contingency, CNEC, country), `UsageRuleSpec.of` reading
+  one. OpenRAO 7.5.1 has no removal of a rule and only an on-state adder on an existing action (`getUsageRules` happens
+  to return the live set): `UsageRuleEdits.set` replaces the action like any other change (`NetworkActionEdits` and
+  `RangeActionEdits.setUsageRules`, without checking its elements again), so that `removeRemedialAction` drops the
+  states no longer used. Rules are checked beforehand as the adders check them (no outage instant, no on-state rule at
+  the preventive instant, a CNEC not before the rule's instant, ...), and a PST's range relative to the previous instant
+  against them. A counter-trade keeps its rules. `UsageRulesPane` lists and edits them in both remedial action forms,
+  `UsageRuleDialog` asking one (`CracController.askUsageRule`, overridable by tests).
+- Usage limits: `…/rao/UsageLimitEdits.java` sets a CRAC instant's `RaUsageLimits` (max remedial actions, and per
+  TSO max topological actions, PSTs, remedial actions, elementary actions) through `newRaUsageLimits`, which replaces
+  them; none at all removes the instant's entry from `getRaUsageLimitsPerInstant` (the CRAC's own map, OpenRAO having no
+  removal). Negative limits are refused (OpenRAO would take them for 0), OpenRAO's cross-check (a TSO's remedial actions
+  fewer than its topological actions or PSTs) told. `InstantForm`, the details of a selected instant, edits them (the
+  TSOs' as `RowsTableEditor` rows); the outage instant has none.
 - CRAC generation (**Generate** in the CRAC view): `…/rao/CracGenerator.java` runs OpenRAO's `NetworkCracCreator`
   (crac-io-network, OpenRAO 7.5.1) with the application's `…/rao/CracGeneratorSettings.java` (the CRAC Generator
   parameters tab, `ui/parameters/CracGeneratorParametersController`) turned into `NetworkCracCreationParameters` on a

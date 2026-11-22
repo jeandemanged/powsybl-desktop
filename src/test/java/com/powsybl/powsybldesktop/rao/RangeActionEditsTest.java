@@ -16,13 +16,13 @@ import com.powsybl.openrao.data.crac.api.range.RangeType;
 import com.powsybl.openrao.data.crac.api.rangeaction.PstRangeAction;
 import com.powsybl.openrao.data.crac.api.rangeaction.RangeAction;
 import com.powsybl.openrao.data.crac.api.rangeaction.VariationDirection;
-import com.powsybl.openrao.data.crac.api.usagerule.UsageRule;
 import com.powsybl.powsybldesktop.rao.RangeActionEdits.ConnectedAreaSpec;
 import com.powsybl.powsybldesktop.rao.RangeActionEdits.KeyedElement;
 import com.powsybl.powsybldesktop.rao.RangeActionEdits.PstTaps;
 import com.powsybl.powsybldesktop.rao.RangeActionEdits.RangeActionSpec;
 import com.powsybl.powsybldesktop.rao.RangeActionEdits.RangeSpec;
 import com.powsybl.powsybldesktop.rao.RangeActionEdits.Type;
+import com.powsybl.powsybldesktop.rao.UsageRuleEdits.UsageRuleSpec;
 import com.powsybl.powsybldesktop.utils.Messages;
 import org.junit.jupiter.api.Test;
 
@@ -60,7 +60,7 @@ class RangeActionEditsTest {
                 List.of(), ranges);
     }
 
-    private String refused(RangeActionSpec spec, List<UsageRule> usageRules) {
+    private String refused(RangeActionSpec spec, List<UsageRuleSpec> usageRules) {
         return assertThrows(IllegalArgumentException.class, () -> RangeActionEdits.add(crac, network, spec, usageRules)).getMessage();
     }
 

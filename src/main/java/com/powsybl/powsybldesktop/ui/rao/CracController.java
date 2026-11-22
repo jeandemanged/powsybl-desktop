@@ -32,10 +32,6 @@ import com.powsybl.openrao.data.crac.api.rangeaction.PstRangeAction;
 import com.powsybl.openrao.data.crac.api.rangeaction.RangeAction;
 import com.powsybl.openrao.data.crac.api.threshold.BranchThreshold;
 import com.powsybl.openrao.data.crac.api.threshold.Threshold;
-import com.powsybl.openrao.data.crac.api.usagerule.OnConstraint;
-import com.powsybl.openrao.data.crac.api.usagerule.OnContingencyState;
-import com.powsybl.openrao.data.crac.api.usagerule.OnFlowConstraintInCountry;
-import com.powsybl.openrao.data.crac.api.usagerule.UsageRule;
 import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.core.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.core.MainModel;
@@ -53,6 +49,7 @@ import com.powsybl.powsybldesktop.rao.CracImportParameters;
 import com.powsybl.powsybldesktop.rao.NetworkActionEdits;
 import com.powsybl.powsybldesktop.rao.RangeActionEdits;
 import com.powsybl.powsybldesktop.rao.RaoResultRows;
+import com.powsybl.powsybldesktop.rao.UsageRuleEdits;
 import com.powsybl.powsybldesktop.ui.AbstractDisposableController;
 import com.powsybl.powsybldesktop.ui.controls.FileChooserPreferences;
 import com.powsybl.powsybldesktop.ui.form.ElementPickerDialog;
@@ -108,8 +105,9 @@ import java.util.stream.Collectors;
 
 /**
  * The CRAC of the selected network (its root's, the one a RAO runs on): its instants, contingencies, CNECs and remedial
- * actions, the details of the selected one (a contingency's, a flow CNEC's and a network action's editable,
- * {@link ContingencyForm}, {@link FlowCnecForm}, {@link NetworkActionForm}), and the report of its import. Creates an
+ * actions, the details of the selected one (an instant's usage limits, a contingency's, a flow CNEC's and a remedial
+ * action's editable with its usage rules, {@link InstantForm}, {@link ContingencyForm}, {@link FlowCnecForm},
+ * {@link NetworkActionForm}, {@link RangeActionForm}, {@link UsageRuleDialog}), and the report of its import. Creates an
  * empty CRAC ({@link NewCracDialog}), imports a CRAC file of any format OpenRAO reads (asking the format's parameters,
  * {@link CracImportDialog}), generates one from the network, exports it in OpenRAO's JSON format, removes it. Adds
  * instants ({@link NewInstantDialog}), contingencies, flow CNECs ({@link AddFlowCnecsDialog}) and network actions,
@@ -194,6 +192,8 @@ public class CracController extends AbstractDisposableController implements Scen
     NetworkActionForm networkActionForm;
     // the form of the selected range action, kept likewise
     RangeActionForm rangeActionForm;
+    // the form of the selected instant, kept likewise
+    InstantForm instantForm;
     // the contingency, the CNEC and the remedial action to select at the next refresh: one just added, renamed or replaced
     private String contingencyToSelect;
     private String cnecToSelect;
@@ -229,6 +229,7 @@ public class CracController extends AbstractDisposableController implements Scen
         contingenciesListView.getSelectionModel().selectedItemProperty().addListener((_, _, _) -> onSelection());
         cnecsListView.getSelectionModel().selectedItemProperty().addListener((_, _, _) -> onSelection());
         remedialActionsListView.getSelectionModel().selectedItemProperty().addListener((_, _, _) -> onSelection());
+        instantsListView.getSelectionModel().selectedItemProperty().addListener((_, _, _) -> onSelection());
         tabPane.getSelectionModel().selectedItemProperty().addListener((_, _, _) -> onSelection());
     }
 
@@ -333,6 +334,7 @@ public class CracController extends AbstractDisposableController implements Scen
         flowCnecForm = null;
         networkActionForm = null;
         rangeActionForm = null;
+        instantForm = null;
         contingenciesListView.refresh();
         cnecsListView.refresh();
         remedialActionsListView.refresh();
@@ -355,9 +357,12 @@ public class CracController extends AbstractDisposableController implements Scen
         if (state.isPreventive()) {
             return Messages.get("raoResults.preventive");
         }
-        Contingency contingency = crac() == null ? null : crac().getContingency(state.contingencyId());
-        return Messages.get("raoResults.stateName", contingency == null ? state.contingencyId() : ContingencyNames.displayName(contingency, network),
-                state.instantId());
+        return Messages.get("raoResults.stateName", contingencyName(state.contingencyId()), state.instantId());
+    }
+
+    private String contingencyName(String id) {
+        Contingency contingency = crac() == null ? null : crac().getContingency(id);
+        return contingency == null ? id : ContingencyNames.displayName(contingency, network);
     }
 
     static String actionType(RemedialAction<?> action) {
@@ -389,6 +394,12 @@ public class CracController extends AbstractDisposableController implements Scen
 
     private void showDetails() {
         Tab tab = tabPane.getSelectionModel().getSelectedItem();
+        Instant instant = instantsListView.getSelectionModel().getSelectedItem();
+        if (tab == instantsTab && instant != null) {
+            showInstantForm(instant);
+            return;
+        }
+        instantForm = null;
         Contingency contingency = contingenciesListView.getSelectionModel().getSelectedItem();
         if (tab == contingenciesTab && contingency != null) {
             showContingencyForm(contingency);
@@ -465,7 +476,7 @@ public class CracController extends AbstractDisposableController implements Scen
             networkActionForm = new NetworkActionForm(crac(), network, action, edited -> {
                 actionToSelect = edited.getId();
                 study().cracEdited();
-            }, this::usageRule, this::pickActionElements);
+            }, usageRulesContext(), this::pickActionElements);
             detailsHost.getChildren().setAll(networkActionForm.root());
         }
     }
@@ -475,9 +486,25 @@ public class CracController extends AbstractDisposableController implements Scen
             rangeActionForm = new RangeActionForm(crac(), network, action, edited -> {
                 actionToSelect = edited.getId();
                 study().cracEdited();
-            }, this::usageRule, this::pickRangeActionElements);
+            }, usageRulesContext(), this::pickRangeActionElements);
             detailsHost.getChildren().setAll(rangeActionForm.root());
         }
+    }
+
+    private void showInstantForm(Instant instant) {
+        if (instantForm == null || instantForm.instant() != instant) {
+            instantForm = new InstantForm(crac(), instant, () -> study().cracEdited());
+            detailsHost.getChildren().setAll(instantForm.root());
+        }
+    }
+
+    private UsageRulesPane.Context usageRulesContext() {
+        return new UsageRulesPane.Context(this::usageRuleText, this::askUsageRule);
+    }
+
+    // a usage rule to add; overridable by a test, which can't answer a modal dialog
+    Optional<UsageRuleEdits.UsageRuleSpec> askUsageRule() {
+        return new UsageRuleDialog(detailsHost.getScene().getWindow(), crac(), network, this::stateName).showAndWait();
     }
 
     // the ids of the branches picked; overridable by a test, which can't answer a modal dialog
@@ -531,18 +558,23 @@ public class CracController extends AbstractDisposableController implements Scen
         row(rows, "crac.details.name", action.getName());
         row(rows, "crac.details.actionType", actionType(action));
         row(rows, "crac.details.elements", action.getNetworkElementsIds().stream().sorted().map(this::elementName).collect(Collectors.joining("\n")));
-        row(rows, "crac.details.usageRules", action.getUsageRules().stream().map(this::usageRule).sorted().collect(Collectors.joining("\n")));
+        row(rows, "crac.details.usageRules", UsageRuleEdits.of(action).stream().map(this::usageRuleText).collect(Collectors.joining("\n")));
         row(rows, "crac.details.operator", Objects.toString(action.getOperator(), "-"));
         action.getActivationCost().ifPresent(cost -> row(rows, "crac.details.activationCost", Double.toString(cost)));
         action.getSpeed().ifPresent(speed -> row(rows, "crac.details.speed", Integer.toString(speed)));
     }
 
-    private String usageRule(UsageRule rule) {
-        return switch (rule) {
-            case OnContingencyState onState -> Messages.get("crac.usageRule.onState", stateName(onState.getState()));
-            case OnConstraint<?> onConstraint -> Messages.get("crac.usageRule.onConstraint", rule.getInstant().getId(), onConstraint.getCnec().getName());
-            case OnFlowConstraintInCountry onCountry -> Messages.get("crac.usageRule.onCountry", rule.getInstant().getId(), onCountry.getCountry());
-            default -> Messages.get("crac.usageRule.onInstant", rule.getInstant().getId());
+    String usageRuleText(UsageRuleEdits.UsageRuleSpec rule) {
+        return switch (rule.kind()) {
+            case ON_INSTANT -> Messages.get("crac.usageRule.onInstant", rule.instantId());
+            case ON_CONTINGENCY_STATE -> Messages.get("crac.usageRule.onState", stateName(new CnecEdits.StateRef(rule.contingencyId(), rule.instantId())));
+            case ON_CONSTRAINT -> {
+                Cnec<?> cnec = crac() == null ? null : crac().getCnec(rule.cnecId());
+                yield Messages.get("crac.usageRule.onConstraint", rule.instantId(), cnec == null ? rule.cnecId() : cnec.getName());
+            }
+            case ON_FLOW_CONSTRAINT_IN_COUNTRY -> rule.contingencyId() == null
+                    ? Messages.get("crac.usageRule.onCountry", rule.instantId(), rule.country())
+                    : Messages.get("crac.usageRule.onCountryAfter", rule.instantId(), rule.country(), contingencyName(rule.contingencyId()));
         };
     }
 

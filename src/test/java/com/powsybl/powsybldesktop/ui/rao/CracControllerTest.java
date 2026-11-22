@@ -32,6 +32,8 @@ import com.powsybl.powsybldesktop.rao.CracEdits;
 import com.powsybl.powsybldesktop.rao.CracIO;
 import com.powsybl.powsybldesktop.rao.RangeActionEdits;
 import com.powsybl.powsybldesktop.rao.RaoTestCases;
+import com.powsybl.powsybldesktop.rao.UsageRuleEdits;
+import com.powsybl.powsybldesktop.rao.UsageRuleEdits.UsageRuleSpec;
 import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -53,6 +55,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -93,6 +96,8 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
     private final List<String> pickedRangeElements = new ArrayList<>();
     private final List<RangeActionEdits.Type> pickedRangeTypes = new ArrayList<>();
     private Optional<Country> country = Optional.empty();
+    // the usage rule asked to be added
+    private Optional<UsageRuleSpec> usageRule = Optional.empty();
 
     // the import dialog and the element picker, modal: answered
     private final class AnsweringCracController extends CracController {
@@ -134,6 +139,11 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
         @Override
         Optional<AddFlowCnecsDialog.Request> askFlowCnecs(int branchCount) {
             return Optional.of(flowCnecsRequest);
+        }
+
+        @Override
+        Optional<UsageRuleSpec> askUsageRule() {
+            return usageRule;
         }
 
         Optional<CracCreationParameters> ask(String fileName, String format) {
@@ -204,13 +214,15 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
         });
         // a network action: its form
         NetworkActionForm networkAction = controller.networkActionForm;
-        assertEquals(Messages.get("crac.usageRule.onState", Messages.get("raoResults.stateName", "L2 out", "curative")), networkAction.usageRulesLabel.getText());
+        assertEquals(List.of(UsageRuleSpec.onState("L2 out", "curative")), networkAction.usageRulesPane.listView.getItems());
+        assertEquals(Messages.get("crac.usageRule.onState", Messages.get("raoResults.stateName", "L2 out", "curative")),
+                controller.usageRuleText(UsageRuleSpec.onState("L2 out", "curative")));
         assertEquals(List.of(List.of("load", "LD2", "70")), networkAction.actionsEditor.getRows());
 
         // a range action: its form
         interact(() -> controller.remedialActionsListView.getSelectionModel().select(1));
         RangeActionForm rangeAction = controller.rangeActionForm;
-        assertEquals(Messages.get("crac.usageRule.onInstant", "preventive"), rangeAction.usageRulesLabel.getText());
+        assertEquals(List.of(UsageRuleSpec.onInstant("preventive")), rangeAction.usageRulesPane.listView.getItems());
         assertEquals("PS1", rangeAction.elementField.getText());
     }
 
@@ -549,7 +561,7 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
         assertSame(action, form.action());
         // VL1 can't be acted on
         assertEquals(List.of(List.of("terminals", "L1", "open"), List.of("generator", "G1", "100")), form.actionsEditor.getRows());
-        assertEquals(Messages.get("crac.networkAction.noUsageRule"), form.usageRulesLabel.getText());
+        assertTrue(form.usageRulesPane.listView.getItems().isEmpty());
 
         // renamed: replaced, kept selected in the same form
         interact(() -> {
@@ -599,7 +611,7 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals("PS1", form.elementField.getText());
         assertEquals("1", form.initialTapLabel.getText());
         assertEquals(List.of(List.of("absolute", "0", "2")), form.rangesEditor.getRows());
-        assertEquals(Messages.get("crac.networkAction.noUsageRule"), form.usageRulesLabel.getText());
+        assertTrue(form.usageRulesPane.listView.getItems().isEmpty());
 
         // a cost: replaced, kept selected in the same form
         interact(() -> {
@@ -655,5 +667,96 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
         int count = study.getCrac().getRangeActions().size();
         interact(() -> controller.addRangeActions(RangeActionEdits.Type.HVDC));
         assertEquals(count, study.getCrac().getRangeActions().size());
+    }
+
+    @Test
+    void editsTheUsageRulesOfRemedialActions() {
+        interact(() -> study.setCrac(RaoTestCases.crac(network), List.of()));
+        interact(() -> {
+            controller.tabPane.getSelectionModel().select(controller.remedialActionsTab);
+            controller.remedialActionsListView.getSelectionModel().select(0);
+        });
+        NetworkActionForm form = controller.networkActionForm;
+        UsageRulesPane rules = form.usageRulesPane;
+
+        // added: replaced, kept selected in the same form
+        usageRule = Optional.of(UsageRuleSpec.onInstant("preventive"));
+        interact(rules.addButton::fire);
+        NetworkAction replaced = study.getCrac().getNetworkAction(RaoTestCases.LOAD_SHEDDING);
+        assertEquals(List.of(UsageRuleSpec.onInstant("preventive"), UsageRuleSpec.onState(RaoTestCases.CONTINGENCY, "curative")), rules.listView.getItems());
+        assertSame(replaced, form.action());
+        assertSame(replaced, controller.remedialActionsListView.getSelectionModel().getSelectedItem());
+        assertSame(form, controller.networkActionForm);
+        assertFalse(rules.errorLabel.isVisible());
+
+        // twice, or one OpenRAO refuses: told, the action unchanged
+        interact(rules.addButton::fire);
+        assertEquals(Messages.get("usageRuleEdits.duplicate"), rules.errorLabel.getText());
+        usageRule = Optional.of(UsageRuleSpec.onConstraint("L1 preventive", "curative"));
+        interact(rules.addButton::fire);
+        assertEquals(Messages.get("usageRuleEdits.cnecBefore", "L1 preventive", "preventive", "curative"), rules.errorLabel.getText());
+        assertSame(replaced, study.getCrac().getNetworkAction(RaoTestCases.LOAD_SHEDDING));
+
+        // the selected removed
+        interact(() -> {
+            rules.listView.getSelectionModel().clearAndSelect(1);
+            rules.removeButton.fire();
+        });
+        assertEquals(List.of(UsageRuleSpec.onInstant("preventive")), UsageRuleEdits.of(study.getCrac().getNetworkAction(RaoTestCases.LOAD_SHEDDING)));
+        assertFalse(rules.errorLabel.isVisible());
+
+        // a range action's
+        interact(() -> controller.remedialActionsListView.getSelectionModel().select(1));
+        RangeActionForm rangeAction = controller.rangeActionForm;
+        usageRule = Optional.of(UsageRuleSpec.onState(RaoTestCases.CONTINGENCY, "curative"));
+        interact(rangeAction.usageRulesPane.addButton::fire);
+        assertEquals(List.of(UsageRuleSpec.onInstant("preventive"), UsageRuleSpec.onState(RaoTestCases.CONTINGENCY, "curative")),
+                UsageRuleEdits.of(study.getCrac().getRangeAction(RaoTestCases.PST)));
+        assertSame(rangeAction, controller.rangeActionForm);
+    }
+
+    @Test
+    void editsTheUsageLimitsOfAnInstant() {
+        interact(() -> study.setCrac(RaoTestCases.crac(network), List.of()));
+        interact(() -> {
+            controller.tabPane.getSelectionModel().select(controller.instantsTab);
+            controller.instantsListView.getSelectionModel().select(2);
+        });
+        InstantForm form = controller.instantForm;
+        Instant curative = study.getCrac().getInstant("curative");
+        assertSame(curative, form.instant());
+        assertEquals("", form.maxRaField.getText());
+
+        int revision = study.cracRevisionProperty().get();
+        interact(() -> {
+            form.maxRaField.setText("2");
+            form.maxRaField.fireEvent(new ActionEvent());
+        });
+        assertEquals(2, study.getCrac().getRaUsageLimits(curative).getMaxRa());
+        assertEquals(revision + 1, study.cracRevisionProperty().get());
+        assertSame(form, controller.instantForm);
+
+        // refused: told and reverted
+        interact(() -> {
+            form.maxRaField.setText("-1");
+            form.maxRaField.fireEvent(new ActionEvent());
+        });
+        assertEquals(Messages.get("usageLimitEdits.negative", -1), form.errorLabel.getText());
+        assertEquals("2", form.maxRaField.getText());
+
+        // the TSOs' limits: a row removed applies the others
+        interact(() -> {
+            form.tsoLimitsEditor.setRows(List.of(List.of("RTE", "1", "", "2", ""), List.of("ELIA", "", "", "", "")));
+            form.tsoLimitsEditor.getTable().getSelectionModel().clearAndSelect(1);
+            ((Button) ((HBox) form.tsoLimitsEditor.getChildren().get(1)).getChildren().get(1)).fire();
+        });
+        assertNull(form.tsoLimitsEditor.getError());
+        assertEquals(Map.of("RTE", 1), study.getCrac().getRaUsageLimits(curative).getMaxTopoPerTso());
+        assertEquals(Map.of("RTE", 2), study.getCrac().getRaUsageLimits(curative).getMaxRaPerTso());
+        assertEquals(2, study.getCrac().getRaUsageLimits(curative).getMaxRa());
+
+        // the outage instant has none
+        interact(() -> controller.instantsListView.getSelectionModel().select(1));
+        assertNull(controller.instantForm.maxRaField.getParent());
     }
 }
