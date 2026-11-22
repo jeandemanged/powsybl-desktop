@@ -27,6 +27,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>25</java.version>
         <powsybl-dependencies.version>2026.2.1</powsybl-dependencies.version>
+        <!-- OpenRAO is newer than the one powsybl-dependencies manages; its BOM imports an older powsybl-core,
+             so powsybl-core is imported first at the version powsybl-dependencies manages: keep them in sync -->
+        <powsybl-open-rao.version>7.5.1</powsybl-open-rao.version>
+        <powsybl-core.version>7.4.3</powsybl-core.version>
         <autoservice.version>1.1.1</autoservice.version>
         <javafx.version>27.0.1</javafx.version>
         <controlsfx.version>11.2.6</controlsfx.version>
@@ -48,6 +52,21 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- imports are resolved in order, the first one managing an artifact winning -->
+            <dependency>
+                <groupId>com.powsybl</groupId>
+                <artifactId>powsybl-core</artifactId>
+                <version>${powsybl-core.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.powsybl</groupId>
+                <artifactId>powsybl-open-rao</artifactId>
+                <version>${powsybl-open-rao.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <!-- BOM aligning the versions of all PowSyBl modules (core, open-loadflow, diagram...) -->
                 <groupId>com.powsybl</groupId>
@@ -173,6 +192,60 @@
         <dependency>
             <groupId>com.powsybl</groupId>
             <artifactId>powsybl-open-loadflow</artifactId>
+        </dependency>
+        <!-- OpenRAO: CRAC model, its importers (all formats, and the generator from the network), the search tree
+             RAO and its result -->
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>open-rao-crac-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>open-rao-crac-impl</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>open-rao-crac-io-json</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>open-rao-crac-io-cse</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>open-rao-crac-io-cim</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>open-rao-crac-io-nc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>open-rao-crac-io-fb-constraint</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>open-rao-crac-io-network</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>open-rao-rao-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>open-rao-search-tree-rao</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>open-rao-rao-result-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>open-rao-rao-result-impl</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.powsybl</groupId>
+            <artifactId>open-rao-rao-result-json</artifactId>
         </dependency>
         <dependency>
             <groupId>com.powsybl</groupId>
