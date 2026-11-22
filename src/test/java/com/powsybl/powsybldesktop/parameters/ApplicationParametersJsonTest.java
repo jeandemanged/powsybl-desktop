@@ -17,6 +17,8 @@ import com.powsybl.nad.svg.SvgParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
 import com.powsybl.openloadflow.sensi.OpenSensitivityAnalysisParameters;
+import com.powsybl.openrao.raoapi.parameters.ObjectiveFunctionParameters.ObjectiveFunctionType;
+import com.powsybl.powsybldesktop.rao.RaoParametersSupport;
 import com.powsybl.powsybldesktop.sensitivity.SensitivityAnalysisMode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -42,7 +44,7 @@ class ApplicationParametersJsonTest {
         ApplicationParameters defaults = ApplicationParameters.createDefault();
         ApplicationParameters parameters = new ApplicationParameters(Map.of("IIDM", iidmImport), Map.of("IIDM", new Properties()),
                 defaults.sld(), defaults.nad(), defaults.loadFlow(), defaults.securityAnalysis(),
-                defaults.sensitivityAnalysis(), SensitivityAnalysisMode.DC, defaults.gui());
+                defaults.sensitivityAnalysis(), SensitivityAnalysisMode.DC, defaults.rao(), SensitivityAnalysisMode.AC, true, defaults.gui());
 
         parameters.sld().setSubstationLayoutChoice(DesktopSldParameters.SubstationLayoutChoice.VERTICAL)
                 .setComponentLibraryChoice(DesktopSldParameters.ComponentLibraryChoice.FLAT_DESIGN)
@@ -69,6 +71,11 @@ class ApplicationParametersJsonTest {
         parameters.securityAnalysis().getExtension(OpenSecurityAnalysisParameters.class).setThreadCount(3);
         parameters.sensitivityAnalysis().setFlowFlowSensitivityValueThreshold(0.01);
         parameters.sensitivityAnalysis().getExtension(OpenSensitivityAnalysisParameters.class).setThreadCount(4);
+        parameters.rao().getObjectiveFunctionParameters().setType(ObjectiveFunctionType.MAX_MIN_MARGIN);
+        RaoParametersSupport.searchTree(parameters.rao()).getMultithreadingParameters().setAvailableCPUs(6);
+        RaoParametersSupport.addMnec(parameters.rao());
+        RaoParametersSupport.fastRao(parameters.rao()).setNumberOfCnecsToAdd(7);
+        RaoParametersSupport.sensitivityParameters(parameters.rao()).setLoadFlowParameters(parameters.loadFlow());
 
         parameters.gui().setMapBasemap(Basemap.OPEN_STREET_MAP);
         parameters.gui().setMapHiddenBaseVoltages(Set.of("vl300to500", "vl0to30"));
@@ -116,6 +123,15 @@ class ApplicationParametersJsonTest {
         assertEquals(0.01, read.sensitivityAnalysis().getFlowFlowSensitivityValueThreshold());
         assertEquals(4, read.sensitivityAnalysis().getExtension(OpenSensitivityAnalysisParameters.class).getThreadCount());
         assertEquals(SensitivityAnalysisMode.DC, read.sensitivityAnalysisMode());
+        assertEquals(ObjectiveFunctionType.MAX_MIN_MARGIN, read.rao().getObjectiveFunctionParameters().getType());
+        assertEquals(6, RaoParametersSupport.searchTree(read.rao()).getMultithreadingParameters().getAvailableCPUs());
+        assertTrue(RaoParametersSupport.hasMnec(read.rao()));
+        assertEquals(SensitivityAnalysisMode.AC, read.raoMode());
+        assertTrue(read.fastRao());
+        assertEquals(7, RaoParametersSupport.fastRao(read.rao()).getNumberOfCnecsToAdd());
+        // the embedded load flow parameters are the load flow section's, wired back by ParametersModel
+        assertTrue(json.get("rao").at("/extensions/open-rao-search-tree-parameters/load-flow-and-sensitivity-computation/sensitivity-parameters").isObject());
+        assertTrue(json.get("rao").at("/extensions/open-rao-search-tree-parameters/load-flow-and-sensitivity-computation/sensitivity-parameters/load-flow-parameters").isMissingNode());
         assertEquals(Basemap.OPEN_STREET_MAP, read.gui().getMapBasemap());
         assertEquals(Set.of("vl300to500", "vl0to30"), read.gui().getMapHiddenBaseVoltages());
         assertEquals(Set.of(MapViolationLayer.BASE_CASE_VOLTAGE), read.gui().getMapShownViolations());
@@ -165,6 +181,22 @@ class ApplicationParametersJsonTest {
         ObjectNode unknownMode = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
         unknownMode.put("sensitivityAnalysisMode", "HYBRID");
         assertThrows(PowsyblException.class, () -> ApplicationParametersJson.fromJson(unknownMode));
+
+        ObjectNode unknownRaoMode = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
+        unknownRaoMode.put("raoMode", "HYBRID");
+        assertThrows(PowsyblException.class, () -> ApplicationParametersJson.fromJson(unknownRaoMode));
+
+        ObjectNode fastRaoNotBoolean = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
+        fastRaoNotBoolean.put("fastRao", "yes");
+        assertThrows(PowsyblException.class, () -> ApplicationParametersJson.fromJson(fastRaoNotBoolean));
+
+        ObjectNode raoNotObject = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
+        raoNotObject.put("rao", 1);
+        assertThrows(PowsyblException.class, () -> ApplicationParametersJson.fromJson(raoNotObject));
+
+        ObjectNode invalidRao = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
+        ((ObjectNode) invalidRao.get("rao").get("objective-function")).put("type", "MIN_REGRET");
+        assertThrows(PowsyblException.class, () -> ApplicationParametersJson.fromJson(invalidRao));
 
         ObjectNode hiddenBaseVoltagesNotArray = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
         ((ObjectNode) hiddenBaseVoltagesNotArray.get("gui").get("map")).put("hiddenBaseVoltages", "vl300to500");

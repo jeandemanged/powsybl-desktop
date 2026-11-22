@@ -97,6 +97,11 @@
                     <fx:include fx:id="sensitivityAnalysisEmbedded" source="sensi-parameters.fxml"/>
                 </content>
             </Tab>
+            <Tab text="%desktop.common.rao">
+                <content>
+                    <fx:include fx:id="raoEmbedded" source="rao-parameters.fxml"/>
+                </content>
+            </Tab>
         </tabs>
     </TabPane>
 </VBox>

@@ -7,7 +7,6 @@
  */
 package com.powsybl.powsybldesktop.rao;
 
-import com.powsybl.commons.report.ReportNode;
 import com.powsybl.contingency.ContingencyElementType;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.TwoSides;
@@ -19,7 +18,6 @@ import com.powsybl.openrao.data.crac.api.InstantKind;
 import com.powsybl.openrao.data.crac.api.range.RangeType;
 import com.powsybl.openrao.data.crac.io.commons.iidm.IidmPstHelper;
 import com.powsybl.openrao.raoapi.parameters.RaoParameters;
-import com.powsybl.openrao.raoapi.parameters.extensions.OpenRaoSearchTreeParameters;
 
 import java.util.List;
 
@@ -85,10 +83,8 @@ final class RaoTestCases {
     }
 
     static RaoParameters parameters(int threads) {
-        RaoParameters parameters = new RaoParameters(ReportNode.NO_OP);
-        OpenRaoSearchTreeParameters searchTree = new OpenRaoSearchTreeParameters(ReportNode.NO_OP);
-        searchTree.getMultithreadingParameters().setAvailableCPUs(threads);
-        parameters.addExtension(OpenRaoSearchTreeParameters.class, searchTree);
+        RaoParameters parameters = RaoParametersSupport.createDefault();
+        RaoParametersSupport.searchTree(parameters).getMultithreadingParameters().setAvailableCPUs(threads);
         return parameters;
     }
 }

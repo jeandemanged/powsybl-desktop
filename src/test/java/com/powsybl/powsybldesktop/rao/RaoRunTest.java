@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.rao;
 
 import com.powsybl.contingency.ContingencyElementType;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.openrao.data.crac.api.Crac;
 import com.powsybl.openrao.data.crac.api.CracFactory;
 import com.powsybl.openrao.data.crac.api.InstantKind;
@@ -19,6 +20,7 @@ import com.powsybl.openrao.raoapi.parameters.ObjectiveFunctionParameters.Objecti
 import com.powsybl.openrao.raoapi.parameters.RaoParameters;
 import com.powsybl.openrao.raoapi.parameters.extensions.OpenRaoSearchTreeParameters;
 import com.powsybl.openrao.raoapi.parameters.extensions.SearchTreeRaoRangeActionsOptimizationParameters.PstModel;
+import com.powsybl.powsybldesktop.sensitivity.SensitivityAnalysisMode;
 import com.powsybl.powsybldesktop.utils.Messages;
 import org.junit.jupiter.api.Test;
 
@@ -27,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -53,7 +56,7 @@ class RaoRunTest {
     @Test
     void optimizesCopiesLeavingTheNetworkAndTheCracUntouched() throws Exception {
         int networkActions = crac.getNetworkActions().size();
-        RaoRun run = RaoRun.prepare(network, crac, RaoTestCases.parameters(4));
+        RaoRun run = RaoRun.prepare(network, crac, RaoTestCases.parameters(4), false);
 
         RaoResultAndReport resultAndReport = run.compute();
 
@@ -71,16 +74,33 @@ class RaoRunTest {
     // on the network itself, the RAO would leave variants making a second run fail
     @Test
     void runsTwiceOnTheSameNetwork() throws Exception {
-        RaoRun.prepare(network, crac, RaoTestCases.parameters(1)).compute();
+        RaoRun.prepare(network, crac, RaoTestCases.parameters(1), false).compute();
 
-        assertOptimized(RaoRun.prepare(network, crac, RaoTestCases.parameters(1)).compute());
+        assertOptimized(RaoRun.prepare(network, crac, RaoTestCases.parameters(1), false).compute());
+    }
+
+    @Test
+    void fastRaoOptimizesToo() throws Exception {
+        RaoResultAndReport resultAndReport = RaoRun.prepare(network, crac, RaoTestCases.parameters(1), true).compute();
+
+        assertOptimized(resultAndReport);
+        assertEquals(List.of("InitialState"), List.copyOf(network.getVariantManager().getVariantIds()));
+    }
+
+    @Test
+    void fastRaoHandlesOneCurativeInstantAtMost() {
+        crac.newInstant("curative 2", InstantKind.CURATIVE);
+
+        assertEquals(List.of(), RaoRun.problems(network, crac, RaoTestCases.parameters(1), false));
+        assertEquals(List.of(Messages.get("rao.problem.fastRaoCurativeInstants", 2)),
+                RaoRun.problems(network, crac, RaoTestCases.parameters(1), true));
     }
 
     @Test
     void failedResultThrowsWithItsDetailsAndReport() {
         RaoParameters parameters = RaoTestCases.parameters(1);
         parameters.getObjectiveFunctionParameters().setType(ObjectiveFunctionType.MIN_COST);
-        RaoRun run = RaoRun.prepare(network, crac, parameters);
+        RaoRun run = RaoRun.prepare(network, crac, parameters, false);
 
         RaoFailedException failure = assertThrows(RaoFailedException.class, run::compute);
 
@@ -90,7 +110,7 @@ class RaoRunTest {
 
     @Test
     void noProblemsForAValidCase() {
-        assertEquals(List.of(), RaoRun.problems(network, crac, RaoTestCases.parameters(1)));
+        assertEquals(List.of(), RaoRun.problems(network, crac, RaoTestCases.parameters(1), false));
     }
 
     @Test
@@ -101,7 +121,7 @@ class RaoRunTest {
         assertEquals(List.of(
                 Messages.get("rao.problem.contingencyElements", RaoTestCases.CONTINGENCY, "L2"),
                 Messages.get("rao.problem.remedialActionElements", RaoTestCases.LOAD_SHEDDING, "LD2")
-        ), RaoRun.problems(network, crac, RaoTestCases.parameters(1)));
+        ), RaoRun.problems(network, crac, RaoTestCases.parameters(1), false));
     }
 
     @Test
@@ -117,7 +137,7 @@ class RaoRunTest {
         assertEquals(List.of(
                 Messages.get("rao.problem.noCnec"),
                 Messages.get("rao.problem.contingencyElements", "c", Messages.get("rao.problem.more", "X1, X2, X3, X4, X5", 2))
-        ), RaoRun.problems(network, manyMissing, RaoTestCases.parameters(1)));
+        ), RaoRun.problems(network, manyMissing, RaoTestCases.parameters(1), false));
     }
 
     @Test
@@ -129,7 +149,7 @@ class RaoRunTest {
         assertEquals(List.of(
                 Messages.get("rao.problem.relativeMargins", ObjectiveFunctionType.MAX_MIN_RELATIVE_MARGIN),
                 Messages.get("rao.problem.loopFlows")
-        ), RaoRun.problems(network, crac, parameters));
+        ), RaoRun.problems(network, crac, parameters, false));
     }
 
     @Test
@@ -138,33 +158,47 @@ class RaoRunTest {
         parameters.getObjectiveFunctionParameters().setType(ObjectiveFunctionType.MIN_COST);
 
         assertEquals(List.of(Messages.get("rao.problem.costlyMinMargins", ObjectiveFunctionType.MIN_COST)),
-                RaoRun.problems(network, crac, parameters));
+                RaoRun.problems(network, crac, parameters, false));
     }
 
     @Test
     void elementaryActionLimitsNeedIntegerPsts() {
         crac.newRaUsageLimits("preventive").withMaxElementaryActionPerTso(Map.of("TSO", 1)).add();
 
-        assertEquals(List.of(Messages.get("rao.problem.pstModel")), RaoRun.problems(network, crac, RaoTestCases.parameters(1)));
+        assertEquals(List.of(Messages.get("rao.problem.pstModel")), RaoRun.problems(network, crac, RaoTestCases.parameters(1), false));
 
         RaoParameters integers = RaoTestCases.parameters(1);
         integers.getExtension(OpenRaoSearchTreeParameters.class).getRangeActionsOptimizationParameters()
                 .setPstModel(PstModel.APPROXIMATED_INTEGERS);
-        assertEquals(List.of(), RaoRun.problems(network, crac, integers));
+        assertEquals(List.of(), RaoRun.problems(network, crac, integers, false));
     }
 
     @Test
     void copiedParametersAreIndependent() {
         RaoParameters parameters = RaoTestCases.parameters(3);
-
+        LoadFlowParameters loadFlowParameters = RaoParametersSupport.sensitivityParameters(parameters).getLoadFlowParameters();
         ObjectiveFunctionType objective = parameters.getObjectiveFunctionParameters().getType();
 
-        RaoParameters copy = RaoRun.copyParameters(parameters);
+        RaoParameters copy = RaoRun.copyParameters(parameters, SensitivityAnalysisMode.LOAD_FLOW);
         parameters.getObjectiveFunctionParameters().setType(ObjectiveFunctionType.MIN_COST);
         parameters.getExtension(OpenRaoSearchTreeParameters.class).getMultithreadingParameters().setAvailableCPUs(1);
+        loadFlowParameters.setDc(true);
 
-        assertEquals(ObjectiveFunctionType.SECURE_FLOW.equals(copy.getObjectiveFunctionParameters().getType())
-                ? ObjectiveFunctionType.SECURE_FLOW : copy.getObjectiveFunctionParameters().getType(), copy.getObjectiveFunctionParameters().getType());
+        assertEquals(objective, copy.getObjectiveFunctionParameters().getType());
         assertEquals(3, copy.getExtension(OpenRaoSearchTreeParameters.class).getMultithreadingParameters().getAvailableCPUs());
+        LoadFlowParameters copiedLoadFlowParameters = RaoParametersSupport.sensitivityParameters(copy).getLoadFlowParameters();
+        assertNotSame(loadFlowParameters, copiedLoadFlowParameters);
+        assertFalse(copiedLoadFlowParameters.isDc());
+    }
+
+    @Test
+    void modeOverridesTheLoadFlowsAcOrDcOnTheCopyOnly() {
+        RaoParameters parameters = RaoTestCases.parameters(1);
+
+        assertTrue(RaoParametersSupport.sensitivityParameters(RaoRun.copyParameters(parameters, SensitivityAnalysisMode.DC)).getLoadFlowParameters().isDc());
+        assertFalse(RaoParametersSupport.sensitivityParameters(parameters).getLoadFlowParameters().isDc());
+        RaoParametersSupport.sensitivityParameters(parameters).getLoadFlowParameters().setDc(true);
+        assertFalse(RaoParametersSupport.sensitivityParameters(RaoRun.copyParameters(parameters, SensitivityAnalysisMode.AC)).getLoadFlowParameters().isDc());
+        assertTrue(RaoParametersSupport.sensitivityParameters(RaoRun.copyParameters(parameters, SensitivityAnalysisMode.LOAD_FLOW)).getLoadFlowParameters().isDc());
     }
 }

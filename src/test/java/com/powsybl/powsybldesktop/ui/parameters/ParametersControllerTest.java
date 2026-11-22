@@ -10,6 +10,7 @@ package com.powsybl.powsybldesktop.ui.parameters;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.parameters.ApplicationParameters;
 import com.powsybl.powsybldesktop.parameters.GuiParameters;
+import com.powsybl.powsybldesktop.rao.RaoParametersSupport;
 import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.event.ActionEvent;
@@ -77,7 +78,7 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void hostsParametersTabsInOrder() {
         List<Tab> tabs = tabPane.getTabs();
-        assertEquals(8, tabs.size());
+        assertEquals(9, tabs.size());
         assertEquals("User Interface", tabs.getFirst().getText());
         assertEquals("Network Import", tabs.get(1).getText());
         assertEquals("Network Export", tabs.get(2).getText());
@@ -86,6 +87,7 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals("Load Flow", tabs.get(5).getText());
         assertEquals("Security Analysis", tabs.get(6).getText());
         assertEquals("Sensitivity Analysis", tabs.get(7).getText());
+        assertEquals("Remedial Action Optimization", tabs.get(8).getText());
         assertEquals(tabs.stream().map(Tab::getText).toList(), ParametersController.tabTitles());
     }
 
@@ -163,6 +165,8 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
                 mainModel.getParametersModel().securityAnalysisParametersProperty().get().getLoadFlowParameters());
         assertSame(mainModel.getParametersModel().loadFlowParametersProperty().get(),
                 mainModel.getParametersModel().sensitivityAnalysisParametersProperty().get().getLoadFlowParameters());
+        assertSame(mainModel.getParametersModel().loadFlowParametersProperty().get(),
+                RaoParametersSupport.sensitivityParameters(mainModel.getParametersModel().raoParametersProperty().get()).getLoadFlowParameters());
     }
 
     @Test

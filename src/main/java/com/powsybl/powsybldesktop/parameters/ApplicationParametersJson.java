@@ -25,6 +25,9 @@ import com.powsybl.nad.svg.LabelProviderParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
 import com.powsybl.openloadflow.sensi.OpenSensitivityAnalysisParameters;
+import com.powsybl.openrao.commons.OpenRaoException;
+import com.powsybl.openrao.raoapi.parameters.RaoParameters;
+import com.powsybl.powsybldesktop.rao.RaoParametersSupport;
 import com.powsybl.powsybldesktop.sensitivity.SensitivityAnalysisMode;
 import com.powsybl.security.SecurityAnalysisParameters;
 import com.powsybl.security.json.JsonSecurityAnalysisParameters;
@@ -56,8 +59,8 @@ import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 /**
- * Reads/writes {@link ApplicationParameters} as a single JSON document. Load flow, security and sensitivity analysis
- * sections use PowSyBl's own JSON serialization; the diagram and GUI sections are written field by field, each field declared once
+ * Reads/writes {@link ApplicationParameters} as a single JSON document. Load flow, security and sensitivity analysis and
+ * RAO sections use PowSyBl's (and OpenRAO's) own JSON serialization; the diagram and GUI sections are written field by field, each field declared once
  * through a {@link Binder} that either writes it or reads it back, so both directions can't drift apart.
  * Reading is all-or-nothing: any malformed section or wrongly typed field fails the whole read. Missing fields
  * keep their default value, so a file written by an older version still loads.
@@ -83,6 +86,9 @@ public final class ApplicationParametersJson {
         root.set("securityAnalysis", securityAnalysisToJson(parameters.securityAnalysis()));
         root.set("sensitivityAnalysis", sensitivityAnalysisToJson(parameters.sensitivityAnalysis()));
         root.put("sensitivityAnalysisMode", parameters.sensitivityAnalysisMode().name());
+        root.set("rao", RaoParametersSupport.toJsonWithoutLoadFlow(parameters.rao()));
+        root.put("raoMode", parameters.raoMode().name());
+        root.put("fastRao", parameters.fastRao());
         gui(new Writer(root.putObject("gui")), parameters.gui());
         return root;
     }
@@ -105,7 +111,10 @@ public final class ApplicationParametersJson {
                 root.has("loadFlow") ? loadFlowFromJson(root.get("loadFlow")) : defaults.loadFlow(),
                 root.has("securityAnalysis") ? securityAnalysisFromJson(root.get("securityAnalysis")) : defaults.securityAnalysis(),
                 root.has("sensitivityAnalysis") ? sensitivityAnalysisFromJson(root.get("sensitivityAnalysis")) : defaults.sensitivityAnalysis(),
-                root.has("sensitivityAnalysisMode") ? sensitivityAnalysisModeFromJson(root.get("sensitivityAnalysisMode")) : defaults.sensitivityAnalysisMode(),
+                root.has("sensitivityAnalysisMode") ? modeFromJson(root.get("sensitivityAnalysisMode"), "sensitivityAnalysisMode") : defaults.sensitivityAnalysisMode(),
+                root.has("rao") ? raoFromJson(root.get("rao")) : defaults.rao(),
+                root.has("raoMode") ? modeFromJson(root.get("raoMode"), "raoMode") : defaults.raoMode(),
+                root.has("fastRao") ? booleanFromJson(root.get("fastRao"), "fastRao") : defaults.fastRao(),
                 gui);
     }
 
@@ -245,14 +254,31 @@ public final class ApplicationParametersJson {
         return parameters;
     }
 
-    private static SensitivityAnalysisMode sensitivityAnalysisModeFromJson(JsonNode node) {
+    private static SensitivityAnalysisMode modeFromJson(JsonNode node, String name) {
         if (!node.isTextual()) {
-            throw invalid("sensitivityAnalysisMode");
+            throw invalid(name);
         }
         try {
             return SensitivityAnalysisMode.valueOf(node.textValue());
         } catch (IllegalArgumentException _) {
-            throw invalid("sensitivityAnalysisMode");
+            throw invalid(name);
+        }
+    }
+
+    private static boolean booleanFromJson(JsonNode node, String name) {
+        if (!node.isBoolean()) {
+            throw invalid(name);
+        }
+        return node.booleanValue();
+    }
+
+    // OpenRAO's format, without the embedded load flow parameters as for the security and sensitivity analyses
+    private static RaoParameters raoFromJson(JsonNode node) {
+        requireObject(node, "rao");
+        try {
+            return RaoParametersSupport.fromJson(node);
+        } catch (OpenRaoException | UncheckedIOException e) {
+            throw new PowsyblException("Invalid parameters JSON: unexpected value for 'rao' (" + e.getMessage() + ")", e);
         }
     }
 

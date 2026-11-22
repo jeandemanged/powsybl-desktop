@@ -101,8 +101,9 @@ Maven cache may contain unrelated versions.
   told apart from NaN ("Not computed"). It tells when the study's matrices differ from the run's. The result holds
   contingency ids only: `ContingencyNames.displayName(String, Network)` names them after the element of the same id.
   `SensitivityTexts` names the function and variable types.
-- Remedial action optimization: `…/rao/RaoRun.java`, OpenRAO's search tree RAO (`Rao.find("SearchTreeRao")`) with a
-  CRAC (contingencies, CNECs, remedial actions). Unlike the other runs it works on a **copy of the network**
+- Remedial action optimization: `…/rao/RaoRun.java`, OpenRAO's search tree RAO (`Rao.find("SearchTreeRao")`), or FastRAO
+  (`"FastRao"`, an app setting) which runs it on the worst CNECs, adding some until the result holds for all: not an
+  alternative optimizer, every search tree parameter applies to it too (its inner RAO is hard-coded in OpenRAO 7.5.1) with a CRAC (contingencies, CNECs, remedial actions). Unlike the other runs it works on a **copy of the network**
   (`NetworkSerDe.copy`, binary, in its own daemon thread) and of the CRAC (`CracIO.copy`, through JSON, in `prepare` on
   the FX thread). On the network itself (OpenRAO 7.5.1) it switches the working variant while running, so the FX thread
   would read intermediate states; with thread-local variants (`VariantMultiThreadAccess`) its multi-threaded network
@@ -114,7 +115,8 @@ Maven cache may contain unrelated versions.
   and the report. `RaoRun.problems` refuses beforehand what OpenRAO's `RaoUtil.checkParameters` would fail on for
   inputs the application never gives (GLSKs, reference program: relative margins, loop flows), costly min margin
   parameters missing for `MIN_COST`, HVDC AC emulation, the PST model with elementary action limits, curative usage
-  limits, and the CRAC's elements missing from the network (edited since the import): update it on an OpenRAO upgrade.
+  limits, FastRAO's single curative instant, and the CRAC's elements missing from the network (edited since the import):
+  update it on an OpenRAO upgrade.
 - CRAC files: `…/rao/CracIO.java` reads every format an OpenRAO importer handles (JSON, CSE, CIM, NC, FlowBased
   constraint) into a `CracCreationContext`, whose creation report tells what was ignored or why it failed (a null
   CRAC), and writes OpenRAO's JSON. It picks the importer itself, leaving out the `Network` one (the CRAC generator),
@@ -187,7 +189,10 @@ Maven cache may contain unrelated versions.
 - Live parameters are in `…/parameters/ParametersModel.java` (via `MainModel.getParametersModel()`): load flow,
   security and sensitivity analysis (whose embedded `LoadFlowParameters` are kept wired to the single authoritative
   load flow instance), the sensitivity analysis' `SensitivityAnalysisMode` (same as load flow / AC / DC, applied
-  only to the run's parameters copy by `SensitivityAnalysisRun.copyParameters`), SLD (`DesktopSldParameters`), NAD (`DesktopNadParameters`), per-format network import/export
+  only to the run's parameters copy by `SensitivityAnalysisRun.copyParameters`), the RAO's OpenRAO `RaoParameters`
+  (always with the search tree RAO's `OpenRaoSearchTreeParameters` extension, whose sensitivity parameters embed the
+  wired `LoadFlowParameters`, and FastRAO's `FastRaoParameters`, all through `…/rao/RaoParametersSupport.java`), their
+  own `SensitivityAnalysisMode` (applied by `RaoRun.copyParameters`) and whether they run through FastRAO, SLD (`DesktopSldParameters`), NAD (`DesktopNadParameters`), per-format network import/export
   `Properties` (only user-edited values), and the app's own view settings, `…/parameters/GuiParameters.java` (map
   basemap, hidden base voltages, shown violation layers and whether flows are shown, the network area diagram's
   keeping positions when centering, logs level filter and sort order, reports severity filter, whether creation
@@ -209,14 +214,20 @@ Maven cache may contain unrelated versions.
   the decimals on every render, and refresh on each GUI parameters revision. Never hardcode a `%.Nf` for a displayed
   value.
 - `…/parameters/ApplicationParameters.java` (record) groups all of them (PowSyBl ones and `GuiParameters`) for
-  (de)serialization by `…/parameters/ApplicationParametersJson.java`: LF/SA/sensitivity via PowSyBl's `JsonLoadFlowParameters` /
-  `JsonSecurityAnalysisParameters` / `JsonSensitivityAnalysisParameters` (the analyses without their embedded load
-  flow parameters), the sensitivity mode as a top-level `sensitivityAnalysisMode`, network formats as string maps, SLD/NAD/GUI field by field through a `Binder` that
+  (de)serialization by `…/parameters/ApplicationParametersJson.java`: LF/SA/sensitivity/RAO via PowSyBl's `JsonLoadFlowParameters` /
+  `JsonSecurityAnalysisParameters` / `JsonSensitivityAnalysisParameters` and OpenRAO's `JsonRaoParameters` (the
+  analyses and the RAO without their embedded load flow parameters), the modes and the use of FastRAO as top-level
+  `sensitivityAnalysisMode`, `raoMode` and `fastRao`, network formats as string maps, SLD/NAD/GUI field by field through a `Binder` that
   declares each field once for write and read. **A new SLD/NAD/GUI field must be added to the `Binder` functions or it
   won't be saved.** Reading is all-or-nothing; missing fields keep defaults.
+- The RAO tab (`ui/parameters/RaoParametersController`) shows OpenRAO's optional MNEC and costly min margin sections
+  with a check box each; editing one of their values adds the section. OpenRAO's API can add them but not remove them:
+  unticking replaces the live `RaoParameters` with a copy without the section (`RaoParametersSupport.withoutMnec` /
+  `withoutCostlyMinMargins`, through their JSON), which `ParametersModel` re-wires to the load flow parameters. Loop
+  flows and relative margins (they need GLSKs) are not offered, and are refused by `RaoRun.problems`.
 - Open Load Flow's sensitivity analysis reads the debug directory of its `OpenSensitivityAnalysisParameters`
   extension, not `SensitivityAnalysisParameters.getDebugDir()`: the tab edits the extension's.
-- Parameter UI strings: `parameters.*`, `loadflow.param.*`, `securityAnalysis.param.*`, `sensitivityAnalysis.param.*`. Importer/exporter parameter
+- Parameter UI strings: `parameters.*`, `loadflow.param.*`, `securityAnalysis.param.*`, `sensitivityAnalysis.param.*`, `rao.param.*`. Importer/exporter parameter
   forms are generated by `ui/parameters/ParameterFormBuilder` from PowSyBl `Parameter` metadata.
 
 ## Persistence

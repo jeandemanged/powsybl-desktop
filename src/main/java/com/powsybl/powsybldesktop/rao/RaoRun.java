@@ -16,8 +16,10 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.NetworkFactory;
 import com.powsybl.iidm.network.extensions.HvdcAngleDroopActivePowerControl;
 import com.powsybl.iidm.serde.NetworkSerDe;
+import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.openrao.commons.OpenRaoException;
 import com.powsybl.openrao.data.crac.api.Crac;
+import com.powsybl.openrao.data.crac.api.InstantKind;
 import com.powsybl.openrao.data.crac.api.RaUsageLimits;
 import com.powsybl.openrao.data.crac.api.RemedialAction;
 import com.powsybl.openrao.data.crac.api.cnec.Cnec;
@@ -25,13 +27,13 @@ import com.powsybl.openrao.data.raoresult.api.ComputationStatus;
 import com.powsybl.openrao.data.raoresult.api.RaoResult;
 import com.powsybl.openrao.raoapi.Rao;
 import com.powsybl.openrao.raoapi.RaoInput;
-import com.powsybl.openrao.raoapi.json.JsonRaoParameters;
 import com.powsybl.openrao.raoapi.parameters.ObjectiveFunctionParameters;
 import com.powsybl.openrao.raoapi.parameters.RaoParameters;
 import com.powsybl.openrao.raoapi.parameters.extensions.LoadFlowAndSensitivityParameters;
 import com.powsybl.openrao.raoapi.parameters.extensions.OpenRaoSearchTreeParameters;
 import com.powsybl.openrao.raoapi.parameters.extensions.SearchTreeRaoRangeActionsOptimizationParameters;
 import com.powsybl.openrao.searchtreerao.commons.RaoUtil;
+import com.powsybl.powsybldesktop.sensitivity.SensitivityAnalysisMode;
 import com.powsybl.powsybldesktop.utils.Futures;
 import com.powsybl.powsybldesktop.utils.Messages;
 
@@ -48,7 +50,8 @@ import java.util.concurrent.Executor;
 import java.util.stream.Stream;
 
 /**
- * A run of OpenRAO's search tree RAO: {@link #prepare} on the FX thread, then {@link #compute} in the background.
+ * A run of OpenRAO's search tree RAO, directly or through FastRAO, which runs it on the worst CNECs only, adding CNECs
+ * until the result holds for all: {@link #prepare} on the FX thread, then {@link #compute} in the background.
  * <p>
  * The RAO runs on a copy of the network and of the CRAC, never on the study's. On the network, it switches the working
  * variant (an FX thread reading the network meanwhile would see its intermediate states, and thread-local variants
@@ -62,6 +65,8 @@ import java.util.stream.Stream;
 public final class RaoRun {
 
     public static final String SEARCH_TREE_RAO = "SearchTreeRao";
+    public static final String FAST_RAO = "FastRao";
+
     private static final int MAX_LISTED_IDS = 5;
     // daemon threads: an abandoned run doesn't keep the application from exiting
     private static final Executor EXECUTOR = runnable -> Thread.ofPlatform().daemon().name("rao").start(runnable);
@@ -69,31 +74,38 @@ public final class RaoRun {
     private final Network network;
     private final Crac crac;
     private final RaoParameters parameters;
+    private final boolean fastRao;
     private volatile CompletableFuture<RaoResult> computation;
 
-    private RaoRun(Network network, Crac crac, RaoParameters parameters) {
+    private RaoRun(Network network, Crac crac, RaoParameters parameters, boolean fastRao) {
         this.network = network;
         this.crac = crac;
         this.parameters = parameters;
+        this.fastRao = fastRao;
     }
 
     /**
-     * Prepares a RAO of {@code network} (a root network) with {@code crac}, copied here, and {@code parameters}, used as
-     * they are (see {@link #copyParameters}).
+     * Prepares a RAO of {@code network} (a root network) through FastRAO or not with {@code crac}, copied here,
+     * and {@code parameters}, used as they are (see {@link #copyParameters}).
      *
      * @throws IllegalStateException when the CRAC can't be copied for the network (see {@link CracIO#copy})
      */
-    public static RaoRun prepare(Network network, Crac crac, RaoParameters parameters) {
-        return new RaoRun(network, CracIO.copy(crac, network), parameters);
+    public static RaoRun prepare(Network network, Crac crac, RaoParameters parameters, boolean fastRao) {
+        return new RaoRun(network, CracIO.copy(crac, network), parameters, fastRao);
     }
 
     /**
-     * Why the RAO would fail on, or misread, {@code crac} with {@code parameters} on {@code network}: one line per
-     * reason, empty when it can run. Mirrors the checks of OpenRAO's {@code RaoUtil.checkParameters} (7.5.1), for the
-     * inputs the application never gives (GLSKs, reference program), and the CRAC's elements missing from the network.
+     * Why the RAO (through FastRAO or not) would fail on, or misread, {@code crac} with {@code parameters} on {@code network}: one line
+     * per reason, empty when it can run. Mirrors the checks of OpenRAO's {@code RaoUtil.checkParameters} (7.5.1), for the
+     * inputs the application never gives (GLSKs, reference program), FastRAO's single curative instant, and the CRAC's
+     * elements missing from the network.
      */
-    public static List<String> problems(Network network, Crac crac, RaoParameters parameters) {
+    public static List<String> problems(Network network, Crac crac, RaoParameters parameters, boolean fastRao) {
         List<String> problems = new ArrayList<>();
+        int curativeInstants = crac.getInstants(InstantKind.CURATIVE).size();
+        if (fastRao && curativeInstants > 1) {
+            problems.add(Messages.get("rao.problem.fastRaoCurativeInstants", curativeInstants));
+        }
         if (crac.getCnecs().isEmpty()) {
             problems.add(Messages.get("rao.problem.noCnec"));
         }
@@ -166,7 +178,7 @@ public final class RaoRun {
                 .build();
         CompletableFuture<RaoResult> future = CompletableFuture.supplyAsync(() -> {
             Network copy = NetworkSerDe.copy(network, NetworkFactory.findDefault(), TreeDataFormat.BIN);
-            return Rao.find(SEARCH_TREE_RAO).run(RaoInput.build(copy, crac).build(), parameters, reportNode);
+            return Rao.find(fastRao ? FAST_RAO : SEARCH_TREE_RAO).run(RaoInput.build(copy, crac).build(), parameters, reportNode);
         }, EXECUTOR);
         computation = future;
         RaoResult result = Futures.await(future);
@@ -191,11 +203,16 @@ public final class RaoRun {
     }
 
     /**
-     * A copy of {@code parameters}, so that a run doesn't see the parameters window's in-place edits made meanwhile.
+     * A copy of {@code parameters}, so that a run doesn't see the parameters window's in-place edits made meanwhile, AC
+     * or DC as {@code mode} says: the copy's load flow parameters are a copy of the embedded ones (the application's).
      */
-    public static RaoParameters copyParameters(RaoParameters parameters) {
+    public static RaoParameters copyParameters(RaoParameters parameters, SensitivityAnalysisMode mode) {
         ByteArrayOutputStream json = new ByteArrayOutputStream();
-        JsonRaoParameters.write(Objects.requireNonNull(parameters), json, ReportNode.NO_OP);
-        return JsonRaoParameters.read(new ByteArrayInputStream(json.toByteArray()), ReportNode.NO_OP);
+        RaoParametersSupport.write(Objects.requireNonNull(parameters), json);
+        RaoParameters copy = RaoParametersSupport.read(new ByteArrayInputStream(json.toByteArray()));
+        LoadFlowParameters loadFlowParameters = RaoParametersSupport.sensitivityParameters(parameters).getLoadFlowParameters().copy();
+        loadFlowParameters.setDc(mode.isDc(loadFlowParameters));
+        RaoParametersSupport.sensitivityParameters(copy).setLoadFlowParameters(loadFlowParameters);
+        return copy;
     }
 }

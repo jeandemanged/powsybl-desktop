@@ -19,6 +19,7 @@ its own page:
 | [Load Flow](load_flow.md) | The load flow parameters (PowSyBl Open Load Flow). |
 | [Security Analysis](security_analysis.md) | The security analysis parameters. |
 | [Sensitivity Analysis](sensitivity_analysis.md) | The sensitivity analysis parameters, and whether it runs in AC or DC. |
+| [Remedial Action Optimization](remedial_action_optimization.md) | The remedial action optimization (OpenRAO) parameters, whether it runs through FastRAO, and in AC or DC. |
 
 Every tab has a list of categories (or of formats, for **Network Import** and **Network Export**) on the left, and
 the fields of the selected one on the right. Hover a field label to read what the parameter does.
@@ -36,6 +37,7 @@ network_area_diagram
 load_flow
 security_analysis
 sensitivity_analysis
+remedial_action_optimization
 ```
 
 ## What you can do
@@ -44,7 +46,7 @@ sensitivity_analysis
 
 Change a field: the new value applies at once, there is no **OK** or **Apply** button. A displayed single-line or
 network-area diagram is redrawn with the new diagram parameters; the next load flow, security or sensitivity
-analysis, import or export uses the new computation or format parameters.
+analysis, remedial action optimization, import or export uses the new computation or format parameters.
 
 ### Save the parameters for the next sessions
 
@@ -69,7 +71,8 @@ Click **Reset all parameters to their default values** and confirm. Save afterwa
 - **Export all parameters to a JSON file** / **Import all parameters from a JSON file** (toolbar): all the
   parameters of every tab at once.
 - **Import** / **Export** buttons of the [Load Flow](load_flow.md#import-and-export),
-  [Security Analysis](security_analysis.md#import-and-export) and
-  [Sensitivity Analysis](sensitivity_analysis.md#import-and-export) tabs: only that tab's parameters.
+  [Security Analysis](security_analysis.md#import-and-export),
+  [Sensitivity Analysis](sensitivity_analysis.md#import-and-export) and
+  [Remedial Action Optimization](remedial_action_optimization.md#import-and-export) tabs: only that tab's parameters.
 
 An import or export that fails is reported by an error notification.

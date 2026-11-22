@@ -11,6 +11,8 @@ import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
 import com.powsybl.openloadflow.sensi.OpenSensitivityAnalysisParameters;
+import com.powsybl.openrao.raoapi.parameters.RaoParameters;
+import com.powsybl.powsybldesktop.rao.RaoParametersSupport;
 import com.powsybl.powsybldesktop.sensitivity.SensitivityAnalysisMode;
 import com.powsybl.security.SecurityAnalysisParameters;
 import com.powsybl.sensitivity.SensitivityAnalysisParameters;
@@ -35,12 +37,16 @@ public record ApplicationParameters(Map<String, Properties> networkImport,
                                     SecurityAnalysisParameters securityAnalysis,
                                     SensitivityAnalysisParameters sensitivityAnalysis,
                                     SensitivityAnalysisMode sensitivityAnalysisMode,
+                                    RaoParameters rao,
+                                    SensitivityAnalysisMode raoMode,
+                                    boolean fastRao,
                                     GuiParameters gui) {
 
     public static ApplicationParameters createDefault() {
         return new ApplicationParameters(Map.of(), Map.of(), defaultSldParameters(), new DesktopNadParameters(),
                 defaultLoadFlowParameters(), defaultSecurityAnalysisParameters(), defaultSensitivityAnalysisParameters(),
-                SensitivityAnalysisMode.LOAD_FLOW, new GuiParameters());
+                SensitivityAnalysisMode.LOAD_FLOW, RaoParametersSupport.createDefault(), SensitivityAnalysisMode.LOAD_FLOW, false,
+                new GuiParameters());
     }
 
     public static LoadFlowParameters defaultLoadFlowParameters() {
