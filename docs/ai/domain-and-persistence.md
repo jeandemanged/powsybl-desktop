@@ -174,8 +174,20 @@ Maven cache may contain unrelated versions.
   `removeNetworkAction` may drop), the old one put back on refusal. `NetworkActionSpec.of` reads only the elementary
   actions OpenRAO's adders make (absolute set points, no side); an action with another is read-only. Elements are
   checked against the network only when it has them. `defaultAction` infers an elementary action from a picked network
-  element. `NetworkActionForm` edits one (elementary actions as `RowsTableEditor` rows: kind code, element, value);
-  range actions stay read-only but removable.
+  element. `NetworkActionForm` edits one (elementary actions as `RowsTableEditor` rows: kind code, element, value).
+- Range action editing: `…/rao/RangeActionEdits.java`, likewise: a `RangeActionSpec` (type PST, HVDC, injection or
+  counter-trade; common fields, group, up/down variation costs, keyed elements, initial set point, a PST's initial tap and
+  tap-to-angle map as `PstTaps`, a counter-trade's area and connected areas with border ranges, ranges as `RangeSpec`s)
+  rebuilt through the adders on each change, the old one put back on refusal. A `null` bound is none: OpenRAO's unbounded
+  defaults (`Integer.MIN/MAX_VALUE` taps, `±Double.MAX_VALUE`) read as none, a missing standard min written as
+  `-Double.MAX_VALUE` (the adder's own default is `Double.MIN_VALUE`, about 0, which is shown as is). A PST's taps come
+  from the network (crac-io-commons' `IidmPstHelper`) when made or moved to another transformer, kept otherwise. OpenRAO
+  silently drops a `RELATIVE_TO_PREVIOUS_INSTANT` range of a PST range action whose usage rules are all preventive (or
+  none): refused instead. Defaults from the network: `pst`, `hvdc` (`IidmHvdcHelper` set point, ± max P), `injection`
+  (keys as the CRAC generator's `Utils`), `counterTrade` (neighbours by `IidmCounterTradeHelper`, areas being country
+  codes). `RangeActionForm` edits one; a range action of another type keeps the read-only details. OpenRAO 7.5.1 has no
+  removal of a counter-trade (`removeRemedialAction` skips them, and `getRemedialActions` leaves them out: list remedial
+  actions with `CracElements.remedialActions`): `RangeActionEdits` refuses changing or removing one, its form is read-only.
 - CRAC generation (**Generate** in the CRAC view): `…/rao/CracGenerator.java` runs OpenRAO's `NetworkCracCreator`
   (crac-io-network, OpenRAO 7.5.1) with the application's `…/rao/CracGeneratorSettings.java` (the CRAC Generator
   parameters tab, `ui/parameters/CracGeneratorParametersController`) turned into `NetworkCracCreationParameters` on a

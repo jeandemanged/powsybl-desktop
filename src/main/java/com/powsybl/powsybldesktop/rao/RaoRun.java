@@ -113,7 +113,7 @@ public final class RaoRun {
         crac.getCnecs().stream().<Cnec<?>>map(cnec -> cnec).sorted(Comparator.comparing(Cnec::getId))
                 .forEach(cnec -> listed(CracElements.missing(network, cnec))
                         .ifPresent(ids -> problems.add(Messages.get("rao.problem.cnecElements", cnec.getId(), ids))));
-        crac.getRemedialActions().stream().sorted(Comparator.comparing(RemedialAction::getId))
+        CracElements.remedialActions(crac).sorted(Comparator.comparing(RemedialAction::getId))
                 .forEach(action -> listed(CracElements.missing(network, action))
                         .ifPresent(ids -> problems.add(Messages.get("rao.problem.remedialActionElements", action.getId(), ids))));
         ObjectiveFunctionParameters.ObjectiveFunctionType objective = parameters.getObjectiveFunctionParameters().getType();

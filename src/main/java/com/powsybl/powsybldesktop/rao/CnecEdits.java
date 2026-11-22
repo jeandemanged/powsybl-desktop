@@ -227,7 +227,7 @@ public final class CnecEdits {
      * The remedial actions with an on-constraint usage rule on the CNEC {@code id}, by name.
      */
     public static List<String> references(Crac crac, String id) {
-        return crac.getRemedialActions().stream()
+        return CracElements.remedialActions(crac)
                 .filter(action -> action.getUsageRules().stream().anyMatch(rule -> rule instanceof OnConstraint<?> onConstraint && onConstraint.getCnec().getId().equals(id)))
                 .map(RemedialAction::getName).sorted().toList();
     }

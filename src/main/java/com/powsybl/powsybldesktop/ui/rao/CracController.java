@@ -10,6 +10,7 @@ package com.powsybl.powsybldesktop.ui.rao;
 import com.powsybl.commons.PowsyblException;
 import com.powsybl.contingency.Contingency;
 import com.powsybl.contingency.list.ContingencyList;
+import com.powsybl.iidm.network.Country;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.openrao.commons.OpenRaoException;
@@ -28,6 +29,7 @@ import com.powsybl.openrao.data.crac.api.rangeaction.CounterTradeRangeAction;
 import com.powsybl.openrao.data.crac.api.rangeaction.HvdcRangeAction;
 import com.powsybl.openrao.data.crac.api.rangeaction.InjectionRangeAction;
 import com.powsybl.openrao.data.crac.api.rangeaction.PstRangeAction;
+import com.powsybl.openrao.data.crac.api.rangeaction.RangeAction;
 import com.powsybl.openrao.data.crac.api.threshold.BranchThreshold;
 import com.powsybl.openrao.data.crac.api.threshold.Threshold;
 import com.powsybl.openrao.data.crac.api.usagerule.OnConstraint;
@@ -48,6 +50,7 @@ import com.powsybl.powsybldesktop.rao.CracGeneratorSettings;
 import com.powsybl.powsybldesktop.rao.CracIO;
 import com.powsybl.powsybldesktop.rao.CracImportParameters;
 import com.powsybl.powsybldesktop.rao.NetworkActionEdits;
+import com.powsybl.powsybldesktop.rao.RangeActionEdits;
 import com.powsybl.powsybldesktop.rao.RaoResultRows;
 import com.powsybl.powsybldesktop.sensitivity.SensitivityElements;
 import com.powsybl.powsybldesktop.ui.AbstractDisposableController;
@@ -66,6 +69,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
@@ -140,6 +144,14 @@ public class CracController extends AbstractDisposableController implements Scen
     @FXML
     MenuItem addNetworkActionItem;
     @FXML
+    MenuItem addPstRangeActionItem;
+    @FXML
+    MenuItem addHvdcRangeActionItem;
+    @FXML
+    MenuItem addInjectionRangeActionItem;
+    @FXML
+    MenuItem addCounterTradeRangeActionItem;
+    @FXML
     Button removeSelectedButton;
     @FXML
     Button removeButton;
@@ -180,6 +192,8 @@ public class CracController extends AbstractDisposableController implements Scen
     FlowCnecForm flowCnecForm;
     // the form of the selected network action, kept likewise
     NetworkActionForm networkActionForm;
+    // the form of the selected range action, kept likewise
+    RangeActionForm rangeActionForm;
     // the contingency, the CNEC and the remedial action to select at the next refresh: one just added, renamed or replaced
     private String contingencyToSelect;
     private String cnecToSelect;
@@ -283,7 +297,7 @@ public class CracController extends AbstractDisposableController implements Scen
                     Contingency::getId, selectedContingency);
             setItems(cnecsListView, crac == null ? List.of() : crac.getCnecs().stream().<Cnec<?>>map(cnec -> cnec)
                     .sorted(Comparator.<Cnec<?>, State>comparing(Cnec::getState, RaoResultRows.STATE_ORDER).thenComparing(Cnec::getId)).toList(), Cnec::getId, selectedCnec);
-            setItems(remedialActionsListView, crac == null ? List.of() : crac.getRemedialActions().stream().sorted(Comparator.comparing(RemedialAction::getId)).toList(),
+            setItems(remedialActionsListView, crac == null ? List.of() : CracElements.remedialActions(crac).sorted(Comparator.comparing(RemedialAction::getId)).toList(),
                     RemedialAction::getId, selectedAction);
         } finally {
             refreshing = false;
@@ -318,6 +332,7 @@ public class CracController extends AbstractDisposableController implements Scen
         contingencyForm = null;
         flowCnecForm = null;
         networkActionForm = null;
+        rangeActionForm = null;
         contingenciesListView.refresh();
         cnecsListView.refresh();
         remedialActionsListView.refresh();
@@ -390,6 +405,12 @@ public class CracController extends AbstractDisposableController implements Scen
             return;
         }
         networkActionForm = null;
+        if (tab == remedialActionsTab && remedialActionsListView.getSelectionModel().getSelectedItem() instanceof RangeAction<?> rangeAction
+                && RangeActionEdits.RangeActionSpec.of(rangeAction).isPresent()) {
+            showRangeActionForm(rangeAction);
+            return;
+        }
+        rangeActionForm = null;
         List<String[]> rows = new ArrayList<>();
         if (tab == cnecsTab && cnecsListView.getSelectionModel().getSelectedItem() != null) {
             cnecDetails(cnecsListView.getSelectionModel().getSelectedItem(), rows);
@@ -446,6 +467,16 @@ public class CracController extends AbstractDisposableController implements Scen
                 study().cracEdited();
             }, this::usageRule, this::pickActionElements);
             detailsHost.getChildren().setAll(networkActionForm.root());
+        }
+    }
+
+    private void showRangeActionForm(RangeAction<?> action) {
+        if (rangeActionForm == null || rangeActionForm.action() != action) {
+            rangeActionForm = new RangeActionForm(crac(), network, action, edited -> {
+                actionToSelect = edited.getId();
+                study().cracEdited();
+            }, this::usageRule, this::pickRangeActionElements);
+            detailsHost.getChildren().setAll(rangeActionForm.root());
         }
     }
 
@@ -617,6 +648,7 @@ public class CracController extends AbstractDisposableController implements Scen
             switch (selected.get()) {
                 case Contingency contingency -> CracEdits.removeContingency(crac(), contingency.getId());
                 case Cnec<?> cnec -> CnecEdits.remove(crac(), cnec.getId());
+                case RangeAction<?> action -> RangeActionEdits.remove(crac(), action.getId());
                 case RemedialAction<?> action -> crac().removeRemedialAction(action.getId());
                 default -> throw new IllegalStateException();
             }
@@ -692,6 +724,93 @@ public class CracController extends AbstractDisposableController implements Scen
         } catch (IllegalArgumentException e) {
             mainModel.getNotificationsModel().add(Notification.createError(java.time.Instant.now(), "crac.networkAction.add.failed").withMessageArgs(e.getMessage()));
         }
+    }
+
+    @FXML
+    private void onAddPstRangeAction() {
+        addRangeActions(RangeActionEdits.Type.PST);
+    }
+
+    @FXML
+    private void onAddHvdcRangeAction() {
+        addRangeActions(RangeActionEdits.Type.HVDC);
+    }
+
+    @FXML
+    private void onAddInjectionRangeAction() {
+        addRangeActions(RangeActionEdits.Type.INJECTION);
+    }
+
+    @FXML
+    private void onAddCounterTradeRangeAction() {
+        addRangeActions(RangeActionEdits.Type.COUNTER_TRADE);
+    }
+
+    /**
+     * Adds range actions of {@code type}, with no usage rule yet, as {@link RangeActionEdits} makes them from the
+     * network: one per PST or HVDC line picked, one on all the injections picked, one counter-trade from the country
+     * asked.
+     */
+    void addRangeActions(RangeActionEdits.Type type) {
+        Crac crac = crac();
+        if (crac == null) {
+            return;
+        }
+        String prefix = Messages.get("crac.rangeAction.newId." + type.code());
+        List<RangeAction<?>> added = new ArrayList<>();
+        try {
+            switch (type) {
+                case PST, HVDC -> {
+                    for (String elementId : pickRangeActionElements(type, Set.of())) {
+                        String id = NetworkActionEdits.newId(crac, prefix);
+                        added.add(RangeActionEdits.add(crac, network, type == RangeActionEdits.Type.PST ? RangeActionEdits.pst(network, id, elementId)
+                                : RangeActionEdits.hvdc(network, id, elementId), List.of()));
+                    }
+                }
+                case INJECTION -> {
+                    List<String> injectionIds = pickRangeActionElements(type, Set.of());
+                    if (!injectionIds.isEmpty()) {
+                        added.add(RangeActionEdits.add(crac, network, RangeActionEdits.injection(network, NetworkActionEdits.newId(crac, prefix), injectionIds), List.of()));
+                    }
+                }
+                case COUNTER_TRADE -> {
+                    Optional<Country> country = askCountry();
+                    if (country.isPresent()) {
+                        added.add(RangeActionEdits.add(crac, network, RangeActionEdits.counterTrade(network, NetworkActionEdits.newId(crac, prefix), country.get()),
+                                List.of()));
+                    }
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            mainModel.getNotificationsModel().add(Notification.createError(java.time.Instant.now(), "crac.rangeAction.add.failed").withMessageArgs(e.getMessage()));
+        }
+        if (!added.isEmpty()) {
+            tabPane.getSelectionModel().select(remedialActionsTab);
+            actionToSelect = added.getFirst().getId();
+            study().cracEdited();
+        }
+    }
+
+    // the ids of the network elements picked for a range action of {@code type}; overridable by a test, which can't
+    // answer a modal dialog
+    List<String> pickRangeActionElements(RangeActionEdits.Type type, Set<String> present) {
+        return new ElementPickerDialog(detailsHost.getScene().getWindow(), Messages.get("crac.rangeAction.pick.title", type.label()),
+                SensitivityElements.identifiables(RangeActionEdits.elementCandidates(network, type)), present).showAndWait().orElse(List.of());
+    }
+
+    // the country of a counter-trade; overridable by a test
+    Optional<Country> askCountry() {
+        List<Country> countries = RangeActionEdits.countries(network);
+        if (countries.isEmpty()) {
+            mainModel.getNotificationsModel().add(Notification.createError(java.time.Instant.now(), "crac.rangeAction.noCountry"));
+            return Optional.empty();
+        }
+        ChoiceDialog<Country> dialog = new ChoiceDialog<>(countries.getFirst(), countries);
+        dialog.initOwner(detailsHost.getScene().getWindow());
+        dialog.setTitle(Messages.get("crac.rangeAction.country.title"));
+        dialog.setHeaderText(null);
+        dialog.setContentText(Messages.get("crac.rangeAction.country"));
+        return dialog.showAndWait();
     }
 
     // the ids of the network elements picked to be acted on; overridable by a test, which can't answer a modal dialog

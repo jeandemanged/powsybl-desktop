@@ -75,6 +75,12 @@
                                   text="%crac.add.contingenciesFromLists"/>
                         <MenuItem fx:id="addFlowCnecsItem" mnemonicParsing="false" onAction="#onAddFlowCnecs" text="%crac.add.flowCnecs"/>
                         <MenuItem fx:id="addNetworkActionItem" mnemonicParsing="false" onAction="#onAddNetworkAction" text="%crac.add.networkAction"/>
+                        <MenuItem fx:id="addPstRangeActionItem" mnemonicParsing="false" onAction="#onAddPstRangeAction" text="%crac.add.pstRangeAction"/>
+                        <MenuItem fx:id="addHvdcRangeActionItem" mnemonicParsing="false" onAction="#onAddHvdcRangeAction" text="%crac.add.hvdcRangeAction"/>
+                        <MenuItem fx:id="addInjectionRangeActionItem" mnemonicParsing="false" onAction="#onAddInjectionRangeAction"
+                                  text="%crac.add.injectionRangeAction"/>
+                        <MenuItem fx:id="addCounterTradeRangeActionItem" mnemonicParsing="false" onAction="#onAddCounterTradeRangeAction"
+                                  text="%crac.add.counterTradeRangeAction"/>
                     </items>
                 </MenuButton>
                 <Button fx:id="removeSelectedButton" mnemonicParsing="false" onAction="#onRemoveSelected">

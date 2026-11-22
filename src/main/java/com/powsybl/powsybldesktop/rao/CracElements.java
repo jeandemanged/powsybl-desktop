@@ -11,6 +11,7 @@ import com.powsybl.contingency.Contingency;
 import com.powsybl.contingency.ContingencyElement;
 import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.openrao.data.crac.api.Crac;
 import com.powsybl.openrao.data.crac.api.RemedialAction;
 import com.powsybl.openrao.data.crac.api.cnec.Cnec;
 
@@ -37,6 +38,14 @@ public final class CracElements {
 
     public static List<String> missing(Network network, Cnec<?> cnec) {
         return missing(network, cnec.getNetworkElementsIds().stream());
+    }
+
+    /**
+     * All the remedial actions of {@code crac}: its network actions and range actions. OpenRAO 7.5.1's
+     * {@code Crac.getRemedialActions} leaves out the counter-trade range actions.
+     */
+    public static Stream<RemedialAction<?>> remedialActions(Crac crac) {
+        return Stream.concat(crac.getNetworkActions().stream(), crac.getRangeActions().stream());
     }
 
     public static List<String> missing(Network network, RemedialAction<?> remedialAction) {

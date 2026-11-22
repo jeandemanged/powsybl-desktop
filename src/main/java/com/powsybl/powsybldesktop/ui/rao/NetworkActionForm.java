@@ -23,7 +23,6 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
-import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
 import java.util.ArrayList;
@@ -94,9 +93,7 @@ final class NetworkActionForm {
         addActionsButton.setOnAction(_ -> addActions(picker));
         Label help = new Label(Messages.get("crac.networkAction.actionsHelp"));
         for (Label label : List.of(help, usageRulesLabel, problemLabel, errorLabel)) {
-            label.setWrapText(true);
-            label.setMinHeight(Region.USE_PREF_SIZE);
-            label.managedProperty().bind(label.visibleProperty());
+            FormFields.wrap(label);
         }
         problemLabel.getStyleClass().add("alert-label");
         errorLabel.getStyleClass().add("alert-label");
@@ -105,13 +102,13 @@ final class NetworkActionForm {
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(6);
-        grid.addRow(0, boldLabel("crac.details.id"), idField);
-        grid.addRow(1, boldLabel("crac.details.name"), nameField);
-        grid.addRow(2, boldLabel("crac.details.operator"), operatorField);
-        grid.addRow(3, boldLabel("crac.details.speed"), speedField);
-        grid.addRow(4, boldLabel("crac.details.activationCost"), activationCostField);
-        root = new VBox(8, grid, errorLabel, boldLabel("crac.networkAction.actions"), actionsEditor, addActionsButton, help, problemLabel,
-                boldLabel("crac.details.usageRules"), usageRulesLabel);
+        grid.addRow(0, FormFields.boldLabel("crac.details.id"), idField);
+        grid.addRow(1, FormFields.boldLabel("crac.details.name"), nameField);
+        grid.addRow(2, FormFields.boldLabel("crac.details.operator"), operatorField);
+        grid.addRow(3, FormFields.boldLabel("crac.details.speed"), speedField);
+        grid.addRow(4, FormFields.boldLabel("crac.details.activationCost"), activationCostField);
+        root = new VBox(8, grid, errorLabel, FormFields.boldLabel("crac.networkAction.actions"), actionsEditor, addActionsButton, help, problemLabel,
+                FormFields.boldLabel("crac.details.usageRules"), usageRulesLabel);
         refresh();
     }
 
@@ -124,16 +121,6 @@ final class NetworkActionForm {
         return action;
     }
 
-    private static Label boldLabel(String key) {
-        Label label = new Label(Messages.get(key));
-        label.getStyleClass().add("crac-details-label");
-        return label;
-    }
-
-    private static String text(Number value) {
-        return value == null ? "" : value instanceof Double d && d == Math.rint(d) ? Long.toString(d.longValue()) : value.toString();
-    }
-
     private void refresh() {
         refreshing = true;
         try {
@@ -141,8 +128,8 @@ final class NetworkActionForm {
             idField.setText(action.getId());
             nameField.setText(action.getName().equals(action.getId()) ? "" : action.getName());
             operatorField.setText(action.getOperator() == null ? "" : action.getOperator());
-            speedField.setText(text(action.getSpeed().orElse(null)));
-            activationCostField.setText(text(action.getActivationCost().orElse(null)));
+            speedField.setText(FormFields.text(action.getSpeed().orElse(null)));
+            activationCostField.setText(FormFields.text(action.getActivationCost().orElse(null)));
             actionsEditor.setRows(spec.map(s -> NetworkActionEdits.actionRows(s.actions()))
                     .orElseGet(() -> action.getElementaryActions().stream().map(elementary -> List.of(elementary.getType(),
                             NetworkAction.getNetworkElementId(elementary), "")).toList()));
@@ -174,40 +161,10 @@ final class NetworkActionForm {
         errorLabel.setVisible(message != null);
     }
 
-    private static String trimmed(TextField field) {
-        String text = field.getText().trim();
-        return text.isEmpty() ? null : text;
-    }
-
-    private static Integer integer(TextField field, String key) {
-        String text = trimmed(field);
-        try {
-            return text == null ? null : Integer.valueOf(text);
-        } catch (NumberFormatException _) {
-            throw new IllegalArgumentException(Messages.get("crac.cnec.notANumber", Messages.get(key), text));
-        }
-    }
-
-    private static Double number(TextField field, String key) {
-        String text = trimmed(field);
-        if (text == null) {
-            return null;
-        }
-        try {
-            double value = Double.parseDouble(text);
-            if (!Double.isFinite(value)) {
-                throw new NumberFormatException(text);
-            }
-            return value;
-        } catch (NumberFormatException _) {
-            throw new IllegalArgumentException(Messages.get("crac.cnec.notANumber", Messages.get(key), text));
-        }
-    }
-
     // the fields' network action, with these elementary actions
     private NetworkActionSpec spec(List<ElementaryActionSpec> actions) {
-        return new NetworkActionSpec(idField.getText(), nameField.getText(), operatorField.getText(), integer(speedField, "crac.details.speed"),
-                number(activationCostField, "crac.details.activationCost"), actions);
+        return new NetworkActionSpec(idField.getText(), nameField.getText(), operatorField.getText(), FormFields.integer(speedField, "crac.details.speed"),
+                FormFields.number(activationCostField, "crac.details.activationCost"), actions);
     }
 
     private List<ElementaryActionSpec> currentActions() {

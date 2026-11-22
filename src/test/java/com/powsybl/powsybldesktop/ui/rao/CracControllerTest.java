@@ -11,6 +11,7 @@ import com.powsybl.contingency.Contingency;
 import com.powsybl.contingency.ContingencyElement;
 import com.powsybl.contingency.LineContingency;
 import com.powsybl.contingency.list.DefaultContingencyList;
+import com.powsybl.iidm.network.Country;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.TwoSides;
 import com.powsybl.iidm.network.test.PhaseShifterTestCaseFactory;
@@ -20,6 +21,8 @@ import com.powsybl.openrao.data.crac.api.InstantKind;
 import com.powsybl.openrao.data.crac.api.cnec.FlowCnec;
 import com.powsybl.openrao.data.crac.api.networkaction.NetworkAction;
 import com.powsybl.openrao.data.crac.api.parameters.CracCreationParameters;
+import com.powsybl.openrao.data.crac.api.rangeaction.RangeAction;
+import com.powsybl.openrao.data.crac.api.rangeaction.VariationDirection;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
 import com.powsybl.powsybldesktop.notification.Notification;
@@ -27,6 +30,7 @@ import com.powsybl.powsybldesktop.notification.NotificationStatus;
 import com.powsybl.powsybldesktop.rao.CnecEdits;
 import com.powsybl.powsybldesktop.rao.CracEdits;
 import com.powsybl.powsybldesktop.rao.CracIO;
+import com.powsybl.powsybldesktop.rao.RangeActionEdits;
 import com.powsybl.powsybldesktop.rao.RaoTestCases;
 import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
@@ -36,9 +40,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
-import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
@@ -87,6 +89,10 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
     private AddFlowCnecsDialog.Request flowCnecsRequest;
     // the network elements picked to be acted on
     private final List<String> pickedActionElements = new ArrayList<>();
+    // the network elements picked for range actions, the types they were picked for, and the country of a counter-trade
+    private final List<String> pickedRangeElements = new ArrayList<>();
+    private final List<RangeActionEdits.Type> pickedRangeTypes = new ArrayList<>();
+    private Optional<Country> country = Optional.empty();
 
     // the import dialog and the element picker, modal: answered
     private final class AnsweringCracController extends CracController {
@@ -111,6 +117,18 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
         List<String> pickActionElements(Set<String> present) {
             presentWhenPicked.add(present);
             return List.copyOf(pickedActionElements);
+        }
+
+        @Override
+        List<String> pickRangeActionElements(RangeActionEdits.Type type, Set<String> present) {
+            pickedRangeTypes.add(type);
+            presentWhenPicked.add(present);
+            return List.copyOf(pickedRangeElements);
+        }
+
+        @Override
+        Optional<Country> askCountry() {
+            return country;
         }
 
         @Override
@@ -151,12 +169,6 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
                 .findFirst();
     }
 
-    private String details() {
-        WaitForAsyncUtils.waitForFxEvents();
-        GridPane grid = (GridPane) controller.detailsHost.getChildren().getFirst();
-        return String.join("\n", grid.getChildren().stream().map(node -> ((Label) node).getText()).toList());
-    }
-
     @Test
     void emptyWithoutCrac() {
         assertEquals(Messages.get("crac.none"), controller.headerLabel.getText());
@@ -195,11 +207,11 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals(Messages.get("crac.usageRule.onState", Messages.get("raoResults.stateName", "L2 out", "curative")), networkAction.usageRulesLabel.getText());
         assertEquals(List.of(List.of("load", "LD2", "70")), networkAction.actionsEditor.getRows());
 
-        // a range action: its details
+        // a range action: its form
         interact(() -> controller.remedialActionsListView.getSelectionModel().select(1));
-        String action = details();
-        assertTrue(action.contains(Messages.get("crac.usageRule.onInstant", "preventive")), action);
-        assertTrue(action.contains("PS1"), action);
+        RangeActionForm rangeAction = controller.rangeActionForm;
+        assertEquals(Messages.get("crac.usageRule.onInstant", "preventive"), rangeAction.usageRulesLabel.getText());
+        assertEquals("PS1", rangeAction.elementField.getText());
     }
 
     // after a network edit removing an element of the CRAC
@@ -570,5 +582,78 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
         interact(() -> controller.remedialActionsListView.getSelectionModel().select(1));
         interact(controller::onRemoveSelected);
         assertNull(study.getCrac().getRemedialAction(RaoTestCases.PST));
+    }
+
+    @Test
+    void addsAndEditsRangeActions() {
+        interact(() -> study.setCrac(RaoTestCases.crac(network), List.of()));
+        pickedRangeElements.add("PS1");
+        interact(() -> controller.addRangeActions(RangeActionEdits.Type.PST));
+
+        String pstId = Messages.get("crac.rangeAction.newId.pst") + " 1";
+        RangeAction<?> pst = study.getCrac().getRangeAction(pstId);
+        assertSame(controller.remedialActionsTab, controller.tabPane.getSelectionModel().getSelectedItem());
+        assertSame(pst, controller.remedialActionsListView.getSelectionModel().getSelectedItem());
+        RangeActionForm form = controller.rangeActionForm;
+        assertSame(pst, form.action());
+        assertEquals("PS1", form.elementField.getText());
+        assertEquals("1", form.initialTapLabel.getText());
+        assertEquals(List.of(List.of("absolute", "0", "2")), form.rangesEditor.getRows());
+        assertEquals(Messages.get("crac.networkAction.noUsageRule"), form.usageRulesLabel.getText());
+
+        // a cost: replaced, kept selected in the same form
+        interact(() -> {
+            form.upVariationCostField.setText("2.5");
+            form.upVariationCostField.fireEvent(new ActionEvent());
+        });
+        RangeAction<?> costly = study.getCrac().getRangeAction(pstId);
+        assertNotSame(pst, costly);
+        assertEquals(2.5, costly.getVariationCost(VariationDirection.UP).orElseThrow());
+        assertSame(costly, controller.remedialActionsListView.getSelectionModel().getSelectedItem());
+        assertSame(form, controller.rangeActionForm);
+
+        // another element, no PST: refused, told and reverted
+        pickedRangeElements.set(0, "L1");
+        interact(() -> form.pickElementButton.fire());
+        assertEquals(RangeActionEdits.Type.PST, pickedRangeTypes.getLast());
+        assertEquals(Set.of("PS1"), presentWhenPicked.getLast());
+        assertTrue(form.errorLabel.isVisible());
+        assertEquals("PS1", form.elementField.getText());
+        assertNotNull(study.getCrac().getRangeAction(pstId));
+
+        // injections, more added to them
+        pickedRangeElements.set(0, "G1");
+        interact(() -> controller.addRangeActions(RangeActionEdits.Type.INJECTION));
+        String injectionId = Messages.get("crac.rangeAction.newId.injection") + " 1";
+        RangeActionForm injection = controller.rangeActionForm;
+        assertEquals(injectionId, injection.action().getId());
+        assertEquals("100", injection.initialSetpointField.getText());
+        pickedRangeElements.set(0, "LD2");
+        interact(() -> injection.addInjectionsButton.fire());
+        assertEquals(Set.of("G1"), presentWhenPicked.getLast());
+        assertEquals(List.of(List.of("G1", "1"), List.of("LD2", "1")), injection.keysEditor.getRows());
+        assertEquals(Set.of("G1", "LD2"), study.getCrac().getRangeAction(injectionId).getNetworkElementsIds());
+
+        // a counter-trade from the country asked: the network's only, no neighbour
+        country = Optional.of(Country.FR);
+        interact(() -> controller.addRangeActions(RangeActionEdits.Type.COUNTER_TRADE));
+        RangeActionForm counterTrade = controller.rangeActionForm;
+        assertEquals(Messages.get("crac.rangeAction.newId.counterTrade") + " 1", counterTrade.action().getId());
+        assertEquals("FR", counterTrade.areaField.getText());
+        assertEquals(List.of(), counterTrade.connectedAreasEditor.getRows());
+        assertEquals(List.of(List.of("absolute", "-100", "100")), counterTrade.rangesEditor.getRows());
+        // OpenRAO can't remove it: read-only, not removable
+        assertFalse(counterTrade.idField.isEditable());
+        assertTrue(counterTrade.rangesEditor.isDisabled());
+        assertEquals(Messages.get("rangeActionEdits.counterTradeFixed"), counterTrade.problemLabel.getText());
+        interact(controller::onRemoveSelected);
+        assertNotNull(study.getCrac().getCounterTradeRangeAction(counterTrade.action().getId()));
+        assertEquals(NotificationStatus.ERROR, notification("crac.removeSelected").orElseThrow().status());
+
+        // none picked: none added
+        pickedRangeElements.clear();
+        int count = study.getCrac().getRangeActions().size();
+        interact(() -> controller.addRangeActions(RangeActionEdits.Type.HVDC));
+        assertEquals(count, study.getCrac().getRangeActions().size());
     }
 }

@@ -30,9 +30,7 @@ On the right, the details of the object selected on the left:
 - a flow CNEC: its form, to edit it (see below);
 - an angle or voltage CNEC: its type, network elements, state, role (optimized, monitored), thresholds with their unit,
   reliability margin and operator;
-- a network action: its form, to edit it (see below);
-- a range action: its type, network elements, usage rules (when it is available: at an instant, after a
-  contingency, when a CNEC is constrained, on a flow constraint in a country), operator, activation cost and speed.
+- a network action or a range action: its form, to edit it (see below).
 
 ## What you can do
 
@@ -140,11 +138,53 @@ its kind, element and value:
 | `acEmulationOff` | an HVDC line | none |
 
 **Add Actions…** adds an elementary action on more elements picked, as above. An element can be acted on only once,
-and must be of the kind's type. A refused change is told below the fields and undone. The usage rules are shown,
-unchanged by the edits. An imported action with an elementary action of another kind (a relative set point...) is
-read-only.
+and must be of the kind's type. A refused change is told below the fields and undone. The usage rules (when the action
+is available: at an instant, after a contingency, when a CNEC is constrained, on a flow constraint in a country) are
+shown, unchanged by the edits. An imported action with an elementary action of another kind (a relative set point...)
+is read-only.
 
 The button after the **Add** menu also removes the selected remedial action, network or range action.
+
+### Add and edit range actions
+
+The **Add** menu adds range actions from the network, with no usage rule yet (the RAO doesn't use them), named "PST
+range action 1" and so on (or the next free number):
+
+- **PST Range Action…** picks phase-shifting transformers and adds a range action on each: its initial tap and
+  tap-to-angle conversion are the network's, its range the PST's taps.
+- **HVDC Range Action…** picks HVDC lines and adds a range action on each: its initial set point is the line's (negative
+  from side 2 to side 1), its range ± its maximum active power.
+- **Injection Range Action…** picks generators and loads and adds one range action on all of them, as the CRAC
+  generator does: each injection's distribution key is its share of the total set point (generation minus
+  consumption), or 1 when alone; its range is a single generator's active power limits, else ± 100 MW around the
+  initial set point.
+- **Counter-Trading Range Action…** asks a country of the network and adds a counter-trade from it to its neighbours in
+  the network, from 0 by up to ± 100 MW.
+
+The form of the selected range action edits it, each change applied at once (text fields on Enter or when leaving them):
+**Id**, **Name**, its PST or **HVDC Line** (**Change…** picks another), its **Initial Set Point** (a PST's
+**Initial Tap** is shown, taken from the network), **Operator**, **Speed**, **Activation Cost**, **Up Variation Cost**
+and **Down Variation Cost** (per MW or tap of variation), **Group** (range actions of a group move together), and its
+**Ranges**, a row each with its type, min and max:
+
+| Type | Range |
+|------|-------|
+| `absolute` | the set points (or taps) allowed |
+| `relativeToInitialNetwork` | the variation allowed from the initial set point |
+| `relativeToPreviousInstant` | the variation allowed from the previous instant's set point |
+| `relativeToPreviousTimeStep` | the variation allowed from the previous time step's |
+
+A blank min or max is no limit (but for an absolute range of an HVDC, injection or counter-trading range action). A PST
+range action may have no range: the PST's taps apply. OpenRAO ignores a range relative to the previous instant of a PST
+range action only available at the preventive instant: it is refused.
+
+An injection range action also has its **Injections and Distribution Keys**, a row each with a generator or load and
+its key (the share of the set point it takes, a load's counted negatively); **Add Injections…** adds more, of key 1.
+A counter-trading range action has its **Area** and **Connected Areas**: a row per range of the exchange on the border
+with an area, a row with a blank range for an area without any. Areas are country codes (`FR`, `BE`...). OpenRAO 7.5.1
+can't remove a counter-trading range action from a CRAC: once added or imported, it is read-only and can't be removed.
+
+A refused change is told below the fields and undone. The usage rules are shown, unchanged by the edits.
 
 ### Export the CRAC
 

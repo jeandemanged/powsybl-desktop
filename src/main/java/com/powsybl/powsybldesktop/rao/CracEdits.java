@@ -152,7 +152,7 @@ public final class CracEdits {
         crac.getCnecs().stream().<Cnec<?>>map(cnec -> cnec)
                 .filter(cnec -> cnec.getState().getContingency().map(contingency -> contingency.getId().equals(id)).orElse(false))
                 .map(Cnec::getName).sorted().forEach(references::add);
-        crac.getRemedialActions().stream()
+        CracElements.remedialActions(crac)
                 .filter(action -> action.getUsageRules().stream().anyMatch(rule -> switch (rule) {
                     case OnContingencyState onState -> onState.getContingency().getId().equals(id);
                     case OnFlowConstraintInCountry onCountry -> onCountry.getContingency().map(contingency -> contingency.getId().equals(id)).orElse(false);
