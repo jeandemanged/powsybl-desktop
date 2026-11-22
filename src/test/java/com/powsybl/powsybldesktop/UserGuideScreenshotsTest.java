@@ -175,6 +175,7 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         runLoadFlow(network);
         runSecurityAnalysis(network);
         runSensitivityAnalysis(network);
+        runRao(network);
         views(network);
         assertEquals(List.of("quickstart-start", "quickstart-sample-menu", "quickstart-network-loaded", "quickstart-network-map",
                 "quickstart-loadflow-run", "quickstart-loadflow-results", "quickstart-loadflow-components", "quickstart-loadflow-sld",
@@ -184,6 +185,8 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
                 "quickstart-sa-map", "quickstart-sa-map-no-contingency-voltage", "map-violations-box", "map-voltage-ranges-box",
                 "map-show-flows-box", "quickstart-sensi-add-matrix", "quickstart-sensi-pick-line", "quickstart-sensi-pick-generators",
                 "quickstart-sensi-matrix", "quickstart-sensi-results", "quickstart-sensi-results-contingency",
+                "quickstart-rao-new-crac", "quickstart-rao-add-menu", "quickstart-rao-pick-lines", "quickstart-rao-cnec-states", "quickstart-rao-cnecs",
+                "quickstart-rao-usage-rule", "quickstart-rao-range-action", "quickstart-rao-results", "quickstart-rao-results-actions",
                 "general-main-toolbar", "networks-import-menu", "substations-nad", "substations-lines-tab",
                 "search-box-match", "search-box-approximate", "search-box-not-found", "tables-lines", "tables-column-groups", "violations-dialog",
                 "details-generator", "details-line-limits", "general-separate-window", "sa-results-voltages",
@@ -353,7 +356,73 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         screenshot("quickstart-sensi-results-contingency");
     }
 
-    // in the picker dialog: each search, then its first match checked, then the dialog closed
+    private void runRao(Network network) throws TimeoutException {
+        openInput("main.toolbar.crac");
+        clickOn("#newButton");
+        WaitForAsyncUtils.waitForFxEvents();
+        screenshot("quickstart-rao-new-crac");
+        closeDialog();
+
+        // flow CNECs on the two overloaded lines, at the preventive state: the CRAC has no contingency yet
+        clickOn("#addMenuButton");
+        moveTo(shown(Messages.get("crac.add.flowCnecs")), Motion.HORIZONTAL_FIRST);
+        screenshot("quickstart-rao-add-menu");
+        clickOn(shown(Messages.get("crac.add.flowCnecs")), Motion.HORIZONTAL_FIRST);
+        pick(List.of("8-9", "9-10"), "quickstart-rao-pick-lines");
+        screenshot("quickstart-rao-cnec-states");
+        closeDialog();
+        interact(() -> mainModel.getNotificationsModel().clear());
+        screenshot("quickstart-rao-cnecs");
+
+        // a redispatching range action on Breed SM, then on Sporn SM, usable at the preventive instant
+        addRedispatching("Breed", true);
+        addRedispatching("Sporn", false);
+
+        clickOn(shown(Messages.get("main.toolbar.run")), Motion.HORIZONTAL_FIRST);
+        clickOn(shown(Messages.get("desktop.common.rao")), Motion.HORIZONTAL_FIRST);
+        waitUntil(() -> mainModel.getStudy(network).getRaoResult() != null && !mainModel.isBusy(network));
+        interact(() -> mainModel.getNotificationsModel().clear());
+
+        openResults("main.toolbar.raoResults");
+        screenshot("quickstart-rao-results");
+        clickOn(shown(Messages.get("raoResults.tab.actions")));
+        WaitForAsyncUtils.waitForFxEvents();
+        screenshot("quickstart-rao-results-actions");
+    }
+
+    private void addRedispatching(String generator, boolean screenshots) {
+        clickOn("#addMenuButton");
+        clickOn(shown(Messages.get("crac.add.injectionRangeAction")), Motion.HORIZONTAL_FIRST);
+        pick(List.of(generator), null);
+        // the form's Name field, under its Id field
+        TextField nameField = lookup((Node node) -> node instanceof TextField && node.isVisible() && node.localToScene(0, 0).getX() > 600).<TextField>queryAll()
+                .stream().sorted(Comparator.comparingDouble(field -> field.localToScene(0, 0).getY())).toList().get(1);
+        interact(() -> {
+            nameField.setText("Redispatching " + generator);
+            nameField.getOnAction().handle(null);
+        });
+        Button addRule = lookup((Node node) -> node instanceof Button button && button.isVisible() && button.getTooltip() != null
+                && Messages.get("crac.usageRules.add").equals(button.getTooltip().getText())).query();
+        // below the visible part of the headless window; its dialog waits, so not from interact
+        Platform.runLater(addRule::fire);
+        WaitForAsyncUtils.waitForFxEvents();
+        if (screenshots) {
+            screenshot("quickstart-rao-usage-rule");
+        }
+        closeDialog();
+        if (screenshots) {
+            screenshot("quickstart-rao-range-action");
+        }
+    }
+
+    // the dialog shown, by its OK button
+    private void closeDialog() {
+        DialogPane dialogPane = lookup(".dialog-pane").query();
+        interact(() -> ((Button) dialogPane.lookupButton(ButtonType.OK)).fire());
+        WaitForAsyncUtils.waitForFxEvents();
+    }
+
+    // in the picker dialog: each search, then its first match checked, then the dialog closed; a screenshot unless no name
     private void pick(List<String> searches, String screenshotName) {
         WaitForAsyncUtils.waitForFxEvents();
         Node dialogPane = lookup(".dialog-pane").query();
@@ -363,7 +432,9 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
             WaitForAsyncUtils.waitForFxEvents();
             clickOn(from(dialogPane).lookup(".check-box").<CheckBox>query());
         }
-        screenshot(screenshotName);
+        if (screenshotName != null) {
+            screenshot(screenshotName);
+        }
         interact(() -> ((Button) ((DialogPane) dialogPane).lookupButton(ButtonType.OK)).fire());
         WaitForAsyncUtils.waitForFxEvents();
     }

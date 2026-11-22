@@ -55,8 +55,8 @@ Start the application, then either load one of the sample networks (_Sample Netw
 Networks view), open a network file (from the file chooser or by drag and drop), or create a new empty network. Run a
 load flow from the toolbar, and browse the results in the equipment tables, diagrams and violations view.
 
-The user's guide, with step-by-step load flow, security analysis and sensitivity analysis tutorials, is in the
-application under _Help > User's Guide (PDF)_ or _(HTML)_. Its sources are in [`docs/ug`](docs/ug).
+The user's guide, with step-by-step load flow, security analysis, sensitivity analysis and remedial action
+optimization tutorials, is in the application under _Help > User's Guide (PDF)_ or _(HTML)_. Its sources are in [`docs/ug`](docs/ug).
 
 ## What it can do
 
@@ -81,11 +81,14 @@ application under _Help > User's Guide (PDF)_ or _(HTML)_. Its sources are in [`
   sets (GLSK), checked against what OpenLoadFlow computes; limit scalings (current, active and apparent power limits
   scaled for the base-case violations and the security analysis); load flow, security and sensitivity analysis results
   and limit violations views.
+- **Remedial action optimization** (OpenRAO): CRACs imported from all OpenRAO formats, generated from the network or
+  created and edited in the application, optimized with the search-tree RAO or FastRAO; results per CNEC and
+  remedial action.
 - **Reports, logs and notifications** for every operation; parameters saved to a per-user configuration file;
   English and French UI.
-- **Studies**: save the parameters, chosen networks with their contingency lists, limit scalings, sensitivity factors
-  and load flow, security and sensitivity analysis results, reports and logs to a single `.psbx` file, and load it
-  back.
+- **Studies**: save the parameters, chosen networks with their contingency lists, limit scalings, sensitivity factors,
+  CRAC and load flow, security, sensitivity analysis and RAO results, reports and logs to a single `.psbx` file,
+  and load it back.
 
 ## What it cannot do yet
 
@@ -98,9 +101,10 @@ The following PowSyBl features are not supported yet in PowSyBl Desktop and are 
   [dynamic simulation](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/simulation/dynamic/index.html) and
   [dynamic security analysis](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/simulation/dynamic_security/index.html).
 - **Security analysis features**: operator strategies and remedial actions, two-pass security analysis.
+- **Remedial action optimization features** ([OpenRAO](https://powsybl.readthedocs.io/projects/openrao)): GLSKs (and so
+  loop-flow constraints and relative margins) and time-coupled optimization.
 - **Optimization**: optimal power flow ([powsybl-optimizer](https://powsybl.readthedocs.io/projects/powsybl-optimizer)),
-  remedial actions optimization ([OpenRAO](https://powsybl.readthedocs.io/projects/openrao)), multi-variant
-  simulation ([powsybl-metrix](https://powsybl.readthedocs.io/projects/powsybl-metrix)).
+  multi-variant simulation ([powsybl-metrix](https://powsybl.readthedocs.io/projects/powsybl-metrix)).
 - **Grid features**: [network reduction](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/grid_features/extraction.html),
   [scaling](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/grid_features/network_modifications/scaling.html),
   [load flow validation](https://powsybl.readthedocs.io/projects/powsybl-core/en/latest/grid_features/loadflow_validation/index.html),
