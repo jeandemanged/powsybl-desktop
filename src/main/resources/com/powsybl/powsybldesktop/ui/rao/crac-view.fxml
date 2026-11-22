@@ -11,6 +11,8 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.SplitPane?>
@@ -29,6 +31,14 @@
     <top>
         <ToolBar>
             <items>
+                <Button fx:id="newButton" mnemonicParsing="false" onAction="#onNew" text="%crac.new">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2f-file-outline" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%crac.new.tooltip"/>
+                    </tooltip>
+                </Button>
                 <Button fx:id="importButton" mnemonicParsing="false" onAction="#onImport" text="%desktop.common.action.import">
                     <graphic>
                         <FontIcon iconLiteral="mdi2t-tray-arrow-down" iconSize="16"/>
@@ -51,6 +61,26 @@
                     </graphic>
                     <tooltip>
                         <Tooltip text="%crac.export.tooltip"/>
+                    </tooltip>
+                </Button>
+                <Separator orientation="VERTICAL"/>
+                <MenuButton fx:id="addMenuButton" mnemonicParsing="false" text="%crac.add">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2p-plus" iconSize="16"/>
+                    </graphic>
+                    <items>
+                        <MenuItem fx:id="addInstantItem" mnemonicParsing="false" onAction="#onAddInstant" text="%crac.add.instant"/>
+                        <MenuItem fx:id="addContingencyItem" mnemonicParsing="false" onAction="#onAddContingency" text="%crac.add.contingency"/>
+                        <MenuItem fx:id="addContingenciesFromListsItem" mnemonicParsing="false" onAction="#onAddContingenciesFromLists"
+                                  text="%crac.add.contingenciesFromLists"/>
+                    </items>
+                </MenuButton>
+                <Button fx:id="removeSelectedButton" mnemonicParsing="false" onAction="#onRemoveSelected">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2m-minus" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%crac.removeSelected.tooltip"/>
                     </tooltip>
                 </Button>
                 <Separator orientation="VERTICAL"/>
@@ -90,6 +120,11 @@
                                 <Tab fx:id="remedialActionsTab" text="%crac.tab.remedialActions">
                                     <content>
                                         <ListView fx:id="remedialActionsListView"/>
+                                    </content>
+                                </Tab>
+                                <Tab fx:id="instantsTab" text="%crac.tab.instants">
+                                    <content>
+                                        <ListView fx:id="instantsListView"/>
                                     </content>
                                 </Tab>
                                 <Tab fx:id="reportTab" text="%crac.tab.report">

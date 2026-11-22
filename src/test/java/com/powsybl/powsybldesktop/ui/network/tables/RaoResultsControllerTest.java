@@ -54,7 +54,7 @@ class RaoResultsControllerTest extends AbstractHeadlessApplicationTest {
         Crac crac = RaoTestCases.crac(network);
         study.cracProperty().set(crac);
         RaoResultAndReport resultAndReport = RaoRun.prepare(network, crac, RaoTestCases.parameters(1), false).compute();
-        study.setRaoResult(resultAndReport.raoResult(), resultAndReport.crac(), crac, false);
+        study.setRaoResult(resultAndReport.raoResult(), resultAndReport.crac(), crac, study.cracRevisionProperty().get(), false);
 
         FXMLLoader loader = new FXMLLoader(getClass().getResource(
                 "/com/powsybl/powsybldesktop/ui/network/tables/rao-results-view.fxml"), Messages.bundle());
@@ -156,6 +156,13 @@ class RaoResultsControllerTest extends AbstractHeadlessApplicationTest {
 
         assertTrue(controller.alertLabel.isVisible());
         assertEquals(Messages.get("raoResults.outdated"), controller.alertLabel.getText());
+    }
+
+    @Test
+    void editingTheCracOutdatesTheResult() {
+        interact(study::cracEdited);
+
+        assertTrue(controller.alertLabel.isVisible());
     }
 
     @Test

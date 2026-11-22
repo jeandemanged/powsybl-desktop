@@ -64,11 +64,14 @@ public class NetworkStudy {
     private final ObjectProperty<Crac> crac = new SimpleObjectProperty<>();
     // the report of the CRAC's creation by its import: what was ignored or altered, and why
     private List<String> cracCreationReport = List.of();
+    // bumped on any change of the CRAC: replaced, or edited in place (CracEdits)
+    private final ReadOnlyIntegerWrapper cracRevision = new ReadOnlyIntegerWrapper();
     private RaoResult raoResult;
     // the CRAC the RAO result refers to (the run's copy, see RaoRun), the study's it was copied from, and whether it was
     // AC or DC, which it doesn't hold
     private Crac raoCrac;
     private Crac raoSourceCrac;
+    private int raoSourceCracRevision;
     private boolean raoDc;
     private NetworkViolations violations = NetworkViolations.EMPTY;
     private final ObservableList<ContingencyList> contingencyLists = FXCollections.observableArrayList();
@@ -172,6 +175,18 @@ public class NetworkStudy {
     public void setCrac(Crac newCrac, List<String> creationReport) {
         cracCreationReport = List.copyOf(creationReport);
         crac.set(newCrac);
+        cracEdited();
+    }
+
+    public ReadOnlyIntegerProperty cracRevisionProperty() {
+        return cracRevision.getReadOnlyProperty();
+    }
+
+    /**
+     * To be called after an edit of the CRAC in place.
+     */
+    public void cracEdited() {
+        cracRevision.set(cracRevision.get() + 1);
     }
 
     public RaoResult getRaoResult() {
@@ -189,11 +204,19 @@ public class NetworkStudy {
         return raoSourceCrac;
     }
 
+    /**
+     * Whether the CRAC was replaced or edited since the RAO result was computed.
+     */
+    public boolean isRaoResultOutdated() {
+        return raoResult != null && (getCrac() != raoSourceCrac || cracRevision.get() != raoSourceCracRevision);
+    }
+
     public boolean isRaoDc() {
         return raoDc;
     }
 
-    public void setRaoResult(RaoResult result, Crac resultCrac, Crac sourceCrac, boolean dc) {
+    public void setRaoResult(RaoResult result, Crac resultCrac, Crac sourceCrac, int sourceCracRevision, boolean dc) {
+        this.raoSourceCracRevision = sourceCracRevision;
         this.raoResult = Objects.requireNonNull(result);
         this.raoCrac = Objects.requireNonNull(resultCrac);
         this.raoSourceCrac = Objects.requireNonNull(sourceCrac);

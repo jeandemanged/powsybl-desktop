@@ -241,7 +241,10 @@ public final class SensitivityElements {
                 .flatMap(s -> s));
     }
 
-    private static List<Candidate> identifiables(Stream<? extends Identifiable<?>> identifiables) {
+    /**
+     * The candidates of {@code identifiables}, with their kind.
+     */
+    public static List<Candidate> identifiables(Stream<? extends Identifiable<?>> identifiables) {
         return identifiables.map(identifiable -> new Candidate(identifiable.getId(), identifiable.getNameOrId(), kind(identifiable))).toList();
     }
 
@@ -260,6 +263,8 @@ public final class SensitivityElements {
             case HVDC_CONVERTER_STATION -> identifiable instanceof VscConverterStation ? "vscConverterStation" : "lccConverterStation";
             case HVDC_LINE -> "hvdcLine";
             case BUS -> "bus";
+            case BUSBAR_SECTION -> "busbarSection";
+            case SWITCH -> "switch";
             default -> null;
         };
         return key == null ? Objects.toString(identifiable.getType()) : Messages.get("desktop.common.equipment." + key);

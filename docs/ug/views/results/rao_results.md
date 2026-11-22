@@ -9,7 +9,7 @@ notification of a finished RAO.
 
 The view is empty until a RAO has been run on the network (**Run** > **Remedial Action Optimization**, with the
 parameters of the [Remedial Action Optimization](../parameters/remedial_action_optimization.md) tab). A message at the
-top tells when the network's CRAC has been replaced since: run the RAO again to update the result.
+top tells when the network's CRAC has been replaced or edited since: run the RAO again to update the result.
 
 Below it, a summary: whether the RAO completed or some of its computations failed, whether the flows are secure after
 optimization, whether it was computed in AC or DC, and the steps it went through (as told by OpenRAO).

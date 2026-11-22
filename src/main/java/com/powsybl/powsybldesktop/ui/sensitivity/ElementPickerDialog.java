@@ -38,14 +38,14 @@ import java.util.Set;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-final class ElementPickerDialog extends Dialog<List<String>> {
+public final class ElementPickerDialog extends Dialog<List<String>> {
 
     private final Map<SensitivityElements.Candidate, BooleanProperty> checked = new LinkedHashMap<>();
     final TextField searchField = new TextField();
     final ListView<SensitivityElements.Candidate> listView = new ListView<>();
     final Button selectShownButton = new Button(Messages.get("sensitivityFactors.picker.selectShown"));
 
-    ElementPickerDialog(Window owner, String title, List<SensitivityElements.Candidate> candidates, Set<String> excludedIds) {
+    public ElementPickerDialog(Window owner, String title, List<SensitivityElements.Candidate> candidates, Set<String> excludedIds) {
         initOwner(owner);
         initModality(Modality.WINDOW_MODAL);
         setTitle(title);

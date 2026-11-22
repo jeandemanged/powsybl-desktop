@@ -743,6 +743,7 @@ public class MainController extends AbstractDisposableController {
         boolean dc = RaoParametersSupport.sensitivityParameters(parameters).getLoadFlowParameters().isDc();
         boolean fastRao = parametersModel.fastRaoProperty().get();
         Crac crac = study.getCrac();
+        int cracRevision = study.cracRevisionProperty().get();
         if (!checkRao(network, crac, parameters, fastRao)) {
             return;
         }
@@ -771,7 +772,7 @@ public class MainController extends AbstractDisposableController {
 
         raoService.setOnSucceeded(event -> {
             RaoResultAndReport resultAndReport = (RaoResultAndReport) event.getSource().getValue();
-            study.setRaoResult(resultAndReport.raoResult(), resultAndReport.crac(), crac, dc);
+            study.setRaoResult(resultAndReport.raoResult(), resultAndReport.crac(), crac, cracRevision, dc);
             mainModel.setUpdate();
             mainModel.addReport(resultAndReport.reportNode());
             mainModel.getNotificationsModel().replace(runningNotification, raoOutcome(runningNotification.startTimestamp(), resultAndReport));

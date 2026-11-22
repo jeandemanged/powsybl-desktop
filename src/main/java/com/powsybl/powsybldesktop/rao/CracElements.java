@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.rao;
 
 import com.powsybl.contingency.Contingency;
 import com.powsybl.contingency.ContingencyElement;
+import com.powsybl.iidm.network.Identifiable;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.openrao.data.crac.api.RemedialAction;
 import com.powsybl.openrao.data.crac.api.cnec.Cnec;
@@ -40,6 +41,17 @@ public final class CracElements {
 
     public static List<String> missing(Network network, RemedialAction<?> remedialAction) {
         return missing(network, remedialAction.getNetworkElementsIds().stream());
+    }
+
+    /**
+     * The network's objects that can be contingency elements: branches (unpaired boundary lines included), injections,
+     * HVDC lines, busbar sections and switches.
+     */
+    public static Stream<Identifiable<?>> contingencyElementCandidates(Network network) {
+        return Stream.<Stream<? extends Identifiable<?>>>of(network.getLineStream(), network.getTieLineStream(), network.getTwoWindingsTransformerStream(),
+                network.getThreeWindingsTransformerStream(), network.getBoundaryLineStream().filter(line -> !line.isPaired()), network.getGeneratorStream(),
+                network.getLoadStream(), network.getBatteryStream(), network.getShuntCompensatorStream(), network.getStaticVarCompensatorStream(),
+                network.getHvdcLineStream(), network.getBusbarSectionStream(), network.getSwitchStream()).flatMap(stream -> stream.map(identifiable -> identifiable));
     }
 
     private static List<String> missing(Network network, Stream<String> ids) {

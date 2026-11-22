@@ -7,20 +7,28 @@
  */
 package com.powsybl.powsybldesktop.ui.rao;
 
+import com.powsybl.contingency.Contingency;
+import com.powsybl.contingency.ContingencyElement;
+import com.powsybl.contingency.LineContingency;
+import com.powsybl.contingency.list.DefaultContingencyList;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.TwoSides;
 import com.powsybl.iidm.network.test.PhaseShifterTestCaseFactory;
 import com.powsybl.openrao.data.crac.api.Crac;
+import com.powsybl.openrao.data.crac.api.Instant;
+import com.powsybl.openrao.data.crac.api.InstantKind;
 import com.powsybl.openrao.data.crac.api.parameters.CracCreationParameters;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationStatus;
+import com.powsybl.powsybldesktop.rao.CracEdits;
 import com.powsybl.powsybldesktop.rao.CracIO;
 import com.powsybl.powsybldesktop.rao.RaoTestCases;
 import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.utils.Messages;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -66,12 +74,22 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
     @TempDir
     Path tempDir;
 
-    // the import dialog, modal, answered with the default parameters
+    // the ids the element picker answers, and the ids it was given as already present
+    private final List<String> picked = new ArrayList<>();
+    private final List<Set<String>> presentWhenPicked = new ArrayList<>();
+
+    // the import dialog and the element picker, modal: answered
     private final class AnsweringCracController extends CracController {
         @Override
         Optional<CracCreationParameters> askParameters(String fileName, String format) {
             askedFormats.add(format);
             return Optional.of(new CracCreationParameters());
+        }
+
+        @Override
+        List<String> pickContingencyElements(Set<String> present) {
+            presentWhenPicked.add(present);
+            return List.copyOf(picked);
         }
 
         Optional<CracCreationParameters> ask(String fileName, String format) {
@@ -263,5 +281,107 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
         assertNull(study.getCrac());
         assertEquals(Messages.get("crac.none"), controller.headerLabel.getText());
         assertTrue(controller.cnecsListView.getItems().isEmpty());
+    }
+
+    // ----- edits -----
+
+    @Test
+    void createsANewCracAndAddsInstants() {
+        assertTrue(controller.addMenuButton.isDisabled());
+        interact(() -> controller.setNewCrac(CracEdits.newCrac("new", null, List.of("curative"))));
+
+        assertFalse(controller.addMenuButton.isDisabled());
+        assertEquals(List.of("preventive", "outage", "curative"), controller.instantsListView.getItems().stream().map(Instant::getId).toList());
+        assertTrue(controller.contingenciesListView.getItems().isEmpty());
+
+        int revision = study.cracRevisionProperty().get();
+        interact(() -> {
+            CracEdits.addInstant(study.getCrac(), "curative 2", InstantKind.CURATIVE);
+            study.cracEdited();
+        });
+        assertEquals(revision + 1, study.cracRevisionProperty().get());
+        assertEquals(Messages.get("crac.header", "new", "preventive, outage, curative, curative 2"), controller.headerLabel.getText());
+        assertEquals(4, controller.instantsListView.getItems().size());
+    }
+
+    @Test
+    void addsAndEditsAContingency() {
+        interact(() -> study.setCrac(RaoTestCases.crac(network), List.of()));
+        interact(controller::onAddContingency);
+        WaitForAsyncUtils.waitForFxEvents();
+
+        String id = Messages.get("crac.contingency.newId") + " 1";
+        assertSame(controller.contingenciesTab, controller.tabPane.getSelectionModel().getSelectedItem());
+        assertEquals(id, controller.contingenciesListView.getSelectionModel().getSelectedItem().getId());
+        ContingencyForm form = controller.contingencyForm;
+        assertNotNull(form);
+        assertSame(form.root(), controller.detailsHost.getChildren().getFirst());
+        assertTrue(form.problemLabel.isVisible(), "no elements yet");
+        assertEquals(Messages.get("crac.contingency.notReferenced"), form.referencesLabel.getText());
+
+        picked.addAll(List.of("L1", "LD2"));
+        interact(form.addElementsButton::fire);
+        assertEquals(List.of("L1", "LD2"), study.getCrac().getContingency(id).getElements().stream().map(ContingencyElement::getId).toList());
+        assertFalse(form.problemLabel.isVisible());
+        assertEquals(Set.of(), presentWhenPicked.getFirst());
+        assertEquals(Set.of("L1", "LD2"), Set.copyOf(form.elementsListView.getItems().stream().map(ContingencyElement::getId).toList()));
+
+        interact(() -> {
+            form.elementsListView.getSelectionModel().select(1);
+            form.removeElementsButton.fire();
+        });
+        assertEquals(List.of("L1"), study.getCrac().getContingency(id).getElements().stream().map(ContingencyElement::getId).toList());
+
+        // a rename replaces the contingency: it stays selected, in the same form
+        interact(() -> {
+            form.idField.setText("Trip L1");
+            form.nameField.setText("Trip of L1");
+            form.idField.fireEvent(new ActionEvent());
+        });
+        assertNull(study.getCrac().getContingency(id));
+        assertEquals("Trip L1", controller.contingenciesListView.getSelectionModel().getSelectedItem().getId());
+        assertEquals(Optional.of("Trip of L1"), study.getCrac().getContingency("Trip L1").getName());
+        assertSame(form, controller.contingencyForm);
+
+        interact(controller::onRemoveSelected);
+        assertNull(study.getCrac().getContingency("Trip L1"));
+        assertEquals(1, controller.contingenciesListView.getItems().size());
+    }
+
+    @Test
+    void keepsAReferencedContingency() {
+        interact(() -> study.setCrac(RaoTestCases.crac(network), List.of()));
+        interact(() -> {
+            controller.tabPane.getSelectionModel().select(controller.contingenciesTab);
+            controller.contingenciesListView.getSelectionModel().select(0);
+        });
+        ContingencyForm form = controller.contingencyForm;
+        assertFalse(form.idField.isEditable());
+        assertEquals(Messages.get("crac.contingency.referencedBy", "L1 curative, " + RaoTestCases.LOAD_SHEDDING), form.referencesLabel.getText());
+
+        interact(controller::onRemoveSelected);
+        assertNotNull(study.getCrac().getContingency(RaoTestCases.CONTINGENCY));
+        assertEquals(NotificationStatus.ERROR, notification("crac.removeSelected").orElseThrow().status());
+    }
+
+    @Test
+    void addsTheContingenciesOfTheEnabledLists() {
+        interact(() -> study.setCrac(RaoTestCases.crac(network), List.of()));
+        interact(controller::onAddContingenciesFromLists);
+        assertEquals(NotificationStatus.ERROR, notification("crac.contingency.fromLists").orElseThrow().status());
+
+        DefaultContingencyList disabled = new DefaultContingencyList("disabled", List.of(Contingency.line("L2")));
+        interact(() -> {
+            study.getContingencyLists().addAll(new DefaultContingencyList("list", List.of(Contingency.line("L1"),
+                    new Contingency(RaoTestCases.CONTINGENCY, new LineContingency("L1")))), disabled);
+            study.contingencyListEnabledProperty(disabled).set(false);
+        });
+        interact(controller::onAddContingenciesFromLists);
+
+        assertEquals(List.of("L1", RaoTestCases.CONTINGENCY), controller.contingenciesListView.getItems().stream().map(Contingency::getId).toList());
+        Notification notification = mainModel.getNotificationsModel().getNotifications().stream()
+                .filter(candidate -> candidate.messageKey().equals("crac.contingency.fromLists.completed")).findFirst().orElseThrow();
+        assertEquals(NotificationStatus.SUCCESS, notification.status());
+        assertEquals(List.of(1, 1), notification.messageArgs());
     }
 }

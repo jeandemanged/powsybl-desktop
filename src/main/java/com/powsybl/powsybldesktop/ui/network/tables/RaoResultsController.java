@@ -34,7 +34,6 @@ import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.ui.window.SceneView;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.InvalidationListener;
-import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -103,7 +102,7 @@ public class RaoResultsController extends AbstractDisposableController implement
     // not a ChangeListener: OpenRAO's CRACs are equal by id, so replacing one by another of the same id is no change
     private final InvalidationListener cracListener = _ -> updateAlert();
     private TableColumn<RaoResultRows.CnecRow, ?> marginColumn;
-    private ObjectProperty<Crac> watchedCrac;
+    private NetworkStudy watchedStudy;
     private boolean updating;
 
     private SceneModel sceneModel;
@@ -302,7 +301,7 @@ public class RaoResultsController extends AbstractDisposableController implement
     // keeps the shown state and unit when they are still there
     private void updateResults() {
         NetworkStudy study = study();
-        watch(study == null ? null : study.cracProperty());
+        watch(study);
         RaoResult result = study == null ? null : study.getRaoResult();
         Crac crac = result == null ? null : study.getRaoCrac();
         StateChoice shownState = stateChoiceBox.getValue();
@@ -356,21 +355,24 @@ public class RaoResultsController extends AbstractDisposableController implement
         costRows.setAll(rows);
     }
 
-    private void watch(ObjectProperty<Crac> crac) {
-        if (watchedCrac != crac) {
-            if (watchedCrac != null) {
-                watchedCrac.removeListener(cracListener);
+    // the CRAC replaced or edited
+    private void watch(NetworkStudy study) {
+        if (watchedStudy != study) {
+            if (watchedStudy != null) {
+                watchedStudy.cracProperty().removeListener(cracListener);
+                watchedStudy.cracRevisionProperty().removeListener(cracListener);
             }
-            watchedCrac = crac;
-            if (crac != null) {
-                crac.addListener(cracListener);
+            watchedStudy = study;
+            if (study != null) {
+                study.cracProperty().addListener(cracListener);
+                study.cracRevisionProperty().addListener(cracListener);
             }
         }
     }
 
     private void updateAlert() {
         NetworkStudy study = study();
-        boolean outdated = study != null && study.getRaoResult() != null && study.getCrac() != study.getRaoSourceCrac();
+        boolean outdated = study != null && study.isRaoResultOutdated();
         alertLabel.setText(outdated ? Messages.get("raoResults.outdated") : "");
         alertLabel.setVisible(outdated);
     }

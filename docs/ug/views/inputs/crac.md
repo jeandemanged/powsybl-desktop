@@ -7,16 +7,18 @@ the other inputs, the CRAC belongs to the whole network a RAO runs on, for a sub
 
 ## Content
 
-A toolbar with **Import**, **Generate**, **Export** and a button to remove the CRAC, then a line telling the CRAC's name, its time
-stamp if it has one, and its instants (preventive, outage, then any auto and curative ones), or "No CRAC for this
-network: import one".
+A toolbar with **New**, **Import**, **Generate**, **Export**, an **Add** menu, a button to remove the selected contingency and
+a button to remove the CRAC, then a line telling the CRAC's name, its time stamp if it has one, and its instants
+(preventive, outage, then any auto and curative ones), or "No CRAC for this network: create, import or generate one".
 
-On the left, four tabs:
+On the left, five tabs:
 
-- **Contingencies**: each contingency, by name.
+- **Contingencies**: each contingency, by name. One with no elements, or with elements no longer in the network, is
+  marked.
 - **CNECs**: each CNEC, with its state: **Preventive**, or a contingency and an instant.
 - **Remedial Actions**: each remedial action, with its type (network action, PST, HVDC, injection,
   counter-trading).
+- **Instants**: the CRAC's instants, in their order, with their kind.
 - **Import Report**: what the import ignored or altered, and why.
 
 An object whose network elements are no longer in the network (removed since the import) is marked with a warning
@@ -24,7 +26,7 @@ icon; its tooltip gives the missing elements. A RAO with such a CRAC is refused.
 
 On the right, the details of the object selected on the left:
 
-- a contingency: its elements;
+- a contingency: its form, to edit it (see below);
 - a CNEC: its type (flow, angle or voltage), network elements, state, role (optimized, monitored), thresholds by side
   with their unit, reliability margin and operator;
 - a remedial action: its type, network elements, usage rules (when it is available: at an instant, after a
@@ -59,6 +61,38 @@ counter-trading and balancing. When the network already has a CRAC, a confirmati
 would refuse the parameters (a post-contingency instant without acceptable duration...), a dialog lists every reason
 instead. A notification follows the generation; **View generation report** in it shows what was skipped and why. The
 generated CRAC is named after the network and time stamped with its date.
+
+### Create an empty CRAC
+
+**New** asks the **Id** of the CRAC (the network's by default), an optional **Auto Instant** and the **Curative Instants**,
+separated by commas (one, "curative", by default). The CRAC also has a preventive and an outage instant. On **OK**, the
+new CRAC, with no contingency, CNEC or remedial action yet, replaces the network's; when OpenRAO refuses the instants
+(two of the same id...), the dialog stays open and tells why.
+
+### Add an instant
+
+**Add** > **Instant…** asks the kind and id of a new instant, added after the existing ones: an auto instant only while
+the CRAC has neither auto nor curative instant, curative ones always. Instants can't be removed.
+
+### Add and edit contingencies
+
+- **Add** > **Contingency** adds a contingency with no elements, named "Contingency 1" (or the next free number), and
+  selects it.
+- **Add** > **Contingencies of the Contingency Lists** adds the contingencies of the enabled lists of the
+  [Contingencies](contingencies.md) view, as a security analysis resolves them. Those whose id the CRAC already has, and
+  those with elements not in the network, are skipped; a notification tells how many were added and skipped.
+
+The form of the selected contingency edits it, each change applied at once:
+
+- **Id** and **Name**, applied on Enter or when leaving the field. They can be changed only while no CNEC or remedial
+  action refers to the contingency: the form tells what refers to it. An empty name is the id.
+- **Network Elements**: **Add…** picks network objects (branches, injections, HVDC lines, busbar sections, switches)
+  among those not in the contingency yet; **Remove** removes the selected ones. The elements can be changed even when
+  CNECs or remedial actions refer to the contingency.
+
+The button after the **Add** menu removes the selected contingency, unless a CNEC or a remedial action refers to it (a
+notification then says which). Each edit marks the last [RAO result](../results/rao_results.md) as computed with
+another CRAC.
 
 ### Export the CRAC
 

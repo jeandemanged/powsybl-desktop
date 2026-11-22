@@ -129,9 +129,10 @@ Maven cache may contain unrelated versions.
   preventive instant, then the CNEC's own; most limiting first, negative margins in red), the activated remedial actions
   by state (`STATE_ORDER`) with range action set points and PST taps, and the costs by instant. A value the result
   refuses (`OpenRaoException`: a failed state, an instant not optimized) is NaN, shown "-". It tells when the study's
-  CRAC is no longer the one the result was computed with (`getRaoSourceCrac`, compared by identity). OpenRAO's CRACs
-  (and other CRAC objects) define `equals` by id: listen to a CRAC property with an `InvalidationListener`, a
-  `ChangeListener` missing the replacement of a CRAC by another of the same id.
+  CRAC is no longer the one the result was computed with (`isRaoResultOutdated`: `getRaoSourceCrac` compared by
+  identity, and the CRAC revision at the run). OpenRAO's CRACs (and other CRAC objects) define `equals` by id: listen to
+  `NetworkStudy.cracRevisionProperty()` (bumped by `setCrac` and by every edit, `cracEdited()`), or to the CRAC property
+  with an `InvalidationListener`, a `ChangeListener` missing the replacement of a CRAC by another of the same id.
 - CRAC files: `…/rao/CracIO.java` reads every format an OpenRAO importer handles (JSON, CSE, CIM, NC, FlowBased
   constraint) into a `CracCreationContext`, whose creation report tells what was ignored or why it failed (a null
   CRAC), and writes OpenRAO's JSON. It picks the importer itself, leaving out the `Network` one (the CRAC generator),
@@ -149,6 +150,16 @@ Maven cache may contain unrelated versions.
   place, its report reachable from the error notification. OpenRAO 7.5.1's CRAC creation parameters serializers write
   time stamps with a literal 'Z' without converting them to UTC: `CracImportParameters.copy` restores them after its JSON
   round trip. Export writes OpenRAO's JSON, synchronously.
+- CRAC editing (instants, contingencies) goes through `…/rao/CracEdits.java`, within OpenRAO 7.5.1's API: a new
+  CRAC (preventive, outage, an optional auto, curative instants), instants appended (never removed; an auto instant only
+  before any curative one), contingencies added (empty, or from the enabled contingency lists, skipping ids already in
+  the CRAC and contingencies invalid for the network), their elements changed in place (PowSyBl's `Contingency` is
+  mutable: states and CNECs keep referring to it), renamed (a new contingency) or removed only when no CNEC or usage rule
+  refers to them. OpenRAO names a contingency without a name by its id. A refused edit throws an
+  `IllegalArgumentException` telling why. Edits are in place, on the FX thread, each followed by
+  `NetworkStudy.cracEdited()`; the CRAC view refreshes on the revision, keeping each list's selection by id and the
+  selected contingency's `ContingencyForm` (so the field being edited keeps its focus). `NewCracDialog` and
+  `NewInstantDialog` apply on OK, staying open with OpenRAO's reason when it refuses.
 - CRAC generation (**Generate** in the CRAC view): `…/rao/CracGenerator.java` runs OpenRAO's `NetworkCracCreator`
   (crac-io-network, OpenRAO 7.5.1) with the application's `…/rao/CracGeneratorSettings.java` (the CRAC Generator
   parameters tab, `ui/parameters/CracGeneratorParametersController`) turned into `NetworkCracCreationParameters` on a
