@@ -431,7 +431,8 @@ public final class RangeActionEdits {
         checkPreviousInstantRanges(crac, spec, usageRules);
     }
 
-    // OpenRAO drops the ranges relative to the previous instant of a PST range action only available at the preventive instant
+    // OpenRAO drops the ranges relative to the previous instant of a PST range action without usage rules or only available
+    // at the preventive instant (PstRangeActionAdderImpl.checkRanges: allMatch on the rules)
     private static void checkPreviousInstantRanges(Crac crac, RangeActionSpec spec, Collection<UsageRuleSpec> usageRules) {
         if (spec.type() == Type.PST && spec.ranges().stream().anyMatch(range -> range.type() == RangeType.RELATIVE_TO_PREVIOUS_INSTANT)
                 && usageRules.stream().allMatch(rule -> crac.getInstant(rule.instantId()).isPreventive())) {

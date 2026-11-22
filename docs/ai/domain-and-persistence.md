@@ -104,8 +104,10 @@ Maven cache may contain unrelated versions.
 - Remedial action optimization: `…/rao/RaoRun.java`, OpenRAO's search tree RAO (`Rao.find("SearchTreeRao")`), or FastRAO
   (`"FastRao"`, an app setting) which runs it on the worst CNECs, adding some until the result holds for all: not an
   alternative optimizer, every search tree parameter applies to it too (its inner RAO is hard-coded in OpenRAO 7.5.1) with a CRAC (contingencies, CNECs, remedial actions). Unlike the other runs it works on a **copy of the network**
-  (`NetworkSerDe.copy`, binary, in its own daemon thread) and of the CRAC (`CracIO.copy`, through JSON, in `prepare` on
-  the FX thread). On the network itself (OpenRAO 7.5.1) it switches the working variant while running, so the FX thread
+  (`NetworkSerDe.copy`, binary) and of the CRAC (through JSON: `prepare` writes it on the FX thread, CRAC edits not
+  being held back by the network busy lock; `compute` reads it back for the network, the slow part, with schema
+  validation). `compute` makes both copies on the task's thread, the network still held busy, and only then hands them
+  to the RAO's own daemon thread: that thread goes on after a cancellation, once the network is released. On the network itself (OpenRAO 7.5.1) it switches the working variant while running, so the FX thread
   would read intermediate states; with thread-local variants (`VariantMultiThreadAccess`) its multi-threaded network
   pool silently falls back to the initial situation; it leaves variants behind, failing the next run ("Target variants
   already exist"); and it adds network actions to the CRAC for HVDC range actions. Its result is never applied to the
@@ -118,8 +120,9 @@ Maven cache may contain unrelated versions.
   limits, FastRAO's single curative instant, and the CRAC's elements missing from the network (edited since the import):
   update it on an OpenRAO upgrade.
   `MainController.onRao` (**Run** > **Remedial Action Optimization**) runs the study's CRAC (`NetworkStudy.cracProperty()`)
-  after refusing when there is none, or with every `problems` reason, or when the CRAC no longer reads against the
-  network (`prepare`'s copy fails); the result is kept with the run's CRAC copy it refers to and AC/DC
+  after refusing when there is none, or with every `problems` reason (checked on the FX thread: lookups only, on the
+  study's CRAC that edits may change meanwhile); a CRAC no longer reading against the network fails the run with
+  `RaoRun.CracNotReadableException` (`compute`'s copy fails), told by an error notification; the result is kept with the run's CRAC copy it refers to and AC/DC
   (`NetworkStudy.setRaoResult`). A `RaoFailedException`'s report is still added. The outcome notification tells a
   partial failure (`ComputationStatus.PARTIAL_FAILURE`) and flows still not secure (`isSecure(FLOW)`: OpenRAO's results
   implement the flow check only, angle and voltage CNECs being OpenRAO's monitoring module's job) as partial successes.
@@ -371,7 +374,8 @@ listed explicitly in the packaging scripts since jdeps can't see it), so these s
   the parameters, reports and logs (FX thread). Violations and search indexes are not saved: they are rebuilt when
   the networks are added, the networks carrying the load flow's values.
 - A CRAC is read against its network (OpenRAO's JSON importer refuses one whose elements the network lacks, which
-  the CRAC view allows): `StudyArchive.read` then leaves it out, and the RAO result if its own CRAC fails likewise,
+  the CRAC view allows): `StudyArchive.read` then leaves it out, and the RAO result if its own CRAC fails likewise, as
+  it does a malformed CRAC or RAO result JSON (`IllegalArgumentException`: no importer recognizes it; `UncheckedIOException`),
   adding a line to `Study.warnings()`; `StudyCommands` logs them and makes the load notification a partial success
   with **View logs**. A RAO result is restored up to date only when saved up to date with the CRAC (else its source is
   its own CRAC, so `isRaoResultOutdated`). The CRAC Generator, CRAC Creation and RAO parameters are in

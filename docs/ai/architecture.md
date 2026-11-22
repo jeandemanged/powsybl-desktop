@@ -197,9 +197,12 @@ or diagnostics view, a `MenuView` in the matching `initLastUsedViewButton` list 
   Not being a `SceneView` doesn't keep a view out of separate windows: parameters and logs open there too.
 - `@FXML private void initialize()` configures controls that don't need the model; work depending on the model
   happens in the model setter.
-- `ListenerManager` cannot detach a single listener: a controller listening to a list that changes with the selected
-  network leaks one listener per network visited. That is acceptable only when a stale callback is a no-op, as in
-  `ui/contingency/ContingenciesController.java` (whose refresh always reads the current network's lists).
+- `ListenerManager` cannot detach a single listener. Listeners on an object that changes with the selected network
+  (e.g. its `NetworkStudy`) go through a child manager (`listenerManager.child()`), disposed on each change and by the
+  parent on `dispose()`, as in `ui/rao/CracController.java`; `listenInvalidations` takes an `InvalidationListener`.
+  Listening through the main manager instead leaks one listener per network visited, acceptable only when a stale
+  callback is a no-op, as in `ui/contingency/ContingenciesController.java` (whose refresh always reads the current
+  network's lists).
 
 ## Notifications
 

@@ -51,7 +51,10 @@ import java.util.concurrent.Executor;
  * A run of OpenRAO's search tree RAO, directly or through FastRAO, which runs it on the worst CNECs only, adding CNECs
  * until the result holds for all: {@link #prepare} on the FX thread, then {@link #compute} in the background.
  * <p>
- * The RAO runs on a copy of the network and of the CRAC, never on the study's. On the network, it switches the working
+ * The RAO runs on a copy of the network and of the CRAC, never on the study's. {@link #prepare} only writes the CRAC's
+ * JSON, on the FX thread since CRAC edits aren't held back by the network busy lock; {@link #compute} reads it back for
+ * the network (the slow part: schema validation and import) and copies the network on the calling thread, the network
+ * held busy, before handing both copies to the RAO's own thread. On the network, it switches the working
  * variant (an FX thread reading the network meanwhile would see its intermediate states, and thread-local variants
  * don't help: they make its multi-threaded optimization silently fall back to the initial situation) and leaves
  * variants behind (a second run then fails: "Target variants already exist"); its result is not applied to the network
@@ -70,26 +73,24 @@ public final class RaoRun {
     private static final Executor EXECUTOR = runnable -> Thread.ofPlatform().daemon().name("rao").start(runnable);
 
     private final Network network;
-    private final Crac crac;
+    private final byte[] cracJson;
     private final RaoParameters parameters;
     private final boolean fastRao;
     private volatile CompletableFuture<RaoResult> computation;
 
-    private RaoRun(Network network, Crac crac, RaoParameters parameters, boolean fastRao) {
+    private RaoRun(Network network, byte[] cracJson, RaoParameters parameters, boolean fastRao) {
         this.network = network;
-        this.crac = crac;
+        this.cracJson = cracJson;
         this.parameters = parameters;
         this.fastRao = fastRao;
     }
 
     /**
-     * Prepares a RAO of {@code network} (a root network) through FastRAO or not with {@code crac}, copied here,
-     * and {@code parameters}, used as they are (see {@link #copyParameters}).
-     *
-     * @throws IllegalStateException when the CRAC can't be copied for the network (see {@link CracIO#copy})
+     * Prepares a RAO of {@code network} (a root network) through FastRAO or not with {@code crac}, whose JSON is
+     * written here for {@link #compute} to copy it, and {@code parameters}, used as they are (see {@link #copyParameters}).
      */
     public static RaoRun prepare(Network network, Crac crac, RaoParameters parameters, boolean fastRao) {
-        return new RaoRun(network, CracIO.copy(crac, network), parameters, fastRao);
+        return new RaoRun(network, CracIO.toJson(crac), parameters, fastRao);
     }
 
     /**
@@ -160,20 +161,28 @@ public final class RaoRun {
     }
 
     /**
-     * Runs the RAO, to be called off the FX thread: interrupting the calling thread abandons it.
+     * Runs the RAO, to be called off the FX thread with the network held busy until it returns: interrupting the calling
+     * thread abandons the RAO, once the copies are made.
      *
+     * @throws CracNotReadableException when the CRAC no longer reads against the network (see {@link CracIO#fromJson})
      * @throws RaoFailedException when the RAO completes with a failed result
      */
     public RaoResultAndReport compute() throws Exception {
+        Crac crac;
+        try {
+            crac = CracIO.fromJson(cracJson, network);
+        } catch (IllegalStateException e) {
+            throw new CracNotReadableException(e.getMessage(), e);
+        }
+        // here, not on the RAO's thread: that one goes on after a cancellation, once the network is released
+        Network networkCopy = NetworkSerDe.copy(network, NetworkFactory.findDefault(), TreeDataFormat.BIN);
         ReportNode reportNode = ReportNode.newRootReportNode()
                 .withAllResourceBundlesFromClasspath()
                 .withMessageTemplate("desktop.rao")
                 .withTimestamp()
                 .build();
-        CompletableFuture<RaoResult> future = CompletableFuture.supplyAsync(() -> {
-            Network copy = NetworkSerDe.copy(network, NetworkFactory.findDefault(), TreeDataFormat.BIN);
-            return Rao.find(fastRao ? FAST_RAO : SEARCH_TREE_RAO).run(RaoInput.build(copy, crac).build(), parameters, reportNode);
-        }, EXECUTOR);
+        CompletableFuture<RaoResult> future = CompletableFuture.supplyAsync(() ->
+                Rao.find(fastRao ? FAST_RAO : SEARCH_TREE_RAO).run(RaoInput.build(networkCopy, crac).build(), parameters, reportNode), EXECUTOR);
         computation = future;
         RaoResult result = Futures.await(future);
         if (result.getComputationStatus() == ComputationStatus.FAILURE) {
@@ -183,10 +192,13 @@ public final class RaoRun {
     }
 
     /**
-     * The CRAC the run uses, a copy of the one it was prepared with: the result refers to its objects.
+     * The CRAC no longer reads against the network, edited since its import: the message gives the creation report.
      */
-    public Crac crac() {
-        return crac;
+    public static final class CracNotReadableException extends Exception {
+
+        public CracNotReadableException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 
     /**

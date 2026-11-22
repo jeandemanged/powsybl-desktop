@@ -55,9 +55,9 @@ import com.powsybl.powsybldesktop.ui.controls.FileChooserPreferences;
 import com.powsybl.powsybldesktop.ui.form.ElementPickerDialog;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.ui.window.SceneView;
+import com.powsybl.powsybldesktop.utils.ListenerManager;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.binding.Bindings;
-import javafx.beans.property.ReadOnlyIntegerProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Service;
@@ -183,7 +183,8 @@ public class CracController extends AbstractDisposableController implements Scen
     // the revision, not the CRAC property: it changes on each replacement (OpenRAO's CRACs are equal by id, so replacing
     // one by another of the same id is no change of the property) and on each edit
     private final ChangeListener<Number> cracListener = (_, _, _) -> refreshCrac();
-    private ReadOnlyIntegerProperty watchedRevision;
+    // those of the selected network's study, detached when another is selected
+    private final ListenerManager studyListeners = listenerManager.child();
     // the form of the selected contingency, kept while it is selected so that an edit keeps its focus
     ContingencyForm contingencyForm;
     // the form of the selected flow CNEC, kept likewise
@@ -254,23 +255,14 @@ public class CracController extends AbstractDisposableController implements Scen
             return;
         }
         network = newNetwork;
-        watch(network == null ? null : study().cracRevisionProperty());
+        studyListeners.dispose();
+        if (network != null) {
+            studyListeners.listen(study().cracRevisionProperty(), cracListener);
+        }
         newButton.setDisable(network == null);
         importButton.setDisable(network == null);
         generateButton.setDisable(network == null);
         refreshCrac();
-    }
-
-    private void watch(ReadOnlyIntegerProperty revision) {
-        if (watchedRevision != revision) {
-            if (watchedRevision != null) {
-                watchedRevision.removeListener(cracListener);
-            }
-            watchedRevision = revision;
-            if (revision != null) {
-                revision.addListener(cracListener);
-            }
-        }
     }
 
     private Crac crac() {
@@ -1065,11 +1057,5 @@ public class CracController extends AbstractDisposableController implements Scen
 
     void remove() {
         study().setCrac(null, List.of());
-    }
-
-    @Override
-    public void dispose() {
-        watch(null);
-        super.dispose();
     }
 }

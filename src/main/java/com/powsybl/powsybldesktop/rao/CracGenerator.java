@@ -134,7 +134,11 @@ public final class CracGenerator {
         Map<String, Map<Double, Double>> values = new LinkedHashMap<>();
         for (int i = 0; i < rows.size(); i++) {
             List<String> row = rows.get(i);
-            values.computeIfAbsent(required(row, 0, i), _ -> new HashMap<>()).put(requiredNumber(row, 1, i), requiredNumber(row, 2, i));
+            String instant = required(row, 0, i);
+            double nominalV = requiredNumber(row, 1, i);
+            if (values.computeIfAbsent(instant, _ -> new HashMap<>()).put(nominalV, requiredNumber(row, 2, i)) != null) {
+                throw invalid(i, Messages.get("cracCreation.row.duplicate", instant + ", " + TableRows.text(nominalV)));
+            }
         }
         return values;
     }
@@ -152,7 +156,9 @@ public final class CracGenerator {
             if (min > max) {
                 throw invalid(i, Messages.get("cracGenerator.row.minAboveMax"));
             }
-            ranges.put(instant, new PstRangeActions.TapRange(min, max, choice(RangeType.class, row, 3, i)));
+            if (ranges.put(instant, new PstRangeActions.TapRange(min, max, choice(RangeType.class, row, 3, i))) != null) {
+                throw invalid(i, Messages.get("cracCreation.row.duplicate", instant));
+            }
         }
         return ranges;
     }
@@ -179,7 +185,11 @@ public final class CracGenerator {
         Map<Country, Map<String, RangeAndCosts>> values = new LinkedHashMap<>();
         for (int i = 0; i < rows.size(); i++) {
             List<String> row = rows.get(i);
-            values.computeIfAbsent(choice(Country.class, row, 0, i), _ -> new LinkedHashMap<>()).put(required(row, 1, i), rangeAndCosts(row, 2, i));
+            Country country = choice(Country.class, row, 0, i);
+            String instant = required(row, 1, i);
+            if (values.computeIfAbsent(country, _ -> new LinkedHashMap<>()).put(instant, rangeAndCosts(row, 2, i)) != null) {
+                throw invalid(i, Messages.get("cracCreation.row.duplicate", country + ", " + instant));
+            }
         }
         return values;
     }
@@ -199,7 +209,10 @@ public final class CracGenerator {
                     throw invalid(i, Messages.get("cracGenerator.row.injectionTwice", injection));
                 }
             }
-            combinations.put(required(row, 0, i), injections);
+            String id = required(row, 0, i);
+            if (combinations.put(id, injections) != null) {
+                throw invalid(i, Messages.get("cracCreation.row.duplicate", id));
+            }
         }
         return combinations;
     }

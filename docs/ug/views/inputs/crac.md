@@ -181,7 +181,7 @@ and **Down Variation Cost** (per MW or tap of variation), **Group** (range actio
 
 A blank min or max is no limit (but for an absolute range of an HVDC, injection or counter-trading range action). A PST
 range action may have no range: the PST's taps apply. OpenRAO ignores a range relative to the previous instant of a PST
-range action only available at the preventive instant: it is refused.
+range action without usage rules or only available at the preventive instant: it is refused.
 
 An injection range action also has its **Injections and Distribution Keys**, a row each with a generator or load and
 its key (the share of the set point it takes, a load's counted negatively); **Add Injections…** adds more, of key 1.

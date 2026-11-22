@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.rao;
 
 import com.powsybl.contingency.ContingencyElementType;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.test.PhaseShifterTestCaseFactory;
 import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.openrao.commons.PhysicalParameter;
 import com.powsybl.openrao.data.crac.api.Crac;
@@ -32,7 +33,6 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -63,7 +63,6 @@ class RaoRunTest {
         RaoResultAndReport resultAndReport = run.compute();
 
         assertOptimized(resultAndReport);
-        assertSame(run.crac(), resultAndReport.crac());
         assertNotSame(crac, resultAndReport.crac());
         assertEquals(networkActions, crac.getNetworkActions().size());
         assertEquals(1, network.getTwoWindingsTransformer("PS1").getPhaseTapChanger().getTapPosition());
@@ -79,6 +78,17 @@ class RaoRunTest {
         RaoRun.prepare(network, crac, RaoTestCases.parameters(1), false).compute();
 
         assertOptimized(RaoRun.prepare(network, crac, RaoTestCases.parameters(1), false).compute());
+    }
+
+    // read back for the network by compute(), off the FX thread
+    @Test
+    void cracNotReadingAgainstTheNetworkFailsTheRun() {
+        // without current limits, the JSON importer can't read the CNECs' branches
+        RaoRun run = RaoRun.prepare(PhaseShifterTestCaseFactory.create(), crac, RaoTestCases.parameters(1), false);
+
+        RaoRun.CracNotReadableException failure = assertThrows(RaoRun.CracNotReadableException.class, run::compute);
+
+        assertTrue(failure.getMessage().contains("current limits"), failure.getMessage());
     }
 
     @Test

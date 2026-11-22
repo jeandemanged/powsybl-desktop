@@ -186,7 +186,13 @@ public final class CracEdits {
         }
         List<ContingencyElement> elements = List.copyOf(contingency.getElements());
         crac.removeContingency(contingency.getId());
-        return addContingency(crac, newId, newName, elements);
+        try {
+            return addContingency(crac, newId, newName, elements);
+        } catch (IllegalArgumentException e) {
+            // put back as it was, as the other edits do
+            addContingency(crac, contingency.getId(), contingency.getName().orElse(null), elements);
+            throw e;
+        }
     }
 
     public static void removeContingency(Crac crac, String id) {

@@ -7,6 +7,8 @@
  */
 package com.powsybl.powsybldesktop.utils;
 
+import javafx.beans.InvalidationListener;
+import javafx.beans.Observable;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ListChangeListener;
@@ -40,6 +42,27 @@ public class ListenerManager {
 
         cleanupTasks.add(() ->
                 observable.removeListener(listener));
+    }
+
+    // not an overload of listen: a one-parameter lambda would be ambiguous with a ListChangeListener
+    public void listenInvalidations(
+            Observable observable,
+            InvalidationListener listener) {
+
+        observable.addListener(listener);
+
+        cleanupTasks.add(() ->
+                observable.removeListener(listener));
+    }
+
+    /**
+     * A manager whose listeners this one detaches on {@link #dispose()} too, and which can detach them on its own: those
+     * of an object that changes with the selection, e.g. the selected network's study.
+     */
+    public ListenerManager child() {
+        ListenerManager child = new ListenerManager();
+        cleanupTasks.add(child::dispose);
+        return child;
     }
 
     public void dispose() {

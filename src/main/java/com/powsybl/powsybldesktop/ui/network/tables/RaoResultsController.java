@@ -32,6 +32,7 @@ import com.powsybl.powsybldesktop.ui.controls.TableAutoFitLimiter;
 import com.powsybl.powsybldesktop.ui.form.TableColumnSupport;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.ui.window.SceneView;
+import com.powsybl.powsybldesktop.utils.ListenerManager;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.InvalidationListener;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -102,6 +103,8 @@ public class RaoResultsController extends AbstractDisposableController implement
     // not a ChangeListener: OpenRAO's CRACs are equal by id, so replacing one by another of the same id is no change
     private final InvalidationListener cracListener = _ -> updateAlert();
     private TableColumn<RaoResultRows.CnecRow, ?> marginColumn;
+    // those of the watched study, detached when another is watched
+    private final ListenerManager studyListeners = listenerManager.child();
     private NetworkStudy watchedStudy;
     private boolean updating;
 
@@ -358,14 +361,11 @@ public class RaoResultsController extends AbstractDisposableController implement
     // the CRAC replaced or edited
     private void watch(NetworkStudy study) {
         if (watchedStudy != study) {
-            if (watchedStudy != null) {
-                watchedStudy.cracProperty().removeListener(cracListener);
-                watchedStudy.cracRevisionProperty().removeListener(cracListener);
-            }
+            studyListeners.dispose();
             watchedStudy = study;
             if (study != null) {
-                study.cracProperty().addListener(cracListener);
-                study.cracRevisionProperty().addListener(cracListener);
+                studyListeners.listenInvalidations(study.cracProperty(), cracListener);
+                studyListeners.listenInvalidations(study.cracRevisionProperty(), cracListener);
             }
         }
     }
@@ -398,11 +398,5 @@ public class RaoResultsController extends AbstractDisposableController implement
         }
         cnecsTable.sort();
         cnecsTable.refresh();
-    }
-
-    @Override
-    public void dispose() {
-        watch(null);
-        super.dispose();
     }
 }

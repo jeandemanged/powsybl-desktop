@@ -109,6 +109,23 @@ class CracGeneratorTest {
         assertEquals(String.join("\n", problems), refusal.getMessage());
     }
 
+    // a second row for the same key would silently replace the first
+    @Test
+    void duplicateRowsAreRefused() {
+        IllegalArgumentException multipliers = assertThrows(IllegalArgumentException.class, () -> CracGenerator.parseInstantNominalVValues(
+                List.of(List.of("curative", "400", "1.2"), List.of("curative", "400", "0.9"))));
+        assertTrue(multipliers.getMessage().contains(Messages.get("cracCreation.row.duplicate", "curative, 400")), multipliers.getMessage());
+        IllegalArgumentException countertrading = assertThrows(IllegalArgumentException.class, () -> CracGenerator.parseCountryRangesAndCosts(
+                List.of(List.of("FR", "preventive", "0", "100"), List.of("FR", "preventive", "0", "50"))));
+        assertTrue(countertrading.getMessage().contains(Messages.get("cracCreation.row.duplicate", "FR, preventive")), countertrading.getMessage());
+        IllegalArgumentException taps = assertThrows(IllegalArgumentException.class, () -> CracGenerator.parseTapRanges(
+                List.of(List.of("preventive", "-1", "1", "ABSOLUTE"), List.of("preventive", "-2", "2", "ABSOLUTE"))));
+        assertTrue(taps.getMessage().contains(Messages.get("cracCreation.row.duplicate", "preventive")), taps.getMessage());
+        IllegalArgumentException combinations = assertThrows(IllegalArgumentException.class, () -> CracGenerator.parseInjectionCombinations(
+                List.of(List.of("c", "G1"), List.of("c", "G2"))));
+        assertTrue(combinations.getMessage().contains(Messages.get("cracCreation.row.duplicate", "c")), combinations.getMessage());
+    }
+
     // only from the operational limits
     @Test
     void durationsAreRequiredFromTheOperationalLimitsOnly() {

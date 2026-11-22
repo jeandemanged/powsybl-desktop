@@ -87,7 +87,16 @@ public final class CracIO {
      * @throws IllegalStateException when the copy can't be created for the network, with the creation report's lines
      */
     public static Crac copy(Crac crac, Network network) {
-        CracCreationContext context = read(JSON_FILE_NAME, toJson(crac), network, new CracCreationParameters());
+        return fromJson(toJson(crac), network);
+    }
+
+    /**
+     * The CRAC of {@code json}, written by {@link #toJson}, for {@code network}.
+     *
+     * @throws IllegalStateException when the CRAC can't be created for the network, with the creation report's lines
+     */
+    public static Crac fromJson(byte[] json, Network network) {
+        CracCreationContext context = read(JSON_FILE_NAME, json, network, new CracCreationParameters());
         if (!context.isCreationSuccessful()) {
             throw new IllegalStateException(String.join("\n", report(context)));
         }

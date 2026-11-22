@@ -747,14 +747,8 @@ public class MainController extends AbstractDisposableController {
         if (!checkRao(network, crac, parameters, fastRao)) {
             return;
         }
-        RaoRun run;
-        try {
-            run = RaoRun.prepare(network, crac, parameters, fastRao);
-        } catch (IllegalStateException e) {
-            // the CRAC no longer reads against the network, edited since its import
-            showRaoRefusal(Messages.get("main.rao.cracNotReadable", e.getMessage()));
-            return;
-        }
+        // only the CRAC's JSON here, read back for the network by the task (see RaoRun)
+        RaoRun run = RaoRun.prepare(network, crac, parameters, fastRao);
 
         Service<RaoResultAndReport> raoService = new Service<>() {
             @Override
@@ -777,27 +771,34 @@ public class MainController extends AbstractDisposableController {
             mainModel.addReport(resultAndReport.reportNode());
             mainModel.getNotificationsModel().replace(runningNotification, raoOutcome(runningNotification.startTimestamp(), resultAndReport));
         });
-        raoService.setOnFailed(event -> {
-            Throwable exception = event.getSource().getException();
-            if (exception instanceof RaoFailedException failure) {
-                // OpenRAO's own failure, told by its report
-                mainModel.addReport(failure.getReportNode());
-                mainModel.getNotificationsModel().replace(runningNotification,
-                        Notification.createError(runningNotification.startTimestamp(), "main.rao.failedWithDetails", viewReportAction(failure.getReportNode()))
-                                .withMessageArgs(failure.getMessage()));
-                return;
-            }
-            LOGGER.error(exception.toString(), exception);
-            NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", _ ->
-                    mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS)));
-            mainModel.getNotificationsModel().replace(runningNotification,
-                    Notification.createError(runningNotification.startTimestamp(), "main.rao.failed", viewLogsAction));
-        });
+        raoService.setOnFailed(event -> raoFailed(runningNotification, event.getSource().getException()));
         // the abandoned RAO goes on with its copies of the network and the CRAC until done (see RaoRun)
         raoService.setOnCancelled(_ -> mainModel.getNotificationsModel().replace(runningNotification,
                 Notification.createCancelled(runningNotification.startTimestamp(), "main.rao.cancelled")));
         study.trackComputation(raoService);
         raoService.start();
+    }
+
+    private void raoFailed(Notification runningNotification, Throwable exception) {
+        if (exception instanceof RaoFailedException failure) {
+            // OpenRAO's own failure, told by its report
+            mainModel.addReport(failure.getReportNode());
+            mainModel.getNotificationsModel().replace(runningNotification,
+                    Notification.createError(runningNotification.startTimestamp(), "main.rao.failedWithDetails", viewReportAction(failure.getReportNode()))
+                            .withMessageArgs(failure.getMessage()));
+            return;
+        }
+        if (exception instanceof RaoRun.CracNotReadableException notReadable) {
+            mainModel.getNotificationsModel().replace(runningNotification,
+                    Notification.createError(runningNotification.startTimestamp(), "main.rao.failedWithDetails")
+                            .withMessageArgs(Messages.get("main.rao.cracNotReadable", notReadable.getMessage())));
+            return;
+        }
+        LOGGER.error(exception.toString(), exception);
+        NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", _ ->
+                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS)));
+        mainModel.getNotificationsModel().replace(runningNotification,
+                Notification.createError(runningNotification.startTimestamp(), "main.rao.failed", viewLogsAction));
     }
 
     // refused beforehand, with every reason, rather than letting OpenRAO fail on the first one

@@ -50,6 +50,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.io.Writer;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -417,7 +418,8 @@ public final class StudyArchive {
                     // outdated unless told otherwise
                     target.raoResults()[target.index()] = new Study.StudyRaoResult(result, resultCrac, !Boolean.FALSE.equals(target.entry().raoResultOutdated()),
                             Boolean.TRUE.equals(target.entry().raoDc()));
-                } catch (OpenRaoException e) {
+                } catch (OpenRaoException | UncheckedIOException e) {
+                    // UncheckedIOException: malformed JSON
                     target.warnings().add(Messages.get("study.warning.raoResult", target.name(), e.getMessage()));
                 }
             }));
@@ -433,7 +435,8 @@ public final class StudyArchive {
                 return context.getCrac();
             }
             problem = String.join("; ", CracIO.report(context));
-        } catch (OpenRaoException | PowsyblException e) {
+        } catch (OpenRaoException | PowsyblException | IllegalArgumentException | UncheckedIOException e) {
+            // IllegalArgumentException: malformed JSON, which no importer recognizes (see CracIO.read)
             problem = e.getMessage();
         }
         target.warnings().add(Messages.get(warningKey, target.name(), problem));
