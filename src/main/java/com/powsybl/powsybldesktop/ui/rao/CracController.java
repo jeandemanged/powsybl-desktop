@@ -40,6 +40,7 @@ import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.core.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
+import com.powsybl.powsybldesktop.network.ElementCandidate;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
 import com.powsybl.powsybldesktop.rao.CnecEdits;
@@ -52,10 +53,9 @@ import com.powsybl.powsybldesktop.rao.CracImportParameters;
 import com.powsybl.powsybldesktop.rao.NetworkActionEdits;
 import com.powsybl.powsybldesktop.rao.RangeActionEdits;
 import com.powsybl.powsybldesktop.rao.RaoResultRows;
-import com.powsybl.powsybldesktop.sensitivity.SensitivityElements;
 import com.powsybl.powsybldesktop.ui.AbstractDisposableController;
 import com.powsybl.powsybldesktop.ui.controls.FileChooserPreferences;
-import com.powsybl.powsybldesktop.ui.sensitivity.ElementPickerDialog;
+import com.powsybl.powsybldesktop.ui.form.ElementPickerDialog;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.ui.window.SceneView;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -482,7 +482,7 @@ public class CracController extends AbstractDisposableController implements Scen
 
     // the ids of the branches picked; overridable by a test, which can't answer a modal dialog
     List<String> pickBranches(String title) {
-        return new ElementPickerDialog(detailsHost.getScene().getWindow(), title, SensitivityElements.identifiables(network.getBranchStream().map(branch -> (Identifiable<?>) branch)), Set.of())
+        return new ElementPickerDialog(detailsHost.getScene().getWindow(), title, ElementCandidate.of(network.getBranchStream().map(branch -> (Identifiable<?>) branch)), Set.of())
                 .showAndWait().orElse(List.of());
     }
 
@@ -490,7 +490,7 @@ public class CracController extends AbstractDisposableController implements Scen
     // modal dialog
     List<String> pickContingencyElements(Set<String> present) {
         return new ElementPickerDialog(detailsHost.getScene().getWindow(), Messages.get("crac.contingency.addElements.title"),
-                SensitivityElements.identifiables(CracElements.contingencyElementCandidates(network)), present).showAndWait().orElse(List.of());
+                ElementCandidate.of(CracElements.contingencyElementCandidates(network)), present).showAndWait().orElse(List.of());
     }
 
     private void cnecDetails(Cnec<?> cnec, List<String[]> rows) {
@@ -795,7 +795,7 @@ public class CracController extends AbstractDisposableController implements Scen
     // answer a modal dialog
     List<String> pickRangeActionElements(RangeActionEdits.Type type, Set<String> present) {
         return new ElementPickerDialog(detailsHost.getScene().getWindow(), Messages.get("crac.rangeAction.pick.title", type.label()),
-                SensitivityElements.identifiables(RangeActionEdits.elementCandidates(network, type)), present).showAndWait().orElse(List.of());
+                ElementCandidate.of(RangeActionEdits.elementCandidates(network, type)), present).showAndWait().orElse(List.of());
     }
 
     // the country of a counter-trade; overridable by a test
@@ -816,7 +816,7 @@ public class CracController extends AbstractDisposableController implements Scen
     // the ids of the network elements picked to be acted on; overridable by a test, which can't answer a modal dialog
     List<String> pickActionElements(Set<String> present) {
         return new ElementPickerDialog(detailsHost.getScene().getWindow(), Messages.get("crac.networkAction.addActions.title"),
-                SensitivityElements.identifiables(NetworkActionEdits.elementCandidates(network)), present).showAndWait().orElse(List.of());
+                ElementCandidate.of(NetworkActionEdits.elementCandidates(network)), present).showAndWait().orElse(List.of());
     }
 
     // ----- import, export, removal -----

@@ -23,6 +23,7 @@ import com.powsybl.iidm.network.extensions.ControlZone;
 import com.powsybl.iidm.network.extensions.HvdcAngleDroopActivePowerControl;
 import com.powsybl.iidm.network.extensions.SecondaryVoltageControl;
 import com.powsybl.iidm.network.regulation.VoltageRegulation;
+import com.powsybl.powsybldesktop.network.ElementCandidate;
 import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.sensitivity.SensitivityFunctionType;
 import com.powsybl.sensitivity.SensitivityVariableSet;
@@ -31,7 +32,6 @@ import com.powsybl.sensitivity.WeightedSensitivityVariable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -50,50 +50,44 @@ public final class SensitivityElements {
     // shown at most per kind of problem, then "and N more"
     private static final int MAX_LISTED = 5;
 
-    /**
-     * An element to pick: its id, displayed name and kind.
-     */
-    public record Candidate(String id, String name, String kind) {
-    }
-
     private SensitivityElements() {
     }
 
-    public static List<Candidate> candidates(Network network, SensitivityFunctionType type) {
+    public static List<ElementCandidate> candidates(Network network, SensitivityFunctionType type) {
         return switch (type) {
-            case BRANCH_ACTIVE_POWER_3, BRANCH_CURRENT_3, BRANCH_REACTIVE_POWER_3 -> identifiables(network.getThreeWindingsTransformerStream());
-            case BRANCH_ACTIVE_POWER_1, BRANCH_ACTIVE_POWER_2, BRANCH_CURRENT_1, BRANCH_CURRENT_2, BRANCH_REACTIVE_POWER_1, BRANCH_REACTIVE_POWER_2 -> identifiables(Stream.of(
+            case BRANCH_ACTIVE_POWER_3, BRANCH_CURRENT_3, BRANCH_REACTIVE_POWER_3 -> ElementCandidate.of(network.getThreeWindingsTransformerStream());
+            case BRANCH_ACTIVE_POWER_1, BRANCH_ACTIVE_POWER_2, BRANCH_CURRENT_1, BRANCH_CURRENT_2, BRANCH_REACTIVE_POWER_1, BRANCH_REACTIVE_POWER_2 -> ElementCandidate.of(Stream.of(
                     network.getLineStream(), network.getTieLineStream(), network.getTwoWindingsTransformerStream(),
                     network.getThreeWindingsTransformerStream(), network.getBoundaryLineStream().filter(line -> !line.isPaired())).flatMap(s -> s));
-            case BUS_VOLTAGE -> identifiables(network.getBusView().getBusStream());
+            case BUS_VOLTAGE -> ElementCandidate.of(network.getBusView().getBusStream());
             case BUS_REACTIVE_POWER -> injections(network, true);
         };
     }
 
-    public static List<Candidate> candidates(Network network, SensitivityVariableType type) {
+    public static List<ElementCandidate> candidates(Network network, SensitivityVariableType type) {
         return switch (type) {
             case INJECTION_ACTIVE_POWER -> injections(network, false);
             case INJECTION_REACTIVE_POWER -> injections(network, true);
-            case SHUNT_COMPENSATOR_SUSCEPTANCE -> identifiables(network.getShuntCompensatorStream());
-            case TRANSFORMER_PHASE -> identifiables(network.getTwoWindingsTransformerStream().filter(t -> t.getPhaseTapChanger() != null));
-            case TRANSFORMER_PHASE_1, TRANSFORMER_PHASE_2, TRANSFORMER_PHASE_3 -> identifiables(network.getThreeWindingsTransformerStream()
+            case SHUNT_COMPENSATOR_SUSCEPTANCE -> ElementCandidate.of(network.getShuntCompensatorStream());
+            case TRANSFORMER_PHASE -> ElementCandidate.of(network.getTwoWindingsTransformerStream().filter(t -> t.getPhaseTapChanger() != null));
+            case TRANSFORMER_PHASE_1, TRANSFORMER_PHASE_2, TRANSFORMER_PHASE_3 -> ElementCandidate.of(network.getThreeWindingsTransformerStream()
                     .filter(t -> t.getLegs().get(leg(type)).getPhaseTapChanger() != null));
-            case BUS_TARGET_VOLTAGE -> identifiables(Stream.of(network.getGeneratorStream(), network.getBatteryStream(), network.getShuntCompensatorStream(),
+            case BUS_TARGET_VOLTAGE -> ElementCandidate.of(Stream.of(network.getGeneratorStream(), network.getBatteryStream(), network.getShuntCompensatorStream(),
                     network.getStaticVarCompensatorStream(), network.getVscConverterStationStream(),
                     network.getTwoWindingsTransformerStream(), network.getThreeWindingsTransformerStream()).flatMap(s -> s)
                     .filter(identifiable -> isEligible(network, type, identifiable.getId())));
-            case HVDC_LINE_ACTIVE_POWER -> identifiables(network.getHvdcLineStream());
-            case BRANCH_RESISTANCE, BRANCH_REACTANCE, BRANCH_ADMITTANCE -> identifiables(Stream.of(
+            case HVDC_LINE_ACTIVE_POWER -> ElementCandidate.of(network.getHvdcLineStream());
+            case BRANCH_RESISTANCE, BRANCH_REACTANCE, BRANCH_ADMITTANCE -> ElementCandidate.of(Stream.of(
                     network.getLineStream(), network.getTieLineStream(), network.getTwoWindingsTransformerStream()).flatMap(s -> s));
             case SVC_PILOT_POINT_TARGET_VOLTAGE -> controlZones(network).stream()
-                    .map(zone -> new Candidate(zone.getName(), zone.getName(), Messages.get("sensitivity.element.controlZone"))).toList();
+                    .map(zone -> new ElementCandidate(zone.getName(), zone.getName(), Messages.get("sensitivity.element.controlZone"))).toList();
         };
     }
 
     /**
      * The injections a variable set is made of.
      */
-    public static List<Candidate> variableSetCandidates(Network network) {
+    public static List<ElementCandidate> variableSetCandidates(Network network) {
         return injections(network, false);
     }
 
@@ -233,40 +227,11 @@ public final class SensitivityElements {
         return type.getSide().orElseThrow() - 1;
     }
 
-    private static List<Candidate> injections(Network network, boolean withShunts) {
-        return identifiables(Stream.of(network.getGeneratorStream(), network.getLoadStream(), network.getBatteryStream(),
+    private static List<ElementCandidate> injections(Network network, boolean withShunts) {
+        return ElementCandidate.of(Stream.of(network.getGeneratorStream(), network.getLoadStream(), network.getBatteryStream(),
                         network.getVscConverterStationStream(), network.getLccConverterStationStream(),
                         network.getBoundaryLineStream().filter(line -> !line.isPaired()),
                         withShunts ? network.getShuntCompensatorStream() : Stream.<Identifiable<?>>empty())
                 .flatMap(s -> s));
-    }
-
-    /**
-     * The candidates of {@code identifiables}, with their kind.
-     */
-    public static List<Candidate> identifiables(Stream<? extends Identifiable<?>> identifiables) {
-        return identifiables.map(identifiable -> new Candidate(identifiable.getId(), identifiable.getNameOrId(), kind(identifiable))).toList();
-    }
-
-    private static String kind(Identifiable<?> identifiable) {
-        String key = switch (identifiable.getType()) {
-            case LINE -> "line";
-            case TIE_LINE -> "tieLine";
-            case TWO_WINDINGS_TRANSFORMER -> "twoWindingsTransformer";
-            case THREE_WINDINGS_TRANSFORMER -> "threeWindingsTransformer";
-            case BOUNDARY_LINE -> "boundaryLine";
-            case GENERATOR -> "generator";
-            case LOAD -> "load";
-            case BATTERY -> "battery";
-            case SHUNT_COMPENSATOR -> "shuntCompensator";
-            case STATIC_VAR_COMPENSATOR -> "staticVarCompensator";
-            case HVDC_CONVERTER_STATION -> identifiable instanceof VscConverterStation ? "vscConverterStation" : "lccConverterStation";
-            case HVDC_LINE -> "hvdcLine";
-            case BUS -> "bus";
-            case BUSBAR_SECTION -> "busbarSection";
-            case SWITCH -> "switch";
-            default -> null;
-        };
-        return key == null ? Objects.toString(identifiable.getType()) : Messages.get("desktop.common.equipment." + key);
     }
 }

@@ -85,7 +85,7 @@ resources package. Tables, editors and detail views: [editing.md](editing.md); d
   the simplest; `…/ui/network/DropImportDialog.java`, returning a result via `setResultConverter`), public when shared
   (`CreateDialog`, `TerminalPickerDialog`, which embeds the search box FXML). Edits inside these dialogs write to the
   IIDM object directly and use the same error/flash helpers as tables. Exceptions: `…/ui/form/RemovalDialog.java`
-  exposes `confirmThenRemove` (an `Alert`, then the removal), and `…/ui/sensitivity/ElementPickerDialog.java` is a
+  exposes `confirmThenRemove` (an `Alert`, then the removal), and `…/ui/form/ElementPickerDialog.java` is a
   `Dialog` subclass (same owner and modality) so that its test can reach its controls.
 - **FXML secondary windows** opened by `MainController`: memory (`onMemory`): load with `Messages.bundle()`, add
   `styles.css` to the root, `initOwner(main window)`, set the app icon (`logo.png`), dispose the controller in
