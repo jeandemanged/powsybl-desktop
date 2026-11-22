@@ -7,8 +7,8 @@ the other inputs, the CRAC belongs to the whole network a RAO runs on, for a sub
 
 ## Content
 
-A toolbar with **New**, **Import**, **Generate**, **Export**, an **Add** menu, a button to remove the selected contingency or
-CNEC and a button to remove the CRAC, then a line telling the CRAC's name, its time stamp if it has one, and its instants
+A toolbar with **New**, **Import**, **Generate**, **Export**, an **Add** menu, a button to remove the selected contingency,
+CNEC or remedial action and a button to remove the CRAC, then a line telling the CRAC's name, its time stamp if it has one, and its instants
 (preventive, outage, then any auto and curative ones), or "No CRAC for this network: create, import or generate one".
 
 On the left, five tabs:
@@ -30,7 +30,8 @@ On the right, the details of the object selected on the left:
 - a flow CNEC: its form, to edit it (see below);
 - an angle or voltage CNEC: its type, network elements, state, role (optimized, monitored), thresholds with their unit,
   reliability margin and operator;
-- a remedial action: its type, network elements, usage rules (when it is available: at an instant, after a
+- a network action: its form, to edit it (see below);
+- a range action: its type, network elements, usage rules (when it is available: at an instant, after a
   contingency, when a CNEC is constrained, on a flow constraint in a country), operator, activation cost and speed.
 
 ## What you can do
@@ -114,6 +115,36 @@ remedial action is conditioned on the CNEC (an on-constraint usage rule), only i
 removed. Angle and voltage CNECs, only monitored by the RAO, can be removed but not edited.
 
 The button after the **Add** menu also removes the selected CNEC.
+
+### Add and edit network actions
+
+**Add** > **Network Action…** picks network elements (switches, branches, three-winding transformers, injections,
+boundary lines, HVDC lines) and adds a network action, named "Network action 1" (or the next free number), with an
+elementary action on each, from its current state: a switch or a branch's terminals toggled (opened if closed, closed
+if open), a PST at its current tap, a generator, load or boundary line at its current active power set point, a shunt
+compensator's sections toggled (all or none), an HVDC line's AC emulation deactivated. It has no usage rule yet: the
+RAO doesn't use it.
+
+The form of the selected network action edits it, each change applied at once (text fields on Enter or when leaving
+them): **Id**, **Name**, **Operator**, **Speed**, **Activation Cost**, and the **Elementary Actions**, a row each with
+its kind, element and value:
+
+| Kind | Element | Value |
+|------|---------|-------|
+| `switch` | a switch | `open` or `close` |
+| `terminals` | a branch, transformer or injection | `open` or `close` |
+| `pstTap` | a phase-shifting transformer | the tap, within its range |
+| `generator`, `load`, `boundaryLine` | a generator, a load, a boundary line | the active power set point, in MW |
+| `shunt` | a shunt compensator | the section count, at most its maximum |
+| `switchPair` | the switch to open | the switch to close |
+| `acEmulationOff` | an HVDC line | none |
+
+**Add Actions…** adds an elementary action on more elements picked, as above. An element can be acted on only once,
+and must be of the kind's type. A refused change is told below the fields and undone. The usage rules are shown,
+unchanged by the edits. An imported action with an elementary action of another kind (a relative set point...) is
+read-only.
+
+The button after the **Add** menu also removes the selected remedial action, network or range action.
 
 ### Export the CRAC
 

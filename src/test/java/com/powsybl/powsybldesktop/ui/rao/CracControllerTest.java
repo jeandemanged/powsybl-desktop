@@ -18,6 +18,7 @@ import com.powsybl.openrao.data.crac.api.Crac;
 import com.powsybl.openrao.data.crac.api.Instant;
 import com.powsybl.openrao.data.crac.api.InstantKind;
 import com.powsybl.openrao.data.crac.api.cnec.FlowCnec;
+import com.powsybl.openrao.data.crac.api.networkaction.NetworkAction;
 import com.powsybl.openrao.data.crac.api.parameters.CracCreationParameters;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
@@ -84,6 +85,8 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
     // the branches picked, and the states and sides of the flow CNECs asked
     private final List<String> pickedBranches = new ArrayList<>();
     private AddFlowCnecsDialog.Request flowCnecsRequest;
+    // the network elements picked to be acted on
+    private final List<String> pickedActionElements = new ArrayList<>();
 
     // the import dialog and the element picker, modal: answered
     private final class AnsweringCracController extends CracController {
@@ -102,6 +105,12 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
         @Override
         List<String> pickBranches(String title) {
             return List.copyOf(pickedBranches);
+        }
+
+        @Override
+        List<String> pickActionElements(Set<String> present) {
+            presentWhenPicked.add(present);
+            return List.copyOf(pickedActionElements);
         }
 
         @Override
@@ -181,9 +190,16 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
             controller.tabPane.getSelectionModel().select(controller.remedialActionsTab);
             controller.remedialActionsListView.getSelectionModel().select(0);
         });
+        // a network action: its form
+        NetworkActionForm networkAction = controller.networkActionForm;
+        assertEquals(Messages.get("crac.usageRule.onState", Messages.get("raoResults.stateName", "L2 out", "curative")), networkAction.usageRulesLabel.getText());
+        assertEquals(List.of(List.of("load", "LD2", "70")), networkAction.actionsEditor.getRows());
+
+        // a range action: its details
+        interact(() -> controller.remedialActionsListView.getSelectionModel().select(1));
         String action = details();
-        assertTrue(action.contains(Messages.get("crac.usageRule.onState", Messages.get("raoResults.stateName", "L2 out", "curative"))), action);
-        assertTrue(action.contains("LD2"), action);
+        assertTrue(action.contains(Messages.get("crac.usageRule.onInstant", "preventive")), action);
+        assertTrue(action.contains("PS1"), action);
     }
 
     // after a network edit removing an element of the CRAC
@@ -202,7 +218,10 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
         assertNotNull(loadShedding.getGraphic());
         assertEquals(Messages.get("crac.missingElements", "LD2"), loadShedding.getTooltip().getText());
         interact(() -> controller.remedialActionsListView.getSelectionModel().select(0));
-        assertTrue(details().contains(Messages.get("crac.details.missingElement", "LD2")));
+        // its form tells it too
+        NetworkActionForm form = controller.networkActionForm;
+        assertTrue(form.problemLabel.isVisible());
+        assertEquals(Messages.get("crac.missingElements", "LD2"), form.problemLabel.getText());
     }
 
     @Test
@@ -502,5 +521,54 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
         interact(controller::onRemoveSelected);
         assertNotNull(study.getCrac().getCnec("L1 curative"));
         assertEquals(NotificationStatus.ERROR, notification("crac.removeSelected").orElseThrow().status());
+    }
+
+    @Test
+    void addsAndEditsANetworkAction() {
+        interact(() -> study.setCrac(RaoTestCases.crac(network), List.of()));
+        pickedActionElements.addAll(List.of("L1", "VL1", "G1"));
+        interact(controller::onAddNetworkAction);
+
+        String id = Messages.get("crac.networkAction.newId") + " 1";
+        NetworkAction action = study.getCrac().getNetworkAction(id);
+        assertSame(controller.remedialActionsTab, controller.tabPane.getSelectionModel().getSelectedItem());
+        assertSame(action, controller.remedialActionsListView.getSelectionModel().getSelectedItem());
+        NetworkActionForm form = controller.networkActionForm;
+        assertSame(action, form.action());
+        // VL1 can't be acted on
+        assertEquals(List.of(List.of("terminals", "L1", "open"), List.of("generator", "G1", "100")), form.actionsEditor.getRows());
+        assertEquals(Messages.get("crac.networkAction.noUsageRule"), form.usageRulesLabel.getText());
+
+        // renamed: replaced, kept selected in the same form
+        interact(() -> {
+            form.idField.setText("topo");
+            form.idField.fireEvent(new ActionEvent());
+        });
+        NetworkAction renamed = study.getCrac().getNetworkAction("topo");
+        assertNull(study.getCrac().getRemedialAction(id));
+        assertSame(renamed, controller.remedialActionsListView.getSelectionModel().getSelectedItem());
+        assertSame(form, controller.networkActionForm);
+
+        // more actions, on elements picked: those already acted on given
+        pickedActionElements.clear();
+        pickedActionElements.add("PS1");
+        interact(() -> form.addActionsButton.fire());
+        assertEquals(Set.of("L1", "G1"), presentWhenPicked.getLast());
+        assertEquals(Set.of("L1", "G1", "PS1"), study.getCrac().getNetworkAction("topo").getNetworkElementsIds());
+
+        // a refused change is told and reverted
+        interact(() -> {
+            form.speedField.setText("fast");
+            form.speedField.fireEvent(new ActionEvent());
+        });
+        assertTrue(form.errorLabel.isVisible());
+        assertEquals("", form.speedField.getText());
+
+        interact(controller::onRemoveSelected);
+        assertNull(study.getCrac().getRemedialAction("topo"));
+        // the range actions too
+        interact(() -> controller.remedialActionsListView.getSelectionModel().select(1));
+        interact(controller::onRemoveSelected);
+        assertNull(study.getCrac().getRemedialAction(RaoTestCases.PST));
     }
 }

@@ -74,6 +74,7 @@
                         <MenuItem fx:id="addContingenciesFromListsItem" mnemonicParsing="false" onAction="#onAddContingenciesFromLists"
                                   text="%crac.add.contingenciesFromLists"/>
                         <MenuItem fx:id="addFlowCnecsItem" mnemonicParsing="false" onAction="#onAddFlowCnecs" text="%crac.add.flowCnecs"/>
+                        <MenuItem fx:id="addNetworkActionItem" mnemonicParsing="false" onAction="#onAddNetworkAction" text="%crac.add.networkAction"/>
                     </items>
                 </MenuButton>
                 <Button fx:id="removeSelectedButton" mnemonicParsing="false" onAction="#onRemoveSelected">

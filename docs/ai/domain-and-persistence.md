@@ -168,6 +168,14 @@ Maven cache may contain unrelated versions.
   generator's `CnecCreator` does (id `branchName_state`, ± permanent current, else active power, limit on the sides,
   permanent current limits as iMax). `FlowCnecForm` edits one (thresholds as `RowsTableEditor` rows: side, unit, min,
   max); angle and voltage CNECs stay read-only.
+- Network action editing: `…/rao/NetworkActionEdits.java`. A `NetworkAction` is immutable (but for `addUsageRule`): any
+  change replaces it by one built from a `NetworkActionSpec` (id, name, operator, speed, activation cost, sorted
+  `ElementaryActionSpec`s), its usage rules re-made through the adder (`copyUsageRules`, re-adding the states
+  `removeNetworkAction` may drop), the old one put back on refusal. `NetworkActionSpec.of` reads only the elementary
+  actions OpenRAO's adders make (absolute set points, no side); an action with another is read-only. Elements are
+  checked against the network only when it has them. `defaultAction` infers an elementary action from a picked network
+  element. `NetworkActionForm` edits one (elementary actions as `RowsTableEditor` rows: kind code, element, value);
+  range actions stay read-only but removable.
 - CRAC generation (**Generate** in the CRAC view): `…/rao/CracGenerator.java` runs OpenRAO's `NetworkCracCreator`
   (crac-io-network, OpenRAO 7.5.1) with the application's `…/rao/CracGeneratorSettings.java` (the CRAC Generator
   parameters tab, `ui/parameters/CracGeneratorParametersController`) turned into `NetworkCracCreationParameters` on a
