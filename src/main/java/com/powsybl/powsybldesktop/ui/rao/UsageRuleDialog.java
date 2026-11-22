@@ -20,6 +20,7 @@ import com.powsybl.powsybldesktop.rao.RaoResultRows;
 import com.powsybl.powsybldesktop.rao.UsageRuleEdits;
 import com.powsybl.powsybldesktop.rao.UsageRuleEdits.Kind;
 import com.powsybl.powsybldesktop.rao.UsageRuleEdits.UsageRuleSpec;
+import com.powsybl.powsybldesktop.utils.Labels;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
@@ -91,8 +92,8 @@ final class UsageRuleDialog extends Dialog<UsageRuleSpec> {
         cnecComboBox.setMaxWidth(Double.MAX_VALUE);
         List<Country> countries = RangeActionEdits.countries(network);
         countryChoiceBox.setItems(FXCollections.observableArrayList(countries.isEmpty()
-                ? Arrays.stream(Country.values()).sorted(Comparator.comparing(Country::getName)).toList() : countries));
-        countryChoiceBox.setConverter(converter(country -> country.getName() + " (" + country.name() + ")"));
+                ? Arrays.stream(Country.values()).sorted(Comparator.comparing(Country::name)).toList() : countries));
+        countryChoiceBox.setConverter(Labels.countryFormat());
         if (!countryChoiceBox.getItems().isEmpty()) {
             countryChoiceBox.setValue(countryChoiceBox.getItems().getFirst());
         }

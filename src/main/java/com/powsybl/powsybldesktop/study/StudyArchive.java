@@ -11,6 +11,7 @@ import ch.qos.logback.classic.Level;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.powsybl.commons.PowsyblException;
 import com.powsybl.commons.io.TreeDataFormat;
 import com.powsybl.commons.report.ReportNode;
 import com.powsybl.commons.report.ReportNodeDeserializer;
@@ -24,11 +25,16 @@ import com.powsybl.iidm.serde.NetworkSerDe;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.loadflow.json.LoadFlowResultDeserializer;
 import com.powsybl.loadflow.json.LoadFlowResultSerializer;
+import com.powsybl.openrao.commons.OpenRaoException;
+import com.powsybl.openrao.data.crac.api.Crac;
+import com.powsybl.openrao.data.crac.api.CracCreationContext;
+import com.powsybl.openrao.data.raoresult.api.RaoResult;
 import com.powsybl.powsybldesktop.contingency.ContingencyListsIO;
 import com.powsybl.powsybldesktop.limitscaling.LimitScalings;
 import com.powsybl.powsybldesktop.logs.LogsModel.LogEntry;
 import com.powsybl.powsybldesktop.parameters.ApplicationParameters;
 import com.powsybl.powsybldesktop.parameters.ApplicationParametersJson;
+import com.powsybl.powsybldesktop.rao.CracIO;
 import com.powsybl.powsybldesktop.sensitivity.SensitivityFactorMatrix;
 import com.powsybl.powsybldesktop.sensitivity.SensitivityFactorsIO;
 import com.powsybl.powsybldesktop.util.PowsyblDesktopVersion;
@@ -40,6 +46,7 @@ import com.powsybl.security.limitscaling.LimitScaling;
 import com.powsybl.sensitivity.SensitivityAnalysisResult;
 import com.powsybl.sensitivity.SensitivityVariableSet;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -53,13 +60,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * Writes and reads a {@link Study} as a zip file ({@code .psbx}), through the zip file system so that PowSyBl's own
  * serializers write and read its entries as files:
  * <pre>
  * manifest.json                      format version, networks in order with their selection, contingency lists' and limit
- *                                    scalings' enabled flags and whether their sensitivity analysis result is DC, report count
+ *                                    scalings' enabled flags, whether their sensitivity analysis and RAO results are DC and whether
+ *                                    the RAO result is outdated, report count
  * parameters.json                    as the parameters configuration file
  * networks/&lt;i&gt;/network.biidm          binary IIDM, subnetworks included
  * networks/&lt;i&gt;/contingencies.json     a ListOfContingencyLists
@@ -71,11 +80,17 @@ import java.util.Map;
  * networks/&lt;i&gt;/sensitivity-variable-sets.json    PowSyBl's
  * networks/&lt;i&gt;/sensitivity-analysis-result.json  PowSyBl's
  * networks/&lt;i&gt;/sensitivity-analysis-matrices.json the factor matrices the sensitivity analysis was run with
+ * networks/&lt;i&gt;/crac.json                         OpenRAO's JSON CRAC
+ * networks/&lt;i&gt;/crac-creation-report.json         the lines of its creation report
+ * networks/&lt;i&gt;/rao-result.json                   OpenRAO's JSON RAO result, flows in A and MW
+ * networks/&lt;i&gt;/rao-crac.json                     the CRAC the RAO result refers to
  * reports/&lt;i&gt;.json
  * logs.json
  * </pre>
  * Every file but the manifest and the networks is optional. Violations and search indexes are not saved: they are
- * rebuilt once the networks, which carry the load flow's solved values, are loaded.
+ * rebuilt once the networks, which carry the load flow's solved values, are loaded. A CRAC is read against its network:
+ * when it can't be (it refers to elements the network no longer has), the study is read without it, nor the RAO result
+ * when its own CRAC can't be, and tells why in its warnings.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -95,6 +110,12 @@ public final class StudyArchive {
     private static final String SENSITIVITY_VARIABLE_SETS = "sensitivity-variable-sets.json";
     private static final String SENSITIVITY_ANALYSIS_RESULT = "sensitivity-analysis-result.json";
     private static final String SENSITIVITY_ANALYSIS_MATRICES = "sensitivity-analysis-matrices.json";
+    private static final String CRAC = "crac.json";
+    private static final String CRAC_CREATION_REPORT = "crac-creation-report.json";
+    private static final String RAO_RESULT = "rao-result.json";
+    private static final String RAO_CRAC = "rao-crac.json";
+    // OpenRAO's JSON RAO result exporter writes flows in the units it is told, at least one
+    private static final String RAO_RESULT_FLOW_UNITS_PREFIX = "rao-result.export.json.flows-in-";
     private static final String LOGS = "logs.json";
     // a study can be written by a later version having added fields
     private static final ObjectMapper MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
@@ -111,9 +132,9 @@ public final class StudyArchive {
     record Manifest(String formatVersion, String appVersion, List<NetworkEntry> networks, Integer reports) {
     }
 
-    // sensitivityAnalysisDc: null without a sensitivity analysis result
+    // sensitivityAnalysisDc: null without a sensitivity analysis result; raoResultOutdated, raoDc: null without a RAO result
     record NetworkEntry(String id, boolean selected, List<Boolean> contingencyListsEnabled, List<Boolean> limitScalingsEnabled,
-                        Boolean sensitivityAnalysisDc) {
+                        Boolean sensitivityAnalysisDc, Boolean raoResultOutdated, Boolean raoDc) {
     }
 
     private record LogLine(long timeStamp, String level, String message) {
@@ -128,6 +149,14 @@ public final class StudyArchive {
     }
 
     private StudyArchive() {
+    }
+
+    // the results view shows flows in both
+    private static Properties raoResultProperties() {
+        Properties properties = new Properties();
+        properties.setProperty(RAO_RESULT_FLOW_UNITS_PREFIX + "amperes", "true");
+        properties.setProperty(RAO_RESULT_FLOW_UNITS_PREFIX + "megawatts", "true");
+        return properties;
     }
 
     /**
@@ -155,7 +184,8 @@ public final class StudyArchive {
         List<Step> steps = new ArrayList<>();
         List<NetworkEntry> entries = study.networks().stream()
                 .map(n -> new NetworkEntry(n.network().getId(), n.selected(), n.contingencyListsEnabled(), n.limitScalingsEnabled(),
-                        n.sensitivityAnalysisResult() == null ? null : n.sensitivityAnalysisDc()))
+                        n.sensitivityAnalysisResult() == null ? null : n.sensitivityAnalysisDc(),
+                        n.raoResult() == null ? null : n.raoResult().outdated(), n.raoResult() == null ? null : n.raoResult().dc()))
                 .toList();
         Integer reportCount = study.reports() == null ? null : study.reports().size();
         Manifest manifest = new Manifest(FORMAT_VERSION, new PowsyblDesktopVersion().getMavenProjectVersion(), entries, reportCount);
@@ -190,6 +220,22 @@ public final class StudyArchive {
                 steps.add(new Step(Messages.get("study.progress.sensitivityAnalysisResult", name), () -> {
                     SensitivityFactorsIO.writeResult(studyNetwork.sensitivityAnalysisResult(), folder.resolve(SENSITIVITY_ANALYSIS_RESULT));
                     SensitivityFactorsIO.writeMatrices(studyNetwork.sensitivityAnalysisMatrices(), folder.resolve(SENSITIVITY_ANALYSIS_MATRICES));
+                }));
+            }
+            if (studyNetwork.crac() != null) {
+                steps.add(new Step(Messages.get("study.progress.crac", name), () -> {
+                    Files.write(folder.resolve(CRAC), studyNetwork.crac().json());
+                    writeJson(folder.resolve(CRAC_CREATION_REPORT), studyNetwork.crac().creationReport());
+                }));
+            }
+            if (studyNetwork.raoResult() != null) {
+                steps.add(new Step(Messages.get("study.progress.raoResult", name), () -> {
+                    try (OutputStream outputStream = Files.newOutputStream(folder.resolve(RAO_RESULT))) {
+                        studyNetwork.raoResult().result().write("JSON", studyNetwork.raoResult().crac(), raoResultProperties(), outputStream);
+                    }
+                    try (OutputStream outputStream = Files.newOutputStream(folder.resolve(RAO_CRAC))) {
+                        CracIO.writeJson(studyNetwork.raoResult().crac(), outputStream);
+                    }
                 }));
             }
             if (studyNetwork.loadFlowResult() != null) {
@@ -246,6 +292,9 @@ public final class StudyArchive {
             SensitivityAnalysisResult[] sensitivityAnalysisResults = new SensitivityAnalysisResult[networkCount];
             LoadFlowResult[] loadFlowResults = new LoadFlowResult[networkCount];
             SecurityAnalysisResult[] securityAnalysisResults = new SecurityAnalysisResult[networkCount];
+            Study.StudyCrac[] cracs = new Study.StudyCrac[networkCount];
+            Study.StudyRaoResult[] raoResults = new Study.StudyRaoResult[networkCount];
+            List<String> warnings = new ArrayList<>();
             ReportNode[] reports = new ReportNode[manifest.reports() == null ? 0 : manifest.reports()];
             List<List<LogEntry>> logs = new ArrayList<>(List.of(List.of()));
 
@@ -301,6 +350,7 @@ public final class StudyArchive {
                     steps.add(new Step(Messages.get("study.progress.securityAnalysisLimitScalings", name),
                             () -> securityAnalysisLimitScalings.set(index, LimitScalings.read(securityAnalysisScalings))));
                 }
+                addRaoSteps(steps, new RaoTarget(folder, name, index, manifest.networks().get(i), networks, cracs, raoResults, warnings));
             }
             for (int i = 0; i < reports.length; i++) {
                 int index = i;
@@ -328,11 +378,66 @@ public final class StudyArchive {
                 studyNetworks.add(new Study.StudyNetwork(networks[i], entry.selected(), lists, enabled, scalings, scalingsEnabled,
                         sensitivityFactorMatrices.get(i), sensitivityVariableSets.get(i),
                         loadFlowResults[i], securityAnalysisResults[i], securityAnalysisLimitScalings.get(i),
-                        sensitivityAnalysisResults[i], sensitivityAnalysisMatrices.get(i), Boolean.TRUE.equals(entry.sensitivityAnalysisDc())));
+                        sensitivityAnalysisResults[i], sensitivityAnalysisMatrices.get(i), Boolean.TRUE.equals(entry.sensitivityAnalysisDc()), cracs[i], raoResults[i]));
             }
             return new Study(parameters[0], studyNetworks, manifest.reports() == null ? null : List.of(reports),
-                    hasLogs ? logs.getFirst() : null);
+                    hasLogs ? logs.getFirst() : null, List.copyOf(warnings));
         }
+    }
+
+    // where the CRAC and the RAO result of a network are read to
+    private record RaoTarget(Path folder, String name, int index, NetworkEntry entry, Network[] networks, Study.StudyCrac[] cracs,
+                             Study.StudyRaoResult[] raoResults, List<String> warnings) {
+    }
+
+    // the CRAC and the RAO result, read against the network once it is read: one that can't be is left out, told in the warnings
+    private static void addRaoSteps(List<Step> steps, RaoTarget target) {
+        Path crac = target.folder().resolve(CRAC);
+        if (Files.exists(crac)) {
+            steps.add(new Step(Messages.get("study.progress.crac", target.name()), () -> {
+                byte[] json = Files.readAllBytes(crac);
+                Path reportFile = target.folder().resolve(CRAC_CREATION_REPORT);
+                List<String> report = Files.exists(reportFile) ? readJson(reportFile, new TypeReference<>() { }) : List.of();
+                Crac read = readCrac(json, target, "study.warning.crac");
+                if (read != null) {
+                    target.cracs()[target.index()] = new Study.StudyCrac(json, read, report);
+                }
+            }));
+        }
+        Path raoResult = target.folder().resolve(RAO_RESULT);
+        Path raoCrac = target.folder().resolve(RAO_CRAC);
+        if (Files.exists(raoResult) && Files.exists(raoCrac)) {
+            steps.add(new Step(Messages.get("study.progress.raoResult", target.name()), () -> {
+                Crac resultCrac = readCrac(Files.readAllBytes(raoCrac), target, "study.warning.raoResult");
+                if (resultCrac == null) {
+                    return;
+                }
+                try (InputStream inputStream = Files.newInputStream(raoResult)) {
+                    RaoResult result = RaoResult.read(inputStream, resultCrac);
+                    // outdated unless told otherwise
+                    target.raoResults()[target.index()] = new Study.StudyRaoResult(result, resultCrac, !Boolean.FALSE.equals(target.entry().raoResultOutdated()),
+                            Boolean.TRUE.equals(target.entry().raoDc()));
+                } catch (OpenRaoException e) {
+                    target.warnings().add(Messages.get("study.warning.raoResult", target.name(), e.getMessage()));
+                }
+            }));
+        }
+    }
+
+    // the CRAC of {@code json} for the target's network, or else null, told in the warnings with {@code warningKey}
+    private static Crac readCrac(byte[] json, RaoTarget target, String warningKey) throws IOException {
+        String problem;
+        try {
+            CracCreationContext context = CracIO.readJson(new ByteArrayInputStream(json), target.networks()[target.index()]);
+            if (context.isCreationSuccessful()) {
+                return context.getCrac();
+            }
+            problem = String.join("; ", CracIO.report(context));
+        } catch (OpenRaoException | PowsyblException e) {
+            problem = e.getMessage();
+        }
+        target.warnings().add(Messages.get(warningKey, target.name(), problem));
+        return null;
     }
 
     // the results view maps the result's factors back to the matrices they are the expansion of

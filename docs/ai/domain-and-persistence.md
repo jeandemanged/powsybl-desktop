@@ -357,16 +357,25 @@ result is DC, report count, `null` when reports are not saved), then one file pe
 serializer — `ApplicationParametersJson`, binary IIDM (`NetworkSerDe`, subnetworks included), `ContingencyListsIO`,
 `LimitScalings` (the scalings, and the ones the security analysis result was computed with), `SensitivityFactorsIO`
 (factor matrices and variable sets, the sensitivity analysis result and the matrices it was computed with, which
-must expand to as many factors as the result has or the read fails), PowSyBl's load flow / security analysis result
+must expand to as many factors as the result has or the read fails), OpenRAO's JSON CRAC (`CracIO`, with the creation
+report's lines) and RAO result (flows in A and MW, rounded to 2 decimals by OpenRAO, with the run's CRAC it refers to,
+whether it was outdated and DC in the manifest), PowSyBl's load flow / security analysis result
 and `ReportNode` JSON serializers — plus the logs as JSON. A reader accepts any 1.x format, ignoring unknown manifest fields
-and files: the sensitivity files were added without changing the format version. Entries are written and read through the JDK zip file system (`jdk.zipfs`,
+and files: the sensitivity and OpenRAO files were added without changing the format version. Entries are written and read through the JDK zip file system (`jdk.zipfs`,
 listed explicitly in the packaging scripts since jdeps can't see it), so these serializers must go through
 `Files`/`Path`, never `Path.toFile()`. A write goes to a `.tmp` sibling first, moved over the target once complete.
 
 - `…/study/Study.java` is the content: `capture` snapshots the chosen root networks and `Part`s on the FX thread
-  (parameters deep-copied through their JSON), `restore` replaces the loaded networks and, when the study holds them,
+  (parameters deep-copied through their JSON; the CRAC, edited in place on the FX thread without the busy lock, as its
+  JSON bytes, `StudyCrac`), `restore` replaces the loaded networks and, when the study holds them,
   the parameters, reports and logs (FX thread). Violations and search indexes are not saved: they are rebuilt when
   the networks are added, the networks carrying the load flow's values.
+- A CRAC is read against its network (OpenRAO's JSON importer refuses one whose elements the network lacks, which
+  the CRAC view allows): `StudyArchive.read` then leaves it out, and the RAO result if its own CRAC fails likewise,
+  adding a line to `Study.warnings()`; `StudyCommands` logs them and makes the load notification a partial success
+  with **View logs**. A RAO result is restored up to date only when saved up to date with the CRAC (else its source is
+  its own CRAC, so `isRaoResultOutdated`). The CRAC Generator, CRAC Creation and RAO parameters are in
+  `parameters.json`.
 - Restored logs are renumbered below 0 so that they stay ordered before the session's own (`LogsModel.restoreLogs`).
 - `…/ui/study/StudyCommands.java` drives both: `SaveStudyDialog` (Data and Networks check boxes with All/None), file
   choice, then a `Service` behind an application-modal progress dialog fed by the archive's per-step `Progress`.

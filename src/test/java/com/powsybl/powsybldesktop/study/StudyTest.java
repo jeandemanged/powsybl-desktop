@@ -16,12 +16,23 @@ import com.powsybl.contingency.list.DefaultContingencyList;
 import com.powsybl.ieeecdf.converter.IeeeCdfNetworkFactory;
 import com.powsybl.iidm.network.LimitType;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.TwoSides;
 import com.powsybl.loadflow.LoadFlowResult;
 import com.powsybl.loadflow.LoadFlowResultImpl;
+import com.powsybl.openrao.commons.Unit;
+import com.powsybl.openrao.data.crac.api.Crac;
+import com.powsybl.openrao.data.crac.api.cnec.FlowCnec;
+import com.powsybl.openrao.data.raoresult.api.RaoResult;
+import com.powsybl.openrao.raoapi.parameters.RaoParameters;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
 import com.powsybl.powsybldesktop.logs.LogsModel.LogEntry;
+import com.powsybl.powsybldesktop.rao.RaoResultAndReport;
+import com.powsybl.powsybldesktop.rao.RaoRun;
+import com.powsybl.powsybldesktop.rao.RaoTestCases;
+import com.powsybl.powsybldesktop.sensitivity.SensitivityAnalysisMode;
 import com.powsybl.powsybldesktop.sensitivity.SensitivityFactorMatrix;
+import com.powsybl.powsybldesktop.utils.Messages;
 import com.powsybl.security.SecurityAnalysisResult;
 import com.powsybl.security.limitscaling.LimitScaling;
 import com.powsybl.sensitivity.SensitivityAnalysisResult;
@@ -42,10 +53,12 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -174,5 +187,97 @@ class StudyTest {
         assertEquals(1, restored.getReports().size());
         assertTrue(restored.getParametersModel().loadFlowParametersProperty().getValue().isDc());
         assertEquals(1, restored.getNetworks().size());
+    }
+
+    // the study's CRAC, its creation report, and the result of a RAO run with it
+    private static MainModel withCracAndRaoResult(Network network, boolean dc) throws Exception {
+        MainModel mainModel = new MainModel();
+        mainModel.addNetwork(network);
+        NetworkStudy study = mainModel.getStudy(network);
+        Crac crac = RaoTestCases.crac(network);
+        study.setCrac(crac, List.of("a report line"));
+        RaoParameters parameters = RaoRun.copyParameters(RaoTestCases.parameters(1), dc ? SensitivityAnalysisMode.DC : SensitivityAnalysisMode.AC);
+        RaoResultAndReport run = RaoRun.prepare(network, crac, parameters, false).compute();
+        study.setRaoResult(run.raoResult(), run.crac(), crac, study.cracRevisionProperty().get(), dc);
+        return mainModel;
+    }
+
+    private static NetworkStudy saveAndRestore(MainModel mainModel, Path file, Set<Study.Part> parts, List<String> warnings) throws Exception {
+        StudyArchive.write(Study.capture(mainModel, mainModel.getNetworks(), parts), file, (_, _, _) -> { });
+        Study read = StudyArchive.read(file, (_, _, _) -> { });
+        warnings.addAll(read.warnings());
+        MainModel restored = new MainModel();
+        read.restore(restored);
+        return restored.getStudy(restored.getNetworks().getFirst());
+    }
+
+    @Test
+    void savedStudyRestoresTheCracAndTheRaoResult(@TempDir Path tempDir) throws Exception {
+        MainModel mainModel = withCracAndRaoResult(RaoTestCases.network(), false);
+        NetworkStudy study = mainModel.getStudy(mainModel.getNetworks().getFirst());
+        Crac crac = study.getCrac();
+        FlowCnec cnec = crac.getFlowCnec("L1 curative");
+        double flowA = study.getRaoResult().getFlow(crac.getInstant("curative"), study.getRaoCrac().getFlowCnec("L1 curative"), TwoSides.ONE, Unit.AMPERE);
+        double flowMw = study.getRaoResult().getFlow(crac.getInstant("curative"), study.getRaoCrac().getFlowCnec("L1 curative"), TwoSides.ONE, Unit.MEGAWATT);
+
+        List<String> warnings = new ArrayList<>();
+        NetworkStudy restored = saveAndRestore(mainModel, tempDir.resolve("study.psbx"), EnumSet.allOf(Study.Part.class), warnings);
+
+        assertEquals(List.of(), warnings);
+        Crac restoredCrac = restored.getCrac();
+        assertEquals(crac.getId(), restoredCrac.getId());
+        assertEquals(crac.getCnecs().size(), restoredCrac.getCnecs().size());
+        assertEquals(cnec.getThresholds().size(), restoredCrac.getFlowCnec("L1 curative").getThresholds().size());
+        assertEquals(List.of("a report line"), restored.getCracCreationReport());
+        // up to date, on a CRAC of its own
+        assertFalse(restored.isRaoResultOutdated());
+        assertFalse(restored.isRaoDc());
+        Crac resultCrac = restored.getRaoCrac();
+        assertNotSame(restoredCrac, resultCrac);
+        RaoResult result = restored.getRaoResult();
+        assertEquals(2, result.getOptimizedTapOnState(resultCrac.getPreventiveState(), resultCrac.getPstRangeAction(RaoTestCases.PST)));
+        assertEquals(Set.of(resultCrac.getNetworkAction(RaoTestCases.LOAD_SHEDDING)),
+                result.getActivatedNetworkActionsDuringState(resultCrac.getState(RaoTestCases.CONTINGENCY, resultCrac.getInstant("curative"))));
+        FlowCnec resultCnec = resultCrac.getFlowCnec("L1 curative");
+        // OpenRAO's JSON rounds them to 2 decimals
+        assertEquals(flowA, result.getFlow(resultCrac.getInstant("curative"), resultCnec, TwoSides.ONE, Unit.AMPERE), 0.01);
+        assertEquals(flowMw, result.getFlow(resultCrac.getInstant("curative"), resultCnec, TwoSides.ONE, Unit.MEGAWATT), 0.01);
+
+        // an edit of the restored CRAC outdates it
+        restored.cracEdited();
+        assertTrue(restored.isRaoResultOutdated());
+    }
+
+    @Test
+    void anOutdatedRaoResultStaysOutdated(@TempDir Path tempDir) throws Exception {
+        // in DC: its flows in A too
+        MainModel mainModel = withCracAndRaoResult(RaoTestCases.network(), true);
+        NetworkStudy study = mainModel.getStudy(mainModel.getNetworks().getFirst());
+        study.cracEdited();
+        List<String> warnings = new ArrayList<>();
+        assertTrue(saveAndRestore(mainModel, tempDir.resolve("edited.psbx"), EnumSet.allOf(Study.Part.class), warnings).isRaoResultOutdated());
+
+        // without its CRAC: outdated too
+        NetworkStudy restored = saveAndRestore(mainModel, tempDir.resolve("noCrac.psbx"), EnumSet.complementOf(EnumSet.of(Study.Part.CRAC)), warnings);
+        assertNull(restored.getCrac());
+        assertTrue(restored.isRaoResultOutdated());
+        assertTrue(restored.isRaoDc());
+        assertEquals(List.of(), warnings);
+    }
+
+    // a CRAC on elements the network no longer has can't be read back against it: the study is restored without it
+    @Test
+    void aCracTheNetworkNoLongerMatchesIsLeftOut(@TempDir Path tempDir) throws Exception {
+        Network network = RaoTestCases.network();
+        MainModel mainModel = withCracAndRaoResult(network, false);
+        network.getLine("L1").remove();
+
+        List<String> warnings = new ArrayList<>();
+        NetworkStudy restored = saveAndRestore(mainModel, tempDir.resolve("study.psbx"), EnumSet.allOf(Study.Part.class), warnings);
+
+        assertEquals(2, warnings.size());
+        assertTrue(warnings.getFirst().startsWith(Messages.get("study.warning.crac", network.getNameOrId(), "")));
+        assertNull(restored.getCrac());
+        assertNull(restored.getRaoResult());
     }
 }

@@ -131,8 +131,9 @@ Saving first asks what the study holds, in two groups of check boxes, each with 
 
 - **Data**: **Parameters**, **Contingencies** (the contingency lists, with whether each one is enabled), **Limit
   Scalings** (in order, with whether each one is enabled), **Sensitivity Factors** (the factor matrices and variable
-  sets), **Load Flow Results**, **Security Analysis Results** (with the limit scalings the analysis was run with),
-  **Sensitivity Analysis Results** (with the factor matrices the analysis was run with), **Reports** and **Logs**;
+  sets), **CRAC** (with its import report), **Load Flow Results**, **Security Analysis Results** (with the limit scalings
+  the analysis was run with), **Sensitivity Analysis Results** (with the factor matrices the analysis was run with),
+  **Remedial Action Optimization Results** (with the CRAC the optimization was run with), **Reports** and **Logs**;
 - **Networks**: the loaded networks to save, each with its subnetworks. A network is saved with its current values,
   including the ones a load flow computed.
 
@@ -140,6 +141,10 @@ Loading a study replaces the loaded networks by the study's. With networks loade
 offers **Save Study First…** to keep them in a study before. The parameters, reports and logs are replaced by the
 study's when it holds them, and kept otherwise. The network selected when the study was saved is selected again.
 Limit violations and the search index are computed again once the networks are loaded.
+A remedial action optimization result stays outdated when it was (computed with another CRAC), or when the study
+holds it without its CRAC. A CRAC whose network elements the network no longer has (removed since) can't be read back:
+the study is then loaded without it, nor the optimization result computed with it, and the notification points to
+the logs, which tell why.
 
 Saving and loading can take a while for large networks: a progress bar shows each step, and the application can't be
 used meanwhile. A notification tells the outcome. A network busy with another operation, such as a running load flow,

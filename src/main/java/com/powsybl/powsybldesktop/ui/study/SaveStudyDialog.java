@@ -123,9 +123,11 @@ final class SaveStudyDialog {
             case CONTINGENCIES -> "main.toolbar.contingencies";
             case LIMIT_SCALINGS -> "main.toolbar.limitScalings";
             case SENSITIVITY_FACTORS -> "main.toolbar.sensitivityFactors";
+            case CRAC -> "main.toolbar.crac";
             case LOAD_FLOW_RESULTS -> "main.toolbar.loadflowresult";
             case SECURITY_ANALYSIS_RESULTS -> "main.toolbar.securityAnalysisResults";
             case SENSITIVITY_ANALYSIS_RESULTS -> "main.toolbar.sensitivityAnalysisResults";
+            case RAO_RESULTS -> "main.toolbar.raoResults";
             case REPORTS -> "main.toolbar.reports";
             case LOGS -> "main.toolbar.logs";
         };
