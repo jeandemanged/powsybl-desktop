@@ -117,6 +117,17 @@ mvn clean install       # build + tests
 mvn clean javafx:run    # run the app
 ```
 
+### Dev container (Claude Code sandbox)
+
+`.devcontainer/` runs Claude Code on this repository in a container with JDK 25 and Maven, behind a firewall that
+only allows GitHub, Anthropic, Maven Central and the VS Code marketplace. How to use it:
+
+- VS Code (WSL): run "Dev Containers: Reopen in Container", then run `claude` in its terminal.
+- IntelliJ IDEA: open `.devcontainer/devcontainer.json`, click its gutter icon and choose "Create Dev Container and
+  Mount Sources...", then "Connect" once it is built (Services tool window), and run `claude` in its terminal.
+- Command line: install the CLI with `npm i -g @devcontainers/cli`, then run `devcontainer up --workspace-folder .`
+  followed by `devcontainer exec --workspace-folder . claude`.
+
 ### Packaging a standalone app-image (jlink + jpackage)
 
 This produces a self-contained app directory that bundles its own minimal Java runtime — end

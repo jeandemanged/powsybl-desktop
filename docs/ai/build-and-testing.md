@@ -161,6 +161,18 @@ the Substations view's tab pane) to the table's columns and filled rows; the det
 and the equipment chosen by smallest id, so that screenshots are stable. No sample has an overload management system:
 the test adds one to the small grid. Each tab of the Parameters view has its `parameters-<tab>` screenshot.
 
+## Dev container
+
+`.devcontainer/` is a sandbox for running Claude Code (or any agent) on this repository, adapted from Anthropic's
+reference container: JDK 25 + Maven (`maven:*-eclipse-temurin-25-noble` base), the native libraries the headless
+JavaFX tests and WebView need, and Claude Code (native installer, auto-update off: rebuild to update). On start,
+`init-firewall.sh` sets a default-deny egress firewall allowing only GitHub, the Anthropic API/login, Maven Central
+and the VS Code marketplace; a new Maven repository or other host must be added to its domain list. `mvn clean install`
+passes inside it. It cannot run the app's GUI or build the user's guide PDF (no TeX Live), and has no JavaFX jmods
+(only needed by `packaging/`).
+
+How to use it (VS Code, IntelliJ IDEA, command line) is in the README's developer guide.
+
 ## CI
 
 `.github/workflows/ci.yml`: on every branch push (no pull request or tag trigger), `mvn -B clean install
