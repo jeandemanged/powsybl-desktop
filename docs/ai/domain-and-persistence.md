@@ -123,6 +123,15 @@ Maven cache may contain unrelated versions.
   (`NetworkStudy.setRaoResult`). A `RaoFailedException`'s report is still added. The outcome notification tells a
   partial failure (`ComputationStatus.PARTIAL_FAILURE`) and flows still not secure (`isSecure(FLOW)`: OpenRAO's results
   implement the flow check only, angle and voltage CNECs being OpenRAO's monitoring module's job) as partial successes.
+- The RAO Results view (`ui/network/tables/RaoResultsController`, **Results** > **Remedial Action Optimization Results**)
+  shows the result through `…/rao/RaoResultRows.java`, against the run's CRAC copy (`NetworkStudy.getRaoCrac()`): a
+  summary, the flow CNECs (flows and margins with `null` as the optimized instant for the initial situation, the
+  preventive instant, then the CNEC's own; most limiting first, negative margins in red), the activated remedial actions
+  by state (`STATE_ORDER`) with range action set points and PST taps, and the costs by instant. A value the result
+  refuses (`OpenRaoException`: a failed state, an instant not optimized) is NaN, shown "-". It tells when the study's
+  CRAC is no longer the one the result was computed with (`getRaoSourceCrac`, compared by identity). OpenRAO's CRACs
+  (and other CRAC objects) define `equals` by id: listen to a CRAC property with an `InvalidationListener`, a
+  `ChangeListener` missing the replacement of a CRAC by another of the same id.
 - CRAC files: `…/rao/CracIO.java` reads every format an OpenRAO importer handles (JSON, CSE, CIM, NC, FlowBased
   constraint) into a `CracCreationContext`, whose creation report tells what was ignored or why it failed (a null
   CRAC), and writes OpenRAO's JSON. It picks the importer itself, leaving out the `Network` one (the CRAC generator),

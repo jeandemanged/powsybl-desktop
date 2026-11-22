@@ -12,7 +12,9 @@ import com.powsybl.openrao.data.crac.api.Crac;
 import com.powsybl.openrao.data.crac.api.InstantKind;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
+import com.powsybl.powsybldesktop.navigation.NavigationType;
 import com.powsybl.powsybldesktop.notification.Notification;
+import com.powsybl.powsybldesktop.notification.NotificationAction;
 import com.powsybl.powsybldesktop.notification.NotificationStatus;
 import com.powsybl.powsybldesktop.rao.RaoTestCases;
 import com.powsybl.powsybldesktop.sensitivity.SensitivityAnalysisMode;
@@ -31,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.testfx.util.WaitForAsyncUtils;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -117,6 +120,11 @@ class MainControllerRaoTest extends AbstractHeadlessApplicationTest {
             Notification outcome = raoNotification().orElseThrow();
             assertEquals("main.rao.completed", outcome.messageKey());
             assertEquals(NotificationStatus.SUCCESS, outcome.status());
+            assertEquals(List.of("desktop.common.action.viewResults", "main.report.viewReport"),
+                    outcome.actions().stream().map(NotificationAction::messageKey).toList());
+            // the results view, at last
+            outcome.actions().getFirst().handler().accept(null);
+            assertEquals(NavigationType.NETWORK_TABLE_RAO_RESULTS, mainModel.getNavigationHistory().currentEventProperty().get().navigationType());
         });
     }
 

@@ -72,6 +72,7 @@ import com.powsybl.powsybldesktop.ui.network.tables.LccConverterStationsControll
 import com.powsybl.powsybldesktop.ui.network.tables.LinesController;
 import com.powsybl.powsybldesktop.ui.network.tables.LoadsController;
 import com.powsybl.powsybldesktop.ui.network.tables.OverloadManagementSystemsController;
+import com.powsybl.powsybldesktop.ui.network.tables.RaoResultsController;
 import com.powsybl.powsybldesktop.ui.network.tables.SecurityAnalysisResultsController;
 import com.powsybl.powsybldesktop.ui.network.tables.SensitivityAnalysisResultsController;
 import com.powsybl.powsybldesktop.ui.network.tables.ShuntCompensatorsController;
@@ -768,7 +769,7 @@ public class MainController extends AbstractDisposableController {
 
         raoService.setOnSucceeded(event -> {
             RaoResultAndReport resultAndReport = (RaoResultAndReport) event.getSource().getValue();
-            study.setRaoResult(resultAndReport.raoResult(), resultAndReport.crac(), dc);
+            study.setRaoResult(resultAndReport.raoResult(), resultAndReport.crac(), crac, dc);
             mainModel.setUpdate();
             mainModel.addReport(resultAndReport.reportNode());
             mainModel.getNotificationsModel().replace(runningNotification, raoOutcome(runningNotification.startTimestamp(), resultAndReport));
@@ -824,15 +825,17 @@ public class MainController extends AbstractDisposableController {
 
     // OpenRAO's result tells whether the flows are secure only (CASTOR doesn't implement the angle and voltage checks)
     private Notification raoOutcome(Instant start, RaoResultAndReport resultAndReport) {
+        NotificationAction viewResultsAction = new NotificationAction("desktop.common.action.viewResults", _ ->
+                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_RAO_RESULTS)));
         NotificationAction viewReportAction = viewReportAction(resultAndReport.reportNode());
         RaoResult result = resultAndReport.raoResult();
         if (result.getComputationStatus() == ComputationStatus.PARTIAL_FAILURE) {
-            return Notification.createPartialSuccess(start, "main.rao.partialFailure", viewReportAction);
+            return Notification.createPartialSuccess(start, "main.rao.partialFailure", viewResultsAction, viewReportAction);
         }
         if (!resultAndReport.crac().getFlowCnecs().isEmpty() && !result.isSecure(PhysicalParameter.FLOW)) {
-            return Notification.createPartialSuccess(start, "main.rao.unsecure", viewReportAction);
+            return Notification.createPartialSuccess(start, "main.rao.unsecure", viewResultsAction, viewReportAction);
         }
-        return Notification.createSuccess(start, "main.rao.completed", viewReportAction);
+        return Notification.createSuccess(start, "main.rao.completed", viewResultsAction, viewReportAction);
     }
 
     // Builds the search index for a newly-selected network once, in the background - a network already cached
@@ -1422,6 +1425,8 @@ public class MainController extends AbstractDisposableController {
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SENSITIVITY_ANALYSIS_RESULTS) {
             ensureSceneView(SensitivityAnalysisResultsController.class,
                     "ui/network/tables/sensitivity-analysis-results-view.fxml", NavigationType.NETWORK_TABLE_SENSITIVITY_ANALYSIS_RESULTS);
+        } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_RAO_RESULTS) {
+            ensureSceneView(RaoResultsController.class, "ui/network/tables/rao-results-view.fxml", NavigationType.NETWORK_TABLE_RAO_RESULTS);
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_VIOLATIONS) {
             ensureSceneView(ViolationsController.class,
                     "ui/network/tables/violations-view.fxml", NavigationType.NETWORK_TABLE_VIOLATIONS);
@@ -1711,6 +1716,11 @@ public class MainController extends AbstractDisposableController {
     @FXML
     public void onSensitivityAnalysisResults() {
         mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_SENSITIVITY_ANALYSIS_RESULTS));
+    }
+
+    @FXML
+    public void onRaoResults() {
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_RAO_RESULTS));
     }
 
     public void onViolations() {

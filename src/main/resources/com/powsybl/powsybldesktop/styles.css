@@ -307,6 +307,11 @@
     -fx-font-style: italic;
 }
 
+/* Negative CNEC margin, a constraint (RaoResultsController). */
+.rao-negative-margin {
+    -fx-text-fill: red;
+}
+
 /* ===== Separate windows (SeparateWindows) ===== */
 
 /* Follows the mouse while a main toolbar button is dragged, telling where its view will open. */

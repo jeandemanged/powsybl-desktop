@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026, Artelys (https://www.artelys.com)
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  SPDX-License-Identifier: MPL-2.0
+-->
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.ChoiceBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.powsybl.powsybldesktop.ui.network.tables.RaoResultsController">
+   <children>
+      <Label fx:id="alertLabel" visible="false" wrapText="true" styleClass="alert-label">
+         <padding>
+            <Insets bottom="4.0" left="6.0" right="6.0" top="4.0"/>
+         </padding>
+      </Label>
+      <Label fx:id="summaryLabel" wrapText="true">
+         <padding>
+            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
+         </padding>
+      </Label>
+      <TabPane fx:id="tabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+         <tabs>
+            <Tab fx:id="cnecsTab" text="%raoResults.tab.cnecs">
+               <content>
+                  <VBox>
+                     <children>
+                        <HBox spacing="8.0" alignment="CENTER_LEFT">
+                           <children>
+                              <Label text="%raoResults.state"/>
+                              <ChoiceBox fx:id="stateChoiceBox"/>
+                              <Label text="%raoResults.unit"/>
+                              <ChoiceBox fx:id="unitChoiceBox"/>
+                           </children>
+                           <padding>
+                              <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
+                           </padding>
+                        </HBox>
+                        <TableView fx:id="cnecsTable" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS"/>
+                     </children>
+                  </VBox>
+               </content>
+            </Tab>
+            <Tab fx:id="actionsTab" text="%raoResults.tab.actions">
+               <content>
+                  <TableView fx:id="actionsTable" tableMenuButtonVisible="true"/>
+               </content>
+            </Tab>
+            <Tab fx:id="costsTab" text="%raoResults.tab.costs">
+               <content>
+                  <TableView fx:id="costsTable" tableMenuButtonVisible="true"/>
+               </content>
+            </Tab>
+         </tabs>
+      </TabPane>
+   </children>
+</VBox>

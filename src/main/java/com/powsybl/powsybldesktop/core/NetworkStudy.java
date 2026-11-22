@@ -63,8 +63,10 @@ public class NetworkStudy {
     // the CRAC of the remedial action optimization, null when the study has none
     private final ObjectProperty<Crac> crac = new SimpleObjectProperty<>();
     private RaoResult raoResult;
-    // the CRAC the RAO result refers to (the run's copy, see RaoRun) and whether it was AC or DC, which it doesn't hold
+    // the CRAC the RAO result refers to (the run's copy, see RaoRun), the study's it was copied from, and whether it was
+    // AC or DC, which it doesn't hold
     private Crac raoCrac;
+    private Crac raoSourceCrac;
     private boolean raoDc;
     private NetworkViolations violations = NetworkViolations.EMPTY;
     private final ObservableList<ContingencyList> contingencyLists = FXCollections.observableArrayList();
@@ -166,13 +168,21 @@ public class NetworkStudy {
         return raoCrac;
     }
 
+    /**
+     * The study's CRAC the RAO result was computed with: the result is outdated when it is no longer the study's.
+     */
+    public Crac getRaoSourceCrac() {
+        return raoSourceCrac;
+    }
+
     public boolean isRaoDc() {
         return raoDc;
     }
 
-    public void setRaoResult(RaoResult result, Crac resultCrac, boolean dc) {
+    public void setRaoResult(RaoResult result, Crac resultCrac, Crac sourceCrac, boolean dc) {
         this.raoResult = Objects.requireNonNull(result);
         this.raoCrac = Objects.requireNonNull(resultCrac);
+        this.raoSourceCrac = Objects.requireNonNull(sourceCrac);
         this.raoDc = dc;
     }
 
