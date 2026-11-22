@@ -1,0 +1,55 @@
+# Logs
+
+The Logs view shows the messages logged by the application and the PowSyBl libraries while it runs: progress
+information, warnings and errors. Open it with **Diagnostics** > **Logs** in the main toolbar, or with **View logs** in the
+notification of a failed operation. Like the reports and parameters views, it can also be opened in a separate window
+(see [General usage](../../general/index.md)).
+
+## Content
+
+A table with one row per message:
+
+- **Date/Time**: when the message was logged, with the time zone offset;
+- **Severity**: INFO, WARN or ERROR;
+- **Message**: the message text.
+
+WARN rows and ERROR rows are highlighted in their own colors. A message spanning several lines (such as a table of
+load flow parameters, or an error followed by its stack trace) keeps one table line per message line. When a message
+is too long for its column, hover it to read it in full in a tooltip.
+
+![The logs of a security analysis](../../_generated/images/logs.png)
+
+New messages appear as they are logged. While the newest messages are in view (at the top or at the bottom, depending
+on the sort order), the table scrolls to each new one; once you scroll away from them, it stays on the messages you are
+reading until you scroll back. Only the latest 20,000 messages are
+kept. The logs are not saved between sessions, unless saved in a [study](../../general/index.md#studies).
+
+For the detailed outcome of an import, export, load flow, security analysis or sensitivity
+analysis, see the [Reports](reports.md) view
+instead.
+
+## What you can do
+
+### Filter by severity
+
+Click one of the severity buttons of the toolbar:
+
+- **Show INFO, WARN and ERROR logs**
+- **Show WARN and ERROR logs**
+- **Show ERROR logs only**
+
+### Choose the order
+
+- **Newest logs on top**
+- **Newest logs at the bottom**
+
+Both choices are the same settings as the **Level filter** and **Sort order** of the **User Interface** tab of the
+[Parameters](../parameters/index.md) view.
+
+### Copy a message
+
+Right-click a row, then **Copy message** to copy its text to the clipboard.
+
+### Clear the logs
+
+Click **Clear all** to empty the table.

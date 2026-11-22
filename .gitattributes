@@ -1,0 +1,7 @@
+# LF in the repository, platform line endings in working copies (CRLF on Windows, LF on Linux/macOS)
+* text=auto
+
+# shell scripts break with CRLF, even when run from Git Bash on Windows
+*.sh text eol=lf
+
+*.png binary

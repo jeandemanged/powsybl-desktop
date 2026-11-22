@@ -1,0 +1,1039 @@
+/**
+ * Copyright (c) 2026, Artelys (https://www.artelys.com)
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * SPDX-License-Identifier: MPL-2.0
+ */
+package com.powsybl.powsybldesktop.map;
+
+import com.powsybl.contingency.violations.LimitViolation;
+import com.powsybl.iidm.network.BoundaryLine;
+import com.powsybl.iidm.network.Identifiable;
+import com.powsybl.iidm.network.Line;
+import com.powsybl.iidm.network.LoadingLimits;
+import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.Substation;
+import com.powsybl.iidm.network.Terminal;
+import com.powsybl.iidm.network.ThreeSides;
+import com.powsybl.iidm.network.ThreeWindingsTransformer;
+import com.powsybl.iidm.network.TieLine;
+import com.powsybl.iidm.network.TwoWindingsTransformer;
+import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.iidm.network.extensions.Coordinate;
+import com.powsybl.iidm.network.extensions.LinePosition;
+import com.powsybl.iidm.network.extensions.SubstationPosition;
+import com.powsybl.iidm.network.limitmodification.LimitsComputer;
+import com.powsybl.loadflow.LoadFlowResult;
+import com.powsybl.powsybldesktop.contingency.ContingencyNames;
+import com.powsybl.powsybldesktop.diagram.BaseVoltages;
+import com.powsybl.powsybldesktop.limitscaling.LimitScalings;
+import com.powsybl.powsybldesktop.network.edit.PositionEdits;
+import com.powsybl.powsybldesktop.parameters.MapViolationLayer;
+import com.powsybl.powsybldesktop.violations.FlowViolation;
+import com.powsybl.powsybldesktop.violations.Loading;
+import com.powsybl.powsybldesktop.violations.NetworkViolations;
+import com.powsybl.powsybldesktop.violations.VoltageViolation;
+import com.powsybl.security.PostContingencyComputationStatus;
+import com.powsybl.security.SecurityAnalysisResult;
+import com.powsybl.security.limitscaling.LimitScaling;
+import com.powsybl.security.results.PostContingencyResult;
+
+import java.awt.Color;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.BinaryOperator;
+import java.util.function.DoubleFunction;
+
+/**
+ * An immutable snapshot of what the Map view draws, built off the FX thread from a {@link Network}, and read
+ * concurrently by the tile rendering threads ({@link MapTileRenderer}) and the FX thread (hit-testing).
+ * <p>
+ * Positions are Leaflet's EPSG:3857 pixel coordinates at zoom 0, where the world is {@value #WORLD_SIZE} pixels
+ * wide: at zoom z, a pixel position is that times 2^z. Line {@code i}'s points are {@code lineStart[i]} (inclusive)
+ * to {@code lineStart[i + 1]} (exclusive), its bounds {@code lineBounds[4 * i]} to {@code [4 * i + 3]} as min x,
+ * min y, max x, max y; {@code substationColor}/{@code lineColor} index {@code colors}; base voltages are the
+ * {@code BaseVoltagesConfig} names, null outside all ranges.
+ *
+ * @param lineImplied whether a line has no route of its own, drawn straight between its two substations instead
+ * @param lineOverloaded whether a line has base case flow violations
+ * @param lineStartChevrons the flow chevrons at a line's first point: how many, positive when they point along its
+ *                          points, negative against them, 0 for none
+ * @param lineEndChevrons the same at a line's last point
+ * @param grid null when there is nothing to draw
+ * @param substationSpacing median distance from a substation to its nearest neighbour, infinite with fewer than
+ *                          two distinct positions
+ * @param unplacedSubstations the substations without position, by name
+ * @param unroutedCount how many lines and tie lines {@link PositionEdits#createStraightRoutes} would give a route to
+ * @param violationMarkers the drawn substations and lines with limit violations, by id
+ * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
+ */
+public record MapNetworkData(List<Color> colors,
+                      String[] substationIds, String[] substationTexts, String[] substationBaseVoltages,
+                      double[] substationX, double[] substationY, int[] substationColor,
+                      String[] lineIds, String[] lineTexts, String[] lineBaseVoltages, int[] lineColor,
+                      boolean[] lineDisconnected, boolean[] lineImplied, boolean[] lineOverloaded,
+                      byte[] lineStartChevrons, byte[] lineEndChevrons, int[] lineStart, double[] lineBounds,
+                      double[] pointX, double[] pointY, int[] pointLine,
+                      Grid grid, double substationSpacing,
+                      List<UnplacedSubstation> unplacedSubstations, int unroutedCount,
+                      Map<String, ViolationMarker> violationMarkers) {
+
+    static final String DEFAULT_LINE_COLOR = "#616161";
+    static final double WORLD_SIZE = 256;
+    static final double LINE_WEIGHT = 2;
+    /** Flows shown, an overloaded line is highlighted this wide. */
+    static final double OVERLOADED_LINE_WEIGHT = 6;
+    /** One flow chevron per started quarter of the permanent limit, a single one without limits. */
+    static final double CHEVRON_LOADING_STEP = 25;
+    static final int MAX_CHEVRONS = 4;
+
+    /** Warning bubble radius, in pixels: a disc above what it marks, its tail pointing at it. */
+    static final double BUBBLE_RADIUS = 7;
+    /** Pixels from what a bubble marks (a substation's position, a line's middle) up to the bubble's center. */
+    static final double BUBBLE_OFFSET = 13;
+    /** Pixels around a bubble that still hit it. */
+    private static final double BUBBLE_CLICK_TOLERANCE = 2;
+
+    /** Leaflet's {@code L.Projection.SphericalMercator.MAX_LATITUDE}. */
+    private static final double MAX_LATITUDE = 85.0511287798;
+    /**
+     * Substation markers are sized to this times the on-screen {@code substationSpacing}, within
+     * {@link #SUBSTATION_MIN_SIZE} and {@link #SUBSTATION_MAX_SIZE} pixels, so a sparse view gets big markers and a
+     * dense one small markers that don't pile up.
+     */
+    private static final double SUBSTATION_SPACING_FACTOR = 0.5;
+    private static final int SUBSTATION_MIN_SIZE = 2;
+    private static final int SUBSTATION_MAX_SIZE = 12;
+    /** Pixels around a substation marker that still hit it. */
+    private static final double SUBSTATION_CLICK_TOLERANCE = 5;
+    /** Pixels around a line's stroke that still hit it: the stroke alone is too thin to aim at. */
+    private static final double LINE_CLICK_TOLERANCE = 4;
+    private static final double LINE_HIT_DISTANCE = LINE_WEIGHT / 2 + LINE_CLICK_TOLERANCE;
+    private static final double OVERLOADED_LINE_HIT_DISTANCE = OVERLOADED_LINE_WEIGHT / 2 + LINE_CLICK_TOLERANCE;
+    /** The grid has this many cells along each axis. */
+    private static final int GRID_SIZE = 128;
+    /** Nearest neighbour distances are measured on at most this many substations, enough for a median. */
+    private static final int SPACING_SAMPLE_SIZE = 1000;
+    /** A substation found by a search is shown with this many of its nearest neighbours around it. */
+    private static final int NEIGHBOURHOOD_SIZE = 5;
+    /** Keeps the farthest of those neighbours off the view's edge. */
+    private static final double NEIGHBOURHOOD_MARGIN = 1.2;
+
+    /**
+     * Uniform grid over all substations and line points: cell {@code c} lists {@code items[cellStart[c]]} to
+     * {@code items[cellStart[c + 1] - 1]}, the substations in it (their index, {@code >= 0}) and the line segments
+     * crossing its bounds (their start point index {@code k}, as {@code -(k + 1)}).
+     */
+    record Grid(double minX, double minY, double maxX, double maxY, double cellWidth, double cellHeight,
+                int[] cellStart, int[] items) {
+
+        int cellX(double x) {
+            return cell(x, minX, cellWidth);
+        }
+
+        int cellY(double y) {
+            return cell(y, minY, cellHeight);
+        }
+
+        int cellIndex(int cx, int cy) {
+            return cy * GRID_SIZE + cx;
+        }
+
+        boolean intersects(double x0, double y0, double x1, double y1) {
+            return x1 >= minX && x0 <= maxX && y1 >= minY && y0 <= maxY;
+        }
+
+        private static int cell(double coordinate, double min, double cellSize) {
+            return Math.clamp((long) Math.floor((coordinate - min) / cellSize), 0, GRID_SIZE - 1);
+        }
+    }
+
+    /**
+     * What the mouse is over, and where its tooltip goes: a substation's position, or halfway along a line.
+     *
+     * @param key identifies the element, to tell whether the hovered element changed
+     */
+    public record Hit(String key, boolean substation, String id, String text, double lat, double lng, boolean implied) {
+    }
+
+    /**
+     * A flow violation marked on a line or a substation.
+     *
+     * @param contingency the display name of the contingency it follows, null for a base case violation
+     * @param equipmentText the transformer's name or id for a substation, null for the line itself
+     */
+    public record MarkedFlowViolation(MapViolationLayer layer, String contingency, String equipmentText, FlowViolation violation) {
+    }
+
+    /**
+     * A voltage violation marked on its voltage level's substation.
+     *
+     * @param contingency the display name of the contingency it follows, null for a base case violation
+     */
+    public record MarkedVoltageViolation(MapViolationLayer layer, String contingency, String voltageLevelText, VoltageViolation violation) {
+    }
+
+    /**
+     * The warning bubble of a drawn substation ({@code element} indexes {@code substationIds}) or line ({@code element}
+     * indexes {@code lineIds}, the first part of a tie line drawn from its two halves), above {@code x}, {@code y}: the
+     * substation's position or the line's middle. Each list is sorted base case first, then most severe first.
+     */
+    public record ViolationMarker(boolean substation, int element, double x, double y, String baseVoltage,
+                                  List<MarkedFlowViolation> flowViolations, List<MarkedVoltageViolation> voltageViolations) {
+
+        public boolean isShown(Set<MapViolationLayer> shownLayers) {
+            return flowViolations.stream().anyMatch(v -> shownLayers.contains(v.layer()))
+                    || voltageViolations.stream().anyMatch(v -> shownLayers.contains(v.layer()));
+        }
+
+        /**
+         * Whether some of its shown violations are base case ones, rather than only contingency ones.
+         */
+        public boolean hasShownBaseCase(Set<MapViolationLayer> shownLayers) {
+            return flowViolations.stream().anyMatch(v -> !v.layer().isContingency() && shownLayers.contains(v.layer()))
+                    || voltageViolations.stream().anyMatch(v -> !v.layer().isContingency() && shownLayers.contains(v.layer()));
+        }
+    }
+
+    private record MarkedViolations(List<MarkedFlowViolation> flowViolations, List<MarkedVoltageViolation> voltageViolations) {
+        MarkedViolations() {
+            this(new ArrayList<>(), new ArrayList<>());
+        }
+    }
+
+    public record UnplacedSubstation(String id, String text) {
+        @Override
+        public String toString() {
+            return text;
+        }
+    }
+
+    private record MarkerData(String id, double x, double y, String text, String baseVoltage, String color) {
+    }
+
+    /**
+     * @param points projected coordinates, x and y interleaved
+     */
+    private record LineData(String id, double[] points, String text, String baseVoltage, String color, boolean disconnected,
+                            boolean implied, boolean overloaded, int[] chevrons) {
+    }
+
+    /**
+     * A drawn line's end: the active power entering the line there, and the base case loading of a side of the
+     * equipment shown.
+     *
+     * @param voltageLevel the voltage level at a substation end, null at a boundary point
+     */
+    private record FlowEnd(VoltageLevel voltageLevel, double p, double loading) {
+
+        static FlowEnd of(NetworkViolations violations, Identifiable<?> shown, ThreeSides side, Terminal terminal) {
+            return of(violations, shown, side, terminal.getVoltageLevel(), terminal.getP());
+        }
+
+        /**
+         * A boundary line's boundary point, its loading that of its terminal's side: limits apply there only.
+         */
+        static FlowEnd ofBoundary(NetworkViolations violations, Identifiable<?> shown, ThreeSides side, BoundaryLine boundaryLine) {
+            return of(violations, shown, side, null, boundaryLine.getBoundary().getP());
+        }
+
+        private static FlowEnd of(NetworkViolations violations, Identifiable<?> shown, ThreeSides side, VoltageLevel voltageLevel, double p) {
+            Loading loading = violations.getLoading(shown.getId(), side);
+            return new FlowEnd(voltageLevel, p, loading == null ? Double.NaN : loading.percent());
+        }
+
+        // a positive P enters the line, so its chevrons point away from this end
+        int chevrons(boolean atStart) {
+            if (Double.isNaN(p) || p == 0) {
+                return 0;
+            }
+            int count = Double.isNaN(loading) ? 1 : (int) Math.clamp(Math.floor(loading / CHEVRON_LOADING_STEP) + 1, 1, MAX_CHEVRONS);
+            return (p > 0) == atStart ? count : -count;
+        }
+    }
+
+    /**
+     * What is shown of a drawn line's flow: whether the equipment shown is overloaded in the base case, and the ends of
+     * its route, {@code end1} at a substation, {@code end2} at a substation or a boundary point.
+     */
+    private record Flow(boolean overloaded, FlowEnd end1, FlowEnd end2) {
+
+        static Flow of(NetworkViolations violations, Identifiable<?> shown, FlowEnd end1, FlowEnd end2) {
+            Loading loading = violations.getLoading(shown.getId());
+            return new Flow(loading != null && loading.isViolated(), end1, end2);
+        }
+
+        /**
+         * The chevrons at the route's first and last points. A route isn't guaranteed to start at end 1: which end is
+         * which is found from the substations' positions (end 1's only, for a route ending at a boundary point), and
+         * there are no chevrons when it can't be: a substation without position, both substations at the same
+         * position, or route ends as near one as the other.
+         */
+        int[] chevrons(double[] points) {
+            boolean toBoundary = end2.voltageLevel() == null;
+            Coordinate from = PositionEdits.substationCoordinate(end1.voltageLevel()).orElse(null);
+            Coordinate to = toBoundary ? null : PositionEdits.substationCoordinate(end2.voltageLevel()).orElse(null);
+            if (from == null || !toBoundary && (to == null || to.equals(from))) {
+                return new int[] {0, 0};
+            }
+            int last = points.length - 2;
+            double forward = distance(points[0], points[1], from);
+            double backward = distance(points[last], points[last + 1], from);
+            if (to != null) {
+                forward += distance(points[last], points[last + 1], to);
+                backward += distance(points[0], points[1], to);
+            }
+            if (forward == backward) {
+                return new int[] {0, 0};
+            }
+            FlowEnd first = forward < backward ? end1 : end2;
+            FlowEnd second = forward < backward ? end2 : end1;
+            return new int[] {first.chevrons(true), second.chevrons(false)};
+        }
+
+        private static double distance(double x, double y, Coordinate coordinate) {
+            return Math.hypot(x - projectX(coordinate.getLongitude()), y - projectY(coordinate.getLatitude()));
+        }
+    }
+
+    private interface GridItemConsumer {
+        void accept(int item, int cell);
+    }
+
+    /**
+     * Lines, tie lines and boundary lines are drawn alike: the CGMES geographical layout import puts a tie line's
+     * positions on its two boundary line halves, which are then drawn as, and navigate to, that tie line. A
+     * substation takes its highest voltage level nominal voltage, a line the highest of its two ends.
+     *
+     * A drawn line's flow is shown at each of its ends at a substation, from that side's active power and base case
+     * loading; its overload is the base case one of the line, tie line or unpaired boundary line it shows. Loadings
+     * and overloads come from the cached violations.
+     *
+     * Base case and contingency violations are marked on their line, tie line or unpaired boundary line, transformer
+     * ones on its substation, voltage ones on their voltage level's substation. A security analysis whose
+     * pre-contingency load flow failed has no contingency violations, nor has a contingency whose computation failed,
+     * as in the Security Analysis Results view.
+     *
+     * @param violations the network's cached base case violations
+     * @param securityAnalysisResult the network's last security analysis result, null for none
+     * @param securityAnalysisLimitScalings the limit scalings that security analysis was run with
+     * @param color the color of a base voltage, or the given default color for a null one
+     */
+    public static MapNetworkData build(Network network, NetworkViolations violations, SecurityAnalysisResult securityAnalysisResult,
+                                       List<LimitScaling> securityAnalysisLimitScalings, DoubleFunction<String> baseVoltageName, BinaryOperator<String> color) {
+        List<MarkerData> substations = new ArrayList<>();
+        List<LineData> lines = new ArrayList<>();
+        List<UnplacedSubstation> unplaced = new ArrayList<>();
+        Map<String, MarkedViolations> markedViolations = new LinkedHashMap<>();
+        int unroutedCount = 0;
+        if (network != null) {
+            network.getSubstationStream().forEach(substation -> {
+                SubstationPosition position = substation.getExtension(SubstationPosition.class);
+                if (position == null) {
+                    unplaced.add(new UnplacedSubstation(substation.getId(), substation.getNameOrId()));
+                } else {
+                    String baseVoltage = baseVoltageName.apply(substation.getVoltageLevelStream()
+                            .mapToDouble(VoltageLevel::getNominalV).max().orElse(Double.NaN));
+                    substations.add(new MarkerData(substation.getId(),
+                            projectX(position.getCoordinate().getLongitude()), projectY(position.getCoordinate().getLatitude()),
+                            substation.getNameOrId(), baseVoltage, color.apply(baseVoltage, BaseVoltages.DEFAULT_SUBSTATION_COLOR)));
+                }
+            });
+            network.getLineStream().forEach(line -> {
+                double nominalV = Math.max(line.getTerminal1().getVoltageLevel().getNominalV(), line.getTerminal2().getVoltageLevel().getNominalV());
+                boolean disconnected = !line.getTerminal1().isConnected() || !line.getTerminal2().isConnected();
+                Flow flow = Flow.of(violations, line, FlowEnd.of(violations, line, ThreeSides.ONE, line.getTerminal1()),
+                        FlowEnd.of(violations, line, ThreeSides.TWO, line.getTerminal2()));
+                if (!addLine(lines, line, line, nominalV, disconnected, flow, baseVoltageName, color)) {
+                    addImpliedLine(lines, line, line.getTerminal1().getVoltageLevel(), line.getTerminal2().getVoltageLevel(), nominalV,
+                            disconnected, flow, baseVoltageName, color);
+                }
+            });
+            network.getTieLineStream().forEach(tieLine -> {
+                Flow flow = Flow.of(violations, tieLine, FlowEnd.of(violations, tieLine, ThreeSides.ONE, tieLine.getTerminal1()),
+                        FlowEnd.of(violations, tieLine, ThreeSides.TWO, tieLine.getTerminal2()));
+                if (!addLine(lines, tieLine, tieLine, nominalV(tieLine), isDisconnected(tieLine), flow, baseVoltageName, color)
+                        && PositionEdits.route(tieLine.getBoundaryLine1()).isEmpty() && PositionEdits.route(tieLine.getBoundaryLine2()).isEmpty()) {
+                    addImpliedLine(lines, tieLine, tieLine.getBoundaryLine1().getTerminal().getVoltageLevel(),
+                            tieLine.getBoundaryLine2().getTerminal().getVoltageLevel(), nominalV(tieLine), isDisconnected(tieLine),
+                            flow, baseVoltageName, color);
+                }
+            });
+            network.getBoundaryLineStream().forEach(boundaryLine -> {
+                TieLine tieLine = boundaryLine.getTieLine().orElse(null);
+                if (tieLine == null) {
+                    addLine(lines, boundaryLine, boundaryLine, boundaryLine.getTerminal().getVoltageLevel().getNominalV(),
+                            !boundaryLine.getTerminal().isConnected(),
+                            Flow.of(violations, boundaryLine, FlowEnd.of(violations, boundaryLine, ThreeSides.ONE, boundaryLine.getTerminal()),
+                                    FlowEnd.ofBoundary(violations, boundaryLine, ThreeSides.ONE, boundaryLine)),
+                            baseVoltageName, color);
+                } else if (tieLine.getExtension(LinePosition.class) == null) {
+                    ThreeSides side = tieLine.getBoundaryLine1() == boundaryLine ? ThreeSides.ONE : ThreeSides.TWO;
+                    addLine(lines, boundaryLine, tieLine, nominalV(tieLine), isDisconnected(tieLine),
+                            Flow.of(violations, tieLine, FlowEnd.of(violations, tieLine, side, boundaryLine.getTerminal()),
+                                    FlowEnd.ofBoundary(violations, tieLine, side, boundaryLine)),
+                            baseVoltageName, color);
+                }
+            });
+            unplaced.sort(Comparator.comparing(UnplacedSubstation::text, String.CASE_INSENSITIVE_ORDER));
+            unroutedCount = PositionEdits.unroutedCount(network);
+            markViolations(network, violations, markedViolations);
+            markContingencyViolations(network, securityAnalysisResult, securityAnalysisLimitScalings, markedViolations);
+            markedViolations.values().forEach(m -> {
+                m.flowViolations().sort(Comparator.comparing((MarkedFlowViolation v) -> v.contingency() != null)
+                        .thenComparing(MarkedFlowViolation::violation, FlowViolation.SEVERITY));
+                m.voltageViolations().sort(Comparator.comparing((MarkedVoltageViolation v) -> v.contingency() != null)
+                        .thenComparing(MarkedVoltageViolation::violation, VoltageViolation.SEVERITY));
+            });
+        }
+        return pack(substations, lines, List.copyOf(unplaced), unroutedCount, markedViolations);
+    }
+
+    // keyed by the id of the line or substation marked; the cache may hold equipment no longer in the network, skipped
+    private static void markViolations(Network network, NetworkViolations violations, Map<String, MarkedViolations> marked) {
+        violations.getFlowViolations().forEach((id, flowViolations) -> flowViolations.forEach(v ->
+                markFlowViolation(network, MapViolationLayer.BASE_CASE_FLOW, null, v, marked)));
+        violations.getVoltageViolations().forEach(v -> markVoltageViolation(network, MapViolationLayer.BASE_CASE_VOLTAGE, null, v, marked));
+    }
+
+    private static void markContingencyViolations(Network network, SecurityAnalysisResult result, List<LimitScaling> limitScalings,
+                                                  Map<String, MarkedViolations> marked) {
+        if (result == null || result.getPreContingencyResult().getStatus() != LoadFlowResult.ComponentResult.Status.CONVERGED) {
+            return;
+        }
+        for (PostContingencyResult postContingencyResult : result.getPostContingencyResults()) {
+            PostContingencyComputationStatus status = postContingencyResult.getStatus();
+            if (status != PostContingencyComputationStatus.CONVERGED && status != PostContingencyComputationStatus.NO_IMPACT) {
+                continue;
+            }
+            String contingency = ContingencyNames.displayName(postContingencyResult.getContingency(), network);
+            LimitsComputer<Identifiable<?>, LoadingLimits> limits = LimitScalings.limitsComputer(limitScalings, postContingencyResult.getContingency().getId());
+            for (LimitViolation violation : postContingencyResult.getLimitViolationsResult().getLimitViolations()) {
+                switch (violation.getLimitType()) {
+                    case CURRENT, ACTIVE_POWER, APPARENT_POWER -> markFlowViolation(network, MapViolationLayer.CONTINGENCY_FLOW, contingency,
+                            FlowViolation.of(violation, network, limits), marked);
+                    case LOW_VOLTAGE, HIGH_VOLTAGE -> {
+                        VoltageViolation voltageViolation = VoltageViolation.of(violation, network);
+                        if (voltageViolation != null) {
+                            markVoltageViolation(network, MapViolationLayer.CONTINGENCY_VOLTAGE, contingency, voltageViolation, marked);
+                        }
+                    }
+                    default -> {
+                        // voltage angle, short-circuit current and other limit violations are out of scope
+                    }
+                }
+            }
+        }
+    }
+
+    private static void markFlowViolation(Network network, MapViolationLayer layer, String contingency, FlowViolation violation,
+                                          Map<String, MarkedViolations> marked) {
+        String id = violation.violation().getSubjectId();
+        Identifiable<?> equipment = network.getIdentifiable(id);
+        String markedId = switch (equipment) {
+            case Line _, TieLine _, BoundaryLine _ -> id;
+            case TwoWindingsTransformer transformer -> transformer.getSubstation().map(Substation::getId).orElse(null);
+            case ThreeWindingsTransformer transformer -> transformer.getSubstation().map(Substation::getId).orElse(null);
+            case null, default -> null;
+        };
+        if (markedId != null) {
+            String equipmentText = markedId.equals(id) ? null : equipment.getNameOrId();
+            marked.computeIfAbsent(markedId, _ -> new MarkedViolations()).flowViolations()
+                    .add(new MarkedFlowViolation(layer, contingency, equipmentText, violation));
+        }
+    }
+
+    private static void markVoltageViolation(Network network, MapViolationLayer layer, String contingency, VoltageViolation violation,
+                                             Map<String, MarkedViolations> marked) {
+        VoltageLevel voltageLevel = network.getVoltageLevel(violation.violation().getSubjectId());
+        if (voltageLevel != null) {
+            voltageLevel.getSubstation().ifPresent(substation -> marked.computeIfAbsent(substation.getId(), _ -> new MarkedViolations())
+                    .voltageViolations().add(new MarkedVoltageViolation(layer, contingency, voltageLevel.getNameOrId(), violation)));
+        }
+    }
+
+    private static double nominalV(TieLine tieLine) {
+        return Math.max(tieLine.getBoundaryLine1().getTerminal().getVoltageLevel().getNominalV(),
+                tieLine.getBoundaryLine2().getTerminal().getVoltageLevel().getNominalV());
+    }
+
+    private static boolean isDisconnected(TieLine tieLine) {
+        return !tieLine.getBoundaryLine1().getTerminal().isConnected() || !tieLine.getBoundaryLine2().getTerminal().isConnected();
+    }
+
+    /**
+     * Adds {@code positioned}'s line position, if any, drawn as and navigating to {@code shown}: they differ for a
+     * tie line half.
+     *
+     * @return whether it has one
+     */
+    private static <T extends Identifiable<T>> boolean addLine(List<LineData> lines, T positioned, Identifiable<?> shown, double nominalV,
+                                                            boolean disconnected, Flow flow, DoubleFunction<String> baseVoltageName,
+                                                            BinaryOperator<String> color) {
+        LinePosition<T> position = positioned.getExtension(LinePosition.class);
+        if (position != null && !position.getCoordinates().isEmpty()) {
+            List<Coordinate> coordinates = position.getCoordinates();
+            double[] points = new double[coordinates.size() * 2];
+            for (int i = 0; i < coordinates.size(); i++) {
+                points[2 * i] = projectX(coordinates.get(i).getLongitude());
+                points[2 * i + 1] = projectY(coordinates.get(i).getLatitude());
+            }
+            String baseVoltage = baseVoltageName.apply(nominalV);
+            lines.add(new LineData(shown.getId(), points, shown.getNameOrId(), baseVoltage,
+                    color.apply(baseVoltage, DEFAULT_LINE_COLOR), disconnected, false, flow.overloaded(), flow.chevrons(points)));
+            return true;
+        }
+        return false;
+    }
+
+    // straight between the two ends' substations, if both have a position: voltage levels may have no substation
+    private static void addImpliedLine(List<LineData> lines, Identifiable<?> line, VoltageLevel end1, VoltageLevel end2, double nominalV,
+                                       boolean disconnected, Flow flow, DoubleFunction<String> baseVoltageName, BinaryOperator<String> color) {
+        Coordinate start = PositionEdits.substationCoordinate(end1).orElse(null);
+        Coordinate end = PositionEdits.substationCoordinate(end2).orElse(null);
+        if (start != null && end != null) {
+            double[] points = {projectX(start.getLongitude()), projectY(start.getLatitude()), projectX(end.getLongitude()), projectY(end.getLatitude())};
+            String baseVoltage = baseVoltageName.apply(nominalV);
+            lines.add(new LineData(line.getId(), points, line.getNameOrId(), baseVoltage,
+                    color.apply(baseVoltage, DEFAULT_LINE_COLOR), disconnected, true, flow.overloaded(), flow.chevrons(points)));
+        }
+    }
+
+    private static MapNetworkData pack(List<MarkerData> substations, List<LineData> lines, List<UnplacedSubstation> unplacedSubstations,
+                                       int unroutedCount, Map<String, MarkedViolations> markedViolations) {
+        List<Color> colors = new ArrayList<>();
+        Map<String, Integer> colorIndices = new HashMap<>();
+        int substationCount = substations.size();
+        String[] substationIds = new String[substationCount];
+        String[] substationTexts = new String[substationCount];
+        String[] substationBaseVoltages = new String[substationCount];
+        double[] substationX = new double[substationCount];
+        double[] substationY = new double[substationCount];
+        int[] substationColor = new int[substationCount];
+        for (int i = 0; i < substationCount; i++) {
+            MarkerData substation = substations.get(i);
+            substationIds[i] = substation.id();
+            substationTexts[i] = substation.text();
+            substationBaseVoltages[i] = substation.baseVoltage();
+            substationX[i] = substation.x();
+            substationY[i] = substation.y();
+            substationColor[i] = colorIndex(substation.color(), colors, colorIndices);
+        }
+
+        int lineCount = lines.size();
+        int pointCount = lines.stream().mapToInt(line -> line.points().length / 2).sum();
+        String[] lineIds = new String[lineCount];
+        String[] lineTexts = new String[lineCount];
+        String[] lineBaseVoltages = new String[lineCount];
+        int[] lineColor = new int[lineCount];
+        boolean[] lineDisconnected = new boolean[lineCount];
+        boolean[] lineImplied = new boolean[lineCount];
+        boolean[] lineOverloaded = new boolean[lineCount];
+        byte[] lineStartChevrons = new byte[lineCount];
+        byte[] lineEndChevrons = new byte[lineCount];
+        int[] lineStart = new int[lineCount + 1];
+        double[] lineBounds = new double[lineCount * 4];
+        double[] pointX = new double[pointCount];
+        double[] pointY = new double[pointCount];
+        int[] pointLine = new int[pointCount];
+        int k = 0;
+        for (int i = 0; i < lineCount; i++) {
+            LineData line = lines.get(i);
+            lineIds[i] = line.id();
+            lineTexts[i] = line.text();
+            lineBaseVoltages[i] = line.baseVoltage();
+            lineColor[i] = colorIndex(line.color(), colors, colorIndices);
+            lineDisconnected[i] = line.disconnected();
+            lineImplied[i] = line.implied();
+            lineOverloaded[i] = line.overloaded();
+            lineStartChevrons[i] = (byte) line.chevrons()[0];
+            lineEndChevrons[i] = (byte) line.chevrons()[1];
+            lineStart[i] = k;
+            double minX = Double.POSITIVE_INFINITY;
+            double minY = Double.POSITIVE_INFINITY;
+            double maxX = Double.NEGATIVE_INFINITY;
+            double maxY = Double.NEGATIVE_INFINITY;
+            for (int p = 0; p < line.points().length; p += 2) {
+                double x = line.points()[p];
+                double y = line.points()[p + 1];
+                pointX[k] = x;
+                pointY[k] = y;
+                pointLine[k] = i;
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x);
+                maxY = Math.max(maxY, y);
+                k++;
+            }
+            lineBounds[i * 4] = minX;
+            lineBounds[i * 4 + 1] = minY;
+            lineBounds[i * 4 + 2] = maxX;
+            lineBounds[i * 4 + 3] = maxY;
+        }
+        lineStart[lineCount] = k;
+        Grid grid = buildGrid(substationX, substationY, lineStart, pointX, pointY);
+        Map<String, ViolationMarker> violationMarkers = violationMarkers(markedViolations, substationIds, substationX, substationY,
+                substationBaseVoltages, lineIds, lineBaseVoltages, lineStart, pointX, pointY);
+        return new MapNetworkData(colors, substationIds, substationTexts, substationBaseVoltages, substationX, substationY,
+                substationColor, lineIds, lineTexts, lineBaseVoltages, lineColor, lineDisconnected, lineImplied, lineOverloaded,
+                lineStartChevrons, lineEndChevrons, lineStart, lineBounds,
+                pointX, pointY, pointLine, grid, substationSpacing(grid, substationX, substationY), unplacedSubstations, unroutedCount,
+                violationMarkers);
+    }
+
+    // only for what is drawn
+    private static Map<String, ViolationMarker> violationMarkers(Map<String, MarkedViolations> markedViolations,
+                                                                 String[] substationIds, double[] substationX, double[] substationY,
+                                                                 String[] substationBaseVoltages, String[] lineIds, String[] lineBaseVoltages,
+                                                                 int[] lineStart, double[] pointX, double[] pointY) {
+        if (markedViolations.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Integer> substationIndices = new HashMap<>();
+        for (int i = 0; i < substationIds.length; i++) {
+            substationIndices.put(substationIds[i], i);
+        }
+        Map<String, List<Integer>> lineIndices = new HashMap<>();
+        for (int i = 0; i < lineIds.length; i++) {
+            lineIndices.computeIfAbsent(lineIds[i], _ -> new ArrayList<>()).add(i);
+        }
+        Map<String, ViolationMarker> markers = new HashMap<>();
+        markedViolations.forEach((id, marked) -> {
+            List<MarkedFlowViolation> flows = List.copyOf(marked.flowViolations());
+            List<MarkedVoltageViolation> voltages = List.copyOf(marked.voltageViolations());
+            Integer substation = substationIndices.get(id);
+            List<Integer> lines = lineIndices.get(id);
+            if (substation != null) {
+                markers.put(id, new ViolationMarker(true, substation, substationX[substation], substationY[substation],
+                        substationBaseVoltages[substation], flows, voltages));
+            } else if (lines != null) {
+                double[] middle = lineMiddle(lines, lineStart, pointX, pointY);
+                markers.put(id, new ViolationMarker(false, lines.getFirst(), middle[0], middle[1], lineBaseVoltages[lines.getFirst()],
+                        flows, voltages));
+            }
+        });
+        return Map.copyOf(markers);
+    }
+
+    private static int colorIndex(String color, List<Color> colors, Map<String, Integer> colorIndices) {
+        return colorIndices.computeIfAbsent(color, c -> {
+            colors.add(Color.decode(c));
+            return colors.size() - 1;
+        });
+    }
+
+    private static Grid buildGrid(double[] substationX, double[] substationY, int[] lineStart, double[] pointX, double[] pointY) {
+        double minX = Double.POSITIVE_INFINITY;
+        double minY = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+        for (int i = 0; i < substationX.length; i++) {
+            minX = Math.min(minX, substationX[i]);
+            minY = Math.min(minY, substationY[i]);
+            maxX = Math.max(maxX, substationX[i]);
+            maxY = Math.max(maxY, substationY[i]);
+        }
+        for (int k = 0; k < pointX.length; k++) {
+            minX = Math.min(minX, pointX[k]);
+            minY = Math.min(minY, pointY[k]);
+            maxX = Math.max(maxX, pointX[k]);
+            maxY = Math.max(maxY, pointY[k]);
+        }
+        if (minX == Double.POSITIVE_INFINITY) {
+            return null;
+        }
+        Grid bounds = new Grid(minX, minY, maxX, maxY,
+                Math.max((maxX - minX) / GRID_SIZE, 1e-9), Math.max((maxY - minY) / GRID_SIZE, 1e-9), null, null);
+        // cells as one flat item array: a first pass counts each cell's items, a second one fills them in
+        int[] cellStart = new int[GRID_SIZE * GRID_SIZE + 1];
+        forEachGridItem(bounds, substationX, substationY, lineStart, pointX, pointY, (_, cell) -> cellStart[cell + 1]++);
+        for (int cell = 0; cell < GRID_SIZE * GRID_SIZE; cell++) {
+            cellStart[cell + 1] += cellStart[cell];
+        }
+        int[] items = new int[cellStart[GRID_SIZE * GRID_SIZE]];
+        int[] cursor = Arrays.copyOf(cellStart, GRID_SIZE * GRID_SIZE);
+        forEachGridItem(bounds, substationX, substationY, lineStart, pointX, pointY, (item, cell) -> items[cursor[cell]++] = item);
+        return new Grid(minX, minY, maxX, maxY, bounds.cellWidth(), bounds.cellHeight(), cellStart, items);
+    }
+
+    private static void forEachGridItem(Grid grid, double[] substationX, double[] substationY, int[] lineStart,
+                                        double[] pointX, double[] pointY, GridItemConsumer consumer) {
+        for (int i = 0; i < substationX.length; i++) {
+            forEachCell(grid, i, substationX[i], substationY[i], substationX[i], substationY[i], consumer);
+        }
+        for (int line = 0; line + 1 < lineStart.length; line++) {
+            for (int k = lineStart[line]; k < lineStart[line + 1] - 1; k++) {
+                forEachCell(grid, -(k + 1),
+                        Math.min(pointX[k], pointX[k + 1]), Math.min(pointY[k], pointY[k + 1]),
+                        Math.max(pointX[k], pointX[k + 1]), Math.max(pointY[k], pointY[k + 1]), consumer);
+            }
+        }
+    }
+
+    private static void forEachCell(Grid grid, int item, double x0, double y0, double x1, double y1, GridItemConsumer consumer) {
+        for (int cy = grid.cellY(y0); cy <= grid.cellY(y1); cy++) {
+            for (int cx = grid.cellX(x0); cx <= grid.cellX(x1); cx++) {
+                consumer.accept(item, grid.cellIndex(cx, cy));
+            }
+        }
+    }
+
+    private static double substationSpacing(Grid grid, double[] substationX, double[] substationY) {
+        if (grid == null || substationX.length < 2) {
+            return Double.POSITIVE_INFINITY;
+        }
+        int step = Math.max(1, substationX.length / SPACING_SAMPLE_SIZE);
+        List<Double> distances = new ArrayList<>();
+        for (int i = 0; i < substationX.length; i += step) {
+            double squaredDistance = nearestSquaredDistance(grid, substationX, substationY, i);
+            if (squaredDistance < Double.POSITIVE_INFINITY) {
+                distances.add(Math.sqrt(squaredDistance));
+            }
+        }
+        if (distances.isEmpty()) {
+            return Double.POSITIVE_INFINITY;
+        }
+        Collections.sort(distances);
+        return distances.get(distances.size() / 2);
+    }
+
+    /**
+     * Searched through the grid ring by ring around substation {@code i}: a substation in ring r + 1 or beyond is
+     * at least r cells away, so the search stops once the best distance is below that. Substations sharing a
+     * position are skipped, they don't make the view any denser.
+     */
+    private static double nearestSquaredDistance(Grid grid, double[] substationX, double[] substationY, int i) {
+        double x = substationX[i];
+        double y = substationY[i];
+        int cx = grid.cellX(x);
+        int cy = grid.cellY(y);
+        double cellSize = Math.min(grid.cellWidth(), grid.cellHeight());
+        double best = Double.POSITIVE_INFINITY;
+        for (int r = 0; r < GRID_SIZE && best > (r - 1) * cellSize * (r - 1) * cellSize; r++) {
+            for (int gy = Math.max(0, cy - r); gy <= Math.min(GRID_SIZE - 1, cy + r); gy++) {
+                for (int gx = Math.max(0, cx - r); gx <= Math.min(GRID_SIZE - 1, cx + r); gx++) {
+                    if (Math.max(Math.abs(gx - cx), Math.abs(gy - cy)) == r) {
+                        best = Math.min(best, nearestSquaredDistanceInCell(grid, substationX, substationY, x, y, grid.cellIndex(gx, gy)));
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    private static double nearestSquaredDistanceInCell(Grid grid, double[] substationX, double[] substationY,
+                                                       double x, double y, int cell) {
+        double best = Double.POSITIVE_INFINITY;
+        for (int j = grid.cellStart()[cell]; j < grid.cellStart()[cell + 1]; j++) {
+            int item = grid.items()[j];
+            if (item >= 0) {
+                double dx = substationX[item] - x;
+                double dy = substationY[item] - y;
+                double distance = dx * dx + dy * dy;
+                if (distance > 0 && distance < best) {
+                    best = distance;
+                }
+            }
+        }
+        return best;
+    }
+
+    // Leaflet's EPSG:3857 (L.CRS.EPSG3857.latLngToPoint) at zoom 0
+    static double projectX(double longitude) {
+        return WORLD_SIZE * (longitude / 360 + 0.5);
+    }
+
+    static double projectY(double latitude) {
+        double sin = Math.sin(Math.toRadians(Math.clamp(latitude, -MAX_LATITUDE, MAX_LATITUDE)));
+        return WORLD_SIZE * (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI));
+    }
+
+    static double unprojectLongitude(double x) {
+        return (x / WORLD_SIZE - 0.5) * 360;
+    }
+
+    static double unprojectLatitude(double y) {
+        return Math.toDegrees(Math.asin(Math.tanh(2 * Math.PI * (0.5 - y / WORLD_SIZE))));
+    }
+
+    // a substation without voltage level, or a nominal voltage outside the base voltages, has a null base voltage:
+    // never hidden, and immutable sets throw on contains(null)
+    static boolean isHidden(Set<String> hiddenBaseVoltages, String baseVoltage) {
+        return baseVoltage != null && hiddenBaseVoltages.contains(baseVoltage);
+    }
+
+    /**
+     * Substation marker size in whole pixels at a zoom of the given {@code scale} (2^zoom), so zooming only ever
+     * produces a handful of sizes.
+     */
+    int substationSize(double scale) {
+        return (int) Math.clamp(Math.round(substationSpacing * scale * SUBSTATION_SPACING_FACTOR), SUBSTATION_MIN_SIZE, SUBSTATION_MAX_SIZE);
+    }
+
+    /**
+     * South, west, north and east of everything drawn, null when there is nothing to draw.
+     */
+    public double[] latLngBounds() {
+        return grid == null ? null : latLngBounds(grid.minX(), grid.minY(), grid.maxX(), grid.maxY());
+    }
+
+    /**
+     * South, west, north and east of the square centered on substation {@code id} that holds its
+     * {@value #NEIGHBOURHOOD_SIZE} nearest neighbours, so they're shown around it; a single point when it has none,
+     * null when it isn't drawn.
+     */
+    public double[] substationNeighbourhoodLatLngBounds(String id) {
+        int index = Arrays.asList(substationIds).indexOf(id);
+        if (index < 0) {
+            return null;
+        }
+        double x = substationX[index];
+        double y = substationY[index];
+        // the NEIGHBOURHOOD_SIZE smallest squared distances, ascending
+        double[] nearest = new double[NEIGHBOURHOOD_SIZE];
+        Arrays.fill(nearest, Double.POSITIVE_INFINITY);
+        for (int i = 0; i < substationX.length; i++) {
+            double dx = substationX[i] - x;
+            double dy = substationY[i] - y;
+            double distance = dx * dx + dy * dy;
+            // substations sharing its position are no neighbours: they'd all be shown at the same place
+            if (distance > 0 && distance < nearest[NEIGHBOURHOOD_SIZE - 1]) {
+                int k = NEIGHBOURHOOD_SIZE - 1;
+                while (k > 0 && nearest[k - 1] > distance) {
+                    nearest[k] = nearest[k - 1];
+                    k--;
+                }
+                nearest[k] = distance;
+            }
+        }
+        double farthest = 0;
+        for (double distance : nearest) {
+            if (distance < Double.POSITIVE_INFINITY) {
+                farthest = distance;
+            }
+        }
+        double halfSize = Math.sqrt(farthest) * NEIGHBOURHOOD_MARGIN;
+        return latLngBounds(x - halfSize, y - halfSize, x + halfSize, y + halfSize);
+    }
+
+    /**
+     * South, west, north and east of line, tie line or boundary line {@code id}, both halves of a tie line drawn
+     * from its boundary lines included, null when it isn't drawn.
+     */
+    public double[] lineLatLngBounds(String id) {
+        double minX = Double.POSITIVE_INFINITY;
+        double minY = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+        for (int i = 0; i < lineIds.length; i++) {
+            if (lineIds[i].equals(id)) {
+                minX = Math.min(minX, lineBounds[i * 4]);
+                minY = Math.min(minY, lineBounds[i * 4 + 1]);
+                maxX = Math.max(maxX, lineBounds[i * 4 + 2]);
+                maxY = Math.max(maxY, lineBounds[i * 4 + 3]);
+            }
+        }
+        return minX == Double.POSITIVE_INFINITY ? null : latLngBounds(minX, minY, maxX, maxY);
+    }
+
+    /**
+     * South, west, north and east of those of substations {@code ids} that are drawn, null for none.
+     */
+    public double[] substationsLatLngBounds(Set<String> ids) {
+        double minX = Double.POSITIVE_INFINITY;
+        double minY = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+        for (int i = 0; i < substationIds.length; i++) {
+            if (ids.contains(substationIds[i])) {
+                minX = Math.min(minX, substationX[i]);
+                minY = Math.min(minY, substationY[i]);
+                maxX = Math.max(maxX, substationX[i]);
+                maxY = Math.max(maxY, substationY[i]);
+            }
+        }
+        return minX == Double.POSITIVE_INFINITY ? null : latLngBounds(minX, minY, maxX, maxY);
+    }
+
+    /**
+     * Latitude and longitude of substation {@code id}, null when it isn't drawn.
+     */
+    public double[] substationLatLng(String id) {
+        int index = Arrays.asList(substationIds).indexOf(id);
+        return index < 0 ? null : new double[] {unprojectLatitude(substationY[index]), unprojectLongitude(substationX[index])};
+    }
+
+    /**
+     * Latitude and longitude halfway along line, tie line or boundary line {@code id}, both halves of a tie line
+     * drawn from its boundary lines included, null when it isn't drawn.
+     */
+    public double[] lineMiddleLatLng(String id) {
+        List<Integer> lines = new ArrayList<>();
+        for (int i = 0; i < lineIds.length; i++) {
+            if (lineIds[i].equals(id)) {
+                lines.add(i);
+            }
+        }
+        if (lines.isEmpty()) {
+            return null;
+        }
+        double[] middle = lineMiddle(lines);
+        return new double[] {unprojectLatitude(middle[1]), unprojectLongitude(middle[0])};
+    }
+
+    private static double[] latLngBounds(double minX, double minY, double maxX, double maxY) {
+        // y grows southwards
+        return new double[] {unprojectLatitude(maxY), unprojectLongitude(minX), unprojectLatitude(minY), unprojectLongitude(maxX)};
+    }
+
+    /**
+     * Substations win over lines, as they're drawn on top; among each kind the closest one wins. Elements of a
+     * hidden base voltage aren't hit. Flows shown, overloaded lines are hit as wide as they're highlighted.
+     * <p>
+     * At a fractional {@code zoom}, Leaflet shows the tiles of the rounded zoom level scaled, markers and lines
+     * included, so the hit distances are those of that level, scaled the same.
+     */
+    public Hit hitTest(double latitude, double longitude, double zoom, Set<String> hiddenBaseVoltages,
+                       Set<MapViolationLayer> shownViolations, boolean showFlows) {
+        if (grid == null) {
+            return null;
+        }
+        double px = projectX(longitude);
+        double py = projectY(latitude);
+        double scale = Math.pow(2, zoom);
+        double tileScale = Math.pow(2, Math.round(zoom));
+        double displayScale = scale / tileScale;
+        ViolationMarker bubble = bubbleAt(px, py, tileScale, displayScale, hiddenBaseVoltages, shownViolations);
+        if (bubble != null) {
+            return bubble.substation() ? substationHit(bubble.element()) : lineHit(bubble.element());
+        }
+        double substationLimit = (substationSize(tileScale) * displayScale / 2 + SUBSTATION_CLICK_TOLERANCE) / scale;
+        double lineLimit = LINE_HIT_DISTANCE * displayScale / scale;
+        double overloadedLineLimit = (showFlows ? OVERLOADED_LINE_HIT_DISTANCE : LINE_HIT_DISTANCE) * displayScale / scale;
+        double tolerance = Math.max(substationLimit, overloadedLineLimit);
+        int bestSubstation = -1;
+        double bestSubstationDistance = substationLimit * substationLimit;
+        int bestLine = -1;
+        double bestLineDistance = Double.POSITIVE_INFINITY;
+        for (int cy = grid.cellY(py - tolerance); cy <= grid.cellY(py + tolerance); cy++) {
+            for (int cx = grid.cellX(px - tolerance); cx <= grid.cellX(px + tolerance); cx++) {
+                int cell = grid.cellIndex(cx, cy);
+                for (int j = grid.cellStart()[cell]; j < grid.cellStart()[cell + 1]; j++) {
+                    int item = grid.items()[j];
+                    if (item >= 0) {
+                        double dx = substationX[item] - px;
+                        double dy = substationY[item] - py;
+                        double distance = dx * dx + dy * dy;
+                        if (distance <= bestSubstationDistance && !isHidden(hiddenBaseVoltages, substationBaseVoltages[item])) {
+                            bestSubstationDistance = distance;
+                            bestSubstation = item;
+                        }
+                    } else {
+                        int k = -item - 1;
+                        double distance = squaredDistanceToSegment(px, py, pointX[k], pointY[k], pointX[k + 1], pointY[k + 1]);
+                        double limit = lineOverloaded[pointLine[k]] ? overloadedLineLimit : lineLimit;
+                        if (distance <= limit * limit && distance <= bestLineDistance
+                                && !isHidden(hiddenBaseVoltages, lineBaseVoltages[pointLine[k]])) {
+                            bestLineDistance = distance;
+                            bestLine = pointLine[k];
+                        }
+                    }
+                }
+            }
+        }
+        if (bestSubstation >= 0) {
+            return substationHit(bestSubstation);
+        }
+        if (bestLine >= 0) {
+            return lineHit(bestLine);
+        }
+        return null;
+    }
+
+    private Hit substationHit(int substation) {
+        return new Hit("s" + substation, true, substationIds[substation], substationTexts[substation],
+                unprojectLatitude(substationY[substation]), unprojectLongitude(substationX[substation]), false);
+    }
+
+    private Hit lineHit(int line) {
+        double[] anchor = lineMiddle(List.of(line));
+        return new Hit("l" + line, false, lineIds[line], lineTexts[line], unprojectLatitude(anchor[1]), unprojectLongitude(anchor[0]),
+                lineImplied[line]);
+    }
+
+    /**
+     * Whether a marker's bubble is drawn: some of its violations are shown, and what it marks isn't hidden.
+     */
+    static boolean isBubbleShown(ViolationMarker marker, Set<String> hiddenBaseVoltages, Set<MapViolationLayer> shownViolations) {
+        return marker.isShown(shownViolations) && !isHidden(hiddenBaseVoltages, marker.baseVoltage());
+    }
+
+    // Bubbles are few next to substations and lines, so scanned rather than gridded. Measured in pixels of the tiles'
+    // whole zoom level, where bubbles have their nominal size (see hitTest).
+    private ViolationMarker bubbleAt(double px, double py, double tileScale, double displayScale, Set<String> hiddenBaseVoltages,
+                                     Set<MapViolationLayer> shownViolations) {
+        double limit = BUBBLE_RADIUS + BUBBLE_CLICK_TOLERANCE / displayScale;
+        for (ViolationMarker marker : violationMarkers.values()) {
+            double dx = (px - marker.x()) * tileScale;
+            double dy = (py - marker.y()) * tileScale + BUBBLE_OFFSET;
+            if (dx * dx + dy * dy <= limit * limit && isBubbleShown(marker, hiddenBaseVoltages, shownViolations)) {
+                return marker;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The violations marked on substation or line {@code id}, null for none.
+     */
+    public ViolationMarker violationMarker(String id) {
+        return violationMarkers.get(id);
+    }
+
+    private static double squaredDistanceToSegment(double px, double py, double ax, double ay, double bx, double by) {
+        double dx = bx - ax;
+        double dy = by - ay;
+        double lengthSquared = dx * dx + dy * dy;
+        double t = lengthSquared == 0 ? 0 : Math.clamp(((px - ax) * dx + (py - ay) * dy) / lengthSquared, 0, 1);
+        double ex = px - (ax + t * dx);
+        double ey = py - (ay + t * dy);
+        return ex * ex + ey * ey;
+    }
+
+    // Where Leaflet anchored a polyline's tooltip: halfway along its on-screen length, here along several lines one
+    // after the other for a tie line's two halves. Pixel positions at any zoom are the zoom 0 ones scaled, so
+    // measuring at zoom 0 is exact.
+    private double[] lineMiddle(List<Integer> lines) {
+        return lineMiddle(lines, lineStart, pointX, pointY);
+    }
+
+    private static double[] lineMiddle(List<Integer> lines, int[] lineStart, double[] pointX, double[] pointY) {
+        double length = 0;
+        for (int line : lines) {
+            for (int k = lineStart[line]; k < lineStart[line + 1] - 1; k++) {
+                length += Math.hypot(pointX[k + 1] - pointX[k], pointY[k + 1] - pointY[k]);
+            }
+        }
+        double remaining = length / 2;
+        for (int line : lines) {
+            for (int k = lineStart[line]; k < lineStart[line + 1] - 1; k++) {
+                double segment = Math.hypot(pointX[k + 1] - pointX[k], pointY[k + 1] - pointY[k]);
+                if (segment > 0 && remaining <= segment) {
+                    double t = remaining / segment;
+                    return new double[] {pointX[k] + t * (pointX[k + 1] - pointX[k]), pointY[k] + t * (pointY[k + 1] - pointY[k])};
+                }
+                remaining -= segment;
+            }
+        }
+        int start = lineStart[lines.getFirst()];
+        return new double[] {pointX[start], pointY[start]};
+    }
+}
