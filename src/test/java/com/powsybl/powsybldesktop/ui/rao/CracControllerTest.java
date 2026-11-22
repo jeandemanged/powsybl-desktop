@@ -223,6 +223,22 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
         assertSame(previous, otherStudy.getCrac());
     }
 
+    // with the CRAC Generator parameters
+    @Test
+    void generatesFromTheNetwork() throws TimeoutException {
+        mainModel.getParametersModel().cracGeneratorSettingsProperty().get().setRedispatching(true);
+
+        interact(controller::generate);
+
+        WaitForAsyncUtils.waitFor(30, TimeUnit.SECONDS, () -> study.getCrac() != null);
+        assertEquals(3, study.getCrac().getContingencies().size());
+        assertTrue(study.getCrac().getRangeActions().stream().anyMatch(action -> action.getNetworkElementsIds().contains("G1")));
+        WaitForAsyncUtils.waitFor(30, TimeUnit.SECONDS, () -> notification("crac.generate.").isPresent());
+        assertEquals("crac.generate.completed", notification("crac.generate.").orElseThrow().messageKey());
+        assertEquals("crac.generate.viewReport", notification("crac.generate.").orElseThrow().actions().getFirst().messageKey());
+        assertFalse(mainModel.isBusy(network));
+    }
+
     // the CRAC Creation parameters tab's, with nothing to ask for a JSON CRAC
     @Test
     void importsWithTheCracCreationParameters() {

@@ -21,6 +21,7 @@ its own page:
 | [Sensitivity Analysis](sensitivity_analysis.md) | The sensitivity analysis parameters, and whether it runs in AC or DC. |
 | [Remedial Action Optimization](remedial_action_optimization.md) | The remedial action optimization (OpenRAO) parameters, whether it runs through FastRAO, and in AC or DC. |
 | [CRAC Creation](crac_creation.md) | How CRAC files are read when imported, by format (OpenRAO). |
+| [CRAC Generator](crac_generator.md) | How a CRAC is generated from the network (OpenRAO). |
 
 Every tab has a list of categories (or of formats, for **Network Import** and **Network Export**) on the left, and
 the fields of the selected one on the right. Hover a field label to read what the parameter does.
@@ -40,6 +41,7 @@ security_analysis
 sensitivity_analysis
 remedial_action_optimization
 crac_creation
+crac_generator
 ```
 
 ## What you can do

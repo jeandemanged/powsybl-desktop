@@ -107,6 +107,11 @@
                     <fx:include fx:id="cracCreationEmbedded" source="crac-creation-parameters.fxml"/>
                 </content>
             </Tab>
+            <Tab text="%parameters.tab.cracGenerator">
+                <content>
+                    <fx:include fx:id="cracGeneratorEmbedded" source="crac-generator-parameters.fxml"/>
+                </content>
+            </Tab>
         </tabs>
     </TabPane>
 </VBox>

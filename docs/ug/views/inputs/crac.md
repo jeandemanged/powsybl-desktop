@@ -7,7 +7,7 @@ the other inputs, the CRAC belongs to the whole network a RAO runs on, for a sub
 
 ## Content
 
-A toolbar with **Import**, **Export** and a button to remove the CRAC, then a line telling the CRAC's name, its time
+A toolbar with **Import**, **Generate**, **Export** and a button to remove the CRAC, then a line telling the CRAC's name, its time
 stamp if it has one, and its instants (preventive, outage, then any auto and curative ones), or "No CRAC for this
 network: import one".
 
@@ -49,6 +49,16 @@ On the right, the details of the object selected on the left:
    report tells why.
 
 The import reads the network: it is refused while a computation runs on it.
+
+### Generate a CRAC from the network
+
+**Generate** creates a CRAC from the network itself, with no file, as the [CRAC Generator](../parameters/crac_generator.md)
+and [CRAC Creation](../parameters/crac_creation.md) tabs of the Parameters view say: a contingency for the loss of each
+branch, a flow CNEC on each branch at each state, range actions on the PSTs and, if set, redispatching,
+counter-trading and balancing. When the network already has a CRAC, a confirmation is asked first. When the generator
+would refuse the parameters (a post-contingency instant without acceptable duration...), a dialog lists every reason
+instead. A notification follows the generation; **View generation report** in it shows what was skipped and why. The
+generated CRAC is named after the network and time stamped with its date.
 
 ### Export the CRAC
 

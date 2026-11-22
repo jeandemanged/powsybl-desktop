@@ -41,6 +41,8 @@ import com.powsybl.powsybldesktop.core.NetworkStudy;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
 import com.powsybl.powsybldesktop.rao.CracElements;
+import com.powsybl.powsybldesktop.rao.CracGenerator;
+import com.powsybl.powsybldesktop.rao.CracGeneratorSettings;
 import com.powsybl.powsybldesktop.rao.CracIO;
 import com.powsybl.powsybldesktop.rao.CracImportParameters;
 import com.powsybl.powsybldesktop.rao.RaoResultRows;
@@ -86,6 +88,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -103,6 +106,8 @@ public class CracController extends AbstractDisposableController implements Scen
 
     @FXML
     Button importButton;
+    @FXML
+    Button generateButton;
     @FXML
     Button exportButton;
     @FXML
@@ -177,6 +182,7 @@ public class CracController extends AbstractDisposableController implements Scen
         network = newNetwork;
         watch(network == null ? null : study().cracProperty());
         importButton.setDisable(network == null);
+        generateButton.setDisable(network == null);
         refreshCrac();
     }
 
@@ -453,6 +459,11 @@ public class CracController extends AbstractDisposableController implements Scen
     }
 
     void importCrac(Network root, String fileName, byte[] bytes, CracCreationParameters parameters) {
+        createCrac(root, fileName, () -> CracIO.read(fileName, bytes, root, parameters), "crac.import");
+    }
+
+    // an import or a generation, which reads the network: the messages are those of {@code keyPrefix}
+    private void createCrac(Network root, String name, Callable<CracCreationContext> create, String keyPrefix) {
         if (mainModel.isBusy(root)) {
             mainModel.getNotificationsModel().add(Notification.createError(java.time.Instant.now(), "main.networkBusy"));
             return;
@@ -462,38 +473,70 @@ public class CracController extends AbstractDisposableController implements Scen
             protected Task<CracCreationContext> createTask() {
                 return new AbstractNetworkTask<>(mainModel, root) {
                     @Override
-                    protected CracCreationContext compute() {
-                        return CracIO.read(fileName, bytes, root, parameters);
+                    protected CracCreationContext compute() throws Exception {
+                        return create.call();
                     }
                 };
             }
         };
-        Notification running = Notification.createRunning("crac.import.running", creation::cancel).withMessageArgs(fileName);
+        Notification running = Notification.createRunning(keyPrefix + ".running", creation::cancel).withMessageArgs(name);
         mainModel.getNotificationsModel().add(running);
         creation.setOnSucceeded(_ -> {
             CracCreationContext context = creation.getValue();
             List<String> report = CracIO.report(context);
-            NotificationAction viewReport = new NotificationAction("crac.import.viewReport", _ -> showReport(fileName, report));
+            NotificationAction viewReport = new NotificationAction(keyPrefix + ".viewReport", _ -> showReport(name, report));
             if (context.isCreationSuccessful()) {
                 mainModel.getStudy(root).setCrac(context.getCrac(), report);
                 mainModel.getNotificationsModel().replace(running,
-                        Notification.createSuccess(running.startTimestamp(), "crac.import.completed", viewReport).withMessageArgs(fileName));
+                        Notification.createSuccess(running.startTimestamp(), keyPrefix + ".completed", viewReport).withMessageArgs(name));
             } else {
                 // the CRAC in place is kept
                 mainModel.getNotificationsModel().replace(running,
-                        Notification.createError(running.startTimestamp(), "crac.import.creationFailed", viewReport).withMessageArgs(fileName));
+                        Notification.createError(running.startTimestamp(), keyPrefix + ".creationFailed", viewReport).withMessageArgs(name));
             }
         });
         creation.setOnFailed(event -> {
             Throwable exception = event.getSource().getException();
-            LOGGER.error("Failed to import the CRAC {}", fileName, exception);
+            LOGGER.error("Failed to create the CRAC {}", name, exception);
             mainModel.getNotificationsModel().replace(running,
-                    Notification.createError(running.startTimestamp(), "crac.import.failed").withMessageArgs(fileName, exception.getMessage()));
+                    Notification.createError(running.startTimestamp(), keyPrefix + ".failed").withMessageArgs(name, exception.getMessage()));
         });
         creation.setOnCancelled(_ -> mainModel.getNotificationsModel().replace(running,
-                Notification.createCancelled(running.startTimestamp(), "crac.import.cancelled").withMessageArgs(fileName)));
+                Notification.createCancelled(running.startTimestamp(), keyPrefix + ".cancelled").withMessageArgs(name)));
         mainModel.getStudy(root).trackComputation(creation);
         creation.start();
+    }
+
+    @FXML
+    private void onGenerate() {
+        if (network == null) {
+            return;
+        }
+        if (study().getCrac() != null) {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION, Messages.get("crac.generate.confirm"), ButtonType.OK, ButtonType.CANCEL);
+            alert.initOwner(detailsHost.getScene().getWindow());
+            alert.setHeaderText(null);
+            if (alert.showAndWait().filter(ButtonType.OK::equals).isEmpty()) {
+                return;
+            }
+        }
+        List<String> problems = CracGenerator.problems(mainModel.getParametersModel().cracGeneratorSettingsProperty().get());
+        if (!problems.isEmpty()) {
+            Alert alert = new Alert(Alert.AlertType.ERROR, Messages.get("crac.generate.problems", String.join("\n", problems)), ButtonType.OK);
+            alert.initOwner(detailsHost.getScene().getWindow());
+            alert.setHeaderText(null);
+            alert.showAndWait();
+            return;
+        }
+        generate();
+    }
+
+    // with copies of the CRAC Generator and CRAC Creation parameters, as they are now
+    void generate() {
+        Network root = network;
+        CracGeneratorSettings settings = mainModel.getParametersModel().cracGeneratorSettingsProperty().get().copy();
+        CracCreationParameters base = CracImportParameters.copy(mainModel.getParametersModel().cracCreationParametersProperty().get());
+        createCrac(root, root.getNameOrId(), () -> CracGenerator.generate(root, settings, base), "crac.generate");
     }
 
     private void showReport(String fileName, List<String> report) {

@@ -29,6 +29,7 @@ import com.powsybl.openrao.commons.OpenRaoException;
 import com.powsybl.openrao.data.crac.api.parameters.CracCreationParameters;
 import com.powsybl.openrao.raoapi.parameters.RaoParameters;
 import com.powsybl.powsybldesktop.rao.CracCreationParametersSupport;
+import com.powsybl.powsybldesktop.rao.CracGeneratorSettings;
 import com.powsybl.powsybldesktop.rao.RaoParametersSupport;
 import com.powsybl.powsybldesktop.sensitivity.SensitivityAnalysisMode;
 import com.powsybl.security.SecurityAnalysisParameters;
@@ -92,6 +93,7 @@ public final class ApplicationParametersJson {
         root.put("raoMode", parameters.raoMode().name());
         root.put("fastRao", parameters.fastRao());
         root.set("cracCreation", CracCreationParametersSupport.toJson(parameters.cracCreation()));
+        root.set("cracGenerator", CracGeneratorSettings.toJson(parameters.cracGenerator()));
         gui(new Writer(root.putObject("gui")), parameters.gui());
         return root;
     }
@@ -119,6 +121,7 @@ public final class ApplicationParametersJson {
                 root.has("raoMode") ? modeFromJson(root.get("raoMode"), "raoMode") : defaults.raoMode(),
                 root.has("fastRao") ? booleanFromJson(root.get("fastRao"), "fastRao") : defaults.fastRao(),
                 root.has("cracCreation") ? cracCreationFromJson(root.get("cracCreation")) : defaults.cracCreation(),
+                root.has("cracGenerator") ? cracGeneratorFromJson(root.get("cracGenerator")) : defaults.cracGenerator(),
                 gui);
     }
 
@@ -274,6 +277,16 @@ public final class ApplicationParametersJson {
             throw invalid(name);
         }
         return node.booleanValue();
+    }
+
+    // the application's own format: OpenRAO has none for them
+    private static CracGeneratorSettings cracGeneratorFromJson(JsonNode node) {
+        requireObject(node, "cracGenerator");
+        try {
+            return CracGeneratorSettings.fromJson(node);
+        } catch (IllegalArgumentException e) {
+            throw new PowsyblException("Invalid parameters JSON: unexpected value for 'cracGenerator' (" + e.getMessage() + ")", e);
+        }
     }
 
     // OpenRAO's format

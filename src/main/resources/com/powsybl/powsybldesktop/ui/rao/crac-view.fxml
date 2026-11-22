@@ -37,6 +37,14 @@
                         <Tooltip text="%crac.import.tooltip"/>
                     </tooltip>
                 </Button>
+                <Button fx:id="generateButton" mnemonicParsing="false" onAction="#onGenerate" text="%crac.generate">
+                    <graphic>
+                        <FontIcon iconLiteral="mdi2c-creation" iconSize="16"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="%crac.generate.tooltip"/>
+                    </tooltip>
+                </Button>
                 <Button fx:id="exportButton" mnemonicParsing="false" onAction="#onExport" text="%desktop.common.action.export">
                     <graphic>
                         <FontIcon iconLiteral="mdi2t-tray-arrow-up" iconSize="16"/>

@@ -49,7 +49,7 @@ class ApplicationParametersJsonTest {
         ApplicationParameters defaults = ApplicationParameters.createDefault();
         ApplicationParameters parameters = new ApplicationParameters(Map.of("IIDM", iidmImport), Map.of("IIDM", new Properties()),
                 defaults.sld(), defaults.nad(), defaults.loadFlow(), defaults.securityAnalysis(),
-                defaults.sensitivityAnalysis(), SensitivityAnalysisMode.DC, defaults.rao(), SensitivityAnalysisMode.AC, true, defaults.cracCreation(), defaults.gui());
+                defaults.sensitivityAnalysis(), SensitivityAnalysisMode.DC, defaults.rao(), SensitivityAnalysisMode.AC, true, defaults.cracCreation(), defaults.cracGenerator(), defaults.gui());
 
         parameters.sld().setSubstationLayoutChoice(DesktopSldParameters.SubstationLayoutChoice.VERTICAL)
                 .setComponentLibraryChoice(DesktopSldParameters.ComponentLibraryChoice.FLAT_DESIGN)
@@ -81,6 +81,8 @@ class ApplicationParametersJsonTest {
         RaoParametersSupport.addMnec(parameters.rao());
         RaoParametersSupport.fastRao(parameters.rao()).setNumberOfCnecsToAdd(7);
         parameters.cracCreation().setDefaultMonitoredLineSide(CracCreationParameters.MonitoredLineSide.MONITOR_LINES_ON_SIDE_TWO);
+        parameters.cracGenerator().setRedispatching(true);
+        parameters.cracGenerator().setAutoInstants(List.of("auto"));
         CracCreationParametersSupport.setCurativeInstants(CracCreationParametersSupport.nc(parameters.cracCreation()), List.of(List.of("curative", "600")));
         RaoParametersSupport.sensitivityParameters(parameters.rao()).setLoadFlowParameters(parameters.loadFlow());
 
@@ -137,6 +139,8 @@ class ApplicationParametersJsonTest {
         assertTrue(read.fastRao());
         assertEquals(7, RaoParametersSupport.fastRao(read.rao()).getNumberOfCnecsToAdd());
         assertEquals(Set.of(TwoSides.TWO), read.cracCreation().getDefaultMonitoredSides());
+        assertTrue(read.cracGenerator().isRedispatching());
+        assertEquals(List.of("auto"), read.cracGenerator().getAutoInstants());
         assertEquals(Map.of("curative", 600), read.cracCreation().getExtension(NcCracCreationParameters.class).getCurativeInstants());
         // the embedded load flow parameters are the load flow section's, wired back by ParametersModel
         assertTrue(json.get("rao").at("/extensions/open-rao-search-tree-parameters/load-flow-and-sensitivity-computation/sensitivity-parameters").isObject());
@@ -202,6 +206,10 @@ class ApplicationParametersJsonTest {
         ObjectNode invalidCracCreation = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
         invalidCracCreation.put("cracCreation", "both sides");
         assertThrows(PowsyblException.class, () -> ApplicationParametersJson.fromJson(invalidCracCreation));
+
+        ObjectNode invalidCracGenerator = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
+        ((ObjectNode) invalidCracGenerator.get("cracGenerator")).put("redispatching", "often");
+        assertThrows(PowsyblException.class, () -> ApplicationParametersJson.fromJson(invalidCracGenerator));
 
         ObjectNode raoNotObject = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
         raoNotObject.put("rao", 1);

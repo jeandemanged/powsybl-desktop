@@ -52,6 +52,13 @@ import java.util.TreeSet;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static com.powsybl.powsybldesktop.rao.TableRows.cell;
+import static com.powsybl.powsybldesktop.rao.TableRows.integer;
+import static com.powsybl.powsybldesktop.rao.TableRows.invalid;
+import static com.powsybl.powsybldesktop.rao.TableRows.number;
+import static com.powsybl.powsybldesktop.rao.TableRows.required;
+import static com.powsybl.powsybldesktop.rao.TableRows.text;
+
 /**
  * OpenRAO's {@link CracCreationParameters} as the CRAC Creation parameters tab edits them: every list, map or nested
  * structure of the formats' extensions as a table of text rows, nested ones flattened to a row per leaf (an internal
@@ -472,56 +479,6 @@ public final class CracCreationParametersSupport {
         parameters.setInternalHvdcs(poles.entrySet().stream()
                 .map(entry -> new InternalHvdc(entry.getKey().get(0), entry.getKey().get(1), entry.getValue()))
                 .toList());
-    }
-
-    // ----- cells -----
-
-    private static String text(Object value) {
-        return value == null ? "" : value instanceof Double d && d == Math.rint(d) && Math.abs(d) < 1e15 ? Long.toString(d.longValue()) : value.toString();
-    }
-
-    private static String cell(List<String> row, int column) {
-        return column < row.size() && row.get(column) != null ? row.get(column).trim() : "";
-    }
-
-    private static String required(List<String> row, int column, int rowIndex) {
-        String value = cell(row, column);
-        if (value.isEmpty()) {
-            throw invalid(rowIndex, Messages.get("cracCreation.row.required", column + 1));
-        }
-        return value;
-    }
-
-    private static Integer integer(List<String> row, int column, int rowIndex) {
-        String value = cell(row, column);
-        if (value.isEmpty()) {
-            return null;
-        }
-        try {
-            return Integer.valueOf(value);
-        } catch (NumberFormatException _) {
-            throw invalid(rowIndex, Messages.get("cracCreation.row.integer", column + 1, value));
-        }
-    }
-
-    private static Double number(List<String> row, int column, int rowIndex) {
-        String value = cell(row, column);
-        if (value.isEmpty()) {
-            return null;
-        }
-        try {
-            double number = Double.parseDouble(value);
-            if (!Double.isFinite(number)) {
-                throw new NumberFormatException(value);
-            }
-            return number;
-        } catch (NumberFormatException _) {
-            throw invalid(rowIndex, Messages.get("cracCreation.row.number", column + 1, value));
-        }
-    }
-
-    private static IllegalArgumentException invalid(int rowIndex, String reason) {
-        return new IllegalArgumentException(Messages.get("cracCreation.row.invalid", rowIndex + 1, reason));
     }
 
     private static <E extends Extension<CracCreationParameters>> E extension(CracCreationParameters parameters, Class<E> type, Supplier<E> creator) {
