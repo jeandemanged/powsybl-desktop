@@ -80,12 +80,16 @@ Tests mirror the main package layout under `src/test/java/com/powsybl/powsybldes
   single JavaFX toolkit and TestFX shares one primary stage, so concurrent UI tests would overwrite each other's
   scene. Tests must not share state outside the JVM: write files under `@TempDir`. A UI test flaky only in CI is more
   likely a race with a short timer than a fork problem.
-- The headless screen is a fixed 1000 x 1000 frame buffer: a window drawn with any pixel above or below it (y < 0, or
-  its bottom row past it) throws `IndexOutOfBoundsException` from `HeadlessWindow.blit`, on the FX thread, reported by
-  TestFX as a "Delayed Exception" on whatever test runs next in that JVM, often an unrelated class, after some test
-  orders only (mostly in CI). Production code must not park a window off-screen, even briefly: `NotificationOverlay`
-  sizes and places its popup before showing it rather than showing it at (-10000, -10000) until laid out. Windows
-  wider than 1000 or left of 0 only wrap and are harmless.
+- The headless screen is a fixed 1000 x 1000 frame buffer, one array indexed `y * 1000 + x`: a window drawn with its
+  first pixel before it or its last one past it (y < 0, x < 0 on the top row, the bottom row past 1000, or a bottom
+  row reaching past x = 1000 on the last screen row) throws `IndexOutOfBoundsException` from `HeadlessWindow.blit`, on
+  the FX thread, reported by TestFX as a "Delayed Exception" on whatever test runs next in that JVM, often an unrelated
+  class, after some test orders only (mostly in CI). Elsewhere, a window wider than 1000 or left of 0 only wraps.
+  Production code must not park a window off-screen, even briefly: `NotificationOverlay` sizes and places its popup
+  before showing it rather than showing it at (-10000, -10000) until laid out. Tests may move the shared primary stage
+  (e.g. to center dialogs on it): `AbstractHeadlessApplicationTest` puts it back at the origin after every test, since
+  a position set is kept by the next test's `show()` and a larger scene shown there would fail. Debugging such a
+  failure: log every `Window.getWindows()` window whose bounds break the condition above, with a stack trace.
 - `src/test/resources/logback-test.xml` replaces `logback.xml` in tests: `com.powsybl` loggers are off (Open Load Flow
   alone made tens of megabytes of output), except `com.powsybl.powsybldesktop`, which `LogsViewControllerTest` needs.
   The application keeps `logback.xml`'s INFO level. To debug a PowSyBl library in a test, add a logger for it at

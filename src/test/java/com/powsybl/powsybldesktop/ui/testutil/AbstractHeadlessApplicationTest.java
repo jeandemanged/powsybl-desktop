@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.ui.testutil;
 
 import javafx.scene.input.Clipboard;
 import javafx.stage.Stage;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.testfx.api.FxToolkit;
 import org.testfx.framework.junit5.ApplicationTest;
@@ -41,6 +42,21 @@ public abstract class AbstractHeadlessApplicationTest extends ApplicationTest {
                 stage.setX(0);
                 stage.setY(0);
             }
+        });
+    }
+
+    // The headless screen is a 1000 x 1000 frame buffer that fails to draw a window with a pixel outside it, on the FX
+    // thread, failing whatever test runs next. The primary stage is shared by every test class of a JVM and kept where
+    // the last test left it (a position a test sets is explicit: the next show doesn't center it again), so a test may
+    // move it (e.g. to center its dialogs) but the next test class showing a larger scene at that position would fail,
+    // depending on test order. So every test leaves it at the origin, where any scene that fits the screen fits; the
+    // first test of a JVM finds it unpositioned, and JavaFX centers it when shown.
+    @AfterEach
+    void resetPrimaryStagePosition() {
+        Stage stage = FxToolkit.toolkitContext().getRegisteredStage();
+        interact(() -> {
+            stage.setX(0);
+            stage.setY(0);
         });
     }
 
