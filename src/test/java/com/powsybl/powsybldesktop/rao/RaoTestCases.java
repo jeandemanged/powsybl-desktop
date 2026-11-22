@@ -25,19 +25,20 @@ import java.util.List;
  * A RAO case on PowSyBl's phase shifter test network: generator G1 feeds load LD2 (100 MW) through line L1 and,
  * in parallel, phase shifter PS1 (taps 0, 1, 2: -20, 0, 20 degrees; at 1) and line L2.
  * <ul>
- *     <li>Preventive: L1 carries about 50 MW (76 A), above its 45 A CNEC threshold: the PST, available preventively,
- *     moves to tap 2, sending L1's flow the other way (about -81 MW), within its -200 A minimum.</li>
- *     <li>Curative, after the loss of L2: L1 carries the 100 MW (152 A), above 130 A: shedding LD2 to 70 MW, available
- *     after that contingency, solves it.</li>
+ *     <li>Preventive: L1 carries about 50 MW (84 A in AC), above its 45 A CNEC threshold: the PST, available
+ *     preventively, moves to tap 2, sending L1's flow the other way (about -135 A), within its -200 A minimum.</li>
+ *     <li>Curative, after the loss of L2: L1 carries the 100 MW (175 A), above 150 A: shedding LD2 to 70 MW, available
+ *     after that contingency, brings it to about 134 A ({@link #crac(Network, double)} with a lower threshold for a
+ *     result that stays unsecure).</li>
  * </ul>
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-final class RaoTestCases {
+public final class RaoTestCases {
 
-    static final String PST = "PST";
-    static final String LOAD_SHEDDING = "Load shedding";
-    static final String CONTINGENCY = "L2 out";
+    public static final String PST = "PST";
+    public static final String LOAD_SHEDDING = "Load shedding";
+    public static final String CONTINGENCY = "L2 out";
 
     private RaoTestCases() {
     }
@@ -45,7 +46,7 @@ final class RaoTestCases {
     /**
      * The network, with current limits on its lines: OpenRAO's JSON CRAC importer requires them on the CNECs' branches.
      */
-    static Network network() {
+    public static Network network() {
         Network network = PhaseShifterTestCaseFactory.create();
         for (String line : List.of("L1", "L2")) {
             network.getLine(line).getOrCreateSelectedOperationalLimitsGroup1().newCurrentLimits().setPermanentLimit(1000.).add();
@@ -54,7 +55,14 @@ final class RaoTestCases {
         return network;
     }
 
-    static Crac crac(Network network) {
+    public static Crac crac(Network network) {
+        return crac(network, 150.);
+    }
+
+    /**
+     * The case with {@code curativeThreshold} as L1's curative CNEC threshold, in A.
+     */
+    public static Crac crac(Network network, double curativeThreshold) {
         Crac crac = CracFactory.findDefault().create("crac");
         crac.newInstant("preventive", InstantKind.PREVENTIVE)
                 .newInstant("outage", InstantKind.OUTAGE)
@@ -67,7 +75,7 @@ final class RaoTestCases {
                 .add();
         crac.newFlowCnec().withId("L1 curative").withNetworkElement("L1").withInstant("curative").withContingency(CONTINGENCY)
                 .withOptimized().withNominalVoltage(nominalV)
-                .newThreshold().withUnit(Unit.AMPERE).withSide(TwoSides.ONE).withMin(-130.).withMax(130.).add()
+                .newThreshold().withUnit(Unit.AMPERE).withSide(TwoSides.ONE).withMin(-curativeThreshold).withMax(curativeThreshold).add()
                 .add();
         IidmPstHelper pst = new IidmPstHelper("PS1", network);
         crac.newPstRangeAction().withId(PST).withNetworkElement("PS1")
@@ -82,7 +90,7 @@ final class RaoTestCases {
         return crac;
     }
 
-    static RaoParameters parameters(int threads) {
+    public static RaoParameters parameters(int threads) {
         RaoParameters parameters = RaoParametersSupport.createDefault();
         RaoParametersSupport.searchTree(parameters).getMultithreadingParameters().setAvailableCPUs(threads);
         return parameters;

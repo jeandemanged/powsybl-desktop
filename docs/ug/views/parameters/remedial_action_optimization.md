@@ -1,6 +1,7 @@
 # Remedial Action Optimization
 
-The **Remedial Action Optimization** tab sets the parameters of the remedial action optimization (RAO), computed by
+The **Remedial Action Optimization** tab sets the parameters of the remedial action optimization (RAO), run by **Run** >
+**Remedial Action Optimization** and computed by
 [PowSyBl OpenRAO](https://powsybl.readthedocs.io/projects/openrao/en/stable/): its search tree RAO, directly or through
 FastRAO (see [FastRAO](#fastrao)). The RAO runs with the load flow parameters of the [Load Flow](load_flow.md) tab,
 AC or DC as its **Calculation Mode** says.

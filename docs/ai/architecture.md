@@ -107,7 +107,7 @@ root's `styles.css` and logo), and the window title is `MainModel.APP_TITLE`.
   parameters config file, shows `SplashScreen`, then loads `main-view.fxml` on the FX thread with a controller
   factory that injects the `MainModel` into `MainController`. `styles.css` is added to the scene.
 - `…/MainController.java` owns the shell (menu bar, toolbar, `BorderPane`) and is the only class that swaps the
-  center view. It also hosts the toolbar's **Run** actions (load flow, security and sensitivity analysis), violations
+  center view. It also hosts the toolbar's **Run** actions (load flow, security and sensitivity analysis, RAO), violations
   computation and search index building, and delegates **File** > save/load study to `ui/study/StudyCommands`.
 - Language change (`onLanguageChange` → `reloadShell`) rebuilds `main-view.fxml` with a fresh bundle, keeps the
   same `MainModel`, disposes the old `MainController`, and re-fires the current `NavigationEvent` so the center view
@@ -122,8 +122,8 @@ a subnetwork), an `updateProperty()` timestamp fired after any network mutation 
 display settings, the network change guard, and the sub-models `NavigationHistory`, `ParametersModel`,
 `NotificationsModel`, `LogsModel`, `RecentStudies`.
 
-`…/core/NetworkStudy.java` holds everything per loaded root network: LF/SA/sensitivity results, cached limit violations,
-contingency lists and limit scalings and their enabled flags, sensitivity factor matrices and variable sets, running computation and index-build services, search indexes, Map views,
+`…/core/NetworkStudy.java` holds everything per loaded root network: LF/SA/sensitivity/RAO results, cached limit violations,
+contingency lists and limit scalings and their enabled flags, sensitivity factor matrices and variable sets, the CRAC, running computation and index-build services, search indexes, Map views,
 busy count. `MainModel.getStudy(n)` resolves a subnetwork to its root and throws if the network is not loaded. Studies
 are created by `addNetwork`/`detachSubnetworks` and disposed (services cancelled, indexes closed) by `removeNetwork`.
 

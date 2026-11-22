@@ -10,6 +10,7 @@ package com.powsybl.powsybldesktop.rao;
 import com.powsybl.contingency.ContingencyElementType;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.loadflow.LoadFlowParameters;
+import com.powsybl.openrao.commons.PhysicalParameter;
 import com.powsybl.openrao.data.crac.api.Crac;
 import com.powsybl.openrao.data.crac.api.CracFactory;
 import com.powsybl.openrao.data.crac.api.InstantKind;
@@ -47,6 +48,7 @@ class RaoRunTest {
         RaoResult result = resultAndReport.raoResult();
         Crac runCrac = resultAndReport.crac();
         assertEquals(ComputationStatus.DEFAULT, result.getComputationStatus());
+        assertTrue(result.isSecure(PhysicalParameter.FLOW));
         assertEquals(2, result.getOptimizedTapOnState(runCrac.getPreventiveState(), runCrac.getPstRangeAction(RaoTestCases.PST)));
         assertEquals(Set.of(runCrac.getNetworkAction(RaoTestCases.LOAD_SHEDDING)),
                 result.getActivatedNetworkActionsDuringState(runCrac.getState(RaoTestCases.CONTINGENCY, runCrac.getInstant("curative"))));

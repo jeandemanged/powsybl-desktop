@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop;
 
+import com.powsybl.commons.report.ReportNode;
 import com.powsybl.contingency.Contingency;
 import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.contingency.list.ListOfContingencyLists;
@@ -14,6 +15,11 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.loadflow.LoadFlowResult;
+import com.powsybl.openrao.commons.PhysicalParameter;
+import com.powsybl.openrao.data.crac.api.Crac;
+import com.powsybl.openrao.data.raoresult.api.ComputationStatus;
+import com.powsybl.openrao.data.raoresult.api.RaoResult;
+import com.powsybl.openrao.raoapi.parameters.RaoParameters;
 import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.core.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.core.MainModel;
@@ -32,6 +38,11 @@ import com.powsybl.powsybldesktop.navigation.NetworkNavigationState;
 import com.powsybl.powsybldesktop.navigation.OverloadManagementSystemNavigationState;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
+import com.powsybl.powsybldesktop.parameters.ParametersModel;
+import com.powsybl.powsybldesktop.rao.RaoFailedException;
+import com.powsybl.powsybldesktop.rao.RaoParametersSupport;
+import com.powsybl.powsybldesktop.rao.RaoResultAndReport;
+import com.powsybl.powsybldesktop.rao.RaoRun;
 import com.powsybl.powsybldesktop.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.security.SecurityAnalysisResultAndReport;
 import com.powsybl.powsybldesktop.security.SecurityAnalysisRun;
@@ -709,6 +720,119 @@ public class MainController extends AbstractDisposableController {
                     .withMessageArgs(failed);
         }
         return Notification.createSuccess(start, "main.sensitivityAnalysis.completed", viewResultsAction, viewReportAction);
+    }
+
+    @FXML
+    protected void onRao() {
+        Network selectedNetwork = mainModel.getNetwork();
+        if (selectedNetwork == null) {
+            return;
+        }
+        // same rationale as onLoadFlow: never run on a subnetwork, only on its root
+        Network network = selectedNetwork.getNetwork();
+
+        if (refuseIfBusy(network)) {
+            return;
+        }
+        NetworkStudy study = mainModel.getStudy(network);
+        ParametersModel parametersModel = mainModel.getParametersModel();
+        RaoParameters parameters = RaoRun.copyParameters(parametersModel.raoParametersProperty().getValue(), parametersModel.raoModeProperty().getValue());
+        boolean dc = RaoParametersSupport.sensitivityParameters(parameters).getLoadFlowParameters().isDc();
+        boolean fastRao = parametersModel.fastRaoProperty().get();
+        Crac crac = study.getCrac();
+        if (!checkRao(network, crac, parameters, fastRao)) {
+            return;
+        }
+        RaoRun run;
+        try {
+            run = RaoRun.prepare(network, crac, parameters, fastRao);
+        } catch (IllegalStateException e) {
+            // the CRAC no longer reads against the network, edited since its import
+            showRaoRefusal(Messages.get("main.rao.cracNotReadable", e.getMessage()));
+            return;
+        }
+
+        Service<RaoResultAndReport> raoService = new Service<>() {
+            @Override
+            protected Task<RaoResultAndReport> createTask() {
+                return new AbstractNetworkTask<>(mainModel, network) {
+                    @Override
+                    protected RaoResultAndReport compute() throws Exception {
+                        return run.compute();
+                    }
+                };
+            }
+        };
+        Notification runningNotification = Notification.createRunning("main.rao.running", raoService::cancel);
+        mainModel.getNotificationsModel().add(runningNotification);
+
+        raoService.setOnSucceeded(event -> {
+            RaoResultAndReport resultAndReport = (RaoResultAndReport) event.getSource().getValue();
+            study.setRaoResult(resultAndReport.raoResult(), resultAndReport.crac(), dc);
+            mainModel.setUpdate();
+            mainModel.addReport(resultAndReport.reportNode());
+            mainModel.getNotificationsModel().replace(runningNotification, raoOutcome(runningNotification.startTimestamp(), resultAndReport));
+        });
+        raoService.setOnFailed(event -> {
+            Throwable exception = event.getSource().getException();
+            if (exception instanceof RaoFailedException failure) {
+                // OpenRAO's own failure, told by its report
+                mainModel.addReport(failure.getReportNode());
+                mainModel.getNotificationsModel().replace(runningNotification,
+                        Notification.createError(runningNotification.startTimestamp(), "main.rao.failedWithDetails", viewReportAction(failure.getReportNode()))
+                                .withMessageArgs(failure.getMessage()));
+                return;
+            }
+            LOGGER.error(exception.toString(), exception);
+            NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", _ ->
+                    mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS)));
+            mainModel.getNotificationsModel().replace(runningNotification,
+                    Notification.createError(runningNotification.startTimestamp(), "main.rao.failed", viewLogsAction));
+        });
+        // the abandoned RAO goes on with its copies of the network and the CRAC until done (see RaoRun)
+        raoService.setOnCancelled(_ -> mainModel.getNotificationsModel().replace(runningNotification,
+                Notification.createCancelled(runningNotification.startTimestamp(), "main.rao.cancelled")));
+        study.trackComputation(raoService);
+        raoService.start();
+    }
+
+    // refused beforehand, with every reason, rather than letting OpenRAO fail on the first one
+    private boolean checkRao(Network network, Crac crac, RaoParameters parameters, boolean fastRao) {
+        if (crac == null) {
+            showRaoRefusal(Messages.get("main.rao.noCrac", Messages.get("main.toolbar.crac")));
+            return false;
+        }
+        List<String> problems = RaoRun.problems(network, crac, parameters, fastRao);
+        if (problems.isEmpty()) {
+            return true;
+        }
+        showRaoRefusal(Messages.get("main.rao.problems", String.join("\n", problems)));
+        return false;
+    }
+
+    private void showRaoRefusal(String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR, message, ButtonType.OK);
+        alert.initOwner(borderPane.getScene().getWindow());
+        alert.setHeaderText(null);
+        alert.showAndWait();
+    }
+
+    private NotificationAction viewReportAction(ReportNode reportNode) {
+        return new NotificationAction("main.report.viewReport", _ ->
+                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.REPORTS, ReportNavigationState.create(reportNode))));
+    }
+
+    // OpenRAO's result tells whether the flows are secure only (CASTOR doesn't implement the angle and voltage checks)
+    private Notification raoOutcome(Instant start, RaoResultAndReport resultAndReport) {
+        NotificationAction viewReportAction = viewReportAction(resultAndReport.reportNode());
+        RaoResult result = resultAndReport.raoResult();
+        if (result.getComputationStatus() == ComputationStatus.PARTIAL_FAILURE) {
+            return Notification.createPartialSuccess(start, "main.rao.partialFailure", viewReportAction);
+        }
+        if (!resultAndReport.crac().getFlowCnecs().isEmpty() && !result.isSecure(PhysicalParameter.FLOW)) {
+            return Notification.createPartialSuccess(start, "main.rao.unsecure", viewReportAction);
+        }
+        return Notification.createSuccess(start, "main.rao.completed", viewReportAction);
     }
 
     // Builds the search index for a newly-selected network once, in the background - a network already cached

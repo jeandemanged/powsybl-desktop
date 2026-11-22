@@ -117,6 +117,12 @@ Maven cache may contain unrelated versions.
   parameters missing for `MIN_COST`, HVDC AC emulation, the PST model with elementary action limits, curative usage
   limits, FastRAO's single curative instant, and the CRAC's elements missing from the network (edited since the import):
   update it on an OpenRAO upgrade.
+  `MainController.onRao` (**Run** > **Remedial Action Optimization**) runs the study's CRAC (`NetworkStudy.cracProperty()`)
+  after refusing when there is none, or with every `problems` reason, or when the CRAC no longer reads against the
+  network (`prepare`'s copy fails); the result is kept with the run's CRAC copy it refers to and AC/DC
+  (`NetworkStudy.setRaoResult`). A `RaoFailedException`'s report is still added. The outcome notification tells a
+  partial failure (`ComputationStatus.PARTIAL_FAILURE`) and flows still not secure (`isSecure(FLOW)`: OpenRAO's results
+  implement the flow check only, angle and voltage CNECs being OpenRAO's monitoring module's job) as partial successes.
 - CRAC files: `…/rao/CracIO.java` reads every format an OpenRAO importer handles (JSON, CSE, CIM, NC, FlowBased
   constraint) into a `CracCreationContext`, whose creation report tells what was ignored or why it failed (a null
   CRAC), and writes OpenRAO's JSON. It picks the importer itself, leaving out the `Network` one (the CRAC generator),

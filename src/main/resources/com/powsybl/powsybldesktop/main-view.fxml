@@ -92,6 +92,7 @@
                                 <MenuItem mnemonicParsing="false" onAction="#onLoadFlow" text="%desktop.common.loadFlow" />
                                 <MenuItem mnemonicParsing="false" onAction="#onSecurityAnalysis" text="%desktop.common.securityAnalysis" />
                                 <MenuItem mnemonicParsing="false" onAction="#onSensitivityAnalysis" text="%desktop.common.sensitivityAnalysis" />
+                                <MenuItem mnemonicParsing="false" onAction="#onRao" text="%desktop.common.rao" />
                             </items>
                         </MenuButton>
                         <MenuButton mnemonicParsing="false" text="%main.toolbar.results">

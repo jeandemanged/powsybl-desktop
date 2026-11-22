@@ -10,6 +10,8 @@ package com.powsybl.powsybldesktop.core;
 import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.loadflow.LoadFlowResult;
+import com.powsybl.openrao.data.crac.api.Crac;
+import com.powsybl.openrao.data.raoresult.api.RaoResult;
 import com.powsybl.powsybldesktop.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.sensitivity.SensitivityFactorMatrix;
 import com.powsybl.powsybldesktop.violations.NetworkViolations;
@@ -19,11 +21,13 @@ import com.powsybl.sensitivity.SensitivityAnalysisResult;
 import com.powsybl.sensitivity.SensitivityVariableSet;
 import javafx.beans.Observable;
 import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.ReadOnlyBooleanWrapper;
 import javafx.beans.property.ReadOnlyIntegerProperty;
 import javafx.beans.property.ReadOnlyIntegerWrapper;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Service;
@@ -40,7 +44,7 @@ import java.util.Set;
 
 /**
  * Everything the app holds about one loaded root network and its subnetworks: computation results, contingency
- * lists, limit scalings, sensitivity factors and variable sets, running background jobs, search indexes and Map views. Created and disposed of by {@link MainModel}.
+ * lists, limit scalings, sensitivity factors and variable sets, the CRAC, running background jobs, search indexes and Map views. Created and disposed of by {@link MainModel}.
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
@@ -56,6 +60,12 @@ public class NetworkStudy {
     private boolean sensitivityAnalysisDc;
     private final ObservableList<SensitivityFactorMatrix> sensitivityFactorMatrices = FXCollections.observableArrayList();
     private final ObservableList<SensitivityVariableSet> sensitivityVariableSets = FXCollections.observableArrayList();
+    // the CRAC of the remedial action optimization, null when the study has none
+    private final ObjectProperty<Crac> crac = new SimpleObjectProperty<>();
+    private RaoResult raoResult;
+    // the CRAC the RAO result refers to (the run's copy, see RaoRun) and whether it was AC or DC, which it doesn't hold
+    private Crac raoCrac;
+    private boolean raoDc;
     private NetworkViolations violations = NetworkViolations.EMPTY;
     private final ObservableList<ContingencyList> contingencyLists = FXCollections.observableArrayList();
     // Whether a sublist is included when contingencies are resolved for a security analysis run, keyed by
@@ -140,6 +150,32 @@ public class NetworkStudy {
         return sensitivityVariableSets;
     }
 
+    public ObjectProperty<Crac> cracProperty() {
+        return crac;
+    }
+
+    public Crac getCrac() {
+        return crac.get();
+    }
+
+    public RaoResult getRaoResult() {
+        return raoResult;
+    }
+
+    public Crac getRaoCrac() {
+        return raoCrac;
+    }
+
+    public boolean isRaoDc() {
+        return raoDc;
+    }
+
+    public void setRaoResult(RaoResult result, Crac resultCrac, boolean dc) {
+        this.raoResult = Objects.requireNonNull(result);
+        this.raoCrac = Objects.requireNonNull(resultCrac);
+        this.raoDc = dc;
+    }
+
     public NetworkViolations getViolations() {
         return violations;
     }
@@ -206,7 +242,7 @@ public class NetworkStudy {
     }
 
     /**
-     * Tracks a load flow, security or sensitivity analysis run until it ends, for {@link #dispose} to cancel it.
+     * Tracks a load flow, security or sensitivity analysis or RAO run until it ends, for {@link #dispose} to cancel it.
      */
     public void trackComputation(Service<?> service) {
         computationServices.add(service);
