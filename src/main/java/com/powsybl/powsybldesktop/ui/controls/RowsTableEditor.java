@@ -8,6 +8,7 @@
 package com.powsybl.powsybldesktop.ui.controls;
 
 import com.powsybl.powsybldesktop.utils.Messages;
+import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -32,7 +33,8 @@ import java.util.function.Consumer;
 
 /**
  * A table of text rows to edit a list, map or nested structure as rows: cells edited in place (committed on Enter and
- * when the cell loses the focus, unlike {@code TextFieldTableCell}), rows added at the end and removed by selection.
+ * when the cell loses the focus, unlike {@code TextFieldTableCell}), rows added at the end (a new row left blank on
+ * Escape removed again) and removed by selection.
  * Each change hands all the rows to the {@link #setOnEdit} consumer, which parses them: when it throws an
  * {@link IllegalArgumentException}, its message is shown below the table, the rows kept as typed so that they can be
  * fixed. {@link #setRows} replaces them, e.g. when the edited object is replaced.
@@ -45,6 +47,8 @@ public final class RowsTableEditor extends VBox {
     private final Label errorLabel = new Label();
     private final int columnCount;
     private Consumer<List<List<String>>> onEdit = _ -> { };
+    // the row just added, until an edit of it is committed: removed on Escape while still blank
+    private ObservableList<String> addedRow;
 
     public RowsTableEditor(List<String> columnTitles) {
         super(4);
@@ -55,6 +59,9 @@ public final class RowsTableEditor extends VBox {
             tableColumn.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().get(column)));
             tableColumn.setCellFactory(_ -> new EditingCell());
             tableColumn.setOnEditCommit(event -> {
+                if (event.getRowValue() == addedRow) {
+                    addedRow = null;
+                }
                 event.getRowValue().set(column, Objects.requireNonNullElse(event.getNewValue(), ""));
                 commit();
             });
@@ -76,7 +83,8 @@ public final class RowsTableEditor extends VBox {
             for (int i = 0; i < columnCount; i++) {
                 empty.add("");
             }
-            table.getItems().add(FXCollections.observableArrayList(empty));
+            addedRow = FXCollections.observableArrayList(empty);
+            table.getItems().add(addedRow);
             table.getSelectionModel().clearAndSelect(table.getItems().size() - 1);
             table.edit(table.getItems().size() - 1, table.getColumns().getFirst());
         });
@@ -125,6 +133,14 @@ public final class RowsTableEditor extends VBox {
         return errorLabel.isVisible() ? errorLabel.getText() : null;
     }
 
+    // later: not while the cell handles the key. By identity: rows are equal by their cells
+    private void removeIfBlankAdded(ObservableList<String> row) {
+        if (row != null && row == addedRow && row.stream().allMatch(String::isEmpty)) {
+            addedRow = null;
+            Platform.runLater(() -> table.getItems().removeIf(item -> item == row));
+        }
+    }
+
     private void commit() {
         try {
             onEdit.accept(getRows());
@@ -140,7 +156,7 @@ public final class RowsTableEditor extends VBox {
     }
 
     // a text field while edited, committed on Enter and on focus loss, cancelled on Escape
-    private static final class EditingCell extends TableCell<ObservableList<String>, String> {
+    private final class EditingCell extends TableCell<ObservableList<String>, String> {
         private TextField textField;
 
         @Override
@@ -154,6 +170,8 @@ public final class RowsTableEditor extends VBox {
             textField.setOnKeyPressed(event -> {
                 if (event.getCode() == KeyCode.ESCAPE) {
                     cancelEdit();
+                    // Escape only: moving to another cell of the new row cancels this edit too
+                    removeIfBlankAdded(getTableRow() == null ? null : getTableRow().getItem());
                 }
             });
             textField.focusedProperty().addListener((_, _, focused) -> {

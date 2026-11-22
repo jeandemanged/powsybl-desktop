@@ -49,7 +49,7 @@ class UsageLimitEditsTest {
         assertEquals(Map.of("ELIA", 4), limits.getMaxElementaryActionsPerTso());
         // the TSOs sorted
         UsageLimitsSpec read = UsageLimitEdits.of(crac, curative);
-        assertEquals(new UsageLimitsSpec(3, List.of(spec.perTso().get(1), spec.perTso().get(0))), read);
+        assertEquals(new UsageLimitsSpec(3, spec.perTso().reversed()), read);
         assertEquals(List.of(List.of("ELIA", "", "1", "", "4"), List.of("RTE", "1", "", "2", "")), UsageLimitEdits.tsoRows(read.perTso()));
         assertEquals(read.perTso(), UsageLimitEdits.parseTsoRows(UsageLimitEdits.tsoRows(read.perTso())));
 

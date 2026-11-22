@@ -389,16 +389,11 @@ public final class NetworkActionEdits {
         return NetworkActionSpec.of(action).orElseThrow(() -> new IllegalArgumentException(Messages.get("networkActionEdits.unsupported", action.getId())));
     }
 
-    // {@code action} removed, then its replacement added, or else {@code action} put back as it was, unchecked
+    // {@code action} removed, then its replacement added, or else {@code action} put back as it was, unchecked (see CracEdits.replace)
     private static NetworkAction replace(Crac crac, NetworkAction action, NetworkActionSpec current, List<UsageRuleSpec> currentRules,
                                         Supplier<NetworkAction> replacement) {
-        crac.removeNetworkAction(action.getId());
-        try {
-            return replacement.get();
-        } catch (IllegalArgumentException e) {
-            build(crac, current, currentRules);
-            throw e;
-        }
+        return CracEdits.replace(action.getId(), () -> crac.removeNetworkAction(action.getId()), replacement,
+                () -> build(crac, current, currentRules));
     }
 
     public static void remove(Crac crac, String id) {

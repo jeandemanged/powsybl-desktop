@@ -456,6 +456,9 @@ public final class CracCreationParametersSupport {
     private record PoleKey(String eic, String code, String pole) {
     }
 
+    private record HvdcKey(String eic, String code) {
+    }
+
     /**
      * Sets the internal HVDCs of both tables at once, grouped by HVDC (EIC and code) and pole, in the order they appear.
      */
@@ -473,11 +476,11 @@ public final class CracCreationParametersSupport {
             converters.putIfAbsent(key, new ArrayList<>());
             lines.computeIfAbsent(key, _ -> new ArrayList<>()).add(new HvdcLine(required(row, 3, i), required(row, 4, i), required(row, 5, i)));
         }
-        Map<List<String>, List<HvdcPole>> poles = new LinkedHashMap<>();
-        converters.forEach((key, poleConverters) -> poles.computeIfAbsent(List.of(key.eic(), key.code()), _ -> new ArrayList<>())
+        Map<HvdcKey, List<HvdcPole>> poles = new LinkedHashMap<>();
+        converters.forEach((key, poleConverters) -> poles.computeIfAbsent(new HvdcKey(key.eic(), key.code()), _ -> new ArrayList<>())
                 .add(new HvdcPole(key.pole(), poleConverters, lines.getOrDefault(key, List.of()))));
         parameters.setInternalHvdcs(poles.entrySet().stream()
-                .map(entry -> new InternalHvdc(entry.getKey().get(0), entry.getKey().get(1), entry.getValue()))
+                .map(entry -> new InternalHvdc(entry.getKey().eic(), entry.getKey().code(), entry.getValue()))
                 .toList());
     }
 

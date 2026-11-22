@@ -166,7 +166,10 @@ Maven cache may contain unrelated versions.
 - Flow CNEC editing: `…/rao/CnecEdits.java`. A `FlowCnec` is immutable but for its role (`setOptimized`,
   `setMonitored`): any other change replaces it by a new one built from a `FlowCnecSpec` record (`FlowCnecSpec.of`
   reads one), the old one put back when OpenRAO refuses the new one (no threshold, % of iMax without iMax...), so the
-  object of an id may change even on a refused edit. OpenRAO 7.5.1 removes a CNEC even when an `OnConstraint` usage
+  object of an id may change even on a refused edit. The replace-style edits (CNECs, network and range actions, contingency
+  renames) share `CracEdits.replace`: an OpenRAO refusal comes as an `IllegalArgumentException`, and a put back failing
+  too (an object OpenRAO read but won't rebuild) is one telling the object is gone, the forms then refreshing the view
+  as after an edit. OpenRAO 7.5.1 removes a CNEC even when an `OnConstraint` usage
   rule refers to it: `CnecEdits` refuses replacing or removing such a CNEC. `defaultSpec` makes a CNEC as the CRAC
   generator's `CnecCreator` does (id `branchName_state`, ± permanent current, else active power, limit on the sides,
   permanent current limits as iMax). `FlowCnecForm` edits one (thresholds as `RowsTableEditor` rows: side, unit, min,

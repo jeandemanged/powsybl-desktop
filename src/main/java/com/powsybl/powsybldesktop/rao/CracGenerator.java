@@ -204,6 +204,10 @@ public final class CracGenerator {
             List<String> row = rows.get(i);
             Set<String> injections = Arrays.stream(required(row, 1, i).split("\\+")).map(String::trim).filter(id -> !id.isEmpty())
                     .collect(Collectors.toCollection(LinkedHashSet::new));
+            // separators only, e.g. "+": no injection
+            if (injections.isEmpty()) {
+                throw invalid(i, Messages.get("cracCreation.row.required", 2));
+            }
             for (String injection : injections) {
                 if (!used.add(injection)) {
                     throw invalid(i, Messages.get("cracGenerator.row.injectionTwice", injection));

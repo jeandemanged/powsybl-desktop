@@ -276,7 +276,10 @@ final class FlowCnecForm {
             onEdited.accept(cnec);
         } catch (IllegalArgumentException e) {
             FlowCnec putBack = crac.getFlowCnec(id);
-            if (putBack != null && putBack != cnec) {
+            if (putBack == null) {
+                // not put back (see CracEdits.replace): the CRAC changed all the same
+                onEdited.accept(cnec);
+            } else if (putBack != cnec) {
                 cnec = putBack;
                 onEdited.accept(cnec);
             }

@@ -255,13 +255,8 @@ public final class CnecEdits {
         if (!sorted.id().equals(cnec.getId()) && crac.getCnec(sorted.id()) != null) {
             throw new IllegalArgumentException(Messages.get("cnecEdits.exists", sorted.id()));
         }
-        crac.removeFlowCnec(cnec.getId());
-        try {
-            return addFlowCnec(crac, sorted);
-        } catch (IllegalArgumentException e) {
-            addFlowCnec(crac, current);
-            throw e;
-        }
+        return CracEdits.replace(cnec.getId(), () -> crac.removeFlowCnec(cnec.getId()), () -> addFlowCnec(crac, sorted),
+                () -> addFlowCnec(crac, current));
     }
 
     /**

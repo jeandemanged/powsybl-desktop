@@ -107,9 +107,9 @@ public final class RaoResultRows {
                 RangeAction<?> rangeAction = (RangeAction<?>) action;
                 boolean pst = rangeAction instanceof PstRangeAction;
                 stateRows.add(new ActionRow(state, rangeAction,
-                        result.getPreOptimizationSetPointOnState(state, rangeAction), result.getOptimizedSetPointOnState(state, rangeAction),
-                        pst ? result.getPreOptimizationTapOnState(state, (PstRangeAction) rangeAction) : null,
-                        pst ? result.getOptimizedTapOnState(state, (PstRangeAction) rangeAction) : null));
+                        orNull(() -> result.getPreOptimizationSetPointOnState(state, rangeAction)), orNull(() -> result.getOptimizedSetPointOnState(state, rangeAction)),
+                        pst ? orNull(() -> result.getPreOptimizationTapOnState(state, (PstRangeAction) rangeAction)) : null,
+                        pst ? orNull(() -> result.getOptimizedTapOnState(state, (PstRangeAction) rangeAction)) : null));
             });
             stateRows.sort(Comparator.comparing(row -> row.action().getId()));
             rows.addAll(stateRows);
@@ -137,6 +137,15 @@ public final class RaoResultRows {
             return supplier.getAsDouble();
         } catch (OpenRaoException _) {
             return Double.NaN;
+        }
+    }
+
+    // null when the result has no such value (e.g. a partial failure)
+    private static <T> T orNull(Supplier<T> supplier) {
+        try {
+            return supplier.get();
+        } catch (OpenRaoException _) {
+            return null;
         }
     }
 

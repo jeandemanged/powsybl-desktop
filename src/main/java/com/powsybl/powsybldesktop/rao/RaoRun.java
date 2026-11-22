@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop.rao;
 
+import com.powsybl.commons.PowsyblException;
 import com.powsybl.commons.io.TreeDataFormat;
 import com.powsybl.commons.report.ReportNode;
 import com.powsybl.contingency.Contingency;
@@ -171,7 +172,8 @@ public final class RaoRun {
         Crac crac;
         try {
             crac = CracIO.fromJson(cracJson, network);
-        } catch (IllegalStateException e) {
+        } catch (IllegalStateException | IllegalArgumentException | OpenRaoException | PowsyblException e) {
+            // a failed creation, or one throwing (no importer recognizing it, an exception of OpenRAO's or PowSyBl's)
             throw new CracNotReadableException(e.getMessage(), e);
         }
         // here, not on the RAO's thread: that one goes on after a cancellation, once the network is released

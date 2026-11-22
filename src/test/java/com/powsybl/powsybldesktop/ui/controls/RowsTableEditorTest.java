@@ -93,17 +93,25 @@ class RowsTableEditorTest extends AbstractHeadlessApplicationTest {
     void addsAndRemovesRows() {
         Button add = (Button) editor.lookupAll(".button").stream().findFirst().orElseThrow();
         interact(add::fire);
-        // the new row's first cell is being edited: Escape keeps it empty
+        // the new row's first cell is being edited: Escape removes the row, still blank, rather than leave it to fail
+        // the next edit
         type(1, 0, "b");
         press(KeyCode.ESCAPE);
         release(KeyCode.ESCAPE);
-        assertEquals(List.of(List.of("a", "1"), List.of("", "")), editor.getRows());
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals(List.of(List.of("a", "1")), editor.getRows());
+        assertEquals(List.of(), edits);
+
+        interact(add::fire);
+        type(1, 0, "b");
+        interact(() -> ((TextField) cell(1, 0).getGraphic()).fireEvent(new ActionEvent()));
+        assertEquals(List.of(List.of("a", "1"), List.of("b", "")), editor.getRows());
 
         interact(() -> editor.getTable().getSelectionModel().clearAndSelect(0));
         Button remove = (Button) editor.lookupAll(".button").stream().skip(1).findFirst().orElseThrow();
         interact(remove::fire);
-        assertEquals(List.of(List.of("", "")), editor.getRows());
-        assertEquals(List.of(List.of(List.of("", ""))), edits);
+        assertEquals(List.of(List.of("b", "")), editor.getRows());
+        assertEquals(List.of(List.of(List.of("a", "1"), List.of("b", "")), List.of(List.of("b", ""))), edits);
     }
 
     @Test

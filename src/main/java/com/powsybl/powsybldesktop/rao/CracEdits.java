@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 /**
  * Edits of a CRAC within what OpenRAO's API allows (7.5.1): a new empty CRAC, instants appended in their kind's order
@@ -185,13 +186,29 @@ public final class CracEdits {
             throw new IllegalArgumentException(Messages.get("cracEdits.contingency.exists", newId));
         }
         List<ContingencyElement> elements = List.copyOf(contingency.getElements());
-        crac.removeContingency(contingency.getId());
+        return replace(contingency.getId(), () -> crac.removeContingency(contingency.getId()), () -> addContingency(crac, newId, newName, elements),
+                () -> addContingency(crac, contingency.getId(), contingency.getName().orElse(null), elements));
+    }
+
+    /**
+     * Replaces the CRAC object {@code id}: {@code remove} it, then add its {@code replacement}, or else {@code putBack}
+     * the object as it was. A refusal, OpenRAO's included, is an {@link IllegalArgumentException}; so is a failed put
+     * back, telling that the object is gone (the CRAC changed: the caller refreshes as after an edit).
+     */
+    static <T> T replace(String id, Runnable remove, Supplier<T> replacement, Runnable putBack) {
+        remove.run();
         try {
-            return addContingency(crac, newId, newName, elements);
-        } catch (IllegalArgumentException e) {
-            // put back as it was, as the other edits do
-            addContingency(crac, contingency.getId(), contingency.getName().orElse(null), elements);
-            throw e;
+            return replacement.get();
+        } catch (IllegalArgumentException | OpenRaoException refusal) {
+            try {
+                putBack.run();
+            } catch (IllegalArgumentException | OpenRaoException putBackFailure) {
+                IllegalArgumentException lost = new IllegalArgumentException(
+                        Messages.get("cracEdits.lost", id, refusal.getMessage(), putBackFailure.getMessage()), refusal);
+                lost.addSuppressed(putBackFailure);
+                throw lost;
+            }
+            throw refusal instanceof IllegalArgumentException illegal ? illegal : new IllegalArgumentException(refusal.getMessage(), refusal);
         }
     }
 
@@ -204,7 +221,8 @@ public final class CracEdits {
     }
 
     /**
-     * The result of {@link #addContingencies}: the contingencies added, and the ids skipped, already in the CRAC.
+     * The result of {@link #addContingencies}: the contingencies added, and the ids skipped, already in the CRAC or with an
+     * element missing from the network.
      */
     public record Added(List<Contingency> added, List<String> skipped) {
     }

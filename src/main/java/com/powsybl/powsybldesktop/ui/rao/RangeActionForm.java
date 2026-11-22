@@ -322,7 +322,10 @@ final class RangeActionForm {
             }
         } catch (IllegalArgumentException e) {
             RangeAction<?> putBack = crac.getRangeAction(id);
-            if (putBack != null && putBack != action) {
+            if (putBack == null) {
+                // not put back (see CracEdits.replace): the CRAC changed all the same
+                onEdited.accept(action);
+            } else if (putBack != action) {
                 action = putBack;
                 onEdited.accept(action);
             }

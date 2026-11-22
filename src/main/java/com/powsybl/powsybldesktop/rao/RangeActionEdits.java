@@ -581,16 +581,11 @@ public final class RangeActionEdits {
         return RangeActionSpec.of(action).orElseThrow(() -> new IllegalArgumentException(Messages.get("networkActionEdits.unsupported", action.getId())));
     }
 
-    // {@code action} removed, then its replacement added, or else {@code action} put back as it was, unchecked
+    // {@code action} removed, then its replacement added, or else {@code action} put back as it was, unchecked (see CracEdits.replace)
     private static RangeAction<?> replace(Crac crac, RangeAction<?> action, RangeActionSpec current, List<UsageRuleSpec> currentRules,
                                           Supplier<RangeAction<?>> replacement) {
-        crac.removeRemedialAction(action.getId());
-        try {
-            return replacement.get();
-        } catch (IllegalArgumentException e) {
-            build(crac, current, currentRules);
-            throw e;
-        }
+        return CracEdits.replace(action.getId(), () -> crac.removeRemedialAction(action.getId()), replacement,
+                () -> build(crac, current, currentRules));
     }
 
     /**

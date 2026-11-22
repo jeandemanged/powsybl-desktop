@@ -223,7 +223,10 @@ final class NetworkActionForm {
             }
         } catch (IllegalArgumentException e) {
             NetworkAction putBack = crac.getNetworkAction(id);
-            if (putBack != null && putBack != action) {
+            if (putBack == null) {
+                // not put back (see CracEdits.replace): the CRAC changed all the same
+                onEdited.accept(action);
+            } else if (putBack != action) {
                 action = putBack;
                 onEdited.accept(action);
             }

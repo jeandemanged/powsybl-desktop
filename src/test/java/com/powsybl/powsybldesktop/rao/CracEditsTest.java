@@ -12,12 +12,14 @@ import com.powsybl.contingency.ContingencyElement;
 import com.powsybl.contingency.ContingencyElementType;
 import com.powsybl.contingency.LineContingency;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.openrao.commons.OpenRaoException;
 import com.powsybl.openrao.data.crac.api.Crac;
 import com.powsybl.openrao.data.crac.api.Instant;
 import com.powsybl.openrao.data.crac.api.InstantKind;
 import com.powsybl.powsybldesktop.utils.Messages;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -118,6 +120,27 @@ class CracEditsTest {
 
         CracEdits.removeContingency(crac, "renamed");
         assertNull(crac.getContingency("renamed"));
+    }
+
+    @Test
+    void replaceRefusesWithIllegalArgumentsTellingAnObjectNotPutBack() {
+        List<String> steps = new ArrayList<>();
+        // OpenRAO's refusal as an IllegalArgumentException, the object put back
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class, () -> CracEdits.replace("x", () -> steps.add("remove"),
+                () -> {
+                    throw new OpenRaoException("refused");
+                }, () -> steps.add("putBack")));
+        assertEquals("refused", refused.getMessage());
+        assertEquals(List.of("remove", "putBack"), steps);
+
+        IllegalArgumentException lost = assertThrows(IllegalArgumentException.class, () -> CracEdits.replace("x", () -> { },
+                () -> {
+                    throw new IllegalArgumentException("refused");
+                }, () -> {
+                    throw new OpenRaoException("no way");
+                }));
+        assertEquals(Messages.get("cracEdits.lost", "x", "refused", "no way"), lost.getMessage());
+        assertEquals(1, lost.getSuppressed().length);
     }
 
     @Test

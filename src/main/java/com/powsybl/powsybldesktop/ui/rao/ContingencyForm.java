@@ -170,6 +170,10 @@ final class ContingencyForm {
             }
         } catch (IllegalArgumentException e) {
             showError(e.getMessage());
+            if (crac.getContingency(contingency.getId()) == null) {
+                // not put back (see CracEdits.replace): the CRAC changed all the same
+                onEdited.accept(contingency);
+            }
         }
         refresh();
     }
