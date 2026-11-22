@@ -10,6 +10,7 @@ package com.powsybl.powsybldesktop.parameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.powsybl.commons.PowsyblException;
+import com.powsybl.iidm.network.TwoSides;
 import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.nad.svg.EdgeInfoEnum;
 import com.powsybl.nad.svg.EdgeInfoParameters;
@@ -17,13 +18,17 @@ import com.powsybl.nad.svg.SvgParameters;
 import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
 import com.powsybl.openloadflow.sensi.OpenSensitivityAnalysisParameters;
+import com.powsybl.openrao.data.crac.api.parameters.CracCreationParameters;
+import com.powsybl.openrao.data.crac.io.nc.parameters.NcCracCreationParameters;
 import com.powsybl.openrao.raoapi.parameters.ObjectiveFunctionParameters.ObjectiveFunctionType;
+import com.powsybl.powsybldesktop.rao.CracCreationParametersSupport;
 import com.powsybl.powsybldesktop.rao.RaoParametersSupport;
 import com.powsybl.powsybldesktop.sensitivity.SensitivityAnalysisMode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -44,7 +49,7 @@ class ApplicationParametersJsonTest {
         ApplicationParameters defaults = ApplicationParameters.createDefault();
         ApplicationParameters parameters = new ApplicationParameters(Map.of("IIDM", iidmImport), Map.of("IIDM", new Properties()),
                 defaults.sld(), defaults.nad(), defaults.loadFlow(), defaults.securityAnalysis(),
-                defaults.sensitivityAnalysis(), SensitivityAnalysisMode.DC, defaults.rao(), SensitivityAnalysisMode.AC, true, defaults.gui());
+                defaults.sensitivityAnalysis(), SensitivityAnalysisMode.DC, defaults.rao(), SensitivityAnalysisMode.AC, true, defaults.cracCreation(), defaults.gui());
 
         parameters.sld().setSubstationLayoutChoice(DesktopSldParameters.SubstationLayoutChoice.VERTICAL)
                 .setComponentLibraryChoice(DesktopSldParameters.ComponentLibraryChoice.FLAT_DESIGN)
@@ -75,6 +80,8 @@ class ApplicationParametersJsonTest {
         RaoParametersSupport.searchTree(parameters.rao()).getMultithreadingParameters().setAvailableCPUs(6);
         RaoParametersSupport.addMnec(parameters.rao());
         RaoParametersSupport.fastRao(parameters.rao()).setNumberOfCnecsToAdd(7);
+        parameters.cracCreation().setDefaultMonitoredLineSide(CracCreationParameters.MonitoredLineSide.MONITOR_LINES_ON_SIDE_TWO);
+        CracCreationParametersSupport.setCurativeInstants(CracCreationParametersSupport.nc(parameters.cracCreation()), List.of(List.of("curative", "600")));
         RaoParametersSupport.sensitivityParameters(parameters.rao()).setLoadFlowParameters(parameters.loadFlow());
 
         parameters.gui().setMapBasemap(Basemap.OPEN_STREET_MAP);
@@ -129,6 +136,8 @@ class ApplicationParametersJsonTest {
         assertEquals(SensitivityAnalysisMode.AC, read.raoMode());
         assertTrue(read.fastRao());
         assertEquals(7, RaoParametersSupport.fastRao(read.rao()).getNumberOfCnecsToAdd());
+        assertEquals(Set.of(TwoSides.TWO), read.cracCreation().getDefaultMonitoredSides());
+        assertEquals(Map.of("curative", 600), read.cracCreation().getExtension(NcCracCreationParameters.class).getCurativeInstants());
         // the embedded load flow parameters are the load flow section's, wired back by ParametersModel
         assertTrue(json.get("rao").at("/extensions/open-rao-search-tree-parameters/load-flow-and-sensitivity-computation/sensitivity-parameters").isObject());
         assertTrue(json.get("rao").at("/extensions/open-rao-search-tree-parameters/load-flow-and-sensitivity-computation/sensitivity-parameters/load-flow-parameters").isMissingNode());
@@ -189,6 +198,10 @@ class ApplicationParametersJsonTest {
         ObjectNode fastRaoNotBoolean = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
         fastRaoNotBoolean.put("fastRao", "yes");
         assertThrows(PowsyblException.class, () -> ApplicationParametersJson.fromJson(fastRaoNotBoolean));
+
+        ObjectNode invalidCracCreation = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
+        invalidCracCreation.put("cracCreation", "both sides");
+        assertThrows(PowsyblException.class, () -> ApplicationParametersJson.fromJson(invalidCracCreation));
 
         ObjectNode raoNotObject = ApplicationParametersJson.toJson(ApplicationParameters.createDefault());
         raoNotObject.put("rao", 1);

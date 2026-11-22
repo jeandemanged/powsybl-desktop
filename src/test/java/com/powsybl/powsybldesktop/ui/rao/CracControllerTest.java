@@ -8,6 +8,7 @@
 package com.powsybl.powsybldesktop.ui.rao;
 
 import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.TwoSides;
 import com.powsybl.iidm.network.test.PhaseShifterTestCaseFactory;
 import com.powsybl.openrao.data.crac.api.Crac;
 import com.powsybl.openrao.data.crac.api.parameters.CracCreationParameters;
@@ -38,6 +39,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -70,6 +72,10 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
         Optional<CracCreationParameters> askParameters(String fileName, String format) {
             askedFormats.add(format);
             return Optional.of(new CracCreationParameters());
+        }
+
+        Optional<CracCreationParameters> ask(String fileName, String format) {
+            return super.askParameters(fileName, format);
         }
     }
 
@@ -215,6 +221,18 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals("crac.import.creationFailed", failure.messageKey());
         assertEquals("crac.import.viewReport", failure.actions().getFirst().messageKey());
         assertSame(previous, otherStudy.getCrac());
+    }
+
+    // the CRAC Creation parameters tab's, with nothing to ask for a JSON CRAC
+    @Test
+    void importsWithTheCracCreationParameters() {
+        CracCreationParameters parameters = mainModel.getParametersModel().cracCreationParametersProperty().get();
+        parameters.setDefaultMonitoredLineSide(CracCreationParameters.MonitoredLineSide.MONITOR_LINES_ON_SIDE_TWO);
+
+        Optional<CracCreationParameters> asked = ((AnsweringCracController) controller).ask("crac.json", "JSON");
+
+        assertEquals(Set.of(TwoSides.TWO), asked.orElseThrow().getDefaultMonitoredSides());
+        assertNotSame(parameters, asked.orElseThrow());
     }
 
     @Test

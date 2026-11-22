@@ -26,7 +26,9 @@ import com.powsybl.openloadflow.OpenLoadFlowParameters;
 import com.powsybl.openloadflow.sa.OpenSecurityAnalysisParameters;
 import com.powsybl.openloadflow.sensi.OpenSensitivityAnalysisParameters;
 import com.powsybl.openrao.commons.OpenRaoException;
+import com.powsybl.openrao.data.crac.api.parameters.CracCreationParameters;
 import com.powsybl.openrao.raoapi.parameters.RaoParameters;
+import com.powsybl.powsybldesktop.rao.CracCreationParametersSupport;
 import com.powsybl.powsybldesktop.rao.RaoParametersSupport;
 import com.powsybl.powsybldesktop.sensitivity.SensitivityAnalysisMode;
 import com.powsybl.security.SecurityAnalysisParameters;
@@ -89,6 +91,7 @@ public final class ApplicationParametersJson {
         root.set("rao", RaoParametersSupport.toJsonWithoutLoadFlow(parameters.rao()));
         root.put("raoMode", parameters.raoMode().name());
         root.put("fastRao", parameters.fastRao());
+        root.set("cracCreation", CracCreationParametersSupport.toJson(parameters.cracCreation()));
         gui(new Writer(root.putObject("gui")), parameters.gui());
         return root;
     }
@@ -115,6 +118,7 @@ public final class ApplicationParametersJson {
                 root.has("rao") ? raoFromJson(root.get("rao")) : defaults.rao(),
                 root.has("raoMode") ? modeFromJson(root.get("raoMode"), "raoMode") : defaults.raoMode(),
                 root.has("fastRao") ? booleanFromJson(root.get("fastRao"), "fastRao") : defaults.fastRao(),
+                root.has("cracCreation") ? cracCreationFromJson(root.get("cracCreation")) : defaults.cracCreation(),
                 gui);
     }
 
@@ -270,6 +274,16 @@ public final class ApplicationParametersJson {
             throw invalid(name);
         }
         return node.booleanValue();
+    }
+
+    // OpenRAO's format
+    private static CracCreationParameters cracCreationFromJson(JsonNode node) {
+        requireObject(node, "cracCreation");
+        try {
+            return CracCreationParametersSupport.fromJson(node);
+        } catch (OpenRaoException | UncheckedIOException e) {
+            throw new PowsyblException("Invalid parameters JSON: unexpected value for 'cracCreation' (" + e.getMessage() + ")", e);
+        }
     }
 
     // OpenRAO's format, without the embedded load flow parameters as for the security and sensitivity analyses

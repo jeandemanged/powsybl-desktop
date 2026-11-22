@@ -9,6 +9,7 @@ package com.powsybl.powsybldesktop.parameters;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.powsybl.loadflow.LoadFlowParameters;
+import com.powsybl.openrao.data.crac.api.parameters.CracCreationParameters;
 import com.powsybl.openrao.raoapi.parameters.RaoParameters;
 import com.powsybl.powsybldesktop.rao.RaoParametersSupport;
 import com.powsybl.powsybldesktop.sensitivity.SensitivityAnalysisMode;
@@ -39,6 +40,7 @@ public class ParametersModel {
     private final ObjectProperty<RaoParameters> raoParameters = new SimpleObjectProperty<>();
     private final ObjectProperty<SensitivityAnalysisMode> raoMode = new SimpleObjectProperty<>();
     private final BooleanProperty fastRao = new SimpleBooleanProperty();
+    private final ObjectProperty<CracCreationParameters> cracCreationParameters = new SimpleObjectProperty<>();
     private final ObjectProperty<DesktopSldParameters> sldParameters = new SimpleObjectProperty<>();
     private final ObjectProperty<DesktopNadParameters> nadParameters = new SimpleObjectProperty<>();
     private final ObjectProperty<GuiParameters> guiParameters = new SimpleObjectProperty<>();
@@ -65,6 +67,7 @@ public class ParametersModel {
         raoParameters.setValue(defaults.rao());
         raoMode.setValue(defaults.raoMode());
         fastRao.set(defaults.fastRao());
+        cracCreationParameters.setValue(defaults.cracCreation());
         syncEmbeddedLoadFlowParameters();
         // Security and sensitivity analysis and RAO parameters embed a LoadFlowParameters, but this app has a single
         // authoritative LoadFlowParameters instance (loadFlowParameters above); keep it wired into whichever
@@ -84,6 +87,7 @@ public class ParametersModel {
         raoParameters.addListener((_, _, _) -> parametersChanged());
         raoMode.addListener((_, _, _) -> parametersChanged());
         fastRao.addListener((_, _, _) -> parametersChanged());
+        cracCreationParameters.addListener((_, _, _) -> parametersChanged());
         sldParameters.addListener((_, _, _) -> parametersChanged());
         nadParameters.addListener((_, _, _) -> parametersChanged());
         guiParameters.addListener((_, _, _) -> parametersChanged());
@@ -126,6 +130,10 @@ public class ParametersModel {
 
     public BooleanProperty fastRaoProperty() {
         return fastRao;
+    }
+
+    public ObjectProperty<CracCreationParameters> cracCreationParametersProperty() {
+        return cracCreationParameters;
     }
 
     public ObjectProperty<DesktopSldParameters> sldParametersProperty() {
@@ -184,7 +192,7 @@ public class ParametersModel {
         return new ApplicationParameters(Map.copyOf(networkImportParameters), Map.copyOf(networkExportParameters),
                 sldParameters.getValue(), nadParameters.getValue(), loadFlowParameters.getValue(), securityAnalysisParameters.getValue(),
                 sensitivityAnalysisParameters.getValue(), sensitivityAnalysisMode.getValue(), raoParameters.getValue(), raoMode.getValue(),
-                fastRao.get(), guiParameters.getValue());
+                fastRao.get(), cracCreationParameters.getValue(), guiParameters.getValue());
     }
 
     public void setParameters(ApplicationParameters parameters) {
@@ -199,6 +207,7 @@ public class ParametersModel {
         raoParameters.setValue(parameters.rao());
         raoMode.setValue(parameters.raoMode());
         fastRao.set(parameters.fastRao());
+        cracCreationParameters.setValue(parameters.cracCreation());
         loadFlowParameters.setValue(parameters.loadFlow());
         sldParameters.setValue(parameters.sld());
         nadParameters.setValue(parameters.nad());

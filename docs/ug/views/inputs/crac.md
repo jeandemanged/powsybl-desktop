@@ -37,18 +37,12 @@ On the right, the details of the object selected on the left:
 1. Click **Import** and choose a CRAC file: OpenRAO's JSON, a CSE CRAC, a CIM CRAC, network code (NC) profiles or a
    flow-based constraint document. Its format is recognized from its content; a file of no supported format is
    refused ("Not a CRAC file of a supported format").
-2. In the dialog that follows, set the import parameters of that format:
-   - **Default Monitored Line Side**: the side of the lines the CNECs monitor when the file doesn't tell.
-   - **Time Stamp** (CIM, NC, flow-based constraint document), in UTC: these files can hold several situations; the
-     one of this date and time is imported.
-   - **Capacity Calculation Region** (NC).
-   - **ICS Cost Up**, **ICS Cost Down** (flow-based constraint document).
-   - **Load a Parameters File…**: an OpenRAO CRAC creation parameters JSON file, for the other parameters of the
-     formats (aligned range action groups, busbar changes, voltage CNECs, curative instants...). Its values fill the
-     fields.
-
-   **OK** is disabled while a required value is missing. The dialog offers the parameters of the last import of the
-   same format again.
+2. The CRAC is read with the parameters of the [CRAC Creation](../parameters/crac_creation.md) tab of the
+   Parameters view (default monitored line side, usage limits, the formats' own settings). For a CIM CRAC, NC
+   profiles or a flow-based constraint document, a dialog first asks the **Time Stamp**, in UTC: these files can hold
+   several situations, the one of this date and time is imported; for NC profiles, also their **Capacity Calculation
+   Region**, pre-filled from the tab. **OK** is disabled while one is missing. The dialog offers the time stamp of the
+   last import of the same format again.
 3. A notification follows the import. Once done, the imported CRAC replaces the network's; **View import report** in
    the notification shows what was ignored or altered. When the CRAC can't be created (for instance a JSON CRAC whose
    CNECs are on lines without current limits), the notification says so and the CRAC in place is kept: its import

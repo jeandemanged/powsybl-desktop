@@ -10,7 +10,6 @@ package com.powsybl.powsybldesktop.ui.rao;
 import com.powsybl.entsoe.utils.CapacityCalculationRegion;
 import com.powsybl.iidm.network.TwoSides;
 import com.powsybl.openrao.data.crac.api.parameters.CracCreationParameters;
-import com.powsybl.openrao.data.crac.api.parameters.JsonCracCreationParameters;
 import com.powsybl.powsybldesktop.rao.CracImportParameters;
 import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
 import javafx.scene.Scene;
@@ -18,9 +17,7 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
-import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Set;
@@ -37,9 +34,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CracImportDialogTest extends AbstractHeadlessApplicationTest {
 
     private Stage stage;
-
-    @TempDir
-    Path tempDir;
 
     @Override
     public void start(Stage stage) {
@@ -59,21 +53,12 @@ class CracImportDialogTest extends AbstractHeadlessApplicationTest {
         return dialog.getDialogPane().lookupButton(ButtonType.OK).isDisabled();
     }
 
-    @Test
-    void jsonNeedsNothing() {
-        CracImportDialog dialog = dialog(CracImportParameters.JSON, new CracCreationParameters());
-
-        assertFalse(okDisabled(dialog));
-        assertFalse(dialog.problemLabel.isVisible());
-        interact(() -> dialog.sideChoiceBox.setValue(CracCreationParameters.MonitoredLineSide.MONITOR_LINES_ON_SIDE_TWO));
-        CracCreationParameters result = dialog.getResultConverter().call(ButtonType.OK);
-        assertEquals(Set.of(TwoSides.TWO), result.getDefaultMonitoredSides());
-        assertNull(dialog.getResultConverter().call(ButtonType.CANCEL));
-    }
-
+    // the other parameters, the CRAC Creation tab's, are kept in the result, a copy
     @Test
     void ncNeedsATimestampAndARegion() {
-        CracImportDialog dialog = dialog(CracImportParameters.NC, new CracCreationParameters());
+        CracCreationParameters parameters = new CracCreationParameters();
+        parameters.setDefaultMonitoredLineSide(CracCreationParameters.MonitoredLineSide.MONITOR_LINES_ON_SIDE_TWO);
+        CracImportDialog dialog = dialog(CracImportParameters.NC, parameters);
         assertTrue(okDisabled(dialog));
         assertTrue(dialog.problemLabel.isVisible());
 
@@ -82,8 +67,10 @@ class CracImportDialogTest extends AbstractHeadlessApplicationTest {
             dialog.timeField.setText("10:30");
         });
         assertTrue(okDisabled(dialog), "no region yet");
-        interact(() -> dialog.timeField.setText("25:00"));
-        interact(() -> dialog.regionChoiceBox.setValue(CapacityCalculationRegion.SOUTH_WESTERN_EUROPE));
+        interact(() -> {
+            dialog.timeField.setText("25:00");
+            dialog.regionChoiceBox.setValue(CapacityCalculationRegion.SOUTH_WESTERN_EUROPE);
+        });
         assertTrue(okDisabled(dialog), "an invalid time");
         interact(() -> dialog.timeField.setText("10:30"));
         assertFalse(okDisabled(dialog));
@@ -91,43 +78,38 @@ class CracImportDialogTest extends AbstractHeadlessApplicationTest {
         CracCreationParameters result = dialog.getResultConverter().call(ButtonType.OK);
         assertEquals(OffsetDateTime.parse("2026-11-22T10:30Z"), CracImportParameters.timestamp(result, CracImportParameters.NC));
         assertEquals(CapacityCalculationRegion.SOUTH_WESTERN_EUROPE, CracImportParameters.capacityCalculationRegion(result));
+        assertEquals(Set.of(TwoSides.TWO), result.getDefaultMonitoredSides());
+        assertNull(CracImportParameters.timestamp(parameters, CracImportParameters.NC));
+        assertNull(dialog.getResultConverter().call(ButtonType.CANCEL));
+    }
+
+    // in UTC
+    @Test
+    void prefilledWithTheGivenTimestampAndRegion() {
+        CracCreationParameters parameters = new CracCreationParameters();
+        CracImportParameters.setTimestamp(parameters, CracImportParameters.NC, OffsetDateTime.parse("2026-11-22T12:00+02:00"));
+        CracImportParameters.setCapacityCalculationRegion(parameters, CapacityCalculationRegion.CORE);
+
+        CracImportDialog dialog = dialog(CracImportParameters.NC, parameters);
+
+        assertEquals(LocalDate.of(2026, 11, 22), dialog.datePicker.getValue());
+        assertEquals("10:00", dialog.timeField.getText());
+        assertEquals(CapacityCalculationRegion.CORE, dialog.regionChoiceBox.getValue());
+        assertFalse(okDisabled(dialog));
     }
 
     @Test
-    void flowBasedConstraintHasIcsCosts() {
+    void flowBasedConstraintNeedsATimestampOnly() {
         CracImportDialog dialog = dialog(CracImportParameters.FLOW_BASED_CONSTRAINT, new CracCreationParameters());
+        assertTrue(okDisabled(dialog));
+
         interact(() -> {
             dialog.datePicker.setValue(LocalDate.of(2026, 11, 22));
             dialog.timeField.setText("00:30");
-            dialog.icsCostUpField.setText("abc");
         });
-        assertTrue(okDisabled(dialog));
 
-        interact(() -> dialog.icsCostUpField.setText("12.5"));
         assertFalse(okDisabled(dialog));
-        assertEquals(12.5, CracImportParameters.flowBasedConstraint(dialog.getResultConverter().call(ButtonType.OK)).getIcsCostUp());
-    }
-
-    // given values, those of the last import of the format, are shown, in UTC, and not changed until confirmed
-    @Test
-    void showsTheGivenParametersAndThoseOfAFile() {
-        CracCreationParameters given = new CracCreationParameters();
-        CracImportParameters.setTimestamp(given, CracImportParameters.CIM, OffsetDateTime.parse("2026-11-22T12:00+02:00"));
-        CracImportDialog dialog = dialog(CracImportParameters.CIM, given);
-        assertEquals(LocalDate.of(2026, 11, 22), dialog.datePicker.getValue());
-        assertEquals("10:00", dialog.timeField.getText());
-
-        CracCreationParameters file = new CracCreationParameters();
-        CracImportParameters.setTimestamp(file, CracImportParameters.CIM, OffsetDateTime.parse("2027-01-01T05:15Z"));
-        file.setDefaultMonitoredLineSide(CracCreationParameters.MonitoredLineSide.MONITOR_LINES_ON_SIDE_ONE);
-        Path path = tempDir.resolve("parameters.json");
-        JsonCracCreationParameters.write(file, path);
-        interact(() -> dialog.loadParametersFile(path));
-
-        assertEquals("parameters.json", dialog.parametersFileLabel.getText());
-        assertEquals(LocalDate.of(2027, 1, 1), dialog.datePicker.getValue());
-        assertEquals("05:15", dialog.timeField.getText());
-        assertEquals(CracCreationParameters.MonitoredLineSide.MONITOR_LINES_ON_SIDE_ONE, dialog.sideChoiceBox.getValue());
-        assertEquals(OffsetDateTime.parse("2026-11-22T12:00+02:00"), CracImportParameters.timestamp(given, CracImportParameters.CIM));
+        assertEquals(OffsetDateTime.parse("2026-11-22T00:30Z"),
+                CracImportParameters.timestamp(dialog.getResultConverter().call(ButtonType.OK), CracImportParameters.FLOW_BASED_CONSTRAINT));
     }
 }

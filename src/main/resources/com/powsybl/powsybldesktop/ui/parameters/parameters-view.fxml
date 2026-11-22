@@ -102,6 +102,11 @@
                     <fx:include fx:id="raoEmbedded" source="rao-parameters.fxml"/>
                 </content>
             </Tab>
+            <Tab text="%parameters.tab.cracCreation">
+                <content>
+                    <fx:include fx:id="cracCreationEmbedded" source="crac-creation-parameters.fxml"/>
+                </content>
+            </Tab>
         </tabs>
     </TabPane>
 </VBox>

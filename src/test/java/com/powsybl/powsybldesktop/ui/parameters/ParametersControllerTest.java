@@ -78,7 +78,7 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
     @Test
     void hostsParametersTabsInOrder() {
         List<Tab> tabs = tabPane.getTabs();
-        assertEquals(9, tabs.size());
+        assertEquals(10, tabs.size());
         assertEquals("User Interface", tabs.getFirst().getText());
         assertEquals("Network Import", tabs.get(1).getText());
         assertEquals("Network Export", tabs.get(2).getText());
@@ -88,6 +88,7 @@ class ParametersControllerTest extends AbstractHeadlessApplicationTest {
         assertEquals("Security Analysis", tabs.get(6).getText());
         assertEquals("Sensitivity Analysis", tabs.get(7).getText());
         assertEquals("Remedial Action Optimization", tabs.get(8).getText());
+        assertEquals("CRAC Creation", tabs.get(9).getText());
         assertEquals(tabs.stream().map(Tab::getText).toList(), ParametersController.tabTitles());
     }
 

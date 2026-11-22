@@ -42,6 +42,7 @@ import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
 import com.powsybl.powsybldesktop.rao.CracElements;
 import com.powsybl.powsybldesktop.rao.CracIO;
+import com.powsybl.powsybldesktop.rao.CracImportParameters;
 import com.powsybl.powsybldesktop.rao.RaoResultRows;
 import com.powsybl.powsybldesktop.ui.AbstractDisposableController;
 import com.powsybl.powsybldesktop.ui.controls.FileChooserPreferences;
@@ -135,7 +136,7 @@ public class CracController extends AbstractDisposableController implements Scen
     private Network network;
     private SceneModel sceneModel;
     private MainModel mainModel;
-    // the parameters of the last import, by format, offered again
+    // the parameters of the last import, by format: its time stamp and region are offered again
     private final Map<String, CracCreationParameters> lastImportParameters = new HashMap<>();
 
     @FXML
@@ -434,11 +435,21 @@ public class CracController extends AbstractDisposableController implements Scen
         detection.start();
     }
 
-    // overridable by a test, which can't answer a modal dialog
+    // the CRAC Creation parameters tab's, with the file's own values asked, if the format has any (a time stamp, a
+    // region); overridable by a test, which can't answer a modal dialog
     Optional<CracCreationParameters> askParameters(String fileName, String format) {
-        CracImportDialog dialog = new CracImportDialog(detailsHost.getScene().getWindow(), fileName, format,
-                lastImportParameters.getOrDefault(format, new CracCreationParameters()));
-        return dialog.showAndWait();
+        CracCreationParameters parameters = CracImportParameters.copy(mainModel.getParametersModel().cracCreationParametersProperty().get());
+        CracCreationParameters last = lastImportParameters.get(format);
+        if (last != null && CracImportParameters.needsTimestamp(format) && CracImportParameters.timestamp(last, format) != null) {
+            CracImportParameters.setTimestamp(parameters, format, CracImportParameters.timestamp(last, format));
+        }
+        if (last != null && CracImportParameters.needsCapacityCalculationRegion(format) && CracImportParameters.capacityCalculationRegion(parameters) == null) {
+            CracImportParameters.setCapacityCalculationRegion(parameters, CracImportParameters.capacityCalculationRegion(last));
+        }
+        if (!CracImportParameters.needsTimestamp(format) && !CracImportParameters.needsCapacityCalculationRegion(format)) {
+            return Optional.of(parameters);
+        }
+        return new CracImportDialog(detailsHost.getScene().getWindow(), fileName, format, parameters).showAndWait();
     }
 
     void importCrac(Network root, String fileName, byte[] bytes, CracCreationParameters parameters) {

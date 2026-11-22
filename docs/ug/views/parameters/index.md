@@ -20,6 +20,7 @@ its own page:
 | [Security Analysis](security_analysis.md) | The security analysis parameters. |
 | [Sensitivity Analysis](sensitivity_analysis.md) | The sensitivity analysis parameters, and whether it runs in AC or DC. |
 | [Remedial Action Optimization](remedial_action_optimization.md) | The remedial action optimization (OpenRAO) parameters, whether it runs through FastRAO, and in AC or DC. |
+| [CRAC Creation](crac_creation.md) | How CRAC files are read when imported, by format (OpenRAO). |
 
 Every tab has a list of categories (or of formats, for **Network Import** and **Network Export**) on the left, and
 the fields of the selected one on the right. Hover a field label to read what the parameter does.
@@ -38,6 +39,7 @@ load_flow
 security_analysis
 sensitivity_analysis
 remedial_action_optimization
+crac_creation
 ```
 
 ## What you can do
@@ -72,7 +74,8 @@ Click **Reset all parameters to their default values** and confirm. Save afterwa
   parameters of every tab at once.
 - **Import** / **Export** buttons of the [Load Flow](load_flow.md#import-and-export),
   [Security Analysis](security_analysis.md#import-and-export),
-  [Sensitivity Analysis](sensitivity_analysis.md#import-and-export) and
-  [Remedial Action Optimization](remedial_action_optimization.md#import-and-export) tabs: only that tab's parameters.
+  [Sensitivity Analysis](sensitivity_analysis.md#import-and-export),
+  [Remedial Action Optimization](remedial_action_optimization.md#import-and-export) and
+  [CRAC Creation](crac_creation.md#import-and-export) tabs: only that tab's parameters.
 
 An import or export that fails is reported by an error notification.

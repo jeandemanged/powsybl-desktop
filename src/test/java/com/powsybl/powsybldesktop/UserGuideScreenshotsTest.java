@@ -189,7 +189,7 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
                 "details-generator", "details-line-limits", "general-separate-window", "sa-results-voltages",
                 "limit-scalings", "parameters-user-interface", "parameters-network-import", "parameters-network-export",
                 "parameters-single-line-diagram", "parameters-network-area-diagram", "parameters-load-flow", "parameters-security-analysis",
-                "parameters-sensitivity-analysis", "parameters-rao", "reports", "logs"), writtenScreenshots);
+                "parameters-sensitivity-analysis", "parameters-rao", "parameters-crac-creation", "reports", "logs"), writtenScreenshots);
     }
 
     private Network loadSmallGrid() throws TimeoutException {
@@ -444,6 +444,8 @@ class UserGuideScreenshotsTest extends AbstractHeadlessApplicationTest {
         screenshot("parameters-sensitivity-analysis");
         selectTab(root, Messages.get("desktop.common.rao"));
         screenshot("parameters-rao");
+        selectTab(root, Messages.get("parameters.tab.cracCreation"));
+        screenshot("parameters-crac-creation");
 
         interact(controller::onReports);
         WaitForAsyncUtils.waitForFxEvents();

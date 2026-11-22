@@ -39,7 +39,7 @@ import java.util.Objects;
  * ({@link SldParametersController}, {@link NadParametersController}), load flow parameters (existing
  * {@link LoadFlowParametersController}, embedded unchanged), security and sensitivity analysis and RAO parameters
  * ({@link SecurityAnalysisParametersController}, {@link SensitivityAnalysisParametersController},
- * {@link RaoParametersController}) and the app's own {@link GuiParameters}
+ * {@link RaoParametersController}, {@link CracCreationParametersController}) and the app's own {@link GuiParameters}
  * ({@link GuiParametersController}). Its toolbar saves all of them to the configuration file restored on startup
  * ({@link ParametersConfigFile}), resets them to defaults, or imports/exports them from/to any JSON file.
  *
@@ -53,7 +53,7 @@ public class ParametersController extends AbstractDisposableController {
     private static final List<String> TAB_TITLE_KEYS = List.of("parameters.tab.gui", "parameters.tab.networkImport",
             "parameters.tab.networkExport", "desktop.common.singleLineDiagram", "desktop.common.networkAreaDiagram",
             "desktop.common.loadFlow", "desktop.common.securityAnalysis", "desktop.common.sensitivityAnalysis",
-            "desktop.common.rao");
+            "desktop.common.rao", "parameters.tab.cracCreation");
 
     @FXML
     private Button saveButton;
@@ -78,6 +78,8 @@ public class ParametersController extends AbstractDisposableController {
     @FXML
     private RaoParametersController raoEmbeddedController;
     @FXML
+    private CracCreationParametersController cracCreationEmbeddedController;
+    @FXML
     private GuiParametersController guiEmbeddedController;
 
     private MainModel mainModel;
@@ -101,6 +103,8 @@ public class ParametersController extends AbstractDisposableController {
         sensitivityAnalysisEmbeddedController.setOnImportFailed((path, e) -> importFailed(Instant.now(), path, e));
         raoEmbeddedController.setParametersModel(mainModel.getParametersModel());
         raoEmbeddedController.setOnImportFailed((path, e) -> importFailed(Instant.now(), path, e));
+        cracCreationEmbeddedController.setParametersModel(mainModel.getParametersModel());
+        cracCreationEmbeddedController.setOnImportFailed((path, e) -> importFailed(Instant.now(), path, e));
         guiEmbeddedController.setParametersModel(mainModel.getParametersModel());
         listenerManager.listen(mainModel.getParametersModel().parametersRevisionProperty(), (_, _, _) -> updateSaveButton());
         setConfigPath(configPath);
@@ -217,6 +221,7 @@ public class ParametersController extends AbstractDisposableController {
         securityAnalysisEmbeddedController.dispose();
         sensitivityAnalysisEmbeddedController.dispose();
         raoEmbeddedController.dispose();
+        cracCreationEmbeddedController.dispose();
         guiEmbeddedController.dispose();
         super.dispose();
     }
