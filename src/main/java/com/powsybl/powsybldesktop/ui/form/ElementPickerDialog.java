@@ -43,7 +43,7 @@ public final class ElementPickerDialog extends Dialog<List<String>> {
     private final Map<ElementCandidate, BooleanProperty> checked = new LinkedHashMap<>();
     final TextField searchField = new TextField();
     final ListView<ElementCandidate> listView = new ListView<>();
-    final Button selectShownButton = new Button(Messages.get("sensitivityFactors.picker.selectShown"));
+    final Button selectShownButton = new Button(Messages.get("desktop.common.picker.selectShown"));
 
     public ElementPickerDialog(Window owner, String title, List<ElementCandidate> candidates, Set<String> excludedIds) {
         initOwner(owner);
@@ -60,7 +60,7 @@ public final class ElementPickerDialog extends Dialog<List<String>> {
                     || candidate.name().toLowerCase(Locale.ROOT).contains(filter) || candidate.kind().toLowerCase(Locale.ROOT).contains(filter));
         });
         listView.setItems(shown);
-        listView.setPlaceholder(new Label(Messages.get("sensitivityFactors.picker.none")));
+        listView.setPlaceholder(new Label(Messages.get("desktop.common.picker.none")));
         listView.setCellFactory(CheckBoxListCell.forListView(checked::get, new StringConverter<>() {
             @Override
             public String toString(ElementCandidate candidate) {
@@ -73,7 +73,7 @@ public final class ElementPickerDialog extends Dialog<List<String>> {
             }
         }));
         selectShownButton.setOnAction(_ -> shown.forEach(candidate -> checked.get(candidate).set(true)));
-        Button unselectShown = new Button(Messages.get("sensitivityFactors.picker.unselectShown"));
+        Button unselectShown = new Button(Messages.get("desktop.common.picker.unselectShown"));
         unselectShown.setOnAction(_ -> shown.forEach(candidate -> checked.get(candidate).set(false)));
         HBox.setHgrow(searchField, Priority.ALWAYS);
         VBox content = new VBox(8, new HBox(8, searchField, selectShownButton, unselectShown), listView);
