@@ -30,7 +30,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * Edits of a CRAC within what OpenRAO's API allows (7.5.1): a new empty CRAC, instants appended in their kind's order
@@ -228,14 +230,30 @@ public final class CracEdits {
     }
 
     /**
-     * Adds {@code contingencies} (resolved from contingency lists against {@code network}), skipping those whose id the
-     * CRAC already has and those with an element missing from the network.
+     * The contingencies of lists resolved against a network, and the ids of those with an element missing from it.
      */
-    public static Added addContingencies(Crac crac, Network network, List<Contingency> contingencies) {
+    public record Resolved(List<Contingency> contingencies, Set<String> invalid) {
+    }
+
+    /**
+     * {@code contingencies} (resolved from contingency lists against {@code network}) checked against it: reads the
+     * network, so off the FX thread, unlike {@link #addContingencies} which edits the CRAC.
+     */
+    public static Resolved resolve(Network network, List<Contingency> contingencies) {
+        return new Resolved(List.copyOf(contingencies),
+                contingencies.stream().filter(contingency -> !contingency.isValid(network)).map(Contingency::getId).collect(Collectors.toSet()));
+    }
+
+    /**
+     * Adds the contingencies of {@code resolved}, skipping those whose id the CRAC already has and those with an element
+     * missing from the network.
+     */
+    public static Added addContingencies(Crac crac, Resolved resolved) {
+        List<Contingency> contingencies = resolved.contingencies();
         List<Contingency> added = new ArrayList<>();
         List<String> skipped = new ArrayList<>();
         contingencies.stream().sorted(Comparator.comparing(Contingency::getId)).forEach(contingency -> {
-            if (crac.getContingency(contingency.getId()) != null || !contingency.isValid(network)) {
+            if (crac.getContingency(contingency.getId()) != null || resolved.invalid().contains(contingency.getId())) {
                 skipped.add(contingency.getId());
             } else {
                 added.add(addContingency(crac, contingency.getId(), contingency.getName().orElse(null), contingency.getElements()));

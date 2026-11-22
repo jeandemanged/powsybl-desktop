@@ -109,6 +109,19 @@ class CracGeneratorTest {
         assertEquals(String.join("\n", problems), refusal.getMessage());
     }
 
+    // the tables' instants checked against all the instants, not only those before the duplicate
+    @Test
+    void aDuplicateInstantIsTheOnlyProblem() {
+        settings.setCurativeInstants(List.of("curative", "curative"));
+        settings.setThresholdDefinition(CriticalElements.ThresholdDefinition.PERM_LIMIT_MULTIPLIER);
+        settings.setLimitMultipliers(List.of(List.of("curative", "1.2")));
+
+        List<String> problems = CracGenerator.problems(settings);
+
+        assertEquals(1, problems.size(), String.join("\n", problems));
+        assertTrue(problems.getFirst().startsWith(Messages.get("cracGenerator.problem.instants", "preventive, outage, curative, curative")), problems.getFirst());
+    }
+
     // a second row for the same key would silently replace the first
     @Test
     void duplicateRowsAreRefused() {

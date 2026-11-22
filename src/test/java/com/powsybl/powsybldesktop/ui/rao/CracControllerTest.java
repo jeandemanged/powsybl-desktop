@@ -426,7 +426,7 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
     }
 
     @Test
-    void addsTheContingenciesOfTheEnabledLists() {
+    void addsTheContingenciesOfTheEnabledLists() throws TimeoutException {
         interact(() -> study.setCrac(RaoTestCases.crac(network), List.of()));
         interact(controller::onAddContingenciesFromLists);
         assertEquals(NotificationStatus.ERROR, notification("crac.contingency.fromLists").orElseThrow().status());
@@ -438,6 +438,9 @@ class CracControllerTest extends AbstractHeadlessApplicationTest {
             study.contingencyListEnabledProperty(disabled).set(false);
         });
         interact(controller::onAddContingenciesFromLists);
+        // resolved against the network in a task
+        WaitForAsyncUtils.waitFor(30, TimeUnit.SECONDS, () -> notification("crac.contingency.fromLists.completed").isPresent());
+        WaitForAsyncUtils.waitForFxEvents();
 
         assertEquals(List.of("L1", RaoTestCases.CONTINGENCY), controller.contingenciesListView.getItems().stream().map(Contingency::getId).toList());
         Notification notification = mainModel.getNotificationsModel().getNotifications().stream()

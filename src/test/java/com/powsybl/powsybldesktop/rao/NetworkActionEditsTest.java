@@ -9,7 +9,9 @@ package com.powsybl.powsybldesktop.rao;
 
 import com.powsybl.iidm.network.Country;
 import com.powsybl.iidm.network.Network;
+import com.powsybl.iidm.network.TieLine;
 import com.powsybl.iidm.network.VoltageLevel;
+import com.powsybl.iidm.network.test.EurostagTutorialExample1Factory;
 import com.powsybl.openrao.data.crac.api.Crac;
 import com.powsybl.openrao.data.crac.api.networkaction.ActionType;
 import com.powsybl.openrao.data.crac.api.networkaction.NetworkAction;
@@ -99,6 +101,10 @@ class NetworkActionEditsTest {
         assertEquals(ElementaryActionSpec.terminals("L1", true), NetworkActionEdits.defaultAction(network.getLine("L1")).orElseThrow());
         assertTrue(NetworkActionEdits.defaultAction(network.getVoltageLevel("VL1")).isEmpty());
         assertTrue(NetworkActionEdits.elementCandidates(network).anyMatch(identifiable -> identifiable.getId().equals("SW1")));
+        // every candidate with a default action: not a tie line, which would be picked for nothing
+        Network withTieLine = EurostagTutorialExample1Factory.createWithTieLine();
+        assertTrue(NetworkActionEdits.elementCandidates(withTieLine).allMatch(identifiable -> NetworkActionEdits.defaultAction(identifiable).isPresent()));
+        assertTrue(NetworkActionEdits.elementCandidates(withTieLine).noneMatch(TieLine.class::isInstance));
         assertEquals("Network action 1", NetworkActionEdits.newId(crac, "Network action"));
     }
 

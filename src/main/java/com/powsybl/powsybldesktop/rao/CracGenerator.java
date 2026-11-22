@@ -263,16 +263,18 @@ public final class CracGenerator {
                 break;
             }
         }
+        // all of them, not only those before a duplicate or blank one: no instant reported unknown besides
+        Set<String> known = instants.stream().filter(instant -> instant != null && !instant.isBlank()).collect(Collectors.toSet());
         Set<String> postContingency = new LinkedHashSet<>(instants.subList(1, instants.size()));
-        checkInstants(problems, "limitMultipliers", () -> parseInstantValues(settings.getLimitMultipliers(), false, 1).keySet(), seen);
-        checkInstants(problems, "limitMultipliersPerNominalV", () -> parseInstantNominalVValues(settings.getLimitMultipliersPerNominalV()).keySet(), seen);
+        checkInstants(problems, "limitMultipliers", () -> parseInstantValues(settings.getLimitMultipliers(), false, 1).keySet(), known);
+        checkInstants(problems, "limitMultipliersPerNominalV", () -> parseInstantNominalVValues(settings.getLimitMultipliersPerNominalV()).keySet(), known);
         checkInstants(problems, "limitDurations", () -> parseInstantValues(settings.getLimitDurations(), true, PERMANENT).keySet(), postContingency);
         checkInstants(problems, "limitDurationsPerNominalV", () -> parseInstantNominalVValues(settings.getLimitDurationsPerNominalV()).keySet(), postContingency);
-        checkInstants(problems, "pstTapRanges", () -> parseTapRanges(settings.getPstTapRanges()).keySet(), seen);
-        checkInstants(problems, "redispatchingRangesAndCosts", () -> parseInstantRangesAndCosts(settings.getRedispatchingRangesAndCosts()).keySet(), seen);
-        checkInstants(problems, "balancing", () -> parseInstantRangesAndCosts(settings.getBalancing()).keySet(), seen);
+        checkInstants(problems, "pstTapRanges", () -> parseTapRanges(settings.getPstTapRanges()).keySet(), known);
+        checkInstants(problems, "redispatchingRangesAndCosts", () -> parseInstantRangesAndCosts(settings.getRedispatchingRangesAndCosts()).keySet(), known);
+        checkInstants(problems, "balancing", () -> parseInstantRangesAndCosts(settings.getBalancing()).keySet(), known);
         checkInstants(problems, "countertrading", () -> parseCountryRangesAndCosts(settings.getCountertrading()).values().stream()
-                .flatMap(perInstant -> perInstant.keySet().stream()).collect(Collectors.toSet()), seen);
+                .flatMap(perInstant -> perInstant.keySet().stream()).collect(Collectors.toSet()), known);
         check(problems, "injectionCombinations", () -> parseInjectionCombinations(settings.getInjectionCombinations()).keySet());
         if (settings.getThresholdDefinition() == CriticalElements.ThresholdDefinition.FROM_OPERATIONAL_LIMITS) {
             try {

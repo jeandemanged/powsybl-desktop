@@ -149,7 +149,7 @@ class CracEditsTest {
         List<Contingency> contingencies = List.of(Contingency.line("L1"), Contingency.line(RaoTestCases.CONTINGENCY.replace(" out", "")),
                 new Contingency(RaoTestCases.CONTINGENCY, new LineContingency("L1")), Contingency.line("unknown"));
 
-        CracEdits.Added added = CracEdits.addContingencies(crac, network, contingencies);
+        CracEdits.Added added = CracEdits.addContingencies(crac, CracEdits.resolve(network, contingencies));
 
         assertEquals(List.of("L1", "L2"), added.added().stream().map(Contingency::getId).toList());
         assertEquals(List.of(RaoTestCases.CONTINGENCY, "unknown"), added.skipped());

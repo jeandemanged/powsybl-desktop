@@ -289,7 +289,8 @@ public class NetworkStudy {
     }
 
     /**
-     * Tracks a load flow, security or sensitivity analysis or RAO run until it ends, for {@link #dispose} to cancel it.
+     * Tracks a load flow, security or sensitivity analysis or RAO run (or another job going on with the network, e.g. a
+     * CRAC import) until it ends, for {@link #dispose} to cancel it.
      */
     public void trackComputation(Service<?> service) {
         computationServices.add(service);

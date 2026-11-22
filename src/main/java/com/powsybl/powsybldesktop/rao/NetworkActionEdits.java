@@ -205,11 +205,12 @@ public final class NetworkActionEdits {
     // ----- creation -----
 
     /**
-     * The network's objects a network action can act on: switches, branches, three-winding transformers, injections,
-     * unpaired boundary lines and HVDC lines.
+     * The network's objects a network action can act on: switches, lines, two- and three-winding transformers,
+     * injections, unpaired boundary lines and HVDC lines; each one has a {@link #defaultAction}. Not tie lines, no
+     * {@code Connectable} so no terminals action here (unlike PowSyBl's own connection modifications).
      */
     public static Stream<Identifiable<?>> elementCandidates(Network network) {
-        return Stream.<Stream<? extends Identifiable<?>>>of(network.getSwitchStream(), network.getLineStream(), network.getTieLineStream(),
+        return Stream.<Stream<? extends Identifiable<?>>>of(network.getSwitchStream(), network.getLineStream(),
                 network.getTwoWindingsTransformerStream(), network.getThreeWindingsTransformerStream(), network.getGeneratorStream(), network.getLoadStream(),
                 network.getBatteryStream(), network.getShuntCompensatorStream(), network.getStaticVarCompensatorStream(),
                 network.getBoundaryLineStream().filter(line -> !line.isPaired()), network.getHvdcLineStream()).flatMap(stream -> stream.map(identifiable -> identifiable));

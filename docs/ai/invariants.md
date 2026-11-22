@@ -100,7 +100,8 @@ Build
   matching your need (see ui-conventions).
 - **File I/O on the FX thread**: contingency list, limit scalings, sensitivity factors, CRAC export and parameters JSON
   import/export run synchronously in event handlers (small files), unlike network import/export and CRAC import
-  (format detection parses the file, creation reads the network) which run in services.
+  (format detection parses the file, creation reads the network) which run in services. The CRAC export serializes
+  before writing (`CracIO.toJson`), so that a failure leaves the file as it was.
 - **Network import and study loading use a plain `Task`** rather than `AbstractNetworkTask` — intentional, since the
   networks are not loaded yet; **study saving** marks its networks busy with `markBusy` instead, writing several at
   once (see [threading](threading.md#rules), rule 5).

@@ -85,7 +85,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -633,11 +632,12 @@ public class CracController extends AbstractDisposableController implements Scen
         study().cracEdited();
     }
 
-    // those of the enabled contingency lists, as a security or sensitivity analysis resolves them
+    // those of the enabled contingency lists, as a security or sensitivity analysis resolves them: resolved and checked
+    // against the network (criterion lists scan it) in a network task, then added to the CRAC on the FX thread
     @FXML
     void onAddContingenciesFromLists() {
-        Crac crac = crac();
-        if (crac == null) {
+        Network root = network;
+        if (crac() == null) {
             return;
         }
         java.time.Instant start = java.time.Instant.now();
@@ -647,6 +647,51 @@ public class CracController extends AbstractDisposableController implements Scen
             mainModel.getNotificationsModel().add(Notification.createError(start, "crac.contingency.fromLists.none"));
             return;
         }
+        if (mainModel.isBusy(root)) {
+            mainModel.getNotificationsModel().add(Notification.createError(start, "main.networkBusy"));
+            return;
+        }
+        Service<CracEdits.Resolved> resolution = new Service<>() {
+            @Override
+            protected Task<CracEdits.Resolved> createTask() {
+                return new AbstractNetworkTask<>(mainModel, root) {
+                    @Override
+                    protected CracEdits.Resolved compute() {
+                        return CracEdits.resolve(root, ContingencyNames.deduplicate(contingencies(root, lists)));
+                    }
+                };
+            }
+        };
+        Notification running = Notification.createRunning("crac.contingency.fromLists.running", resolution::cancel);
+        mainModel.getNotificationsModel().add(running);
+        resolution.setOnSucceeded(_ -> {
+            // the CRAC in place now, maybe another one
+            Crac crac = study.getCrac();
+            if (crac == null) {
+                mainModel.getNotificationsModel().remove(running);
+                return;
+            }
+            CracEdits.Added added = CracEdits.addContingencies(crac, resolution.getValue());
+            if (network == root) {
+                tabPane.getSelectionModel().select(contingenciesTab);
+            }
+            study.cracEdited();
+            mainModel.getNotificationsModel().replace(running, Notification.createSuccess(running.startTimestamp(), "crac.contingency.fromLists.completed")
+                    .withMessageArgs(added.added().size(), added.skipped().size()));
+        });
+        resolution.setOnFailed(event -> {
+            Throwable exception = event.getSource().getException();
+            LOGGER.error("Failed to add the contingencies of the enabled lists", exception);
+            mainModel.getNotificationsModel().replace(running, Notification.createError(running.startTimestamp(), "crac.contingency.fromLists.failed")
+                    .withMessageArgs(exception.getMessage()));
+        });
+        resolution.setOnCancelled(_ -> mainModel.getNotificationsModel().remove(running));
+        study.trackComputation(resolution);
+        resolution.start();
+    }
+
+    // a list that can't be evaluated is left out, logged
+    private static List<Contingency> contingencies(Network network, List<ContingencyList> lists) {
         List<Contingency> contingencies = new ArrayList<>();
         for (ContingencyList list : lists) {
             try {
@@ -655,11 +700,7 @@ public class CracController extends AbstractDisposableController implements Scen
                 LOGGER.warn("Contingency list '{}' could not be evaluated: {}", list.getName(), e.toString());
             }
         }
-        CracEdits.Added added = CracEdits.addContingencies(crac, network, ContingencyNames.deduplicate(contingencies));
-        tabPane.getSelectionModel().select(contingenciesTab);
-        study.cracEdited();
-        mainModel.getNotificationsModel().add(Notification.createSuccess(start, "crac.contingency.fromLists.completed")
-                .withMessageArgs(added.added().size(), added.skipped().size()));
+        return contingencies;
     }
 
     @FXML
@@ -899,6 +940,8 @@ public class CracController extends AbstractDisposableController implements Scen
             LOGGER.error("Failed to read {}", path, exception);
             mainModel.getNotificationsModel().add(Notification.createError(start, "crac.import.failed").withMessageArgs(path.getFileName(), exception.getMessage()));
         });
+        // cancelled when the network is closed meanwhile: its handlers would then go on with a network no longer loaded
+        study().trackComputation(detection);
         detection.start();
     }
 
@@ -925,6 +968,10 @@ public class CracController extends AbstractDisposableController implements Scen
 
     // an import or a generation, which reads the network: the messages are those of {@code keyPrefix}
     private void createCrac(Network root, String name, Callable<CracCreationContext> create, String keyPrefix) {
+        // closed while its parameters were asked
+        if (!mainModel.getNetworks().contains(root)) {
+            return;
+        }
         if (mainModel.isBusy(root)) {
             mainModel.getNotificationsModel().add(Notification.createError(java.time.Instant.now(), "main.networkBusy"));
             return;
@@ -1037,8 +1084,9 @@ public class CracController extends AbstractDisposableController implements Scen
 
     void exportTo(Path path) {
         java.time.Instant start = java.time.Instant.now();
-        try (OutputStream outputStream = Files.newOutputStream(path)) {
-            CracIO.writeJson(study().getCrac(), outputStream);
+        try {
+            // written once serialized: a failed export leaves the file as it was
+            Files.write(path, CracIO.toJson(study().getCrac()));
         } catch (IOException | UncheckedIOException | PowsyblException | OpenRaoException e) {
             LOGGER.error("Failed to write {}", path, e);
             mainModel.getNotificationsModel().add(Notification.createError(start, "crac.export.failed").withMessageArgs(path, e.getMessage()));

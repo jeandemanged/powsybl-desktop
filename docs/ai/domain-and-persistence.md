@@ -156,7 +156,8 @@ Maven cache may contain unrelated versions.
 - CRAC editing (instants, contingencies) goes through `…/rao/CracEdits.java`, within OpenRAO 7.5.1's API: a new
   CRAC (preventive, outage, an optional auto, curative instants), instants appended (never removed; an auto instant only
   before any curative one), contingencies added (empty, or from the enabled contingency lists, skipping ids already in
-  the CRAC and contingencies invalid for the network), their elements changed in place (PowSyBl's `Contingency` is
+  the CRAC and contingencies invalid for the network: the lists resolved and checked in an `AbstractNetworkTask`,
+  `CracEdits.resolve`, criterion lists scanning the network, then added on the FX thread), their elements changed in place (PowSyBl's `Contingency` is
   mutable: states and CNECs keep referring to it), renamed (a new contingency) or removed only when no CNEC or usage rule
   refers to them. OpenRAO names a contingency without a name by its id. A refused edit throws an
   `IllegalArgumentException` telling why. Edits are in place, on the FX thread, each followed by
