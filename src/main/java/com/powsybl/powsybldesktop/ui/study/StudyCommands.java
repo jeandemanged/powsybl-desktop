@@ -176,9 +176,15 @@ public final class StudyCommands {
             }
         };
         service.setOnSucceeded(event -> {
-            ((Study) event.getSource().getValue()).restore(mainModel);
+            Study study = (Study) event.getSource().getValue();
+            study.restore(mainModel);
             mainModel.getRecentStudies().add(path);
-            mainModel.getNotificationsModel().add(Notification.createSuccess(start, "study.load.completed").withMessageArgs(path.getFileName()));
+            // what could not be restored: in the logs
+            study.warnings().forEach(warning -> LOGGER.warn("{}", warning));
+            NotificationAction viewLogs = new NotificationAction("main.viewLogs", _ -> sceneModel.navigate(NavigationEvent.create(NavigationType.LOGS)));
+            mainModel.getNotificationsModel().add(study.warnings().isEmpty()
+                    ? Notification.createSuccess(start, "study.load.completed").withMessageArgs(path.getFileName())
+                    : Notification.createPartialSuccess(start, "study.load.partial", viewLogs).withMessageArgs(path.getFileName()));
         });
         service.setOnFailed(event -> failed(sceneModel, start, "study.load.failed", event.getSource().getException(), path));
         runWithProgress(owner, "study.load.title", service);

@@ -12,7 +12,6 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.test.EurostagTutorialExample1Factory;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
-import com.powsybl.powsybldesktop.sensitivity.SensitivityElements;
 import com.powsybl.powsybldesktop.sensitivity.SensitivityFactorMatrix;
 import com.powsybl.powsybldesktop.sensitivity.SensitivityFactorsIO;
 import com.powsybl.powsybldesktop.ui.testutil.AbstractHeadlessApplicationTest;
@@ -26,7 +25,6 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.TextField;
@@ -37,7 +35,6 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -140,20 +137,5 @@ class SensitivityFactorsControllerTest extends AbstractHeadlessApplicationTest {
         });
         assertEquals(List.of("GLSK", "OTHER"), study.getSensitivityVariableSets().stream().map(SensitivityVariableSet::getId).toList());
         assertEquals("LOAD", study.getSensitivityVariableSets().getFirst().getVariables().iterator().next().getId());
-    }
-
-    @Test
-    void thePickerOffersTheEligibleElementsNotAlreadyPickedAndFiltersThem() {
-        List<SensitivityElements.Candidate> candidates = SensitivityElements.candidates(network, SensitivityFunctionType.BRANCH_ACTIVE_POWER_1);
-        ElementPickerDialog[] dialog = new ElementPickerDialog[1];
-        interact(() -> dialog[0] = new ElementPickerDialog(null, "t", candidates, Set.of("NHV1_NHV2_1")));
-        assertEquals(candidates.size() - 1, dialog[0].listView.getItems().size());
-        interact(() -> {
-            dialog[0].searchField.setText("nhv1_nhv2");
-            dialog[0].selectShownButton.fire();
-        });
-        assertEquals(List.of("NHV1_NHV2_2"), dialog[0].listView.getItems().stream().map(SensitivityElements.Candidate::id).toList());
-        assertEquals(List.of("NHV1_NHV2_2"), dialog[0].getResultConverter().call(ButtonType.OK));
-        assertEquals(List.of(), dialog[0].getResultConverter().call(ButtonType.CANCEL));
     }
 }

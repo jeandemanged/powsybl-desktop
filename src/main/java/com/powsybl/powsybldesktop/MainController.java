@@ -7,6 +7,7 @@
  */
 package com.powsybl.powsybldesktop;
 
+import com.powsybl.commons.report.ReportNode;
 import com.powsybl.contingency.Contingency;
 import com.powsybl.contingency.list.ContingencyList;
 import com.powsybl.contingency.list.ListOfContingencyLists;
@@ -14,6 +15,11 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.VoltageLevel;
 import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.loadflow.LoadFlowResult;
+import com.powsybl.openrao.commons.PhysicalParameter;
+import com.powsybl.openrao.data.crac.api.Crac;
+import com.powsybl.openrao.data.raoresult.api.ComputationStatus;
+import com.powsybl.openrao.data.raoresult.api.RaoResult;
+import com.powsybl.openrao.raoapi.parameters.RaoParameters;
 import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.core.AbstractNetworkTask;
 import com.powsybl.powsybldesktop.core.MainModel;
@@ -32,6 +38,11 @@ import com.powsybl.powsybldesktop.navigation.NetworkNavigationState;
 import com.powsybl.powsybldesktop.navigation.OverloadManagementSystemNavigationState;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.notification.NotificationAction;
+import com.powsybl.powsybldesktop.parameters.ParametersModel;
+import com.powsybl.powsybldesktop.rao.RaoFailedException;
+import com.powsybl.powsybldesktop.rao.RaoParametersSupport;
+import com.powsybl.powsybldesktop.rao.RaoResultAndReport;
+import com.powsybl.powsybldesktop.rao.RaoRun;
 import com.powsybl.powsybldesktop.search.NetworkSearchIndex;
 import com.powsybl.powsybldesktop.security.SecurityAnalysisResultAndReport;
 import com.powsybl.powsybldesktop.security.SecurityAnalysisRun;
@@ -41,6 +52,7 @@ import com.powsybl.powsybldesktop.sensitivity.SensitivityFactorMatrix;
 import com.powsybl.powsybldesktop.ui.AbstractDisposableController;
 import com.powsybl.powsybldesktop.ui.DisposableController;
 import com.powsybl.powsybldesktop.ui.contingency.ContingenciesController;
+import com.powsybl.powsybldesktop.ui.controls.FullRowMenuItems;
 import com.powsybl.powsybldesktop.ui.limitscaling.LimitScalingsController;
 import com.powsybl.powsybldesktop.ui.logs.LogsViewController;
 import com.powsybl.powsybldesktop.ui.map.MapController;
@@ -61,6 +73,7 @@ import com.powsybl.powsybldesktop.ui.network.tables.LccConverterStationsControll
 import com.powsybl.powsybldesktop.ui.network.tables.LinesController;
 import com.powsybl.powsybldesktop.ui.network.tables.LoadsController;
 import com.powsybl.powsybldesktop.ui.network.tables.OverloadManagementSystemsController;
+import com.powsybl.powsybldesktop.ui.network.tables.RaoResultsController;
 import com.powsybl.powsybldesktop.ui.network.tables.SecurityAnalysisResultsController;
 import com.powsybl.powsybldesktop.ui.network.tables.SensitivityAnalysisResultsController;
 import com.powsybl.powsybldesktop.ui.network.tables.ShuntCompensatorsController;
@@ -75,6 +88,7 @@ import com.powsybl.powsybldesktop.ui.network.tables.VscConverterStationsControll
 import com.powsybl.powsybldesktop.ui.notification.NotificationOverlay;
 import com.powsybl.powsybldesktop.ui.notification.NotificationsController;
 import com.powsybl.powsybldesktop.ui.parameters.ParametersController;
+import com.powsybl.powsybldesktop.ui.rao.CracController;
 import com.powsybl.powsybldesktop.ui.report.ReportsController;
 import com.powsybl.powsybldesktop.ui.sensitivity.SensitivityFactorsController;
 import com.powsybl.powsybldesktop.ui.study.StudyCommands;
@@ -195,6 +209,7 @@ public class MainController extends AbstractDisposableController {
     private static final String CONTINGENCIES_FXML = "ui/contingency/contingencies-view.fxml";
     private static final String LIMIT_SCALINGS_FXML = "ui/limitscaling/limit-scalings-view.fxml";
     private static final String SENSITIVITY_FACTORS_FXML = "ui/sensitivity/sensitivity-factors-view.fxml";
+    private static final String CRAC_FXML = "ui/rao/crac-view.fxml";
 
     private final MainModel mainModel;
     private final SeparateWindows separateWindows;
@@ -711,6 +726,123 @@ public class MainController extends AbstractDisposableController {
         return Notification.createSuccess(start, "main.sensitivityAnalysis.completed", viewResultsAction, viewReportAction);
     }
 
+    @FXML
+    protected void onRao() {
+        Network selectedNetwork = mainModel.getNetwork();
+        if (selectedNetwork == null) {
+            return;
+        }
+        // same rationale as onLoadFlow: never run on a subnetwork, only on its root
+        Network network = selectedNetwork.getNetwork();
+
+        if (refuseIfBusy(network)) {
+            return;
+        }
+        NetworkStudy study = mainModel.getStudy(network);
+        ParametersModel parametersModel = mainModel.getParametersModel();
+        RaoParameters parameters = RaoRun.copyParameters(parametersModel.raoParametersProperty().getValue(), parametersModel.raoModeProperty().getValue());
+        boolean dc = RaoParametersSupport.sensitivityParameters(parameters).getLoadFlowParameters().isDc();
+        boolean fastRao = parametersModel.fastRaoProperty().get();
+        Crac crac = study.getCrac();
+        int cracRevision = study.cracRevisionProperty().get();
+        if (!checkRao(network, crac, parameters, fastRao)) {
+            return;
+        }
+        // only the CRAC's JSON here, read back for the network by the task (see RaoRun)
+        RaoRun run = RaoRun.prepare(network, crac, parameters, fastRao);
+
+        Service<RaoResultAndReport> raoService = new Service<>() {
+            @Override
+            protected Task<RaoResultAndReport> createTask() {
+                return new AbstractNetworkTask<>(mainModel, network) {
+                    @Override
+                    protected RaoResultAndReport compute() throws Exception {
+                        return run.compute();
+                    }
+                };
+            }
+        };
+        Notification runningNotification = Notification.createRunning("main.rao.running", raoService::cancel);
+        mainModel.getNotificationsModel().add(runningNotification);
+
+        raoService.setOnSucceeded(event -> {
+            RaoResultAndReport resultAndReport = (RaoResultAndReport) event.getSource().getValue();
+            study.setRaoResult(resultAndReport.raoResult(), resultAndReport.crac(), crac, cracRevision, dc);
+            mainModel.setUpdate();
+            mainModel.addReport(resultAndReport.reportNode());
+            mainModel.getNotificationsModel().replace(runningNotification, raoOutcome(runningNotification.startTimestamp(), resultAndReport));
+        });
+        raoService.setOnFailed(event -> raoFailed(runningNotification, event.getSource().getException()));
+        // the abandoned RAO goes on with its copies of the network and the CRAC until done (see RaoRun)
+        raoService.setOnCancelled(_ -> mainModel.getNotificationsModel().replace(runningNotification,
+                Notification.createCancelled(runningNotification.startTimestamp(), "main.rao.cancelled")));
+        study.trackComputation(raoService);
+        raoService.start();
+    }
+
+    private void raoFailed(Notification runningNotification, Throwable exception) {
+        if (exception instanceof RaoFailedException failure) {
+            // OpenRAO's own failure, told by its report
+            mainModel.addReport(failure.getReportNode());
+            mainModel.getNotificationsModel().replace(runningNotification,
+                    Notification.createError(runningNotification.startTimestamp(), "main.rao.failedWithDetails", viewReportAction(failure.getReportNode()))
+                            .withMessageArgs(failure.getMessage()));
+            return;
+        }
+        if (exception instanceof RaoRun.CracNotReadableException notReadable) {
+            mainModel.getNotificationsModel().replace(runningNotification,
+                    Notification.createError(runningNotification.startTimestamp(), "main.rao.failedWithDetails")
+                            .withMessageArgs(Messages.get("main.rao.cracNotReadable", notReadable.getMessage())));
+            return;
+        }
+        LOGGER.error(exception.toString(), exception);
+        NotificationAction viewLogsAction = new NotificationAction("main.viewLogs", _ ->
+                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.LOGS)));
+        mainModel.getNotificationsModel().replace(runningNotification,
+                Notification.createError(runningNotification.startTimestamp(), "main.rao.failed", viewLogsAction));
+    }
+
+    // refused beforehand, with every reason, rather than letting OpenRAO fail on the first one
+    private boolean checkRao(Network network, Crac crac, RaoParameters parameters, boolean fastRao) {
+        if (crac == null) {
+            showRaoRefusal(Messages.get("main.rao.noCrac", Messages.get("main.toolbar.crac")));
+            return false;
+        }
+        List<String> problems = RaoRun.problems(network, crac, parameters, fastRao);
+        if (problems.isEmpty()) {
+            return true;
+        }
+        showRaoRefusal(Messages.get("main.rao.problems", String.join("\n", problems)));
+        return false;
+    }
+
+    private void showRaoRefusal(String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR, message, ButtonType.OK);
+        alert.initOwner(borderPane.getScene().getWindow());
+        alert.setHeaderText(null);
+        alert.showAndWait();
+    }
+
+    private NotificationAction viewReportAction(ReportNode reportNode) {
+        return new NotificationAction("main.report.viewReport", _ ->
+                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.REPORTS, ReportNavigationState.create(reportNode))));
+    }
+
+    // OpenRAO's result tells whether the flows are secure only (CASTOR doesn't implement the angle and voltage checks)
+    private Notification raoOutcome(Instant start, RaoResultAndReport resultAndReport) {
+        NotificationAction viewResultsAction = new NotificationAction("desktop.common.action.viewResults", _ ->
+                mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_RAO_RESULTS)));
+        NotificationAction viewReportAction = viewReportAction(resultAndReport.reportNode());
+        RaoResult result = resultAndReport.raoResult();
+        if (result.getComputationStatus() == ComputationStatus.PARTIAL_FAILURE) {
+            return Notification.createPartialSuccess(start, "main.rao.partialFailure", viewResultsAction, viewReportAction);
+        }
+        if (!resultAndReport.crac().getFlowCnecs().isEmpty() && !result.isSecure(PhysicalParameter.FLOW)) {
+            return Notification.createPartialSuccess(start, "main.rao.unsecure", viewResultsAction, viewReportAction);
+        }
+        return Notification.createSuccess(start, "main.rao.completed", viewResultsAction, viewReportAction);
+    }
+
     // Builds the search index for a newly-selected network once, in the background - a network already cached
     // (or already building) is left alone. MainModel.setNetwork sets the cached status before notifying this
     // listener, so the BUILDING state set here is not overwritten and SearchBoxController shows "Indexing...".
@@ -950,7 +1082,9 @@ public class MainController extends AbstractDisposableController {
                 new MenuView(NavigationType.LIMIT_SCALINGS, "main.toolbar.limitScalings", "mdi2t-tune-vertical", NavigationType.LIMIT_SCALINGS.name(),
                         this::onLimitScalings, () -> detachSceneView(LIMIT_SCALINGS_FXML, NavigationType.LIMIT_SCALINGS)),
                 new MenuView(NavigationType.SENSITIVITY_FACTORS, "main.toolbar.sensitivityFactors", "mdi2m-matrix", NavigationType.SENSITIVITY_FACTORS.name(),
-                        this::onSensitivityFactors, () -> detachSceneView(SENSITIVITY_FACTORS_FXML, NavigationType.SENSITIVITY_FACTORS))));
+                        this::onSensitivityFactors, () -> detachSceneView(SENSITIVITY_FACTORS_FXML, NavigationType.SENSITIVITY_FACTORS)),
+                new MenuView(NavigationType.CRAC, "main.toolbar.crac", "mdi2s-shield-alert-outline", NavigationType.CRAC.name(),
+                        this::onCrac, () -> detachSceneView(CRAC_FXML, NavigationType.CRAC))));
         separateWindows.addDragToOpen(parametersButton, PARAMETERS_WINDOW, this::detachParameters);
         initParametersMenu();
         initLastUsedViewButton(diagnosticsButton, List.of(
@@ -1068,10 +1202,9 @@ public class MainController extends AbstractDisposableController {
         recentStudiesMenu.setDisable(files.isEmpty());
         List<MenuItem> items = new ArrayList<>();
         for (Path file : files) {
-            // a CustomMenuItem for the tooltip, a plain MenuItem having none
-            Label label = new Label(file.getFileName().toString());
-            label.setTooltip(new Tooltip(file.toString()));
-            CustomMenuItem item = new CustomMenuItem(label);
+            // a CustomMenuItem for the tooltip, a plain MenuItem having none, clickable on its whole row
+            CustomMenuItem item = FullRowMenuItems.create(file.getFileName().toString(), null);
+            FullRowMenuItems.label(item).setTooltip(new Tooltip(file.toString()));
             item.setOnAction(_ -> StudyCommands.loadRecent(borderPane.getScene().getWindow(), sceneModel, file));
             items.add(item);
         }
@@ -1156,6 +1289,8 @@ public class MainController extends AbstractDisposableController {
             ensureSceneView(LimitScalingsController.class, LIMIT_SCALINGS_FXML, NavigationType.LIMIT_SCALINGS);
         } else if (newValue.navigationType() == NavigationType.SENSITIVITY_FACTORS) {
             ensureSceneView(SensitivityFactorsController.class, SENSITIVITY_FACTORS_FXML, NavigationType.SENSITIVITY_FACTORS);
+        } else if (newValue.navigationType() == NavigationType.CRAC) {
+            ensureSceneView(CracController.class, CRAC_FXML, NavigationType.CRAC);
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SUBSTATIONS) {
             SubstationsTableController controller = ensureSceneView(SubstationsTableController.class,
                     "ui/network/tables/substations-view.fxml", NavigationType.NETWORK_TABLE_SUBSTATIONS);
@@ -1298,6 +1433,8 @@ public class MainController extends AbstractDisposableController {
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_SENSITIVITY_ANALYSIS_RESULTS) {
             ensureSceneView(SensitivityAnalysisResultsController.class,
                     "ui/network/tables/sensitivity-analysis-results-view.fxml", NavigationType.NETWORK_TABLE_SENSITIVITY_ANALYSIS_RESULTS);
+        } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_RAO_RESULTS) {
+            ensureSceneView(RaoResultsController.class, "ui/network/tables/rao-results-view.fxml", NavigationType.NETWORK_TABLE_RAO_RESULTS);
         } else if (newValue.navigationType() == NavigationType.NETWORK_TABLE_VIOLATIONS) {
             ensureSceneView(ViolationsController.class,
                     "ui/network/tables/violations-view.fxml", NavigationType.NETWORK_TABLE_VIOLATIONS);
@@ -1369,6 +1506,10 @@ public class MainController extends AbstractDisposableController {
         mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.SENSITIVITY_FACTORS, NetworkNavigationState.create(mainModel.getNetwork())));
     }
 
+    public void onCrac() {
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.CRAC, NetworkNavigationState.create(mainModel.getNetwork())));
+    }
+
     public void onParameters() {
         mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.PARAMETERS));
     }
@@ -1378,9 +1519,8 @@ public class MainController extends AbstractDisposableController {
         for (int i = 0; i < titles.size(); i++) {
             int index = i;
             // a node to drag, which a plain MenuItem doesn't expose
-            Label label = new Label(titles.get(i));
-            label.setMnemonicParsing(false);
-            CustomMenuItem item = new CustomMenuItem(label);
+            CustomMenuItem item = FullRowMenuItems.create(titles.get(i), null);
+            Label label = FullRowMenuItems.label(item);
             item.setOnAction(_ -> {
                 onParameters();
                 if (currentController instanceof ParametersController parameters) {
@@ -1425,9 +1565,8 @@ public class MainController extends AbstractDisposableController {
         separateWindows.addDragToOpen(button, () -> lastUsed.get().windowKey(), () -> lastUsed.get().detach().run());
         for (MenuView view : views) {
             // a node to drag, which a plain MenuItem doesn't expose
-            Label label = new Label(Messages.get(view.labelKey()), new FontIcon(view.iconLiteral()));
-            label.setMnemonicParsing(false);
-            CustomMenuItem item = new CustomMenuItem(label);
+            CustomMenuItem item = FullRowMenuItems.create(Messages.get(view.labelKey()), new FontIcon(view.iconLiteral()));
+            Label label = FullRowMenuItems.label(item);
             item.setOnAction(_ -> view.open().run());
             button.getItems().add(item);
             separateWindows.addDragToOpen(label, view.windowKey(), view.detach(), () -> {
@@ -1587,6 +1726,11 @@ public class MainController extends AbstractDisposableController {
     @FXML
     public void onSensitivityAnalysisResults() {
         mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_SENSITIVITY_ANALYSIS_RESULTS));
+    }
+
+    @FXML
+    public void onRaoResults() {
+        mainModel.getNavigationHistory().navigate(NavigationEvent.create(NavigationType.NETWORK_TABLE_RAO_RESULTS));
     }
 
     public void onViolations() {

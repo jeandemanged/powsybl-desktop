@@ -5,9 +5,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  * SPDX-License-Identifier: MPL-2.0
  */
-package com.powsybl.powsybldesktop.ui.sensitivity;
+package com.powsybl.powsybldesktop.ui.form;
 
-import com.powsybl.powsybldesktop.sensitivity.SensitivityElements;
+import com.powsybl.powsybldesktop.network.ElementCandidate;
 import com.powsybl.powsybldesktop.utils.Messages;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -38,21 +38,21 @@ import java.util.Set;
  *
  * @author Damien Jeandemange {@literal <damien.jeandemange at artelys.com>}
  */
-final class ElementPickerDialog extends Dialog<List<String>> {
+public final class ElementPickerDialog extends Dialog<List<String>> {
 
-    private final Map<SensitivityElements.Candidate, BooleanProperty> checked = new LinkedHashMap<>();
+    private final Map<ElementCandidate, BooleanProperty> checked = new LinkedHashMap<>();
     final TextField searchField = new TextField();
-    final ListView<SensitivityElements.Candidate> listView = new ListView<>();
-    final Button selectShownButton = new Button(Messages.get("sensitivityFactors.picker.selectShown"));
+    final ListView<ElementCandidate> listView = new ListView<>();
+    final Button selectShownButton = new Button(Messages.get("desktop.common.picker.selectShown"));
 
-    ElementPickerDialog(Window owner, String title, List<SensitivityElements.Candidate> candidates, Set<String> excludedIds) {
+    public ElementPickerDialog(Window owner, String title, List<ElementCandidate> candidates, Set<String> excludedIds) {
         initOwner(owner);
         initModality(Modality.WINDOW_MODAL);
         setTitle(title);
         setResizable(true);
         candidates.stream().filter(candidate -> !excludedIds.contains(candidate.id()))
                 .forEach(candidate -> checked.put(candidate, new SimpleBooleanProperty()));
-        FilteredList<SensitivityElements.Candidate> shown = new FilteredList<>(FXCollections.observableArrayList(checked.keySet()));
+        FilteredList<ElementCandidate> shown = new FilteredList<>(FXCollections.observableArrayList(checked.keySet()));
         searchField.setPromptText(Messages.get("desktop.common.search.prompt"));
         searchField.textProperty().addListener((_, _, text) -> {
             String filter = text.toLowerCase(Locale.ROOT);
@@ -60,20 +60,20 @@ final class ElementPickerDialog extends Dialog<List<String>> {
                     || candidate.name().toLowerCase(Locale.ROOT).contains(filter) || candidate.kind().toLowerCase(Locale.ROOT).contains(filter));
         });
         listView.setItems(shown);
-        listView.setPlaceholder(new Label(Messages.get("sensitivityFactors.picker.none")));
+        listView.setPlaceholder(new Label(Messages.get("desktop.common.picker.none")));
         listView.setCellFactory(CheckBoxListCell.forListView(checked::get, new StringConverter<>() {
             @Override
-            public String toString(SensitivityElements.Candidate candidate) {
+            public String toString(ElementCandidate candidate) {
                 return candidate == null ? "" : label(candidate);
             }
 
             @Override
-            public SensitivityElements.Candidate fromString(String string) {
+            public ElementCandidate fromString(String string) {
                 throw new UnsupportedOperationException();
             }
         }));
         selectShownButton.setOnAction(_ -> shown.forEach(candidate -> checked.get(candidate).set(true)));
-        Button unselectShown = new Button(Messages.get("sensitivityFactors.picker.unselectShown"));
+        Button unselectShown = new Button(Messages.get("desktop.common.picker.unselectShown"));
         unselectShown.setOnAction(_ -> shown.forEach(candidate -> checked.get(candidate).set(false)));
         HBox.setHgrow(searchField, Priority.ALWAYS);
         VBox content = new VBox(8, new HBox(8, searchField, selectShownButton, unselectShown), listView);
@@ -86,7 +86,7 @@ final class ElementPickerDialog extends Dialog<List<String>> {
                 : List.of());
     }
 
-    static String label(SensitivityElements.Candidate candidate) {
+    static String label(ElementCandidate candidate) {
         String name = candidate.name().equals(candidate.id()) ? candidate.id() : candidate.name() + " (" + candidate.id() + ")";
         return name + " — " + candidate.kind();
     }

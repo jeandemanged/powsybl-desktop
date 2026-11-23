@@ -14,6 +14,7 @@ import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.test.EurostagTutorialExample1Factory;
 import com.powsybl.iidm.network.test.FourSubstationsNodeBreakerFactory;
 import com.powsybl.iidm.network.test.ThreeWindingsTransformerNetworkFactory;
+import com.powsybl.powsybldesktop.network.ElementCandidate;
 import com.powsybl.sensitivity.SensitivityAnalysis;
 import com.powsybl.sensitivity.SensitivityAnalysisParameters;
 import com.powsybl.sensitivity.SensitivityAnalysisResult;
@@ -168,7 +169,7 @@ class SensitivityElementsTest {
                     type + " " + candidate.id()));
         }
         assertEquals(List.of("TWT"), SensitivityElements.candidates(network, SensitivityVariableType.TRANSFORMER_PHASE).stream()
-                .map(SensitivityElements.Candidate::id).toList());
+                .map(ElementCandidate::id).toList());
         assertFalse(SensitivityElements.candidates(network, SensitivityVariableType.INJECTION_ACTIVE_POWER).isEmpty());
     }
 

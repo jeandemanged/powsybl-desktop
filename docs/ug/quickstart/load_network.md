@@ -4,7 +4,8 @@ SmallGrid is one of the test networks of the ENTSO-E CGMES conformity assessment
 of about a hundred substations at 132 kV and 220 kV. The application bundles it, in a node/breaker version: each
 voltage level is described down to its busbar sections and switches. The original network has no voltage limits; the
 *smallNodeBreakerWithVoltageLimits* variant used here adds them (±10 % of the nominal voltage at 132 kV, ±5 % at
-220 kV), so that voltage violations can be detected.
+220 kV), so that voltage violations can be detected. It also tells apart the parallel lines sharing a name in the
+original network: the two lines named 42-49 become 42-49-1 and 42-49-2, and likewise for the others.
 
 ## Start the application
 

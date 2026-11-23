@@ -68,7 +68,7 @@ resources package. Tables, editors and detail views: [editing.md](editing.md); d
   - Shared NAD/SLD parameter labels live in `parameters.diagram.*` (`sharedLabel`/`sharedTooltip` in
     `AbstractDiagramParametersController`).
 - Other keys: `<area>.<sub>.<name>`, area = the view or feature (`main.*`, `networks.*`, `transformers.*`,
-  `detail.*`, `edit.*`, `parameters.*`, `loadflow.param.*`, `securityAnalysis.param.*`, `sensitivityAnalysis.param.*`, ...), only for text specific
+  `detail.*`, `edit.*`, `parameters.*`, `loadflow.param.*`, `securityAnalysis.param.*`, `sensitivityAnalysis.param.*`, `rao.param.*`, `cracCreation.param.*`, `cracGenerator.param.*`, ...), only for text specific
   to that area.
 - FXML `%key` text is resolved once at load; language switching works by reloading the shell (see
   [architecture.md](architecture.md#entry-point-and-lifecycle)). Strings built in Java at runtime should be
@@ -85,7 +85,7 @@ resources package. Tables, editors and detail views: [editing.md](editing.md); d
   the simplest; `…/ui/network/DropImportDialog.java`, returning a result via `setResultConverter`), public when shared
   (`CreateDialog`, `TerminalPickerDialog`, which embeds the search box FXML). Edits inside these dialogs write to the
   IIDM object directly and use the same error/flash helpers as tables. Exceptions: `…/ui/form/RemovalDialog.java`
-  exposes `confirmThenRemove` (an `Alert`, then the removal), and `…/ui/sensitivity/ElementPickerDialog.java` is a
+  exposes `confirmThenRemove` (an `Alert`, then the removal), and `…/ui/form/ElementPickerDialog.java` is a
   `Dialog` subclass (same owner and modality) so that its test can reach its controls.
 - **FXML secondary windows** opened by `MainController`: memory (`onMemory`): load with `Messages.bundle()`, add
   `styles.css` to the root, `initOwner(main window)`, set the app icon (`logo.png`), dispose the controller in

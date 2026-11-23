@@ -43,6 +43,7 @@ changes, change it there and in the invariant, nowhere else.
 | Change persistence (config file, preferences, import/export, study files) | domain-and-persistence |
 | Change limit scalings | domain-and-persistence (Limit scalings) |
 | Change sensitivity factors, analysis or results | domain-and-persistence (Computations), editing (Equipment tables) for the results table |
+| Change the CRAC, the RAO, its parameters or results | domain-and-persistence (Computations, Parameters), editing (Equipment tables) for the results tables |
 | Change study save/load or the `.psbx` format | domain-and-persistence (Studies), threading |
 | Add a toolbar entry (Inputs, Run, Results, Tables, Diagnostics) | architecture (Navigation), windows |
 | Add a long-running / background operation | threading, architecture (Notifications) |

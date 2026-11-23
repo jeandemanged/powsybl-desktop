@@ -14,6 +14,10 @@ module used (directly, or at runtime through ServiceLoader such as the format co
 `powsybl-config-classic` and the RDF4J triple store) is declared without a version and managed by the
 `com.powsybl:powsybl-dependencies` BOM imported in `dependencyManagement` at `powsybl-dependencies.version`, under the
 `powsybl-parent` parent. The BOM manages Logback as `runtime`, so the Logback dependencies state `compile` explicitly.
+One exception: OpenRAO (`open-rao-*`) is newer than the BOM's, at `powsybl-open-rao.version`, through its own BOM
+imported first; that BOM imports an older powsybl-core, so the powsybl-core BOM is imported before it at
+`powsybl-core.version`, which must stay the version `powsybl-dependencies` manages (imports are resolved in order, the
+first managing an artifact winning). Check with `mvn dependency:tree` that no other version moves on an upgrade.
 Read the BOM version in `pom.xml`'s properties, and resolve the in-use ones with `mvn -o dependency:tree` before reading a PowSyBl sources jar; the local
 Maven cache may contain unrelated versions.
 
@@ -97,6 +101,126 @@ Maven cache may contain unrelated versions.
   told apart from NaN ("Not computed"). It tells when the study's matrices differ from the run's. The result holds
   contingency ids only: `ContingencyNames.displayName(String, Network)` names them after the element of the same id.
   `SensitivityTexts` names the function and variable types.
+- Remedial action optimization: `…/rao/RaoRun.java`, OpenRAO's search tree RAO (`Rao.find("SearchTreeRao")`), or FastRAO
+  (`"FastRao"`, an app setting) which runs it on the worst CNECs, adding some until the result holds for all: not an
+  alternative optimizer, every search tree parameter applies to it too (its inner RAO is hard-coded in OpenRAO 7.5.1) with a CRAC (contingencies, CNECs, remedial actions). Unlike the other runs it works on a **copy of the network**
+  (`NetworkSerDe.copy`, binary) and of the CRAC (through JSON: `prepare` writes it on the FX thread, CRAC edits not
+  being held back by the network busy lock; `compute` reads it back for the network, the slow part, with schema
+  validation). `compute` makes both copies on the task's thread, the network still held busy, and only then hands them
+  to the RAO's own daemon thread: that thread goes on after a cancellation, once the network is released. On the network itself (OpenRAO 7.5.1) it switches the working variant while running, so the FX thread
+  would read intermediate states; with thread-local variants (`VariantMultiThreadAccess`) its multi-threaded network
+  pool silently falls back to the initial situation; it leaves variants behind, failing the next run ("Target variants
+  already exist"); and it adds network actions to the CRAC for HVDC range actions. Its result is never applied to the
+  network (OpenRAO has no API for that). OpenRAO swallows interruptions: a cancelled run is abandoned, its thread
+  finishing on the copies. Most failures come back as a failed result (`ComputationStatus.FAILURE`, whose other
+  getters throw) rather than an exception: `compute` turns it into a `RaoFailedException` with the execution details
+  and the report. `RaoRun.problems` refuses beforehand what OpenRAO's `RaoUtil.checkParameters` would fail on for
+  inputs the application never gives (GLSKs, reference program: relative margins, loop flows), costly min margin
+  parameters missing for `MIN_COST`, HVDC AC emulation, the PST model with elementary action limits, curative usage
+  limits, FastRAO's single curative instant, and the CRAC's elements missing from the network (edited since the import):
+  update it on an OpenRAO upgrade.
+  `MainController.onRao` (**Run** > **Remedial Action Optimization**) runs the study's CRAC (`NetworkStudy.cracProperty()`)
+  after refusing when there is none, or with every `problems` reason (checked on the FX thread: lookups only, on the
+  study's CRAC that edits may change meanwhile); a CRAC no longer reading against the network fails the run with
+  `RaoRun.CracNotReadableException` (`compute`'s copy fails), told by an error notification; the result is kept with the run's CRAC copy it refers to and AC/DC
+  (`NetworkStudy.setRaoResult`). A `RaoFailedException`'s report is still added. The outcome notification tells a
+  partial failure (`ComputationStatus.PARTIAL_FAILURE`) and flows still not secure (`isSecure(FLOW)`: OpenRAO's results
+  implement the flow check only, angle and voltage CNECs being OpenRAO's monitoring module's job) as partial successes.
+- The RAO Results view (`ui/network/tables/RaoResultsController`, **Results** > **Remedial Action Optimization Results**)
+  shows the result through `…/rao/RaoResultRows.java`, against the run's CRAC copy (`NetworkStudy.getRaoCrac()`): a
+  summary, the flow CNECs (flows and margins with `null` as the optimized instant for the initial situation, the
+  preventive instant, then the CNEC's own; most limiting first, negative margins in red), the activated remedial actions
+  by state (`STATE_ORDER`) with range action set points and PST taps, and the costs by instant. A value the result
+  refuses (`OpenRaoException`: a failed state, an instant not optimized) is NaN, shown "-". It tells when the study's
+  CRAC is no longer the one the result was computed with (`isRaoResultOutdated`: `getRaoSourceCrac` compared by
+  identity, and the CRAC revision at the run). OpenRAO's CRACs (and other CRAC objects) define `equals` by id: listen to
+  `NetworkStudy.cracRevisionProperty()` (bumped by `setCrac` and by every edit, `cracEdited()`), or to the CRAC property
+  with an `InvalidationListener`, a `ChangeListener` missing the replacement of a CRAC by another of the same id.
+- CRAC files: `…/rao/CracIO.java` reads every format an OpenRAO importer handles (JSON, CSE, CIM, NC, FlowBased
+  constraint) into a `CracCreationContext`, whose creation report tells what was ignored or why it failed (a null
+  CRAC), and writes OpenRAO's JSON. It picks the importer itself, leaving out the `Network` one (the CRAC generator),
+  which claims any file it can read as a network and then ignores it. OpenRAO's JSON importer needs current limits on
+  the CNECs' branches.
+- The CRAC is `NetworkStudy.cracProperty()` (with `getCracCreationReport()`, its import's report, set together by
+  `setCrac`), shown by `ui/rao/CracController` (**Inputs** > **CRAC**): contingencies, CNECs, remedial actions (sorted
+  by id, CNECs by state), the selected one's details, the import report. Objects whose network elements are missing
+  from the network (`…/rao/CracElements.java`, also used by `RaoRun.problems`) are marked, refreshed on
+  `MainModel.updateProperty()`. Import: the file is read and its format detected (`CracIO.format`, parsing it) in a
+  plain `Task`, with a copy of the CRAC Creation parameters (below); `CracImportDialog` asks the file's own values,
+  only for the formats having some (`…/rao/CracImportParameters.java`: the time stamp of CIM, NC and flow-based
+  constraint documents, NC's capacity calculation region, pre-filled from the tab and from the last import of the
+  format), then the CRAC is created in an `AbstractNetworkTask` (it reads the network). A failed creation (null CRAC) keeps the CRAC in
+  place, its report reachable from the error notification. OpenRAO 7.5.1's CRAC creation parameters serializers write
+  time stamps with a literal 'Z' without converting them to UTC: `CracImportParameters.copy` restores them after its JSON
+  round trip. Export writes OpenRAO's JSON, synchronously.
+- CRAC editing (instants, contingencies) goes through `…/rao/CracEdits.java`, within OpenRAO 7.5.1's API: a new
+  CRAC (preventive, outage, an optional auto, curative instants), instants appended (never removed; an auto instant only
+  before any curative one), contingencies added (empty, or from the enabled contingency lists, skipping ids already in
+  the CRAC and contingencies invalid for the network: the lists resolved and checked in an `AbstractNetworkTask`,
+  `CracEdits.resolve`, criterion lists scanning the network, then added on the FX thread), their elements changed in place (PowSyBl's `Contingency` is
+  mutable: states and CNECs keep referring to it), renamed (a new contingency) or removed only when no CNEC or usage rule
+  refers to them. OpenRAO names a contingency without a name by its id. A refused edit throws an
+  `IllegalArgumentException` telling why. Edits are in place, on the FX thread, each followed by
+  `NetworkStudy.cracEdited()`; the CRAC view refreshes on the revision, keeping each list's selection by id and the
+  selected contingency's `ContingencyForm` (so the field being edited keeps its focus). `NewCracDialog` and
+  `NewInstantDialog` apply on OK, staying open with OpenRAO's reason when it refuses.
+- Flow CNEC editing: `…/rao/CnecEdits.java`. A `FlowCnec` is immutable but for its role (`setOptimized`,
+  `setMonitored`): any other change replaces it by a new one built from a `FlowCnecSpec` record (`FlowCnecSpec.of`
+  reads one), the old one put back when OpenRAO refuses the new one (no threshold, % of iMax without iMax...), so the
+  object of an id may change even on a refused edit. The replace-style edits (CNECs, network and range actions, contingency
+  renames) share `CracEdits.replace`: an OpenRAO refusal comes as an `IllegalArgumentException`, and a put back failing
+  too (an object OpenRAO read but won't rebuild) is one telling the object is gone, the forms then refreshing the view
+  as after an edit. OpenRAO 7.5.1 removes a CNEC even when an `OnConstraint` usage
+  rule refers to it: `CnecEdits` refuses replacing or removing such a CNEC. `defaultSpec` makes a CNEC as the CRAC
+  generator's `CnecCreator` does (id `branchName_state`, ± permanent current, else active power, limit on the sides,
+  permanent current limits as iMax). `FlowCnecForm` edits one (thresholds as `RowsTableEditor` rows: side, unit, min,
+  max); angle and voltage CNECs stay read-only.
+- Network action editing: `…/rao/NetworkActionEdits.java`. A `NetworkAction` is immutable (but for `addUsageRule`): any
+  change replaces it by one built from a `NetworkActionSpec` (id, name, operator, speed, activation cost, sorted
+  `ElementaryActionSpec`s), its usage rules re-made through the adder (`UsageRuleEdits.addTo`, re-adding the states
+  `removeNetworkAction` may drop), the old one put back on refusal. `NetworkActionSpec.of` reads only the elementary
+  actions OpenRAO's adders make (absolute set points, no side); an action with another is read-only. Elements are
+  checked against the network only when it has them. `defaultAction` infers an elementary action from a picked network
+  element. `NetworkActionForm` edits one (elementary actions as `RowsTableEditor` rows: kind code, element, value).
+- Range action editing: `…/rao/RangeActionEdits.java`, likewise: a `RangeActionSpec` (type PST, HVDC, injection or
+  counter-trade; common fields, group, up/down variation costs, keyed elements, initial set point, a PST's initial tap and
+  tap-to-angle map as `PstTaps`, a counter-trade's area and connected areas with border ranges, ranges as `RangeSpec`s)
+  rebuilt through the adders on each change, the old one put back on refusal. A `null` bound is none: OpenRAO's unbounded
+  defaults (`Integer.MIN/MAX_VALUE` taps, `±Double.MAX_VALUE`) read as none, a missing standard min written as
+  `-Double.MAX_VALUE` (the adder's own default is `Double.MIN_VALUE`, about 0, which is shown as is). A PST's taps come
+  from the network (crac-io-commons' `IidmPstHelper`) when made or moved to another transformer, kept otherwise. OpenRAO
+  silently drops a `RELATIVE_TO_PREVIOUS_INSTANT` range of a PST range action whose usage rules are all preventive (or
+  none): refused instead. Defaults from the network: `pst`, `hvdc` (`IidmHvdcHelper` set point, ± max P), `injection`
+  (keys as the CRAC generator's `Utils`), `counterTrade` (neighbours by `IidmCounterTradeHelper`, areas being country
+  codes). `RangeActionForm` edits one; a range action of another type keeps the read-only details. OpenRAO 7.5.1 has no
+  removal of a counter-trade (`removeRemedialAction` skips them, and `getRemedialActions` leaves them out: list remedial
+  actions with `CracElements.remedialActions`): `RangeActionEdits` refuses changing or removing one, its form is read-only.
+- Usage rules: `…/rao/UsageRuleEdits.java`. A rule is a `UsageRuleSpec` record (kind: on instant, on contingency
+  state, on constraint, on flow constraint in country; instant, contingency, CNEC, country), `UsageRuleSpec.of` reading
+  one. OpenRAO 7.5.1 has no removal of a rule and only an on-state adder on an existing action (`getUsageRules` happens
+  to return the live set): `UsageRuleEdits.set` replaces the action like any other change (`NetworkActionEdits` and
+  `RangeActionEdits.setUsageRules`, without checking its elements again), so that `removeRemedialAction` drops the
+  states no longer used. Rules are checked beforehand as the adders check them (no outage instant, no on-state rule at
+  the preventive instant, a CNEC not before the rule's instant, ...), and a PST's range relative to the previous instant
+  against them. A counter-trade keeps its rules. `UsageRulesPane` lists and edits them in both remedial action forms,
+  `UsageRuleDialog` asking one (`CracController.askUsageRule`, overridable by tests).
+- Usage limits: `…/rao/UsageLimitEdits.java` sets a CRAC instant's `RaUsageLimits` (max remedial actions, and per
+  TSO max topological actions, PSTs, remedial actions, elementary actions) through `newRaUsageLimits`, which replaces
+  them; none at all removes the instant's entry from `getRaUsageLimitsPerInstant` (the CRAC's own map, OpenRAO having no
+  removal). Negative limits are refused (OpenRAO would take them for 0), OpenRAO's cross-check (a TSO's remedial actions
+  fewer than its topological actions or PSTs) told. `InstantForm`, the details of a selected instant, edits them (the
+  TSOs' as `RowsTableEditor` rows); the outage instant has none.
+- CRAC generation (**Generate** in the CRAC view): `…/rao/CracGenerator.java` runs OpenRAO's `NetworkCracCreator`
+  (crac-io-network, OpenRAO 7.5.1) with the application's `…/rao/CracGeneratorSettings.java` (the CRAC Generator
+  parameters tab, `ui/parameters/CracGeneratorParametersController`) turned into `NetworkCracCreationParameters` on a
+  copy of the CRAC Creation parameters. Those parameters hold lambdas (branch filters, cost and range providers) and
+  have no JSON serializer: the settings are data (country sets, voltage bounds, excluded ids, text-row tables parsed by
+  `CracGenerator.parseXxx`), saved in the app's own JSON, the lambdas built from them. OpenRAO requires a value for
+  every instant in the multiplier maps and every post-contingency instant in the acceptable duration maps (with
+  thresholds from the operational limits): missing ones are completed (multiplier 1, permanent limit), and
+  `CracGenerator.problems` (shown live at the top of the tab, and refusing a generation) tells missing durations,
+  unknown or reserved instants and invalid rows. Unlike OpenRAO's default, redispatching on all generators is off.
+  The generation runs like an import (`AbstractNetworkTask`, report reachable from the notification).
 - They all produce a `ReportNode` stored with `mainModel.addReport` (see
   [architecture.md](architecture.md#reports-and-logs)).
 
@@ -164,7 +288,15 @@ Maven cache may contain unrelated versions.
 - Live parameters are in `…/parameters/ParametersModel.java` (via `MainModel.getParametersModel()`): load flow,
   security and sensitivity analysis (whose embedded `LoadFlowParameters` are kept wired to the single authoritative
   load flow instance), the sensitivity analysis' `SensitivityAnalysisMode` (same as load flow / AC / DC, applied
-  only to the run's parameters copy by `SensitivityAnalysisRun.copyParameters`), SLD (`DesktopSldParameters`), NAD (`DesktopNadParameters`), per-format network import/export
+  only to the run's parameters copy by `SensitivityAnalysisRun.copyParameters`), the RAO's OpenRAO `RaoParameters`
+  (always with the search tree RAO's `OpenRaoSearchTreeParameters` extension, whose sensitivity parameters embed the
+  wired `LoadFlowParameters`, and FastRAO's `FastRaoParameters`, all through `…/rao/RaoParametersSupport.java`), their
+  own `SensitivityAnalysisMode` (applied by `RaoRun.copyParameters`) and whether they run through FastRAO, the CRAC Creation parameters, the CRAC Generator settings
+  (`CracGeneratorSettings`, see Computations), the CRAC Creation parameters (OpenRAO's
+  `CracCreationParameters`, those of a CRAC file's import, edited by `ui/parameters/CracCreationParametersController`:
+  every list, map or nested structure of the formats' extensions as a `ui/controls/RowsTableEditor` table of text rows,
+  read and parsed by `…/rao/CracCreationParametersSupport.java`, an invalid row leaving them unchanged and telling why;
+  an extension is added once one of its values is set; time stamps are asked at the import), SLD (`DesktopSldParameters`), NAD (`DesktopNadParameters`), per-format network import/export
   `Properties` (only user-edited values), and the app's own view settings, `…/parameters/GuiParameters.java` (map
   basemap, hidden base voltages, shown violation layers and whether flows are shown, the network area diagram's
   keeping positions when centering, logs level filter and sort order, reports severity filter, whether creation
@@ -186,14 +318,22 @@ Maven cache may contain unrelated versions.
   the decimals on every render, and refresh on each GUI parameters revision. Never hardcode a `%.Nf` for a displayed
   value.
 - `…/parameters/ApplicationParameters.java` (record) groups all of them (PowSyBl ones and `GuiParameters`) for
-  (de)serialization by `…/parameters/ApplicationParametersJson.java`: LF/SA/sensitivity via PowSyBl's `JsonLoadFlowParameters` /
-  `JsonSecurityAnalysisParameters` / `JsonSensitivityAnalysisParameters` (the analyses without their embedded load
-  flow parameters), the sensitivity mode as a top-level `sensitivityAnalysisMode`, network formats as string maps, SLD/NAD/GUI field by field through a `Binder` that
+  (de)serialization by `…/parameters/ApplicationParametersJson.java`: LF/SA/sensitivity/RAO via PowSyBl's `JsonLoadFlowParameters` /
+  `JsonSecurityAnalysisParameters` / `JsonSensitivityAnalysisParameters` and OpenRAO's `JsonRaoParameters` (the
+  analyses and the RAO without their embedded load flow parameters), the modes and the use of FastRAO as top-level
+  `sensitivityAnalysisMode`, `raoMode` and `fastRao`, the CRAC Creation parameters as `cracCreation` (OpenRAO's
+  `JsonCracCreationParameters`) and the CRAC Generator settings as `cracGenerator` (their own Jackson mapping), network formats as string maps, SLD/NAD/GUI field by field through a `Binder` that
   declares each field once for write and read. **A new SLD/NAD/GUI field must be added to the `Binder` functions or it
   won't be saved.** Reading is all-or-nothing; missing fields keep defaults.
+- The RAO tab (`ui/parameters/RaoParametersController`) shows OpenRAO's optional MNEC and costly min margin sections
+  with a check box each; editing one of their values adds the section. OpenRAO's API can add them but not remove them:
+  unticking replaces the live `RaoParameters` with a copy without the section (`RaoParametersSupport.withoutMnec` /
+  `withoutCostlyMinMargins`, through their JSON), which `ParametersModel` re-wires to the load flow parameters. Loop
+  flows and relative margins (they need GLSKs) are not offered, and are refused by `RaoRun.problems`.
 - Open Load Flow's sensitivity analysis reads the debug directory of its `OpenSensitivityAnalysisParameters`
   extension, not `SensitivityAnalysisParameters.getDebugDir()`: the tab edits the extension's.
-- Parameter UI strings: `parameters.*`, `loadflow.param.*`, `securityAnalysis.param.*`, `sensitivityAnalysis.param.*`. Importer/exporter parameter
+- Parameter UI strings: `parameters.*`, `loadflow.param.*`, `securityAnalysis.param.*`, `sensitivityAnalysis.param.*`, `rao.param.*`, `cracCreation.param.*` (tables: `cracCreation.column.*`), `cracGenerator.param.*`
+  (`cracGenerator.column.*`). Importer/exporter parameter
   forms are generated by `ui/parameters/ParameterFormBuilder` from PowSyBl `Parameter` metadata.
 
 ## Persistence
@@ -209,7 +349,7 @@ There is no database. Persistent state is:
 | Recent studies (last 10 saved or loaded `.psbx`) | Java Preferences API | `…/core/RecentStudies.java`, see [Studies](#studies) |
 | Networks | User files, imported/exported through PowSyBl `Importer`/`Exporter` | `NetworksController` (import: plain `Task`; export: `AbstractNetworkTask`), `NetworkIO` |
 | Studies (parameters, networks, contingency lists, limit scalings, sensitivity factors, results, reports, logs) | User-chosen `.psbx` zip file | `…/study/StudyArchive.java`, see [Studies](#studies) |
-| Contingency lists, limit scalings, sensitivity factors, parameters, reports, diagrams | User-chosen JSON/text/SVG/PNG files | `ContingencyListsIO`, `LimitScalings`, `SensitivityFactorsIO`, `ApplicationParametersJson`, `ReportsController`, `DiagramPaneController` |
+| Contingency lists, limit scalings, sensitivity factors, CRACs, parameters, reports, diagrams | User-chosen JSON/text/SVG/PNG files (CRACs: any format OpenRAO imports) | `ContingencyListsIO`, `LimitScalings`, `SensitivityFactorsIO`, `CracIO`, `ApplicationParametersJson`, `ReportsController`, `DiagramPaneController` |
 
 Use the existing helpers (and `FileChooserPreferences` for any new `FileChooser`) rather than adding new storage.
 Network state (loaded networks, results, contingency lists, limit scalings, sensitivity factors) is not persisted
@@ -224,16 +364,26 @@ result is DC, report count, `null` when reports are not saved), then one file pe
 serializer — `ApplicationParametersJson`, binary IIDM (`NetworkSerDe`, subnetworks included), `ContingencyListsIO`,
 `LimitScalings` (the scalings, and the ones the security analysis result was computed with), `SensitivityFactorsIO`
 (factor matrices and variable sets, the sensitivity analysis result and the matrices it was computed with, which
-must expand to as many factors as the result has or the read fails), PowSyBl's load flow / security analysis result
+must expand to as many factors as the result has or the read fails), OpenRAO's JSON CRAC (`CracIO`, with the creation
+report's lines) and RAO result (flows in A and MW, rounded to 2 decimals by OpenRAO, with the run's CRAC it refers to,
+whether it was outdated and DC in the manifest), PowSyBl's load flow / security analysis result
 and `ReportNode` JSON serializers — plus the logs as JSON. A reader accepts any 1.x format, ignoring unknown manifest fields
-and files: the sensitivity files were added without changing the format version. Entries are written and read through the JDK zip file system (`jdk.zipfs`,
+and files: the sensitivity and OpenRAO files were added without changing the format version. Entries are written and read through the JDK zip file system (`jdk.zipfs`,
 listed explicitly in the packaging scripts since jdeps can't see it), so these serializers must go through
 `Files`/`Path`, never `Path.toFile()`. A write goes to a `.tmp` sibling first, moved over the target once complete.
 
 - `…/study/Study.java` is the content: `capture` snapshots the chosen root networks and `Part`s on the FX thread
-  (parameters deep-copied through their JSON), `restore` replaces the loaded networks and, when the study holds them,
+  (parameters deep-copied through their JSON; the CRAC, edited in place on the FX thread without the busy lock, as its
+  JSON bytes, `StudyCrac`), `restore` replaces the loaded networks and, when the study holds them,
   the parameters, reports and logs (FX thread). Violations and search indexes are not saved: they are rebuilt when
   the networks are added, the networks carrying the load flow's values.
+- A CRAC is read against its network (OpenRAO's JSON importer refuses one whose elements the network lacks, which
+  the CRAC view allows): `StudyArchive.read` then leaves it out, and the RAO result if its own CRAC fails likewise, as
+  it does a malformed CRAC or RAO result JSON (`IllegalArgumentException`: no importer recognizes it; `UncheckedIOException`),
+  adding a line to `Study.warnings()`; `StudyCommands` logs them and makes the load notification a partial success
+  with **View logs**. A RAO result is restored up to date only when saved up to date with the CRAC (else its source is
+  its own CRAC, so `isRaoResultOutdated`). The CRAC Generator, CRAC Creation and RAO parameters are in
+  `parameters.json`.
 - Restored logs are renumbered below 0 so that they stay ordered before the session's own (`LogsModel.restoreLogs`).
 - `…/ui/study/StudyCommands.java` drives both: `SaveStudyDialog` (Data and Networks check boxes with All/None), file
   choice, then a `Service` behind an application-modal progress dialog fed by the archive's per-step `Progress`.

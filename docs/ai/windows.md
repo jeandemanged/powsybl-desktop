@@ -26,7 +26,7 @@ create a `Stage` for a view elsewhere (`ArchitectureTest` allows only the shell 
 
 ## Opening a view in a window
 
-- One view per key: whole-network views (tables, map, contingencies, limit scalings, sensitivity factors, results views) are keyed by
+- One view per key: whole-network views (tables, map, contingencies, limit scalings, sensitivity factors, CRAC, results views) are keyed by
   `NavigationType`, container
   diagrams and equipment tabs by kind and container id, detail views by equipment id, logs/reports/parameters (not
   network-bound) by name. Opening an open key brings its window to front and selects its tab instead.

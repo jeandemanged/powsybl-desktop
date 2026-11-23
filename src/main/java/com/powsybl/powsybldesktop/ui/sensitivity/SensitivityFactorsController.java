@@ -18,6 +18,7 @@ import com.powsybl.loadflow.LoadFlowParameters;
 import com.powsybl.powsybldesktop.contingency.ContingencyNames;
 import com.powsybl.powsybldesktop.core.MainModel;
 import com.powsybl.powsybldesktop.core.NetworkStudy;
+import com.powsybl.powsybldesktop.network.ElementCandidate;
 import com.powsybl.powsybldesktop.notification.Notification;
 import com.powsybl.powsybldesktop.parameters.ParametersModel;
 import com.powsybl.powsybldesktop.sensitivity.SensitivityAnalysisRun;
@@ -27,6 +28,7 @@ import com.powsybl.powsybldesktop.sensitivity.SensitivityFactorsIO;
 import com.powsybl.powsybldesktop.sensitivity.SensitivityTexts;
 import com.powsybl.powsybldesktop.ui.AbstractDisposableController;
 import com.powsybl.powsybldesktop.ui.controls.FileChooserPreferences;
+import com.powsybl.powsybldesktop.ui.form.ElementPickerDialog;
 import com.powsybl.powsybldesktop.ui.window.SceneModel;
 import com.powsybl.powsybldesktop.ui.window.SceneView;
 import com.powsybl.powsybldesktop.utils.Messages;
@@ -375,9 +377,9 @@ public class SensitivityFactorsController extends AbstractDisposableController i
         showForm(grid, problemsLabel, refresh);
     }
 
-    private List<SensitivityElements.Candidate> variableSetCandidates() {
+    private List<ElementCandidate> variableSetCandidates() {
         return study().getSensitivityVariableSets().stream()
-                .map(set -> new SensitivityElements.Candidate(set.getId(), set.getId(), Messages.get("sensitivityFactors.variableSet.kind")))
+                .map(set -> new ElementCandidate(set.getId(), set.getId(), Messages.get("sensitivityFactors.variableSet.kind")))
                 .toList();
     }
 
@@ -594,7 +596,7 @@ public class SensitivityFactorsController extends AbstractDisposableController i
         return identifiable == null || identifiable.getNameOrId().equals(id) ? id : identifiable.getNameOrId() + " (" + id + ")";
     }
 
-    private List<String> pick(String title, List<SensitivityElements.Candidate> candidates, Set<String> present) {
+    private List<String> pick(String title, List<ElementCandidate> candidates, Set<String> present) {
         return new ElementPickerDialog(formHost.getScene().getWindow(), title, candidates, present).showAndWait().orElse(List.of());
     }
 
@@ -605,7 +607,7 @@ public class SensitivityFactorsController extends AbstractDisposableController i
         private final ListView<String> listView = new ListView<>();
         private final VBox node;
 
-        ElementList(String title, List<String> ids, Function<String, String> name, Supplier<List<SensitivityElements.Candidate>> candidates,
+        ElementList(String title, List<String> ids, Function<String, String> name, Supplier<List<ElementCandidate>> candidates,
                     Consumer<List<String>> onChange) {
             listView.getItems().setAll(ids);
             listView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);

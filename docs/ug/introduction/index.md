@@ -66,21 +66,23 @@ In practice, PowSyBl Desktop lets you:
   violations each contingency causes.
 - **Run sensitivity analyses**: how flows, currents and voltages respond to injections, phase shifts or target
   voltages, before and after each contingency.
-- **Save your work** in a study: the networks with their contingency lists, limit scalings, sensitivity factors and
-  results, the parameters, reports and logs, in a single file to resume later or hand to someone else.
+- **Optimize remedial actions** with PowSyBl OpenRAO: import, generate or edit a CRAC (contingencies, critical
+  network elements and remedial actions), and see the remedial actions that best relieve the constraints.
+- **Save your work** in a study: the networks with their contingency lists, limit scalings, sensitivity factors,
+  CRAC and results, the parameters, reports and logs, in a single file to resume later or hand to someone else.
 - **Understand what happened**: every operation produces a report, and the application logs and notifications keep
   track of everything that ran.
 
-The [quick start tutorials](../quickstart/index.md) go through a load flow, a security analysis and a sensitivity
-analysis in a few minutes.
+The [quick start tutorials](../quickstart/index.md) go through a load flow, a security analysis, a sensitivity
+analysis and a remedial action optimization in a few minutes.
 
 ## What PowSyBl Desktop does not do yet
 
 PowSyBl Desktop covers a part of PowSyBl only. Among what PowSyBl offers, the following is not available in the
 application yet, and could come in future versions:
 
-- **Remedial action optimization** with [OpenRAO](https://powsybl.readthedocs.io/projects/openrao/en/stable/):
-  finding the topological and setpoint actions that solve the constraints found by a security analysis.
+- **Remedial action optimization features** of [OpenRAO](https://powsybl.readthedocs.io/projects/openrao/en/stable/):
+  GLSKs (and so loop-flow constraints and relative margins) and time-coupled optimization.
 - **Remedial actions in security analysis**: operator strategies applied after a contingency, and two-pass security
   analysis.
 - **Dynamic simulation** and **dynamic security analysis**, with

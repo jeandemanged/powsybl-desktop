@@ -30,6 +30,7 @@ public record NavigationEvent(NavigationType navigationType, NavigationState sta
             case CONTINGENCIES -> Messages.get("main.toolbar.contingencies");
             case LIMIT_SCALINGS -> Messages.get("main.toolbar.limitScalings");
             case SENSITIVITY_FACTORS -> Messages.get("main.toolbar.sensitivityFactors");
+            case CRAC -> Messages.get("main.toolbar.crac");
             case LOGS -> Messages.get("main.toolbar.logs");
             case NETWORK_TABLE_SUBSTATIONS -> Messages.get("desktop.common.equipment.substation.plural");
             case NETWORK_TABLE_VOLTAGE_LEVELS -> Messages.get("desktop.common.equipment.voltageLevel.plural");
@@ -55,6 +56,7 @@ public record NavigationEvent(NavigationType navigationType, NavigationState sta
             case NETWORK_TABLE_COMPONENTS -> Messages.get("main.toolbar.loadflowresult");
             case NETWORK_TABLE_SECURITY_ANALYSIS_RESULTS -> Messages.get("main.toolbar.securityAnalysisResults");
             case NETWORK_TABLE_SENSITIVITY_ANALYSIS_RESULTS -> Messages.get("main.toolbar.sensitivityAnalysisResults");
+            case NETWORK_TABLE_RAO_RESULTS -> Messages.get("main.toolbar.raoResults");
             case NETWORK_TABLE_VIOLATIONS -> Messages.get("main.toolbar.violations");
             case REPORTS -> Messages.get("main.toolbar.reports");
             case PARAMETERS -> Messages.get("desktop.common.parameters");

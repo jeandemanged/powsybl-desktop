@@ -92,6 +92,7 @@
                                 <MenuItem mnemonicParsing="false" onAction="#onLoadFlow" text="%desktop.common.loadFlow" />
                                 <MenuItem mnemonicParsing="false" onAction="#onSecurityAnalysis" text="%desktop.common.securityAnalysis" />
                                 <MenuItem mnemonicParsing="false" onAction="#onSensitivityAnalysis" text="%desktop.common.sensitivityAnalysis" />
+                                <MenuItem mnemonicParsing="false" onAction="#onRao" text="%desktop.common.rao" />
                             </items>
                         </MenuButton>
                         <MenuButton mnemonicParsing="false" text="%main.toolbar.results">
@@ -102,6 +103,7 @@
                                 <MenuItem mnemonicParsing="false" onAction="#onComponents" text="%main.toolbar.loadflowresult" />
                                 <MenuItem mnemonicParsing="false" onAction="#onSecurityAnalysisResults" text="%main.toolbar.securityAnalysisResults" />
                                 <MenuItem mnemonicParsing="false" onAction="#onSensitivityAnalysisResults" text="%main.toolbar.sensitivityAnalysisResults" />
+                                <MenuItem mnemonicParsing="false" onAction="#onRaoResults" text="%main.toolbar.raoResults" />
                                 <MenuItem mnemonicParsing="false" onAction="#onViolations" text="%main.toolbar.violations" />
                             </items>
                         </MenuButton>

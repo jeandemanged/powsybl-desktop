@@ -37,9 +37,9 @@ From left to right:
 | **Networks**                                                 | Open the [Networks](../views/network/networks.md) view.                                                                |
 | **Substations**                                              | Open the [Substations](../views/diagrams/substations.md) view.                                                          |
 | **Map**                                                      | Open the [Map](../views/diagrams/map.md).                                                                               |
-| **Inputs**                                                   | Open the analysis inputs: [Contingencies](../views/inputs/contingencies.md), [Limit Scalings](../views/inputs/limit_scalings.md) or [Sensitivity Factors](../views/inputs/sensitivity_factors.md). The button opens the last one used, shown by its icon and tooltip; its small arrow lists all three. |
-| **Run**                                                      | Run a **Load Flow**, a **Security Analysis** or a **Sensitivity Analysis** on the selected network.            |
-| **Results**                                                  | Open the [Load Flow Results](../views/results/loadflow_results.md), [Security Analysis Results](../views/results/security_analysis_results.md), [Sensitivity Analysis Results](../views/results/sensitivity_analysis_results.md) or [Violations](../views/results/violations.md). |
+| **Inputs**                                                   | Open the analysis inputs: [Contingencies](../views/inputs/contingencies.md), [Limit Scalings](../views/inputs/limit_scalings.md) or [Sensitivity Factors](../views/inputs/sensitivity_factors.md) or [CRAC](../views/inputs/crac.md). The button opens the last one used, shown by its icon and tooltip; its small arrow lists all four. |
+| **Run**                                                      | Run a **Load Flow**, a **Security Analysis**, a **Sensitivity Analysis** or a **Remedial Action Optimization** on the selected network. |
+| **Results**                                                  | Open the [Load Flow Results](../views/results/loadflow_results.md), [Security Analysis Results](../views/results/security_analysis_results.md), [Sensitivity Analysis Results](../views/results/sensitivity_analysis_results.md), [Remedial Action Optimization Results](../views/results/rao_results.md) or [Violations](../views/results/violations.md). |
 | **Tables**                                                   | Open an [equipment table](../views/equipment/tables/index.md).                                                 |
 | **Parameters**                                               | Open the [Parameters](../views/parameters/index.md) view; its small arrow opens it at a given tab.             |
 | **Diagnostics**                                              | Open the [Logs](../views/diagnostics/logs.md) or the [Reports](../views/diagnostics/reports.md). Like **Inputs**, the button opens the last one used; its small arrow lists both. |
@@ -131,8 +131,9 @@ Saving first asks what the study holds, in two groups of check boxes, each with 
 
 - **Data**: **Parameters**, **Contingencies** (the contingency lists, with whether each one is enabled), **Limit
   Scalings** (in order, with whether each one is enabled), **Sensitivity Factors** (the factor matrices and variable
-  sets), **Load Flow Results**, **Security Analysis Results** (with the limit scalings the analysis was run with),
-  **Sensitivity Analysis Results** (with the factor matrices the analysis was run with), **Reports** and **Logs**;
+  sets), **CRAC** (with its import report), **Load Flow Results**, **Security Analysis Results** (with the limit scalings
+  the analysis was run with), **Sensitivity Analysis Results** (with the factor matrices the analysis was run with),
+  **Remedial Action Optimization Results** (with the CRAC the optimization was run with), **Reports** and **Logs**;
 - **Networks**: the loaded networks to save, each with its subnetworks. A network is saved with its current values,
   including the ones a load flow computed.
 
@@ -140,6 +141,10 @@ Loading a study replaces the loaded networks by the study's. With networks loade
 offers **Save Study First…** to keep them in a study before. The parameters, reports and logs are replaced by the
 study's when it holds them, and kept otherwise. The network selected when the study was saved is selected again.
 Limit violations and the search index are computed again once the networks are loaded.
+A remedial action optimization result stays outdated when it was (computed with another CRAC), or when the study
+holds it without its CRAC. A CRAC whose network elements the network no longer has (removed since) can't be read back:
+the study is then loaded without it, nor the optimization result computed with it, and the notification points to
+the logs, which tell why.
 
 Saving and loading can take a while for large networks: a progress bar shows each step, and the application can't be
 used meanwhile. A notification tells the outcome. A network busy with another operation, such as a running load flow,

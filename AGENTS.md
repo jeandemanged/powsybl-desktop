@@ -55,7 +55,7 @@ Easy to get wrong:
   parameter or loop variable (`(_, _, newValue) -> ...`, `_ -> ...`, `catch (IOException _)`). Jackson `JsonNode` is
   not a `List`: keep `node.get(0)` there.
 - PowSyBl module versions are not written in `pom.xml`: they are managed by the imported `powsybl-dependencies` BOM
-  (see domain-and-persistence). Resolve them with `mvn -o dependency:tree` before reading a PowSyBl sources jar; don't
+  (except OpenRAO's, pinned newer: see domain-and-persistence). Resolve them with `mvn -o dependency:tree` before reading a PowSyBl sources jar; don't
   trust whichever version sits in `~/.m2`.
 - Line endings: the repository stores LF (`.gitattributes`: `* text=auto`); working copies use the platform's
   convention (CRLF on Windows, LF on Linux/macOS). Every file you create or rewrite must use the same endings as the

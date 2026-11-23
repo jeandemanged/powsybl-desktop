@@ -28,7 +28,7 @@ used, so tests of `core` start the toolkit with `Platform.startup`.
 | root (`…/`) | The shell: `Launcher`, `MainApplication`, `SplashScreen`, `MainController` |
 | `core` | The shared state: `MainModel`, `NetworkStudy`, `RecentStudies`, `AbstractNetworkTask`, `NetworkStructureChange`, `NetworkChanges` (the funnel of every creation and removal, see [editing.md](editing.md#structural-edits)) |
 | `navigation` | `NavigationType`, `NavigationEvent` (record), the `NavigationState` interface and one implementation per restorable selection (`NetworkNavigationState` subclasses, `ReportNavigationState`), `NavigationHistory` |
-| `network` | `NetworkIO` (import/export formats, format detection of a file, import and export with their reports), `NetworkAndReport`, `NetworkMerges` (what `Network.merge` would refuse, checked beforehand), `NetworkTieLines`, `VoltageRegulations` (IIDM voltage regulation helpers), `VariantMultiThreadAccess` (variant switch around Open Load Flow's multi-threaded analyses), sample networks (`MapTestNetworkFactory`) |
+| `network` | `NetworkIO` (import/export formats, format detection of a file, import and export with their reports), `NetworkAndReport`, `NetworkMerges` (what `Network.merge` would refuse, checked beforehand), `NetworkTieLines`, `ElementCandidate` (an element to pick, with its kind), `VoltageRegulations` (IIDM voltage regulation helpers), `VariantMultiThreadAccess` (variant switch around Open Load Flow's multi-threaded analyses), sample networks (`MapTestNetworkFactory`) |
 | `network/edit` | Changing the network structure: `NetworkEdits` (applying modifications, ids proposed), what each creation builds from its values (`Containers`, `Injections`, `Branches`, `Topologies`, `LineModifications`, `NetworkObjects`, each with spec records; `Connection` for where a feeder is connected), `Removals` (what a removal takes along, and the removal itself), `PositionEdits`, `FeederOrders`, `Kinds` |
 | `search` | `NetworkSearch` (kinds, container resolution), `NetworkSearchIndex` (Lucene) |
 | `diagram` | `BaseVoltages` (base voltage ranges and colors as single line diagrams use them, for whatever colors equipment outside diagrams), `SubstationDiagramRenderer`, `NetworkAreaDiagramRenderer` |
@@ -36,6 +36,7 @@ used, so tests of `core` start the toolkit with `Platform.startup`.
 | `contingency` | `ContingencyListsIO` (JSON I/O), `ContingencyNames`, `ContingencyListKind`, the editor's row models |
 | `limitscaling` | Limit scalings: `LimitScalings` (limits computer for violation detection, JSON I/O, content comparison), `OlfLimitScalingSupport` (what Open Load Flow's security analysis does with a scaling), `AffectedLimits` (the editor's preview), `CriterionKind`, `LimitScalingTexts` |
 | `loadflow`, `security`, `sensitivity` | The runs (`LoadFlowRun`, `SecurityAnalysisRun`, `SensitivityAnalysisRun`: report, cancellation, OpenLoadFlow's variant switch, parameter copy, pre-contingency monitor), result/report records, `LoadFlowConvergence`; sensitivity factor matrices, their JSON, Open Load Flow's support of them and the elements it accepts (`SensitivityElements`), result rows, type names |
+| `rao` | OpenRAO remedial action optimization: `RaoRun` (search tree RAO, directly or through FastRAO; on copies of the network and the CRAC, pre-run checks, parameter copy), `RaoParametersSupport` (the RAO parameters' extensions, optional sections, JSON), `RaoResultRows` (the results view's rows), `CracIO` (CRAC import in every format, JSON), `CracImportParameters` (a format's per-file import values), `CracCreationParametersSupport` (the CRAC Creation tab's tables), `CracGenerator` and `CracGeneratorSettings` (CRAC generation from the network), `TableRows` (text cells parsing), `CracElements` (elements missing from the network, contingency element candidates), `CracEdits`, `CnecEdits`, `NetworkActionEdits`, `RangeActionEdits`, `UsageRuleEdits` and `UsageLimitEdits` (CRAC edits within OpenRAO's API), `RaoResultAndReport`, `RaoFailedException` |
 | `violations` | `NetworkViolations` (flow and voltage limit violations of the network's state), `FlowViolation`, `VoltageViolation` (also built from a security analysis' violations), `Loading`, `VoltageRange`, `ViolationTexts` (how violations read in the views) |
 | `parameters` | `ParametersModel`, `ApplicationParameters` record, `GuiParameters` (with the map's `Basemap`, ...), `DesktopSldParameters`/`DesktopNadParameters` (PowSyBl's diagram parameters plus desktop-only fields), `ApplicationParametersJson`, `ParametersConfigFile` |
 | `notification` | `Notification` record, `NotificationAction`, `NotificationStatus`, `NotificationsModel` |
@@ -46,10 +47,10 @@ used, so tests of `core` start the toolkit with `Platform.startup`.
 | `utils` | `Messages`, `Labels`, `ListenerManager`, `LanguagePreferences`, `Futures` (waiting on a PowSyBl future so that interruption cancels it), `UserGuide` (where the built user's guide is) |
 | `ui` | `AbstractDisposableController`, `DisposableController` |
 | `ui/window` | A view's per-window context: `SceneModel`, `SceneView`, and `SeparateWindows` (the separate windows and their tabs, see [windows.md](windows.md)) |
-| `ui/controls` | Reusable controls and helpers: `CopyButtons`, `DateTimePicker`, `SearchableCheckComboBox`, `TableAutoFitLimiter`, `TreeItems`, `FileChooserPreferences`, `CountryGroup` and `VoltageIntervalGroup` (equipment criterion pickers of the contingency and limit scaling editors) |
-| `ui/form` | Editing building blocks shared by tables, detail views, creation dialogs and the contingency editor: `TableColumnSupport` (cell factories), `CellFields` (in-cell editors), `DetailForm` + `DetailPart` + `DetailTables` + `DetailSections` (form grids and their common sections), `CreationForm`, `TerminalPickerDialog`, `RemovalDialog` |
+| `ui/controls` | Reusable controls and helpers: `CopyButtons`, `FullRowMenuItems` (menu entries with a label as content, e.g. to drag, clickable on their whole row), `DateTimePicker`, `SearchableCheckComboBox`, `TableAutoFitLimiter`, `RowsTableEditor` (a list, map or nested structure as editable text rows), `TreeItems`, `FileChooserPreferences`, `CountryGroup` and `VoltageIntervalGroup` (equipment criterion pickers of the contingency and limit scaling editors) |
+| `ui/form` | Editing building blocks shared by tables, detail views, creation dialogs and the contingency editor: `TableColumnSupport` (cell factories), `CellFields` (in-cell editors), `DetailForm` + `DetailPart` + `DetailTables` + `DetailSections` (form grids and their common sections), `CreationForm`, `TerminalPickerDialog`, `ElementPickerDialog` (picks among `network/ElementCandidate`s: the sensitivity factors editor, the CRAC view), `RemovalDialog` |
 | `ui/network` | `NetworksController` (load/import/export/merge/detach networks), `SubstationsController` (tree + SLD/NAD tabs + embedded tables), `ContainerDiagram` (a container's SLD/NAD, its rendering and JS callbacks), `DropImportDialog` |
-| `ui/network/tables` | One controller per equipment table and their bases (`AbstractEquipmentTableController`, `AbstractBusesController`, `AbstractNetworkObjectTableController`), `EmbeddableEquipmentTable`, `ViolationColumns` (columns of the Violations and Security Analysis Results views), `FlowViolationsDialog`, `SensitivityAnalysisResultsController`, `ColumnVisibilityToolbarController`, `TableEditActions` (a table's context menu: details, creations, removal), edit dialogs (`GeographicalTagsDialog`, ...) |
+| `ui/network/tables` | One controller per equipment table and their bases (`AbstractEquipmentTableController`, `AbstractBusesController`, `AbstractNetworkObjectTableController`), `EmbeddableEquipmentTable`, `ViolationColumns` (columns of the Violations and Security Analysis Results views), `FlowViolationsDialog`, `SensitivityAnalysisResultsController`, `RaoResultsController`, `ColumnVisibilityToolbarController`, `TableEditActions` (a table's context menu: details, creations, removal), edit dialogs (`GeographicalTagsDialog`, ...) |
 | `ui/network/detail` | Equipment detail views, one `AbstractEquipmentDetailController` subclass per equipment type, opened by `EquipmentDetails.open`, and their reusable parts: `EquipmentSymbol`, `ReactiveLimitsPane` + `CapabilityChart`, `TapChangerPane`, `ExtensionsPane` + `ExtensionEditors`, `KeyValueTablePane` (properties, aliases), `CoordinatesPane`, `HvdcDetails` |
 | `ui/network/edit` | Creation dialogs (`CreateDialog` + `ui/form/CreationForm`, `ConnectionSection`, `VoltageLevelChoice`) per family (`ContainerCreations`, `InjectionCreations`, `BranchCreations`, `NetworkObjectEdits`, `TopologyEdits`, `LineEdits`), and the menus offering them everywhere (`EditMenus`) |
 | `ui/network/limits` | `OperationalLimitsPane`: an equipment's operational limits groups, read-only with violations highlighted (`FlowViolationsDialog`) or editable (detail views) |
@@ -58,8 +59,9 @@ used, so tests of `core` start the toolkit with `Platform.startup`.
 | `ui/map` | Map view: `MapController`, `map.js` + Leaflet |
 | `ui/contingency` | Contingency lists editor (`ContingenciesController` and its inline forms) |
 | `ui/limitscaling` | Limit scalings editor (`LimitScalingsController`, `LimitScalingFormController`) |
-| `ui/sensitivity` | Sensitivity factors editor (`SensitivityFactorsController`: matrices and variable sets with their forms, `ElementPickerDialog`) |
-| `ui/parameters` | Parameters view and its tabs (`AbstractDiagramParametersController`, also the base of the GUI and sensitivity analysis tabs; `ParameterFormBuilder` for importer/exporter parameters) |
+| `ui/sensitivity` | Sensitivity factors editor (`SensitivityFactorsController`: matrices and variable sets with their forms) |
+| `ui/rao` | CRAC view (`CracController`: instants, contingencies, CNECs, remedial actions, details, import report; new CRAC, import, generation, export, removal, edits), `InstantForm`, `ContingencyForm`, `FlowCnecForm`, `NetworkActionForm` and `RangeActionForm` (editable details, `FormFields` their shared field helpers, `UsageRulesPane` the remedial actions' usage rules), `UsageRuleDialog`, `NewCracDialog`, `NewInstantDialog`, `AddFlowCnecsDialog` and `CracImportDialog` (a CRAC format's import parameters) |
+| `ui/parameters` | Parameters view and its tabs (`AbstractDiagramParametersController`, also the base of the GUI, sensitivity analysis, RAO, CRAC Creation and CRAC Generator tabs; `ParameterFormBuilder` for importer/exporter parameters) |
 | `ui/notification` | Overlay popup and history panel (`NotificationOverlay`, `NotificationView`, `NotificationsController`) |
 | `ui/report` | Report viewer (`ReportsController`, `ReportNodeViewController`, `ReportNodeTreeCell`) |
 | `ui/logs`, `ui/memory`, `ui/about` | Logs view, small secondary windows |
@@ -78,7 +80,7 @@ uses only the layers below it (from top to bottom):
 | Shell | the root package: `Launcher`, `MainApplication`, `MainController`, `SplashScreen` |
 | UI | `ui..` |
 | State | `core`, `navigation`, `logs`, `study` |
-| Domain | `network..` (`network.edit` included), `search`, `diagram`, `map`, `contingency`, `limitscaling`, `loadflow`, `security`, `sensitivity`, `violations`, `memory`, `parameters`, `notification` |
+| Domain | `network..` (`network.edit` included), `search`, `diagram`, `map`, `contingency`, `limitscaling`, `loadflow`, `security`, `sensitivity`, `rao`, `violations`, `memory`, `parameters`, `notification` |
 | Base | `utils`, `util`, `reports` |
 
 Every class must be in a layer: a new top-level package fails the test until it is added to one. The test also checks
@@ -106,7 +108,7 @@ root's `styles.css` and logo), and the window title is `MainModel.APP_TITLE`.
   parameters config file, shows `SplashScreen`, then loads `main-view.fxml` on the FX thread with a controller
   factory that injects the `MainModel` into `MainController`. `styles.css` is added to the scene.
 - `…/MainController.java` owns the shell (menu bar, toolbar, `BorderPane`) and is the only class that swaps the
-  center view. It also hosts the toolbar's **Run** actions (load flow, security and sensitivity analysis), violations
+  center view. It also hosts the toolbar's **Run** actions (load flow, security and sensitivity analysis, RAO), violations
   computation and search index building, and delegates **File** > save/load study to `ui/study/StudyCommands`.
 - Language change (`onLanguageChange` → `reloadShell`) rebuilds `main-view.fxml` with a fresh bundle, keeps the
   same `MainModel`, disposes the old `MainController`, and re-fires the current `NavigationEvent` so the center view
@@ -121,8 +123,8 @@ a subnetwork), an `updateProperty()` timestamp fired after any network mutation 
 display settings, the network change guard, and the sub-models `NavigationHistory`, `ParametersModel`,
 `NotificationsModel`, `LogsModel`, `RecentStudies`.
 
-`…/core/NetworkStudy.java` holds everything per loaded root network: LF/SA/sensitivity results, cached limit violations,
-contingency lists and limit scalings and their enabled flags, sensitivity factor matrices and variable sets, running computation and index-build services, search indexes, Map views,
+`…/core/NetworkStudy.java` holds everything per loaded root network: LF/SA/sensitivity/RAO results, cached limit violations,
+contingency lists and limit scalings and their enabled flags, sensitivity factor matrices and variable sets, the CRAC, running computation and index-build services, search indexes, Map views,
 busy count. `MainModel.getStudy(n)` resolves a subnetwork to its root and throws if the network is not loaded. Studies
 are created by `addNetwork`/`detachSubnetworks` and disposed (services cancelled, indexes closed) by `removeNetwork`.
 
@@ -195,9 +197,12 @@ or diagnostics view, a `MenuView` in the matching `initLastUsedViewButton` list 
   Not being a `SceneView` doesn't keep a view out of separate windows: parameters and logs open there too.
 - `@FXML private void initialize()` configures controls that don't need the model; work depending on the model
   happens in the model setter.
-- `ListenerManager` cannot detach a single listener: a controller listening to a list that changes with the selected
-  network leaks one listener per network visited. That is acceptable only when a stale callback is a no-op, as in
-  `ui/contingency/ContingenciesController.java` (whose refresh always reads the current network's lists).
+- `ListenerManager` cannot detach a single listener. Listeners on an object that changes with the selected network
+  (e.g. its `NetworkStudy`) go through a child manager (`listenerManager.child()`), disposed on each change and by the
+  parent on `dispose()`, as in `ui/rao/CracController.java`; `listenInvalidations` takes an `InvalidationListener`.
+  Listening through the main manager instead leaks one listener per network visited, acceptable only when a stale
+  callback is a no-op, as in `ui/contingency/ContingenciesController.java` (whose refresh always reads the current
+  network's lists).
 
 ## Notifications
 

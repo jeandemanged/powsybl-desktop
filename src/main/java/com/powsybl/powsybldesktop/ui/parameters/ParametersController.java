@@ -37,8 +37,9 @@ import java.util.Objects;
  * Tab host for the app's parameter screens: network import/export parameters per format
  * ({@link NetworkFormatParametersController}), single line and network area diagram parameters
  * ({@link SldParametersController}, {@link NadParametersController}), load flow parameters (existing
- * {@link LoadFlowParametersController}, embedded unchanged), security and sensitivity analysis parameters
- * ({@link SecurityAnalysisParametersController}, {@link SensitivityAnalysisParametersController}) and the app's own {@link GuiParameters}
+ * {@link LoadFlowParametersController}, embedded unchanged), security and sensitivity analysis and RAO parameters
+ * ({@link SecurityAnalysisParametersController}, {@link SensitivityAnalysisParametersController},
+ * {@link RaoParametersController}, {@link CracCreationParametersController}, {@link CracGeneratorParametersController}) and the app's own {@link GuiParameters}
  * ({@link GuiParametersController}). Its toolbar saves all of them to the configuration file restored on startup
  * ({@link ParametersConfigFile}), resets them to defaults, or imports/exports them from/to any JSON file.
  *
@@ -51,7 +52,8 @@ public class ParametersController extends AbstractDisposableController {
     // in the order of parameters-view.fxml's tabs, for the main toolbar's menu
     private static final List<String> TAB_TITLE_KEYS = List.of("parameters.tab.gui", "parameters.tab.networkImport",
             "parameters.tab.networkExport", "desktop.common.singleLineDiagram", "desktop.common.networkAreaDiagram",
-            "desktop.common.loadFlow", "desktop.common.securityAnalysis", "desktop.common.sensitivityAnalysis");
+            "desktop.common.loadFlow", "desktop.common.securityAnalysis", "desktop.common.sensitivityAnalysis",
+            "desktop.common.rao", "parameters.tab.cracCreation", "parameters.tab.cracGenerator");
 
     @FXML
     private Button saveButton;
@@ -74,6 +76,12 @@ public class ParametersController extends AbstractDisposableController {
     @FXML
     private SensitivityAnalysisParametersController sensitivityAnalysisEmbeddedController;
     @FXML
+    private RaoParametersController raoEmbeddedController;
+    @FXML
+    private CracCreationParametersController cracCreationEmbeddedController;
+    @FXML
+    private CracGeneratorParametersController cracGeneratorEmbeddedController;
+    @FXML
     private GuiParametersController guiEmbeddedController;
 
     private MainModel mainModel;
@@ -95,6 +103,11 @@ public class ParametersController extends AbstractDisposableController {
         securityAnalysisEmbeddedController.setOnImportFailed((path, e) -> importFailed(Instant.now(), path, e));
         sensitivityAnalysisEmbeddedController.setParametersModel(mainModel.getParametersModel());
         sensitivityAnalysisEmbeddedController.setOnImportFailed((path, e) -> importFailed(Instant.now(), path, e));
+        raoEmbeddedController.setParametersModel(mainModel.getParametersModel());
+        raoEmbeddedController.setOnImportFailed((path, e) -> importFailed(Instant.now(), path, e));
+        cracCreationEmbeddedController.setParametersModel(mainModel.getParametersModel());
+        cracCreationEmbeddedController.setOnImportFailed((path, e) -> importFailed(Instant.now(), path, e));
+        cracGeneratorEmbeddedController.setParametersModel(mainModel.getParametersModel());
         guiEmbeddedController.setParametersModel(mainModel.getParametersModel());
         listenerManager.listen(mainModel.getParametersModel().parametersRevisionProperty(), (_, _, _) -> updateSaveButton());
         setConfigPath(configPath);
@@ -210,6 +223,9 @@ public class ParametersController extends AbstractDisposableController {
         loadFlowEmbeddedController.dispose();
         securityAnalysisEmbeddedController.dispose();
         sensitivityAnalysisEmbeddedController.dispose();
+        raoEmbeddedController.dispose();
+        cracCreationEmbeddedController.dispose();
+        cracGeneratorEmbeddedController.dispose();
         guiEmbeddedController.dispose();
         super.dispose();
     }

@@ -22,6 +22,7 @@ import com.powsybl.iidm.network.BoundaryLine;
 import com.powsybl.iidm.network.Bus;
 import com.powsybl.iidm.network.Exporter;
 import com.powsybl.iidm.network.Importer;
+import com.powsybl.iidm.network.Line;
 import com.powsybl.iidm.network.Network;
 import com.powsybl.iidm.network.test.BatteryNetworkFactory;
 import com.powsybl.iidm.network.test.BoundaryLineNetworkFactory;
@@ -642,6 +643,7 @@ public class NetworksController extends AbstractDisposableController {
                 vl.setHighVoltageLimit(vl.getNominalV() * (1 + margin))
                         .setLowVoltageLimit(vl.getNominalV() * (1 - margin));
             });
+            renameDuplicateLines(network);
             return network;
         });
         addFactoryMenu(sampleNetworksMenu, "Cgmes3Catalog", List.of(
@@ -840,6 +842,19 @@ public class NetworksController extends AbstractDisposableController {
 
     private static Supplier<Network> cgmes(Supplier<? extends GridModelReference> gridModel) {
         return () -> Network.read(gridModel.get().dataSource(), CGMES_IMPORT_PARAMETERS);
+    }
+
+    // SmallGrid has parallel lines sharing a name (e.g. two "42-49"): suffixed "-1" and "-2" (by id), so that the CRAC
+    // Generator, which names its contingencies after the lines, can use the sample as it is
+    static void renameDuplicateLines(Network network) {
+        network.getLineStream().collect(Collectors.groupingBy(Line::getNameOrId)).forEach((name, lines) -> {
+            if (lines.size() > 1) {
+                List<Line> sorted = lines.stream().sorted(Comparator.comparing(Line::getId)).toList();
+                for (int i = 0; i < sorted.size(); i++) {
+                    sorted.get(i).setName(name + "-" + (i + 1));
+                }
+            }
+        });
     }
 
     private static String withGl(String label) {
